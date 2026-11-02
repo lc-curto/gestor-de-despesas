@@ -37,6 +37,7 @@ const authSubmitButton = document.getElementById("authSubmitButton");
 const authToggleText = document.getElementById("authToggleText");
 const authToggleButton = document.getElementById("authToggleButton");
 const authMessage = document.getElementById("authMessage");
+const currentDateTime = document.getElementById("currentDateTime");
 
 // Formulário e campos.
 const loginForm = document.getElementById("loginForm");
@@ -64,6 +65,18 @@ function alterarVista(vista) {
   appView.classList.add("d-none");
 
   vista.classList.remove("d-none");
+}
+
+// Atualiza o relógio do dashboard, em vez de deixar uma data fixa no HTML.
+function atualizarDataHora() {
+  if (!currentDateTime) return;
+
+  const agora = new Date();
+  currentDateTime.dateTime = agora.toISOString();
+  currentDateTime.textContent = new Intl.DateTimeFormat("pt-PT", {
+    dateStyle: "short",
+    timeStyle: "short"
+  }).format(agora);
 }
 
 // ======================================
@@ -126,7 +139,8 @@ function mostrarMensagem(mensagem, tipo) {
   authMessage.classList.remove(
     "d-none",
     "alert-danger",
-    "alert-success"
+    "alert-success",
+    "alert-warning"
   );
 
   authMessage.classList.add(`alert-${tipo}`);
@@ -171,7 +185,7 @@ function iniciarControloInatividade() {
       alterarVista(loginView);
 
       mostrarMensagem(
-        "A tua sessão foi encerrada por inatividade. Inicia sessão novamente.",
+        "A aplicação foi bloqueada por inatividade. Inicia sessão novamente.",
         "danger"
       );
     }
@@ -213,12 +227,18 @@ loginForm.addEventListener("submit", async (event) => {
         return;
       }
 
-      mostrarMensagem(
-        "Conta criada com sucesso! Verifica o teu email para confirmares a conta.",
-        "success"
-      );
-
-      loginPassword.value = "";
+      if (resultado.session) {
+        // Alguns projetos Supabase não exigem confirmação por email.
+        authMessage.classList.add("d-none");
+        alterarVista(appView);
+        iniciarControloInatividade();
+      } else {
+        mostrarMensagem(
+          "Conta criada com sucesso! Verifica o teu email para confirmares a conta.",
+          "success"
+        );
+        loginPassword.value = "";
+      }
 
     } else {
       const resultado = await iniciarSessao(email, password);
@@ -228,6 +248,7 @@ loginForm.addEventListener("submit", async (event) => {
         return;
       }
 
+      authMessage.classList.add("d-none");
       alterarVista(appView);
       iniciarControloInatividade();
     }
@@ -252,25 +273,47 @@ loginForm.addEventListener("submit", async (event) => {
 // Processa o encerramento manual da sessão.
 logoutButton.addEventListener("click", async () => {
   logoutButton.disabled = true;
+  alterarVista(loginView);
 
   try {
-    pararMonitoramentoInatividade();
+    try {
+      pararMonitoramentoInatividade();
 
-    const resultado = await encerrarSessao();
+      const resultado = await encerrarSessao();
 
-    if (resultado.error) {
+      if (!resultado.error) {
+        authMessage.classList.add("d-none");
+        alterarVista(loginView);
+        return;
+      }
+
       console.error("Erro ao encerrar sessão:", resultado.error);
-
-      iniciarControloInatividade();
-      return;
+    } catch (error) {
+      console.error("Erro inesperado ao encerrar sessão:", error);
     }
 
+    try {
+      // A ação é um logout explícito: tenta remover a sessão local se o remoto falhar.
+      const resultadoLocal = await encerrarSessao({ scope: "local" });
+      if (!resultadoLocal.error) {
+        alterarVista(loginView);
+        mostrarMensagem(
+          "A sessão foi encerrada neste dispositivo, mas o servidor não confirmou o logout.",
+          "warning"
+        );
+        return;
+      }
+      console.error("Erro ao terminar a sessão local:", resultadoLocal.error);
+    } catch (erroLocal) {
+      console.error("Erro ao terminar a sessão local:", erroLocal);
+    }
+
+    // Não manter dados protegidos visíveis se nem o logout local funcionar.
     alterarVista(loginView);
-
-  } catch (error) {
-    console.error("Erro inesperado ao encerrar sessão:", error);
-
-    iniciarControloInatividade();
+    mostrarMensagem(
+      "Não foi possível confirmar o encerramento da sessão. A vista protegida foi bloqueada neste separador.",
+      "danger"
+    );
 
   } finally {
     logoutButton.disabled = false;
@@ -283,6 +326,9 @@ logoutButton.addEventListener("click", async () => {
 
 // Inicializa o tema da aplicação.
 inicializarTema();
+
+atualizarDataHora();
+window.setInterval(atualizarDataHora, 60_000);
 
 // Inicia a aplicação após configurar os eventos.
 iniciarAplicacao();

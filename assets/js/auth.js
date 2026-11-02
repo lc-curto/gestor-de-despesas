@@ -62,11 +62,12 @@ export async function criarUsuario(email, password) {
   });
 
   if (error) {
-    return { user: null, error };
+    return { user: null, session: null, error };
   }
 
   return {
     user: data.user,
+    session: data.session,
     error: null
   };
 }
@@ -97,8 +98,8 @@ export async function iniciarSessao(email, password) {
 // ======================================
 
 // Encerra a sessão atual do utilizador.
-export async function encerrarSessao() {
-  const { error } = await supabase.auth.signOut();
+export async function encerrarSessao(options = {}) {
+  const { error } = await supabase.auth.signOut(options);
 
   return { error };
 }
@@ -188,15 +189,33 @@ async function expirarSessao() {
   const callback = encerrarInterface;
 
   pararMonitoramentoInatividade();
-
-  const resultado = await encerrarSessao();
-
-  if (resultado.error) {
-    console.error("Erro ao encerrar sessão por inatividade:", resultado.error);
-    return;
-  }
-
+  // Oculte a aplicação ao expirar; não espere pela ligação ao servidor.
   callback?.();
+
+  try {
+    const resultado = await encerrarSessao();
+
+    if (resultado.error) {
+      console.error("Erro ao encerrar sessão por inatividade:", resultado.error);
+
+      // Mesmo sem ligação, remove a sessão deste dispositivo e bloqueia a vista.
+      const resultadoLocal = await encerrarSessao({ scope: "local" });
+      if (resultadoLocal.error) {
+        console.error("Erro ao remover a sessão local:", resultadoLocal.error);
+      }
+    }
+  } catch (error) {
+    console.error("Erro inesperado ao expirar a sessão:", error);
+
+    try {
+      const resultadoLocal = await encerrarSessao({ scope: "local" });
+      if (resultadoLocal.error) {
+        console.error("Erro ao remover a sessão local:", resultadoLocal.error);
+      }
+    } catch (erroLocal) {
+      console.error("Erro inesperado ao remover a sessão local:", erroLocal);
+    }
+  }
 }
 
 // Inicia o monitoramento de inatividade.

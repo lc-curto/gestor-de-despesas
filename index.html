@@ -96,7 +96,7 @@
                   Inicia sessão para acompanhares as tuas despesas.
                 </p>
 
-                <form id="loginForm" novalidate>
+                <form id="loginForm" method="post" novalidate>
                   <div class="mb-4">
                     <label for="loginEmail" class="form-label">Email</label>
                     <input
@@ -248,9 +248,7 @@
               <div class="eyebrow mb-3">
                 <span class="eyebrow-dot"></span> Resumo financeiro
               </div>
-              <h1 class="display-6 fw-bold mb-2">
-                Olá, <span id="userName">Sofia Martins</span>!
-              </h1>
+              <h1 class="display-6 fw-bold mb-2">Olá!</h1>
               <p class="text-secondary mb-0">
                 Aqui tens uma visão simples das tuas despesas pessoais.
               </p>
@@ -260,9 +258,7 @@
                 <span class="small text-secondary d-block"
                   >Data e hora atual</span
                 >
-                <time id="currentDateTime" datetime="2026-11-02T12:54"
-                  >02/11/2026, 12:54</time
-                >
+                <time id="currentDateTime">A atualizar…</time>
               </div>
             </div>
           </div>
@@ -276,29 +272,27 @@
               >
                 <div>
                   <p class="small mb-2 opacity-75">Total gasto</p>
-                  <p class="summary-value mb-0" id="totalAmount">€ 742,80</p>
+                  <p class="summary-value mb-0" id="totalAmount">—</p>
                 </div>
                 <span class="summary-icon" aria-hidden="true"
                   ><i class="bi bi-graph-up-arrow"></i
                 ></span>
               </div>
-              <p class="small mb-0 mt-3 opacity-75">Neste período</p>
+              <p class="small mb-0 mt-3 opacity-75">Sem dados disponíveis</p>
             </article>
           </div>
           <div class="col-6 col-md-4">
             <article class="summary-card h-100">
               <p class="small text-secondary mb-2">Despesas registadas</p>
-              <p class="summary-value mb-0" id="expenseCount">8</p>
-              <p class="small text-secondary mb-0 mt-3">Movimentos</p>
+              <p class="summary-value mb-0" id="expenseCount">—</p>
+              <p class="small text-secondary mb-0 mt-3">Sem dados disponíveis</p>
             </article>
           </div>
           <div class="col-6 col-md-4">
             <article class="summary-card h-100">
               <p class="small text-secondary mb-2">Maior categoria</p>
-              <p class="summary-value summary-value-text mb-0" id="topCategory">
-                Casa
-              </p>
-              <p class="small text-secondary mb-0 mt-3">€ 310,00 gastos</p>
+              <p class="summary-value summary-value-text mb-0" id="topCategory">—</p>
+              <p class="small text-secondary mb-0 mt-3">Sem dados disponíveis</p>
             </article>
           </div>
         </section>
@@ -321,7 +315,8 @@
                   ></span>
                 </div>
 
-                <form id="expenseForm" novalidate>
+                <div id="expenseForm">
+                  <fieldset disabled class="border-0 p-0 m-0">
                   <div class="mb-3">
                     <label for="expenseDescription" class="form-label"
                       >Descrição</label
@@ -390,10 +385,14 @@
                       <option value="outros">Outros</option>
                     </select>
                   </div>
-                  <button type="submit" class="btn btn-primary w-100">
+                  </fieldset>
+                  <p id="expenseUnavailableMessage" class="form-text mb-2">
+                    O registo de despesas ainda não está disponível nesta versão.
+                  </p>
+                  <button type="button" class="btn btn-primary w-100" disabled aria-describedby="expenseUnavailableMessage">
                     Guardar despesa
                   </button>
-                </form>
+                </div>
               </div>
             </article>
           </div>
@@ -416,6 +415,7 @@
                       class="form-select form-select-sm"
                       id="categoryFilter"
                       name="categoryFilter"
+                      disabled
                     >
                       <option value="all" selected>Todas as categorias</option>
                       <option value="casa">Casa</option>
@@ -429,134 +429,21 @@
                 </div>
 
                 <div id="expensesList" class="expense-list" aria-live="polite">
-                  <article class="expense-item">
-                    <div
-                      class="expense-category-icon category-home"
-                      aria-hidden="true"
-                    >
-                      <i class="bi bi-house"></i>
-                    </div>
-                    <div class="expense-info">
-                      <h3 class="h6 mb-1">Renda da casa</h3>
-                      <p class="small text-secondary mb-0">Casa · 01/11/2026</p>
-                    </div>
-                    <div class="expense-actions text-end">
-                      <p class="fw-bold mb-2">€ 310,00</p>
-                      <div class="d-flex gap-1 justify-content-end">
-                        <button
-                          type="button"
-                          class="btn btn-sm btn-light"
-                          aria-label="Editar Renda da casa"
-                          data-action="edit"
-                          data-id="1"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          class="btn btn-sm btn-outline-danger"
-                          aria-label="Apagar Renda da casa"
-                          data-action="delete"
-                          data-id="1"
-                        >
-                          Apagar
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-
-                  <article class="expense-item">
-                    <div
-                      class="expense-category-icon category-food"
-                      aria-hidden="true"
-                    >
-                      <i class="bi bi-basket2"></i>
-                    </div>
-                    <div class="expense-info">
-                      <h3 class="h6 mb-1">Compras do mês</h3>
-                      <p class="small text-secondary mb-0">
-                        Alimentação · 31/10/2026
-                      </p>
-                    </div>
-                    <div class="expense-actions text-end">
-                      <p class="fw-bold mb-2">€ 86,40</p>
-                      <div class="d-flex gap-1 justify-content-end">
-                        <button
-                          type="button"
-                          class="btn btn-sm btn-light"
-                          aria-label="Editar Compras do mês"
-                          data-action="edit"
-                          data-id="2"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          class="btn btn-sm btn-outline-danger"
-                          aria-label="Apagar Compras do mês"
-                          data-action="delete"
-                          data-id="2"
-                        >
-                          Apagar
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-
-                  <article class="expense-item">
-                    <div
-                      class="expense-category-icon category-transport"
-                      aria-hidden="true"
-                    >
-                      <i class="bi bi-train-front"></i>
-                    </div>
-                    <div class="expense-info">
-                      <h3 class="h6 mb-1">Passe mensal</h3>
-                      <p class="small text-secondary mb-0">
-                        Transportes · 30/10/2026
-                      </p>
-                    </div>
-                    <div class="expense-actions text-end">
-                      <p class="fw-bold mb-2">€ 40,00</p>
-                      <div class="d-flex gap-1 justify-content-end">
-                        <button
-                          type="button"
-                          class="btn btn-sm btn-light"
-                          aria-label="Editar Passe mensal"
-                          data-action="edit"
-                          data-id="3"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          class="btn btn-sm btn-outline-danger"
-                          aria-label="Apagar Passe mensal"
-                          data-action="delete"
-                          data-id="3"
-                        >
-                          Apagar
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-
-                  <!-- Estado vazio opcional: mostrar quando não existirem despesas -->
                   <div
                     id="emptyExpenses"
-                    class="empty-state d-none text-center py-4"
+                    class="empty-state text-center py-4"
                   >
                     <div class="empty-icon mb-3" aria-hidden="true">◎</div>
-                    <h3 class="h6">Ainda não tens despesas</h3>
+                    <h3 class="h6">Ainda não existem despesas registadas</h3>
                     <p class="small text-secondary mb-0">
-                      Usa o formulário para adicionar o teu primeiro registo.
+                      O registo de despesas ainda não está disponível nesta versão.
                     </p>
                   </div>
                 </div>
               </div>
             </article>
 
-            <!-- Painel dedicado de edição: o JavaScript deverá remover d-none ao clicar em Editar. -->
+            <!-- Painel reservado para edição quando essa funcionalidade existir. -->
             <section
               id="editExpensePanel"
               class="edit-panel d-none mt-3"
@@ -580,7 +467,8 @@
                 ></button>
               </div>
 
-              <form id="editExpenseForm" class="row g-3 mt-1" novalidate>
+              <div id="editExpenseForm" class="row g-3 mt-1" aria-describedby="editExpenseUnavailableMessage">
+                <fieldset disabled class="border-0 p-0 m-0">
                 <input type="hidden" id="editExpenseId" name="expenseId" />
                 <div class="col-12">
                   <label for="editExpenseDescription" class="form-label"
@@ -650,6 +538,10 @@
                     <option value="outros">Outros</option>
                   </select>
                 </div>
+                </fieldset>
+                <p id="editExpenseUnavailableMessage" class="form-text mb-0">
+                  A edição de despesas ainda não está disponível nesta versão.
+                </p>
                 <div
                   class="col-12 d-flex flex-column flex-sm-row justify-content-end gap-2 pt-2"
                 >
@@ -660,12 +552,12 @@
                   >
                     Cancelar
                   </button>
-                  <button type="submit" class="btn btn-primary">
+                  <button type="button" class="btn btn-primary" disabled aria-describedby="editExpenseUnavailableMessage">
                     <i class="bi bi-check2 me-1" aria-hidden="true"></i>Guardar
                     alterações
                   </button>
                 </div>
-              </form>
+              </div>
             </section>
           </div>
         </section>
@@ -686,7 +578,7 @@
                       Conversor de moedas
                     </h2>
                     <p class="small text-secondary mb-0">
-                      Consulta o valor aproximado de uma despesa noutra moeda.
+                      A conversão de moedas ainda não está disponível nesta versão.
                     </p>
                   </div>
                 </div>
@@ -701,6 +593,7 @@
                   placeholder="100,00"
                   min="0"
                   step="0.01"
+                  disabled
                 />
               </div>
               <div class="col-6 col-sm-4 col-lg-2">
@@ -709,6 +602,7 @@
                   class="form-select"
                   id="conversionFrom"
                   name="conversionFrom"
+                  disabled
                 >
                   <option value="EUR" selected>EUR (€)</option>
                   <option value="USD">USD ($)</option>
@@ -722,6 +616,7 @@
                   class="form-select"
                   id="conversionTo"
                   name="conversionTo"
+                  disabled
                 >
                   <option value="EUR">EUR (€)</option>
                   <option value="USD" selected>USD ($)</option>
@@ -735,6 +630,7 @@
                   class="btn btn-primary w-100"
                   id="convertButton"
                   aria-label="Converter valor"
+                  disabled
                 >
                   <i class="bi bi-arrow-right" aria-hidden="true"></i>
                 </button>
@@ -750,7 +646,7 @@
                   >
                   <strong id="convertedValue">—</strong>
                   <span id="conversionRate" class="small text-secondary"
-                    >A taxa será carregada pela Frankfurter API.</span
+                    >O conversor ainda não está disponível nesta versão.</span
                   >
                 </div>
               </div>
