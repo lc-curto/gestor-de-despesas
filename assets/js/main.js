@@ -38,6 +38,14 @@ const authToggleText = document.getElementById("authToggleText");
 const authToggleButton = document.getElementById("authToggleButton");
 const authMessage = document.getElementById("authMessage");
 const currentDateTime = document.getElementById("currentDateTime");
+const periodModeMonthButton = document.getElementById("periodModeMonth");
+const periodModeYearButton = document.getElementById("periodModeYear");
+const periodMonthInput = document.getElementById("periodMonth");
+const periodYearInput = document.getElementById("periodYear");
+const periodPreviousButton = document.getElementById("periodPrevious");
+const periodNextButton = document.getElementById("periodNext");
+const periodCaption = document.getElementById("periodCaption");
+const expenseDateInput = document.getElementById("expenseDate");
 
 // Formulário e campos.
 const loginForm = document.getElementById("loginForm");
@@ -53,6 +61,7 @@ const themeToggle = document.getElementById("themeToggle");
 
 // Controla o modo atual de autenticação.
 let modoRegisto = false;
+let modoPeriodo = "month";
 
 // ======================================
 // CONTROLO DAS VISTAS
@@ -77,6 +86,108 @@ function atualizarDataHora() {
     dateStyle: "short",
     timeStyle: "short"
   }).format(agora);
+}
+
+function formatarDataLocal(data) {
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, "0");
+  const dia = String(data.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
+function atualizarResumoPeriodo() {
+  const mensal = modoPeriodo === "month";
+  const selecao = mensal ? periodMonthInput.value : periodYearInput.value;
+
+  if (!selecao) return;
+
+  let periodoFormatado;
+  if (mensal) {
+    const [ano, mes] = selecao.split("-").map(Number);
+    const dataPeriodo = new Date(0);
+    dataPeriodo.setFullYear(ano, mes - 1, 1);
+    periodoFormatado = new Intl.DateTimeFormat("pt-PT", {
+      month: "long",
+      year: "numeric"
+    }).format(dataPeriodo);
+  } else {
+    periodoFormatado = selecao;
+  }
+
+  periodCaption.textContent =
+    `Período selecionado: ${periodoFormatado}. Ainda não há despesas registadas para mostrar.`;
+
+  const hoje = new Date();
+  const periodoAtual = mensal
+    ? `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`
+    : String(hoje.getFullYear());
+
+  periodPreviousButton.disabled = mensal
+    ? selecao <= "0001-01"
+    : Number(selecao) <= 1;
+  periodNextButton.disabled = mensal
+    ? selecao >= periodoAtual
+    : Number(selecao) >= hoje.getFullYear();
+}
+
+function definirModoPeriodo(modo) {
+  modoPeriodo = modo;
+  const mensal = modo === "month";
+
+  periodModeMonthButton.classList.toggle("btn-primary", mensal);
+  periodModeMonthButton.classList.toggle("btn-outline-primary", !mensal);
+  periodModeMonthButton.setAttribute("aria-pressed", String(mensal));
+
+  periodModeYearButton.classList.toggle("btn-primary", !mensal);
+  periodModeYearButton.classList.toggle("btn-outline-primary", mensal);
+  periodModeYearButton.setAttribute("aria-pressed", String(!mensal));
+
+  periodMonthInput.classList.toggle("d-none", !mensal);
+  periodMonthInput.disabled = !mensal;
+  periodYearInput.classList.toggle("d-none", mensal);
+  periodYearInput.disabled = mensal;
+
+  atualizarResumoPeriodo();
+}
+
+function deslocarPeriodo(direcao) {
+  if (modoPeriodo === "month") {
+    const [ano, mes] = (periodMonthInput.value || formatarDataLocal(new Date()).slice(0, 7))
+      .split("-")
+      .map(Number);
+    const proximo = new Date(0);
+    proximo.setFullYear(ano, mes - 1 + direcao, 1);
+    const anoProximo = proximo.getFullYear();
+    const mesProximo = proximo.getMonth() + 1;
+    periodMonthInput.value = `${String(anoProximo).padStart(4, "0")}-${String(
+      mesProximo
+    ).padStart(2, "0")}`;
+  } else {
+    periodYearInput.value = String(Number(periodYearInput.value) + direcao);
+  }
+
+  atualizarResumoPeriodo();
+}
+
+function inicializarSeletoresPeriodo() {
+  const hoje = new Date();
+  const hojeLocal = formatarDataLocal(hoje);
+  const mesAtual = hojeLocal.slice(0, 7);
+
+  periodMonthInput.min = "0001-01";
+  periodMonthInput.max = mesAtual;
+  periodMonthInput.value = mesAtual;
+
+  periodYearInput.min = "1";
+  periodYearInput.max = String(hoje.getFullYear());
+  periodYearInput.value = String(hoje.getFullYear());
+
+  if (expenseDateInput) {
+    expenseDateInput.max = hojeLocal;
+    expenseDateInput.value = hojeLocal;
+  }
+
+  definirModoPeriodo("month");
 }
 
 // ======================================
@@ -201,6 +312,30 @@ authToggleButton.addEventListener("click", alternarModoAutenticacao);
 
 // Alterna entre tema claro e escuro.
 themeToggle.addEventListener("click", alternarTema);
+
+periodModeMonthButton.addEventListener("click", () => definirModoPeriodo("month"));
+periodModeYearButton.addEventListener("click", () => definirModoPeriodo("year"));
+periodMonthInput.addEventListener("change", () => {
+  const mes = periodMonthInput.value;
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes) || mes < periodMonthInput.min) {
+    periodMonthInput.value = periodMonthInput.max;
+  } else if (mes > periodMonthInput.max) {
+    periodMonthInput.value = periodMonthInput.max;
+  }
+  atualizarResumoPeriodo();
+});
+periodYearInput.addEventListener("change", () => {
+  const hoje = new Date();
+  const ano = Number(periodYearInput.value);
+  if (!Number.isInteger(ano) || ano < 1) {
+    periodYearInput.value = String(hoje.getFullYear());
+  } else if (ano > hoje.getFullYear()) {
+    periodYearInput.value = String(hoje.getFullYear());
+  }
+  atualizarResumoPeriodo();
+});
+periodPreviousButton.addEventListener("click", () => deslocarPeriodo(-1));
+periodNextButton.addEventListener("click", () => deslocarPeriodo(1));
 
 // Processa o envio do formulário de autenticação.
 loginForm.addEventListener("submit", async (event) => {
@@ -329,6 +464,7 @@ inicializarTema();
 
 atualizarDataHora();
 window.setInterval(atualizarDataHora, 60_000);
+inicializarSeletoresPeriodo();
 
 // Inicia a aplicação após configurar os eventos.
 iniciarAplicacao();
