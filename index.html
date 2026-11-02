@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="pt-PT" data-bs-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Gestor de despesas pessoais" />
+    <title>Gestor de Despesas Pessoais</title>
+    <link
+      rel="shortcut icon"
+      href="assets/images/favicon.png"
+      type="image/x-icon"
+    />
+
+    <!-- Bootstrap 5.3 obrigatório -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    />
+    <link rel="stylesheet" href="assets/css/styles.css" />    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+      defer
+    ></script>
+
+    <script type="module" src="assets/js/main.js" defer></script>
+    </head>
+  <body>
+    <!-- Tela de carregamento: o JavaScript deverá remover d-none durante a inicialização. -->
+    <main
+      id="loadingView"
+      class="min-vh-100 d-flex align-items-center justify-content-center py-5"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <div class="container">
+        <div class="row justify-content-center">
+          <div class="col-12 col-sm-8 col-md-5 col-lg-4">
+            <section class="d-flex flex-column align-items-center text-center">
+              <div class="brand-mark mb-4" aria-hidden="true">
+                <i class="bi bi-wallet2"></i>
+              </div>
+              <p class="h4 fw-bold mb-4">Meu Bolso</p>
+              <br />
+              <p class="h5 mb-5">O teu dinheiro sob controlo.</p>
+              <div
+                class="spinner-border text-primary mb-3"
+                role="status"
+                aria-label="A carregar"
+              >
+                <span class="visually-hidden">A carregar...</span>
+              </div>
+              <h1 class="h5 fw-bold mb-2">A preparar a aplicação</h1>
+              <p class="text-secondary mb-0">A verificar a tua sessão...</p>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Vista de autenticação: remover d-none para apresentar esta vista -->
+    <main
+      id="loginView"
+      class="d-none min-vh-100 d-flex align-items-center py-5 bg-body-tertiary"
+    >
+      <div class="container">
+        <div class="row justify-content-center align-items-center">
+          <div class="col-12 col-sm-10 col-md-7 col-lg-5">
+            <section
+              id="authCard"
+              class="card border-0 shadow-sm rounded-4 bg-body"
+            >
+              <div class="card-body p-4 p-sm-5">
+                <div
+                  class="brand-mark mb-4 mx-auto d-flex justify-content-center align-items-center"
+                  aria-hidden="true"
+                >
+                  <i class="bi bi-wallet2"></i>
+                </div>
+
+                <p
+                  class="text-uppercase small fw-semibold text-primary mb-2 text-center"
+                >
+                  Meu Bolso
+                </p>
+
+                <h1 class="h2 fw-bold mb-2 text-center" id="authTitle">
+                  Bem-vindo
+                </h1>
+
+                <p class="text-secondary mb-4" id="authDescription">
+                  Inicia sessão para acompanhares as tuas despesas.
+                </p>
+
+                <form id="loginForm" novalidate>
+                  <div class="mb-4">
+                    <label for="loginEmail" class="form-label">Email</label>
+                    <input
+                      type="email"
+                      class="form-control form-control-lg"
+                      id="loginEmail"
+                      name="email"
+                      placeholder="Introduz o teu endereço de email"
+                      autocomplete="username"
+                      required
+                    />
+                  </div>
+
+                  <div class="mb-4">
+                    <label for="loginPassword" class="form-label">
+                      Senha
+                    </label>
+                    <input
+                      type="password"
+                      class="form-control form-control-lg"
+                      id="loginPassword"
+                      name="password"
+                      placeholder="Introduz a tua palavra-passe"
+                      autocomplete="current-password"
+                      required
+                      minlength="6"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    class="btn btn-primary btn-lg w-100"
+                    id="authSubmitButton"
+                  >
+                    Entrar
+                  </button>
+                </form>
+
+                <p class="text-center text-secondary mt-4 mb-0">
+                  <span id="authToggleText"> Ainda não tens uma conta? </span>
+
+                  <button
+                    type="button"
+                    class="btn btn-link p-0 text-decoration-none fw-semibold"
+                    id="authToggleButton"
+                  >
+                    Criar conta
+                  </button>
+                </p>
+
+                <div
+                  id="authMessage"
+                  class="alert d-none mt-3 mb-0"
+                  role="alert"
+                  aria-live="polite"
+                ></div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Vista principal da aplicação: apresentada depois do login -->
+    <div id="appView" class="d-none">
+      <!-- AVISO DE INATIVIDADE -->
+      <div
+        class="modal fade"
+        id="inactivityModal"
+        tabindex="-1"
+        aria-labelledby="inactivityModalTitle"
+        aria-describedby="inactivityModalDescription"
+        aria-hidden="true"
+        data-bs-backdrop="static"
+        data-bs-keyboard="false"
+      >
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-body text-center p-4 p-md-5">
+              <div class="mb-3">
+                <i class="bi bi-clock-history text-warning fs-1"></i>
+              </div>
+
+              <h2 class="h4 fw-bold mb-3" id="inactivityModalTitle">
+                Ainda estás aí?
+              </h2>
+
+              <p class="text-secondary mb-3" id="inactivityModalDescription">
+                A tua sessão será encerrada automaticamente por inatividade.
+                Continua a utilizar a aplicação para manteres a sessão ativa.
+              </p>
+
+              <div class="display-5 fw-bold text-warning mb-4">
+                <span id="inactivityCountdown">01:00</span>
+              </div>
+
+              <button
+                type="button"
+                class="btn btn-primary w-100"
+                id="continueSessionButton"
+              >
+                Continuar sessão
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <nav
+        class="navbar navbar-expand-lg bg-body border-bottom sticky-top"
+        aria-label="Navegação principal"
+      >
+        <div class="container py-2">
+          <a
+            class="navbar-brand d-flex align-items-center gap-2 fw-bold"
+            href="#top"
+          >
+            <span class="brand-mark brand-mark-sm" aria-hidden="true"
+              ><i class="bi bi-wallet2"></i
+            ></span>
+            <span>Gestor de Despesas</span>
+          </a>
+
+          <div class="d-flex align-items-center gap-2">
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm"
+              id="themeToggle"
+              aria-label="Alternar entre tema claro e escuro"
+            >
+              <i class="bi bi-circle-half" aria-hidden="true"></i>
+              <span class="d-none d-sm-inline">Tema</span>
+            </button>
+            <button
+              type="button"
+              class="btn btn-outline-danger btn-sm"
+              id="logoutButton"
+            >
+              <i class="bi bi-box-arrow-right me-sm-1" aria-hidden="true"></i
+              ><span class="d-none d-sm-inline">Sair</span>
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <main id="top" class="container py-4 py-lg-5">
+        <header class="dashboard-hero mb-4 mb-lg-5">
+          <div class="row align-items-end g-3">
+            <div class="col-12 col-lg-8">
+              <div class="eyebrow mb-3">
+                <span class="eyebrow-dot"></span> Resumo financeiro
+              </div>
+              <h1 class="display-6 fw-bold mb-2">
+                Olá, <span id="userName">Sofia Martins</span>!
+              </h1>
+              <p class="text-secondary mb-0">
+                Aqui tens uma visão simples das tuas despesas pessoais.
+              </p>
+            </div>
+            <div class="col-12 col-lg-4">
+              <div class="date-time-card text-lg-end">
+                <span class="small text-secondary d-block"
+                  >Data e hora atual</span
+                >
+                <time id="currentDateTime" datetime="2026-11-02T12:54"
+                  >02/11/2026, 12:54</time
+                >
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <section class="row g-3 mb-4" aria-label="Resumo das despesas">
+          <div class="col-12 col-md-4">
+            <article class="summary-card summary-card-primary h-100">
+              <div
+                class="d-flex justify-content-between align-items-start gap-3"
+              >
+                <div>
+                  <p class="small mb-2 opacity-75">Total gasto</p>
+                  <p class="summary-value mb-0" id="totalAmount">€ 742,80</p>
+                </div>
+                <span class="summary-icon" aria-hidden="true"
+                  ><i class="bi bi-graph-up-arrow"></i
+                ></span>
+              </div>
+              <p class="small mb-0 mt-3 opacity-75">Neste período</p>
+            </article>
+          </div>
+          <div class="col-6 col-md-4">
+            <article class="summary-card h-100">
+              <p class="small text-secondary mb-2">Despesas registadas</p>
+              <p class="summary-value mb-0" id="expenseCount">8</p>
+              <p class="small text-secondary mb-0 mt-3">Movimentos</p>
+            </article>
+          </div>
+          <div class="col-6 col-md-4">
+            <article class="summary-card h-100">
+              <p class="small text-secondary mb-2">Maior categoria</p>
+              <p class="summary-value summary-value-text mb-0" id="topCategory">
+                Casa
+              </p>
+              <p class="small text-secondary mb-0 mt-3">€ 310,00 gastos</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="row g-4">
+          <div class="col-12 col-lg-5">
+            <article class="card border-0 shadow-sm rounded-4 h-100">
+              <div class="card-body p-4">
+                <div
+                  class="d-flex justify-content-between align-items-center mb-4"
+                >
+                  <div>
+                    <p class="text-primary fw-semibold small mb-1">
+                      Novo registo
+                    </p>
+                    <h2 class="h4 fw-bold mb-0">Adicionar despesa</h2>
+                  </div>
+                  <span class="section-icon" aria-hidden="true"
+                    ><i class="bi bi-plus-lg"></i
+                  ></span>
+                </div>
+
+                <form id="expenseForm" novalidate>
+                  <div class="mb-3">
+                    <label for="expenseDescription" class="form-label"
+                      >Descrição</label
+                    >
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="expenseDescription"
+                      name="description"
+                      placeholder="Ex.: Supermercado"
+                      required
+                    />
+                  </div>
+                  <div class="mb-3">
+                    <label for="expenseAmount" class="form-label">Valor</label>
+                    <div class="input-group">
+                      <input
+                        type="number"
+                        class="form-control"
+                        id="expenseAmount"
+                        name="amount"
+                        placeholder="0,00"
+                        min="0.01"
+                        step="0.01"
+                        required
+                      />
+                      <span class="input-group-text" id="expenseCurrencySymbol"
+                        >€</span
+                      >
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="expenseCurrency" class="form-label"
+                      >Moeda</label
+                    >
+                    <select
+                      class="form-select"
+                      id="expenseCurrency"
+                      name="currency"
+                      required
+                    >
+                      <option value="EUR" selected>Euro (€)</option>
+                      <option value="USD">Dólar americano ($)</option>
+                      <option value="GBP">Libra esterlina (£)</option>
+                      <option value="BRL">Real brasileiro (R$)</option>
+                    </select>
+                  </div>
+                  <div class="mb-4">
+                    <label for="expenseCategory" class="form-label"
+                      >Categoria</label
+                    >
+                    <select
+                      class="form-select"
+                      id="expenseCategory"
+                      name="category"
+                      required
+                    >
+                      <option value="" selected disabled>
+                        Seleciona uma categoria
+                      </option>
+                      <option value="casa">Casa</option>
+                      <option value="alimentacao">Alimentação</option>
+                      <option value="transportes">Transportes</option>
+                      <option value="lazer">Lazer</option>
+                      <option value="saude">Saúde</option>
+                      <option value="outros">Outros</option>
+                    </select>
+                  </div>
+                  <button type="submit" class="btn btn-primary w-100">
+                    Guardar despesa
+                  </button>
+                </form>
+              </div>
+            </article>
+          </div>
+
+          <div class="col-12 col-lg-7">
+            <article class="card border-0 shadow-sm rounded-4 h-100">
+              <div class="card-body p-4">
+                <div
+                  class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4"
+                >
+                  <div>
+                    <p class="text-primary fw-semibold small mb-1">Histórico</p>
+                    <h2 class="h4 fw-bold mb-0">As minhas despesas</h2>
+                  </div>
+                  <div class="filter-control">
+                    <label for="categoryFilter" class="visually-hidden"
+                      >Filtrar por categoria</label
+                    >
+                    <select
+                      class="form-select form-select-sm"
+                      id="categoryFilter"
+                      name="categoryFilter"
+                    >
+                      <option value="all" selected>Todas as categorias</option>
+                      <option value="casa">Casa</option>
+                      <option value="alimentacao">Alimentação</option>
+                      <option value="transportes">Transportes</option>
+                      <option value="lazer">Lazer</option>
+                      <option value="saude">Saúde</option>
+                      <option value="outros">Outros</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div id="expensesList" class="expense-list" aria-live="polite">
+                  <article class="expense-item">
+                    <div
+                      class="expense-category-icon category-home"
+                      aria-hidden="true"
+                    >
+                      <i class="bi bi-house"></i>
+                    </div>
+                    <div class="expense-info">
+                      <h3 class="h6 mb-1">Renda da casa</h3>
+                      <p class="small text-secondary mb-0">Casa · 01/11/2026</p>
+                    </div>
+                    <div class="expense-actions text-end">
+                      <p class="fw-bold mb-2">€ 310,00</p>
+                      <div class="d-flex gap-1 justify-content-end">
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-light"
+                          aria-label="Editar Renda da casa"
+                          data-action="edit"
+                          data-id="1"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-danger"
+                          aria-label="Apagar Renda da casa"
+                          data-action="delete"
+                          data-id="1"
+                        >
+                          Apagar
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+
+                  <article class="expense-item">
+                    <div
+                      class="expense-category-icon category-food"
+                      aria-hidden="true"
+                    >
+                      <i class="bi bi-basket2"></i>
+                    </div>
+                    <div class="expense-info">
+                      <h3 class="h6 mb-1">Compras do mês</h3>
+                      <p class="small text-secondary mb-0">
+                        Alimentação · 31/10/2026
+                      </p>
+                    </div>
+                    <div class="expense-actions text-end">
+                      <p class="fw-bold mb-2">€ 86,40</p>
+                      <div class="d-flex gap-1 justify-content-end">
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-light"
+                          aria-label="Editar Compras do mês"
+                          data-action="edit"
+                          data-id="2"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-danger"
+                          aria-label="Apagar Compras do mês"
+                          data-action="delete"
+                          data-id="2"
+                        >
+                          Apagar
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+
+                  <article class="expense-item">
+                    <div
+                      class="expense-category-icon category-transport"
+                      aria-hidden="true"
+                    >
+                      <i class="bi bi-train-front"></i>
+                    </div>
+                    <div class="expense-info">
+                      <h3 class="h6 mb-1">Passe mensal</h3>
+                      <p class="small text-secondary mb-0">
+                        Transportes · 30/10/2026
+                      </p>
+                    </div>
+                    <div class="expense-actions text-end">
+                      <p class="fw-bold mb-2">€ 40,00</p>
+                      <div class="d-flex gap-1 justify-content-end">
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-light"
+                          aria-label="Editar Passe mensal"
+                          data-action="edit"
+                          data-id="3"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-danger"
+                          aria-label="Apagar Passe mensal"
+                          data-action="delete"
+                          data-id="3"
+                        >
+                          Apagar
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+
+                  <!-- Estado vazio opcional: mostrar quando não existirem despesas -->
+                  <div
+                    id="emptyExpenses"
+                    class="empty-state d-none text-center py-4"
+                  >
+                    <div class="empty-icon mb-3" aria-hidden="true">◎</div>
+                    <h3 class="h6">Ainda não tens despesas</h3>
+                    <p class="small text-secondary mb-0">
+                      Usa o formulário para adicionar o teu primeiro registo.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- Painel dedicado de edição: o JavaScript deverá remover d-none ao clicar em Editar. -->
+            <section
+              id="editExpensePanel"
+              class="edit-panel d-none mt-3"
+              aria-labelledby="editExpenseTitle"
+              aria-hidden="true"
+            >
+              <div class="edit-panel-header">
+                <div>
+                  <p class="text-primary fw-semibold small mb-1">
+                    Atualizar registo
+                  </p>
+                  <h2 id="editExpenseTitle" class="h5 fw-bold mb-0">
+                    Editar despesa
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  class="btn-close"
+                  id="closeEditPanel"
+                  aria-label="Fechar edição"
+                ></button>
+              </div>
+
+              <form id="editExpenseForm" class="row g-3 mt-1" novalidate>
+                <input type="hidden" id="editExpenseId" name="expenseId" />
+                <div class="col-12">
+                  <label for="editExpenseDescription" class="form-label"
+                    >Descrição</label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="editExpenseDescription"
+                    name="description"
+                    placeholder="Ex.: Supermercado"
+                    required
+                  />
+                </div>
+                <div class="col-12 col-sm-6">
+                  <label for="editExpenseAmount" class="form-label"
+                    >Valor</label
+                  >
+                  <div class="input-group">
+                    <input
+                      type="number"
+                      class="form-control"
+                      id="editExpenseAmount"
+                      name="amount"
+                      min="0.01"
+                      step="0.01"
+                      required
+                    />
+                    <span
+                      class="input-group-text"
+                      id="editExpenseCurrencySymbol"
+                      >€</span
+                    >
+                  </div>
+                </div>
+                <div class="col-12 col-sm-6">
+                  <label for="editExpenseCurrency" class="form-label"
+                    >Moeda</label
+                  >
+                  <select
+                    class="form-select"
+                    id="editExpenseCurrency"
+                    name="currency"
+                    required
+                  >
+                    <option value="EUR">Euro (€)</option>
+                    <option value="USD">Dólar americano ($)</option>
+                    <option value="GBP">Libra esterlina (£)</option>
+                    <option value="BRL">Real brasileiro (R$)</option>
+                  </select>
+                </div>
+                <div class="col-12 col-sm-6">
+                  <label for="editExpenseCategory" class="form-label"
+                    >Categoria</label
+                  >
+                  <select
+                    class="form-select"
+                    id="editExpenseCategory"
+                    name="category"
+                    required
+                  >
+                    <option value="casa">Casa</option>
+                    <option value="alimentacao">Alimentação</option>
+                    <option value="transportes">Transportes</option>
+                    <option value="lazer">Lazer</option>
+                    <option value="saude">Saúde</option>
+                    <option value="outros">Outros</option>
+                  </select>
+                </div>
+                <div
+                  class="col-12 d-flex flex-column flex-sm-row justify-content-end gap-2 pt-2"
+                >
+                  <button
+                    type="button"
+                    class="btn btn-light"
+                    id="cancelEditButton"
+                  >
+                    Cancelar
+                  </button>
+                  <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check2 me-1" aria-hidden="true"></i>Guardar
+                    alterações
+                  </button>
+                </div>
+              </form>
+            </section>
+          </div>
+        </section>
+
+        <section class="mt-4" aria-labelledby="currencyTitle">
+          <article class="currency-card rounded-4 p-4">
+            <div class="row g-4 align-items-end">
+              <div class="col-12 col-lg-5">
+                <div class="d-flex align-items-start gap-3">
+                  <div class="currency-icon" aria-hidden="true">
+                    <i class="bi bi-arrow-left-right"></i>
+                  </div>
+                  <div>
+                    <p class="small text-primary fw-semibold mb-1">
+                      Ferramenta financeira
+                    </p>
+                    <h2 id="currencyTitle" class="h5 fw-bold mb-1">
+                      Conversor de moedas
+                    </h2>
+                    <p class="small text-secondary mb-0">
+                      Consulta o valor aproximado de uma despesa noutra moeda.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 col-sm-4 col-lg-2">
+                <label for="conversionAmount" class="form-label">Valor</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="conversionAmount"
+                  name="conversionAmount"
+                  placeholder="100,00"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+              <div class="col-6 col-sm-4 col-lg-2">
+                <label for="conversionFrom" class="form-label">De</label>
+                <select
+                  class="form-select"
+                  id="conversionFrom"
+                  name="conversionFrom"
+                >
+                  <option value="EUR" selected>EUR (€)</option>
+                  <option value="USD">USD ($)</option>
+                  <option value="GBP">GBP (£)</option>
+                  <option value="BRL">BRL (R$)</option>
+                </select>
+              </div>
+              <div class="col-6 col-sm-4 col-lg-2">
+                <label for="conversionTo" class="form-label">Para</label>
+                <select
+                  class="form-select"
+                  id="conversionTo"
+                  name="conversionTo"
+                >
+                  <option value="EUR">EUR (€)</option>
+                  <option value="USD" selected>USD ($)</option>
+                  <option value="GBP">GBP (£)</option>
+                  <option value="BRL">BRL (R$)</option>
+                </select>
+              </div>
+              <div class="col-12 col-lg-1">
+                <button
+                  type="button"
+                  class="btn btn-primary w-100"
+                  id="convertButton"
+                  aria-label="Converter valor"
+                >
+                  <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                </button>
+              </div>
+              <div class="col-12">
+                <div
+                  id="conversionResult"
+                  class="conversion-result"
+                  aria-live="polite"
+                >
+                  <span class="small text-secondary"
+                    >Resultado da conversão</span
+                  >
+                  <strong id="convertedValue">—</strong>
+                  <span id="conversionRate" class="small text-secondary"
+                    >A taxa será carregada pela Frankfurter API.</span
+                  >
+                </div>
+              </div>
+            </div>
+          </article>
+        </section>
+      </main>
+
+      <footer
+        class="site-footer container mt-5 pt-4 pb-4 border-top text-center"
+      >
+        <div class="row gy-3 justify-content-center">
+          <div class="col-12">
+            <a class="footer-brand text-decoration-none" href="#top">
+              <span class="brand-mark brand-mark-sm me-2" aria-hidden="true"
+                ><i class="bi bi-wallet2"></i
+              ></span>
+              <span>Meu Bolso</span>
+            </a>
+          </div>
+          <div class="col-12">
+            <nav
+              class="footer-nav d-flex flex-wrap justify-content-center gap-3"
+              aria-label="Navegação do rodapé"
+            >
+              <a href="#top">Resumo</a>
+              <a href="#expensesList">Despesas</a>
+              <a href="#currencyTitle">Conversor</a>
+            </nav>
+          </div>
+          <div class="col-12">
+            <span class="small text-secondary">© 2026 Meu Bolso</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

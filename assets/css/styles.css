@@ -1,0 +1,455 @@
+
+/* ======================================
+   IDENTIDADE VISUAL
+====================================== */
+
+:root {
+  --app-primary: #635bff;
+  --app-primary-dark: #4b44d6;
+
+  --app-ink: var(--bs-body-color);
+  --app-bg: var(--bs-body-bg);
+  --app-surface: var(--bs-tertiary-bg);
+  --app-border: var(--bs-border-color);
+
+  --app-shadow: 0 0.75rem 2rem rgba(24, 36, 64, 0.07);
+}
+
+/* ======================================
+   TEMA ESCURO
+====================================== */
+
+[data-bs-theme="dark"] {
+  --app-primary: #8b84ff;
+  --app-primary-dark: #756df0;
+
+  --app-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.18);
+}
+
+/* ======================================
+   ESTRUTURA GLOBAL
+====================================== */
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(
+      circle at 100% 0,
+      rgba(99, 91, 255, 0.08),
+      transparent 24rem
+    ),
+    var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] body {
+  background:
+    radial-gradient(
+      circle at 100% 0,
+      rgba(139, 132, 255, 0.09),
+      transparent 24rem
+    ),
+    var(--bs-body-bg);
+}
+
+/* ======================================
+   NAVEGAÇÃO
+====================================== */
+
+.navbar {
+  background: color-mix(
+    in srgb,
+    var(--bs-body-bg) 90%,
+    transparent
+  ) !important;
+
+  border-bottom-color: var(--bs-border-color) !important;
+  backdrop-filter: blur(0.75rem);
+}
+
+.navbar-brand,
+.footer-brand,
+.date-time-card time {
+  color: var(--bs-body-color);
+}
+
+.navbar-brand {
+  letter-spacing: -0.03em;
+}
+
+.navbar-brand:hover,
+.footer-brand:hover {
+  color: var(--app-primary);
+}
+
+/* ======================================
+   BOTÕES
+====================================== */
+
+.btn-primary {
+  --bs-btn-bg: var(--app-primary);
+  --bs-btn-border-color: var(--app-primary);
+  --bs-btn-hover-bg: var(--app-primary-dark);
+  --bs-btn-hover-border-color: var(--app-primary-dark);
+  --bs-btn-active-bg: var(--app-primary-dark);
+  --bs-btn-active-border-color: var(--app-primary-dark);
+
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  box-shadow: 0 0.5rem 1rem rgba(99, 91, 255, 0.2);
+}
+
+.text-primary {
+  color: var(--app-primary) !important;
+}
+
+/* ======================================
+   ELEMENTOS DE IDENTIDADE
+====================================== */
+
+.brand-mark,
+.summary-icon,
+.section-icon,
+.currency-icon,
+.expense-category-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-mark {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 1rem;
+  background: linear-gradient(145deg, #7c75ff, #635bff);
+  color: #fff;
+  font-size: 1.4rem;
+  box-shadow: 0 0.75rem 1.5rem rgba(99, 91, 255, 0.2);
+}
+
+.brand-mark-sm {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.6rem;
+  font-size: 0.9rem;
+  box-shadow: none;
+}
+
+/* ======================================
+   CABEÇALHO DO DASHBOARD
+====================================== */
+
+.dashboard-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 1.5rem;
+  border: 1px solid var(--app-border);
+  border-radius: 1.25rem;
+
+  background: linear-gradient(
+    135deg,
+    var(--bs-body-bg),
+    var(--bs-tertiary-bg)
+  );
+
+  box-shadow: var(--app-shadow);
+}
+
+.dashboard-hero::after {
+  position: absolute;
+  right: -3rem;
+  bottom: -5rem;
+  width: 12rem;
+  height: 12rem;
+  border: 1.5rem solid rgba(99, 91, 255, 0.06);
+  border-radius: 50%;
+  content: "";
+}
+
+.dashboard-hero > .row {
+  position: relative;
+  z-index: 1;
+}
+
+.eyebrow {
+  color: var(--app-primary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.eyebrow-dot {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: #25b88b;
+  box-shadow: 0 0 0 0.2rem rgba(37, 184, 139, 0.12);
+}
+
+/* ======================================
+   DATA E HORA
+====================================== */
+
+.date-time-card {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--app-border);
+  border-left: 3px solid var(--app-primary);
+  border-radius: 0.75rem;
+  background: var(--bs-tertiary-bg);
+}
+
+.date-time-card time {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+/* ======================================
+   CARTÕES DE RESUMO
+====================================== */
+
+.summary-card {
+  padding: 1.35rem;
+  border: 1px solid var(--app-border);
+  border-radius: 1rem;
+  background: var(--bs-tertiary-bg);
+  box-shadow: var(--app-shadow);
+}
+
+.summary-card-primary {
+  position: relative;
+  overflow: hidden;
+  border-color: transparent;
+  background: linear-gradient(135deg, #6159f6, #827bff);
+  color: #fff;
+}
+
+.summary-card-primary::after {
+  position: absolute;
+  right: -2rem;
+  bottom: -3.5rem;
+  width: 10rem;
+  height: 10rem;
+  border: 1.5rem solid rgba(255, 255, 255, 0.09);
+  border-radius: 50%;
+  content: "";
+}
+
+.summary-card-primary > * {
+  position: relative;
+  z-index: 1;
+}
+
+.summary-value {
+  font-size: clamp(1.7rem, 5vw, 2.1rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.summary-value-text {
+  font-size: 1.55rem;
+}
+
+.summary-icon,
+.section-icon,
+.currency-icon {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 0.8rem;
+}
+
+.summary-icon {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.section-icon,
+.currency-icon {
+  background: var(--bs-tertiary-bg);
+  color: var(--app-primary);
+}
+
+/* ======================================
+   CARTÕES E PAINÉIS
+====================================== */
+
+.card,
+.edit-panel,
+.currency-card {
+  border-color: var(--app-border) !important;
+  box-shadow: var(--app-shadow);
+}
+
+.card {
+  background-color: var(--bs-body-bg);
+}
+
+.edit-panel,
+.currency-card {
+  padding: 1.25rem;
+  border: 1px solid var(--app-border);
+  border-radius: 1rem;
+  background: var(--bs-body-bg);
+}
+
+.edit-panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--app-border);
+}
+
+/* ======================================
+   FORMULÁRIOS
+====================================== */
+
+.form-label {
+  color: var(--bs-body-color);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.form-control,
+.form-select,
+.input-group-text {
+  border-color: var(--bs-border-color) !important;
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--app-primary) !important;
+  box-shadow: 0 0 0 0.2rem rgba(99, 91, 255, 0.15);
+}
+
+.form-control::placeholder {
+  color: var(--bs-secondary-color);
+}
+
+.filter-control {
+  min-width: 12rem;
+}
+
+/* ======================================
+   HISTÓRICO DE DESPESAS
+====================================== */
+
+.expense-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--app-border);
+}
+
+.expense-item:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.expense-info {
+  min-width: 0;
+}
+
+.expense-info h3 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expense-actions {
+  grid-column: 2;
+}
+
+.expense-actions p {
+  color: var(--app-primary);
+}
+
+/* ======================================
+   CATEGORIAS
+====================================== */
+
+.expense-category-icon {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 0.75rem;
+}
+
+.category-home {
+  background: #fff0dd;
+  color: #b86e16;
+}
+
+.category-food {
+  background: #e1f8ef;
+  color: #147d66;
+}
+
+.category-transport {
+  background: #e6efff;
+  color: #3d78d4;
+}
+
+/* ======================================
+   CONVERSOR DE MOEDAS
+====================================== */
+
+.conversion-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 1px dashed var(--app-border);
+  border-radius: 0.75rem;
+  background: var(--bs-tertiary-bg);
+}
+
+.conversion-result strong {
+  color: var(--app-primary);
+}
+
+/* ======================================
+   RODAPÉ
+====================================== */
+
+.footer-brand {
+  display: inline-flex;
+  align-items: center;
+  color: var(--bs-body-color);
+  font-weight: 700;
+}
+
+.footer-nav a {
+  color: var(--bs-secondary-color);
+  font-size: 0.82rem;
+  text-decoration: none;
+}
+
+.footer-nav a:hover {
+  color: var(--app-primary);
+}
+
+/* ======================================
+   RESPONSIVIDADE
+====================================== */
+
+@media (min-width: 576px) {
+  .dashboard-hero {
+    padding: 2rem;
+  }
+
+  .expense-item {
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+  }
+
+  .expense-actions {
+    grid-column: 3;
+  }
+}
