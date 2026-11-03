@@ -615,7 +615,7 @@ body {
   min-height: 0;
   flex: 1 1 auto;
   overflow-y: auto;
-  overscroll-behavior: contain;
+  overscroll-behavior: auto;
   scrollbar-gutter: stable;
 }
 
@@ -736,7 +736,7 @@ body {
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
+  overscroll-behavior-y: auto;
   scrollbar-gutter: stable;
 }
 
@@ -1009,7 +1009,7 @@ html {
     min-height: 0;
     flex: 1 1 0%;
     overflow-y: auto;
-    overscroll-behavior-y: contain;
+    overscroll-behavior-y: auto;
     -webkit-overflow-scrolling: touch;
   }
 
