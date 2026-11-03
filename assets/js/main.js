@@ -432,19 +432,19 @@ function renderizarMovimentos() {
 function observarFimDaLista() {
   if (!("IntersectionObserver" in window)) return;
 
-  if (!observadorLista) {
-    observadorLista = new IntersectionObserver(entradas => {
-      if (entradas.some(entrada => entrada.isIntersecting)) {
-        carregarMaisMovimentos();
-      }
-    }, {
-      root: expensesList,
-      rootMargin: "180px 0px",
-      threshold: 0
-    });
-  }
+  if (observadorLista) observadorLista.disconnect();
 
-  observadorLista.disconnect();
+  const mobile = window.matchMedia("(max-width: 991.98px)").matches;
+  observadorLista = new IntersectionObserver(entradas => {
+    if (entradas.some(entrada => entrada.isIntersecting)) {
+      carregarMaisMovimentos();
+    }
+  }, {
+    root: mobile ? null : expensesList,
+    rootMargin: mobile ? "500px 0px" : "180px 0px",
+    threshold: 0
+  });
+
   const sentinela = document.getElementById("loadMoreSentinel");
   if (sentinela && !aCarregarMais) observadorLista.observe(sentinela);
 }
