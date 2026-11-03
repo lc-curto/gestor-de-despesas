@@ -359,21 +359,16 @@ function renderizarMovimentos() {
     .filter(item => filtroMovimentos === "todos" || item.tipo === filtroMovimentos)
     .sort((a, b) => b.data.localeCompare(a.data) || String(a.id).localeCompare(String(b.id)));
 
-  const haMais = filtroMovimentos === "despesa"
-    ? despesasAtuais.length < quantidadeDespesasPeriodo
-    : filtroMovimentos === "receita"
-      ? receitasAtuais.length < quantidadeReceitasPeriodo
-      : despesasAtuais.length + receitasAtuais.length < quantidadeDespesasPeriodo + quantidadeReceitasPeriodo;
-
   const movimentosVisiveis = movimentos.slice(0, quantidadeMovimentosVisiveis);
   const totalFiltrado = filtroMovimentos === "despesa"
     ? quantidadeDespesasPeriodo
     : filtroMovimentos === "receita"
       ? quantidadeReceitasPeriodo
       : quantidadeDespesasPeriodo + quantidadeReceitasPeriodo;
+  const haMais = movimentosVisiveis.length < totalFiltrado;
   const textoContagem = `A mostrar ${movimentosVisiveis.length} de ${totalFiltrado} ${totalFiltrado === 1 ? "movimento" : "movimentos"}`;
   const controlosLista = `
-    <div class="pt-3 pb-4 border-top">
+    <div class="pt-3 pb-4">
       <p class="small text-secondary text-center mb-0" aria-live="polite">${textoContagem}</p>
       ${haMais ? `<div id="loadMoreSentinel" class="py-3 text-center" aria-hidden="true">${aCarregarMais ? '<span class="spinner-border spinner-border-sm text-primary" role="status"></span>' : ""}</div>` : ""}
     </div>
@@ -383,8 +378,8 @@ function renderizarMovimentos() {
     expensesList.innerHTML = `
       <div class="empty-state text-center py-4">
         <div class="empty-icon mb-3" aria-hidden="true">◎</div>
-        <h3 class="h6">${haMais ? "A procurar movimentos..." : "Não existem movimentos para este filtro"}</h3>
-        <p class="small text-secondary mb-0">${haMais ? "Continua a percorrer a lista para carregar os restantes." : "Adiciona um movimento ou altera os filtros."}</p>
+        <h3 class="h6">Não existem movimentos para este filtro</h3>
+        <p class="small text-secondary mb-0">Adiciona um movimento ou altera os filtros.</p>
       </div>${controlosLista}
     `;
     observarFimDaLista();
@@ -546,43 +541,61 @@ async function carregarMaisMovimentos() {
       ? quantidadeReceitasPeriodo
       : quantidadeDespesasPeriodo + quantidadeReceitasPeriodo;
 
+  const proximoLimite = Math.min(quantidadeMovimentosVisiveis + TAMANHO_PAGINA, totalMovimentos);
+  const movimentosCarregados = filtroMovimentos === "despesa"
+    ? despesasAtuais.length
+    : filtroMovimentos === "receita"
+      ? receitasAtuais.length
+      : despesasAtuais.length + receitasAtuais.length;
+
   if (quantidadeMovimentosVisiveis >= totalMovimentos) return;
 
   aCarregarMais = true;
   renderizarMovimentos();
 
   try {
-    const intervalo = obterIntervaloPeriodo();
-    const categoria = categoryFilter.value === "all" ? null : categoryFilter.value;
-    const [resultadoDespesas, resultadoReceitas] = await Promise.all([
-      haMaisDespesas
-        ? listarDespesas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria, userId: utilizadorAtualId, offset: offsetDespesas, limite: TAMANHO_PAGINA })
-        : Promise.resolve(null),
-      haMaisReceitas
-        ? listarReceitas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria, userId: utilizadorAtualId, offset: offsetReceitas, limite: TAMANHO_PAGINA })
-        : Promise.resolve(null)
-    ]);
+    if (movimentosCarregados < proximoLimite) {
+      const intervalo = obterIntervaloPeriodo();
+      const categoria = categoryFilter.value === "all" ? null : categoryFilter.value;
+      const carregarDespesas = filtroMovimentos !== "receita" && haMaisDespesas;
+      const carregarReceitas = filtroMovimentos !== "despesa" && haMaisReceitas;
 
-    if (requisicaoAtual !== requisicaoLista) return;
-    if (resultadoDespesas?.error || resultadoReceitas?.error) {
-      throw resultadoDespesas?.error || resultadoReceitas?.error;
+      const [resultadoDespesas, resultadoReceitas] = await Promise.all([
+        carregarDespesas
+          ? listarDespesas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria, userId: utilizadorAtualId, offset: offsetDespesas, limite: TAMANHO_PAGINA })
+          : Promise.resolve(null),
+        carregarReceitas
+          ? listarReceitas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria, userId: utilizadorAtualId, offset: offsetReceitas, limite: TAMANHO_PAGINA })
+          : Promise.resolve(null)
+      ]);
+
+      if (requisicaoAtual !== requisicaoLista) return;
+      if (resultadoDespesas?.error || resultadoReceitas?.error) {
+        throw resultadoDespesas?.error || resultadoReceitas?.error;
+      }
+
+      if (resultadoDespesas) {
+        const novos = resultadoDespesas.data || [];
+        despesasAtuais = [...despesasAtuais, ...novos];
+        offsetDespesas += novos.length;
+        haMaisDespesas = novos.length === TAMANHO_PAGINA;
+      }
+
+      if (resultadoReceitas) {
+        const novos = resultadoReceitas.data || [];
+        receitasAtuais = [...receitasAtuais, ...novos];
+        offsetReceitas += novos.length;
+        haMaisReceitas = novos.length === TAMANHO_PAGINA;
+      }
     }
 
-    if (resultadoDespesas) {
-      const novos = resultadoDespesas.data || [];
-      despesasAtuais = [...despesasAtuais, ...novos];
-      offsetDespesas += novos.length;
-      haMaisDespesas = novos.length === TAMANHO_PAGINA;
-    }
-
-    if (resultadoReceitas) {
-      const novos = resultadoReceitas.data || [];
-      receitasAtuais = [...receitasAtuais, ...novos];
-      offsetReceitas += novos.length;
-      haMaisReceitas = novos.length === TAMANHO_PAGINA;
-    }
-
-    quantidadeMovimentosVisiveis = Math.min(quantidadeMovimentosVisiveis + TAMANHO_PAGINA, totalMovimentos);
+    quantidadeMovimentosVisiveis = proximoLimite;
+    guardarDadosEmCache({
+      despesas: despesasAtuais,
+      receitas: receitasAtuais,
+      totalDespesasPeriodo,
+      totalReceitasPeriodo
+    });
   } catch (erro) {
     if (requisicaoAtual === requisicaoLista) {
       alert(obterMensagemErro(erro, "Não foi possível carregar mais movimentos."));
