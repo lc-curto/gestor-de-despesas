@@ -238,26 +238,6 @@ function selecionarMes() {
 // ======================================
 
 function atualizarResumo(despesas, receitas) {
-  const totalDespesas = despesas.reduce(
-    (soma, despesa) => soma + Number(despesa.amount),
-    0
-  );
-
-  const totalReceitas = receitas.reduce(
-    (soma, receita) => soma + Number(receita.amount),
-    0
-  );
-
-  totalAmount.textContent = formatarValor(totalDespesas);
-  totalIncome.textContent = formatarValor(totalReceitas);
-  balanceAmount.textContent = formatarValor(totalReceitas - totalDespesas);
-}
-
-// ======================================
-// LISTA DE MOVIMENTOS
-// ======================================
-
-function atualizarResumo(despesas, receitas) {
   const totalDespesas = despesas.reduce((soma, item) => soma + Number(item.amount), 0);
   const totalReceitas = receitas.reduce((soma, item) => soma + Number(item.amount), 0);
 
