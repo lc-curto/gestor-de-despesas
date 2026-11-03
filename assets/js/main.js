@@ -135,8 +135,10 @@ const categorias = {
 
 const categoriasReceita = {
   salario: "Salário",
-  freelance: "Freelance",
-  investimento: "Investimento",
+  vendas: "Vendas",
+  trabalho_extra: "Trabalho extra",
+  investimentos: "Investimentos",
+  reembolsos: "Reembolsos",
   outros: "Outros"
 };
 
@@ -707,8 +709,10 @@ function atualizarTipoLancamento(tipo) {
   expenseCategory.innerHTML = isReceita
     ? `<option value="" selected disabled>Seleciona uma categoria</option>
        <option value="salario">Salário</option>
-       <option value="freelance">Freelance</option>
-       <option value="investimento">Investimento</option>
+       <option value="vendas">Vendas</option>
+       <option value="trabalho_extra">Trabalho extra</option>
+       <option value="investimentos">Investimentos</option>
+       <option value="reembolsos">Reembolsos</option>
        <option value="outros">Outros</option>`
     : `<option value="" selected disabled>Seleciona uma categoria</option>
        <option value="casa">Casa</option>
