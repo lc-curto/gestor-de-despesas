@@ -51,6 +51,9 @@ const continueSessionButton = document.getElementById("continueSessionButton");
 
 const logoutButton = document.getElementById("logoutButton");
 const themeToggle = document.getElementById("themeToggle");
+const installAppButton = document.getElementById("installAppButton");
+const accountDisplayName = document.getElementById("accountDisplayName");
+const accountEmail = document.getElementById("accountEmail");
 const currentDateTime = document.getElementById("currentDateTime");
 const greetingTitle = document.getElementById("greetingTitle");
 
@@ -120,6 +123,7 @@ let quantidadeMovimentosVisiveis = TAMANHO_PAGINA;
 let requisicaoLista = 0;
 let utilizadorAtualId = null;
 let observadorLista = null;
+let eventoInstalacaoPendente = null;
 
 let modalInatividade = null;
 
@@ -1053,7 +1057,10 @@ async function iniciarAplicacao() {
     }
 
     utilizadorAtualId = resultado.user.id;
-    greetingTitle.textContent = `Olá, ${obterNomeApresentacao(resultado.user)}!`;
+    const nomeUtilizador = obterNomeApresentacao(resultado.user);
+    greetingTitle.textContent = `Olá, ${nomeUtilizador}!`;
+    accountDisplayName.textContent = nomeUtilizador;
+    accountEmail.textContent = resultado.user.email || "";
 
     inicializarTema();
 
@@ -1088,6 +1095,20 @@ authToggleButton.addEventListener(
 );
 
 themeToggle.addEventListener("click", alternarTema);
+
+installAppButton.addEventListener("click", async () => {
+  if (!eventoInstalacaoPendente) return;
+
+  eventoInstalacaoPendente.prompt();
+  const escolha = await eventoInstalacaoPendente.userChoice;
+
+  eventoInstalacaoPendente = null;
+  installAppButton.classList.add("d-none");
+
+  if (escolha.outcome === "accepted") {
+    console.info("O utilizador aceitou instalar o Meu Bolso.");
+  }
+});
 
 logoutButton.addEventListener("click", terminarSessao);
 
@@ -1156,6 +1177,17 @@ window.addEventListener("offline", () => {
   const cache = obterDadosEmCache();
   if (cache) aplicarDadosEmCache(cache);
   else atualizarAvisoLigacao("Sem ligação à internet. Ainda não existem dados guardados para este período.");
+});
+
+window.addEventListener("beforeinstallprompt", evento => {
+  evento.preventDefault();
+  eventoInstalacaoPendente = evento;
+  installAppButton.classList.remove("d-none");
+});
+
+window.addEventListener("appinstalled", () => {
+  eventoInstalacaoPendente = null;
+  installAppButton.classList.add("d-none");
 });
 
 if ("serviceWorker" in navigator) {
