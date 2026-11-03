@@ -1069,7 +1069,8 @@ async function iniciarAplicacao() {
       moedaAtual = "EUR";
       formatadorMoeda = new Intl.NumberFormat("pt-PT", { style: "currency", currency: moedaAtual });
     }
-    conversionFrom.value = moedaAtual;
+    conversionTo.value = moedaAtual;
+    conversionFrom.value = moedaAtual === "USD" ? "EUR" : "USD";
     const nomeUtilizador = obterNomeApresentacao(resultado.user);
     greetingTitle.textContent = `Olá, ${nomeUtilizador}!`;
     accountDisplayName.textContent = nomeUtilizador;
