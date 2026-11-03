@@ -380,6 +380,22 @@ body {
   border-radius: 0.75rem;
 }
 
+.expense-icon {
+  display: inline-flex;
+  width: 2.6rem;
+  height: 2.6rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: #efefff;
+  color: var(--app-primary);
+}
+
+.income-icon {
+  background: #e1f8ef;
+  color: #147d66;
+}
+
 .category-home {
   background: #fff0dd;
   color: #b86e16;

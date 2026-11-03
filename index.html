@@ -4,8 +4,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Gestor de despesas pessoais" />
-    <title>Gestor de Despesas Pessoais</title>
+    <meta name="description" content="Gestor pessoal de despesas e receitas" />
+    <title>Meu Bolso</title>
 
     <link
       rel="shortcut icon"
@@ -29,7 +29,7 @@
     <link rel="stylesheet" href="assets/css/styles.css" />
 
     <script
-      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
       defer
     ></script>
 
@@ -181,54 +181,22 @@
 
     <div id="appView" class="d-none">
 
-      <!-- AVISO DE INATIVIDADE -->
+      <!-- NAVBAR -->
 
-      <div
-        class="modal fade"
-        id="inactivityModal"
-        tabindex="-1"
-        aria-labelledby="inactivityModalTitle"
-        aria-describedby="inactivityModalDescription"
-        aria-hidden="true"
-        data-bs-backdrop="static"
-        data-bs-keyboard="false"
-      >
+      <!-- AVISO DE INATIVIDADE -->
+      <div class="modal fade" id="inactivityModal" tabindex="-1" aria-labelledby="inactivityModalTitle" aria-describedby="inactivityModalDescription" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content border-0 shadow rounded-4">
             <div class="modal-body text-center p-4 p-md-5">
-              <div class="mb-3">
-                <i class="bi bi-clock-history text-warning fs-1"></i>
-              </div>
-
-              <h2 class="h4 fw-bold mb-3" id="inactivityModalTitle">
-                Ainda estás aí?
-              </h2>
-
-              <p
-                class="text-secondary mb-3"
-                id="inactivityModalDescription"
-              >
-                A tua sessão será encerrada automaticamente por inatividade.
-                Continua a utilizar a aplicação para manteres a sessão ativa.
-              </p>
-
-              <div class="display-5 fw-bold text-warning mb-4">
-                <span id="inactivityCountdown">01:00</span>
-              </div>
-
-              <button
-                type="button"
-                class="btn btn-primary w-100"
-                id="continueSessionButton"
-              >
-                Continuar sessão
-              </button>
+              <i class="bi bi-clock-history text-warning fs-1 mb-3"></i>
+              <h2 class="h4 fw-bold mb-3" id="inactivityModalTitle">Ainda estás aí?</h2>
+              <p class="text-secondary mb-3" id="inactivityModalDescription">A tua sessão será encerrada por inatividade. Continua a utilizar a aplicação para manteres a sessão ativa.</p>
+              <div class="display-5 fw-bold text-warning mb-4"><span id="inactivityCountdown">01:00</span></div>
+              <button type="button" class="btn btn-primary w-100" id="continueSessionButton">Continuar sessão</button>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- NAVBAR -->
 
       <nav
         class="navbar navbar-expand-lg bg-body border-bottom sticky-top"
@@ -243,7 +211,7 @@
               <i class="bi bi-wallet2"></i>
             </span>
 
-            <span>Gestor de Despesas</span>
+            <span>Meu Bolso</span>
           </a>
 
           <div class="d-flex align-items-center gap-2">
@@ -410,7 +378,7 @@
                 class="d-flex justify-content-between align-items-start gap-3"
               >
                 <div>
-                  <p class="small mb-2 opacity-75">Total gasto</p>
+                  <p class="small mb-2 opacity-75">Total de despesas</p>
                   <p class="summary-value mb-0" id="totalAmount">—</p>
                 </div>
 
@@ -425,32 +393,26 @@
 
           <div class="col-6 col-md-4">
             <article class="summary-card h-100">
-              <p class="small text-secondary mb-2">
-                Despesas registadas
-              </p>
+              <p class="small text-secondary mb-2">Total de receitas</p>
 
-              <p class="summary-value mb-0" id="expenseCount">—</p>
+              <p class="summary-value mb-0 text-success" id="totalIncome">—</p>
 
-              <p class="small text-secondary mb-0 mt-3">
-                Movimentos
-              </p>
+              <p class="small text-secondary mb-0 mt-3">Entradas no período</p>
             </article>
           </div>
 
           <div class="col-6 col-md-4">
             <article class="summary-card h-100">
-              <p class="small text-secondary mb-2">Maior categoria</p>
+              <p class="small text-secondary mb-2">Saldo do período</p>
 
               <p
                 class="summary-value summary-value-text mb-0"
-                id="topCategory"
+                id="balanceAmount"
               >
                 —
               </p>
 
-              <p class="small text-secondary mb-0 mt-3">
-                Categoria com maior despesa
-              </p>
+              <p class="small text-secondary mb-0 mt-3">Receitas menos despesas</p>
             </article>
           </div>
         </section>
@@ -659,6 +621,91 @@
           </div>
         </section>
 
+        <!-- RECEITAS -->
+
+        <section class="row g-4 mt-1" aria-labelledby="incomeSectionTitle">
+          <div class="col-12 col-lg-5">
+            <article class="card border-0 shadow-sm rounded-4 h-100">
+              <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                  <div>
+                    <p class="text-success fw-semibold small mb-1">Novo registo</p>
+                    <h2 id="incomeSectionTitle" class="h4 fw-bold mb-0">Adicionar receita</h2>
+                  </div>
+                  <span class="section-icon income-icon" aria-hidden="true">
+                    <i class="bi bi-arrow-down-left"></i>
+                  </span>
+                </div>
+
+                <form id="incomeForm">
+                  <div class="mb-3">
+                    <label for="incomeDescription" class="form-label">Descrição</label>
+                    <input type="text" class="form-control" id="incomeDescription" name="description" placeholder="Ex.: Salário" required />
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="incomeAmount" class="form-label">Valor</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control" id="incomeAmount" name="amount" placeholder="0,00" min="0.01" step="0.01" required />
+                      <span class="input-group-text">€</span>
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="incomeDate" class="form-label">Data da receita</label>
+                    <input type="date" class="form-control" id="incomeDate" name="date" required />
+                  </div>
+
+                  <div class="mb-4">
+                    <label for="incomeCategory" class="form-label">Categoria</label>
+                    <select class="form-select" id="incomeCategory" name="category" required>
+                      <option value="" selected disabled>Seleciona uma categoria</option>
+                      <option value="salario">Salário</option>
+                      <option value="freelance">Freelance</option>
+                      <option value="investimento">Investimento</option>
+                      <option value="outros">Outros</option>
+                    </select>
+                  </div>
+
+                  <button type="submit" class="btn btn-success w-100" id="saveIncomeButton">Guardar receita</button>
+                </form>
+              </div>
+            </article>
+          </div>
+
+          <div class="col-12 col-lg-7">
+            <article class="card border-0 shadow-sm rounded-4 h-100">
+              <div class="card-body p-4">
+                <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
+                  <div>
+                    <p class="text-success fw-semibold small mb-1">Histórico</p>
+                    <h2 class="h4 fw-bold mb-0">As minhas receitas</h2>
+                  </div>
+
+                  <div class="filter-control">
+                    <label for="incomeCategoryFilter" class="visually-hidden">Filtrar receitas por categoria</label>
+                    <select class="form-select form-select-sm" id="incomeCategoryFilter" name="incomeCategoryFilter">
+                      <option value="all" selected>Todas as categorias</option>
+                      <option value="salario">Salário</option>
+                      <option value="freelance">Freelance</option>
+                      <option value="investimento">Investimento</option>
+                      <option value="outros">Outros</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div id="incomesList" class="expense-list" aria-live="polite">
+                  <div class="empty-state text-center py-4">
+                    <div class="empty-icon mb-3" aria-hidden="true">◎</div>
+                    <h3 class="h6">Ainda não existem receitas registadas</h3>
+                    <p class="small text-secondary mb-0">Adiciona uma receita para acompanhares o teu saldo.</p>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
         <!-- CONVERSOR DE MOEDAS -->
 
         <section class="mt-4" aria-labelledby="currencyTitle">
@@ -681,7 +728,7 @@
                     </h2>
 
                     <p class="small text-secondary mb-0">
-                      Consulta o valor aproximado entre EUR, USD, GBP e BRL.
+                      Consulta a conversão sem sair da aplicação. O lançamento é feito manualmente.
                     </p>
                   </div>
                 </div>
@@ -764,7 +811,7 @@
                     id="conversionRate"
                     class="small text-secondary"
                   >
-                    Seleciona as moedas e introduz um valor para converter.
+                    Consulta informativa; não altera as tuas despesas ou receitas.
                   </span>
                 </div>
               </div>

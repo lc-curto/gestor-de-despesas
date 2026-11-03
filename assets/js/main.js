@@ -10,6 +10,7 @@ import {
 
 import { inicializarTema, alternarTema } from "./tema.js";
 import { adicionarDespesa, listarDespesas } from "./despesas.js";
+import { adicionarReceita, listarReceitas } from "./receitas.js";
 import { obterTaxaCambio } from "./api.js";
 
 // ======================================
@@ -57,8 +58,16 @@ const categoryFilter = document.getElementById("categoryFilter");
 const expensesList = document.getElementById("expensesList");
 
 const totalAmount = document.getElementById("totalAmount");
-const expenseCount = document.getElementById("expenseCount");
-const topCategory = document.getElementById("topCategory");
+const totalIncome = document.getElementById("totalIncome");
+const balanceAmount = document.getElementById("balanceAmount");
+
+const incomeForm = document.getElementById("incomeForm");
+const incomeDate = document.getElementById("incomeDate");
+const incomeAmount = document.getElementById("incomeAmount");
+const incomeDescription = document.getElementById("incomeDescription");
+const incomeCategory = document.getElementById("incomeCategory");
+const incomeCategoryFilter = document.getElementById("incomeCategoryFilter");
+const incomesList = document.getElementById("incomesList");
 
 const conversionAmount = document.getElementById("conversionAmount");
 const conversionFrom = document.getElementById("conversionFrom");
@@ -75,6 +84,7 @@ let modoRegisto = false;
 let modoPeriodo = "month";
 let dataReferencia = new Date();
 let despesasAtuais = [];
+let receitasAtuais = [];
 
 let modalInatividade = null;
 
@@ -88,6 +98,13 @@ const categorias = {
   transportes: "Transportes",
   lazer: "Lazer",
   saude: "Saúde",
+  outros: "Outros"
+};
+
+const categoriasReceita = {
+  salario: "Salário",
+  freelance: "Freelance",
+  investimento: "Investimento",
   outros: "Outros"
 };
 
@@ -253,7 +270,7 @@ function atualizarSeletorPeriodo() {
 function alterarModoPeriodo(modo) {
   modoPeriodo = modo;
   atualizarSeletorPeriodo();
-  carregarDespesas();
+  carregarDados();
 }
 
 function alterarPeriodo(direcao) {
@@ -268,7 +285,7 @@ function alterarPeriodo(direcao) {
   }
 
   atualizarSeletorPeriodo();
-  carregarDespesas();
+  carregarDados();
 }
 
 function selecionarMes() {
@@ -279,7 +296,7 @@ function selecionarMes() {
   dataReferencia = new Date(ano, mes - 1, 1);
 
   atualizarSeletorPeriodo();
-  carregarDespesas();
+  carregarDados();
 }
 
 function selecionarAno() {
@@ -290,42 +307,27 @@ function selecionarAno() {
   dataReferencia = new Date(ano, 0, 1);
 
   atualizarSeletorPeriodo();
-  carregarDespesas();
+  carregarDados();
 }
 
 // ======================================
 // RESUMO FINANCEIRO
 // ======================================
 
-function atualizarResumo(despesas) {
-  const total = despesas.reduce(
+function atualizarResumo(despesas, receitas) {
+  const totalDespesas = despesas.reduce(
     (soma, despesa) => soma + Number(despesa.amount),
     0
   );
 
-  totalAmount.textContent = formatarValor(total);
-  expenseCount.textContent = despesas.length;
+  const totalReceitas = receitas.reduce(
+    (soma, receita) => soma + Number(receita.amount),
+    0
+  );
 
-  if (despesas.length === 0) {
-    topCategory.textContent = "—";
-    return;
-  }
-
-  const totaisPorCategoria = {};
-
-  despesas.forEach(despesa => {
-    const categoria = despesa.category;
-
-    totaisPorCategoria[categoria] =
-      (totaisPorCategoria[categoria] || 0) +
-      Number(despesa.amount);
-  });
-
-  const categoriaPrincipal = Object.entries(totaisPorCategoria)
-    .sort((a, b) => b[1] - a[1])[0][0];
-
-  topCategory.textContent =
-    categorias[categoriaPrincipal] || categoriaPrincipal;
+  totalAmount.textContent = formatarValor(totalDespesas);
+  totalIncome.textContent = formatarValor(totalReceitas);
+  balanceAmount.textContent = formatarValor(totalReceitas - totalDespesas);
 }
 
 // ======================================
@@ -408,14 +410,84 @@ async function carregarDespesas() {
       </div>
     `;
 
-    atualizarResumo([]);
+    despesasAtuais = [];
+    atualizarResumo(despesasAtuais, receitasAtuais);
     return;
   }
 
   despesasAtuais = resultado.data || [];
 
-  atualizarResumo(despesasAtuais);
+  atualizarResumo(despesasAtuais, receitasAtuais);
   renderizarDespesas(despesasAtuais);
+}
+
+function renderizarReceitas(receitas) {
+  if (receitas.length === 0) {
+    incomesList.innerHTML = `
+      <div class="empty-state text-center py-4">
+        <div class="empty-icon mb-3" aria-hidden="true">◎</div>
+        <h3 class="h6">Ainda não existem receitas registadas</h3>
+        <p class="small text-secondary mb-0">Adiciona uma receita para acompanhares o teu saldo.</p>
+      </div>
+    `;
+    return;
+  }
+
+  incomesList.innerHTML = receitas.map(receita => {
+    const descricao = escaparHTML(receita.description);
+    const categoria = categoriasReceita[receita.category] || "Outros";
+    const data = formatarDataApresentacao(receita.income_date);
+    const valor = formatarValor(receita.amount);
+
+    return `
+      <article class="expense-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom">
+        <div class="d-flex align-items-center gap-3 min-w-0">
+          <div class="expense-icon income-icon flex-shrink-0" aria-hidden="true">
+            <i class="bi bi-arrow-down-left"></i>
+          </div>
+          <div class="min-w-0">
+            <h3 class="h6 fw-semibold mb-1 text-break">${descricao}</h3>
+            <p class="small text-secondary mb-0">${categoria} · ${data}</p>
+          </div>
+        </div>
+        <strong class="text-success text-nowrap">${valor}</strong>
+      </article>
+    `;
+  }).join("");
+}
+
+async function carregarReceitas() {
+  const intervalo = obterIntervaloPeriodo();
+  const categoria = incomeCategoryFilter.value;
+
+  incomesList.innerHTML = `
+    <div class="text-center py-4">
+      <div class="spinner-border spinner-border-sm text-success" role="status">
+        <span class="visually-hidden">A carregar...</span>
+      </div>
+    </div>
+  `;
+
+  const resultado = await listarReceitas({
+    inicio: intervalo.inicio,
+    fim: intervalo.fim,
+    categoria: categoria === "all" ? null : categoria
+  });
+
+  if (resultado.error) {
+    incomesList.innerHTML = '<div class="alert alert-danger mb-0">Não foi possível carregar as receitas.</div>';
+    receitasAtuais = [];
+    atualizarResumo(despesasAtuais, receitasAtuais);
+    return;
+  }
+
+  receitasAtuais = resultado.data || [];
+  atualizarResumo(despesasAtuais, receitasAtuais);
+  renderizarReceitas(receitasAtuais);
+}
+
+async function carregarDados() {
+  await Promise.all([carregarDespesas(), carregarReceitas()]);
 }
 
 // ======================================
@@ -639,10 +711,48 @@ async function guardarDespesa(evento) {
   }
 }
 
+async function guardarReceita(evento) {
+  evento.preventDefault();
+
+  if (!incomeForm.reportValidity()) return;
+
+  const dados = {
+    description: incomeDescription.value.trim(),
+    amount: Number(incomeAmount.value),
+    category: incomeCategory.value,
+    income_date: incomeDate.value
+  };
+
+  if (!dados.description || !Number.isFinite(dados.amount) || dados.amount <= 0 || !dados.category || !dados.income_date) return;
+
+  const botao = document.getElementById("saveIncomeButton");
+  botao.disabled = true;
+  botao.textContent = "A guardar...";
+
+  try {
+    const resultado = await adicionarReceita(dados);
+
+    if (resultado.error) {
+      alert(obterMensagemErro(resultado.error, "Não foi possível guardar a receita."));
+      return;
+    }
+
+    incomeForm.reset();
+    incomeDate.value = formatarDataLocal();
+    await carregarReceitas();
+  } catch (erro) {
+    alert(obterMensagemErro(erro, "Ocorreu um erro ao guardar a receita."));
+  } finally {
+    botao.disabled = false;
+    botao.textContent = "Guardar receita";
+  }
+}
+
 // ======================================
 // CONVERSOR DE MOEDAS
 // ======================================
 
+// Regra de negócio: o conversor apenas consulta a API; não cria nem altera movimentos.
 async function converterMoeda() {
   const valor = Number(conversionAmount.value);
   const moedaOrigem = conversionFrom.value;
@@ -722,11 +832,12 @@ async function iniciarAplicacao() {
     dataReferencia = new Date();
 
     expenseDate.value = formatarDataLocal();
+    incomeDate.value = formatarDataLocal();
 
     atualizarSeletorPeriodo();
     atualizarDataHora();
 
-    await carregarDespesas();
+    await carregarDados();
 
     alterarVista("app");
 
@@ -755,8 +866,10 @@ logoutButton.addEventListener("click", terminarSessao);
 continueSessionButton.addEventListener("click", continuarSessao);
 
 expenseForm.addEventListener("submit", guardarDespesa);
+incomeForm.addEventListener("submit", guardarReceita);
 
 categoryFilter.addEventListener("change", carregarDespesas);
+incomeCategoryFilter.addEventListener("change", carregarReceitas);
 
 periodModeMonth.addEventListener("click", () => {
   alterarModoPeriodo("month");
