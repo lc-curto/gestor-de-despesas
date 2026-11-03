@@ -1,4 +1,8 @@
 
+// PONTO DE ENTRADA DA INTERFACE
+// Este ficheiro coordena os módulos da aplicação. A lógica específica de autenticação,
+// dados, tema e câmbio continua nos respetivos módulos importados abaixo.
+
 import {
   verificarSessao,
   criarUsuario,
@@ -24,7 +28,10 @@ import {
 import { obterTaxaCambio } from "./api.js";
 
 // ======================================
-// ELEMENTOS HTML
+// REFERÊNCIAS AO HTML
+// Guardamos os elementos do DOM uma única vez para os reutilizar nas funções.
+// Os IDs têm de corresponder aos definidos em index.html.
+// ======================================
 // ======================================
 
 const loadingView = document.getElementById("loadingView");
@@ -100,12 +107,17 @@ const conversionRate = document.getElementById("conversionRate");
 
 // ======================================
 // ESTADO DA APLICAÇÃO
+// Variáveis que representam a situação atual da interface e dos dados em memória.
+// Não são dados permanentes: os movimentos são obtidos e guardados através dos módulos de dados.
+// ======================================
 // ======================================
 
 const TAMANHO_PAGINA = 10;
 const TAMANHO_PAGINA_MOVEL = 6;
 const MEDIA_QUERY_MOVEL = "(max-width: 991.98px)";
 
+// Define quantos movimentos são apresentados inicialmente e quantos são acrescentados
+// em cada pedido. No telemóvel são usados grupos menores para facilitar a navegação.
 function obterLimiteMovimentos() {
   return window.matchMedia(MEDIA_QUERY_MOVEL).matches
     ? TAMANHO_PAGINA_MOVEL
@@ -146,7 +158,9 @@ let eventoInstalacaoPendente = null;
 let modalInatividade = null;
 
 // ======================================
-// CONFIGURAÇÕES
+// CONFIGURAÇÕES DA INTERFACE
+// Categorias, regras de apresentação e formatadores partilhados por várias funções.
+// ======================================
 // ======================================
 
 const categorias = {
@@ -196,8 +210,11 @@ const formatadorData = new Intl.DateTimeFormat("pt-PT", {
 
 // ======================================
 // FUNÇÕES AUXILIARES
+// Funções pequenas e reutilizáveis. Centralizam tarefas comuns para evitar repetição.
+// ======================================
 // ======================================
 
+// Mostra apenas uma das três vistas principais: carregamento, autenticação ou aplicação.
 function alterarVista(vista) {
   loadingView.classList.toggle("d-none", vista !== "loading");
   loginView.classList.toggle("d-none", vista !== "login");
@@ -208,6 +225,8 @@ function formatarValor(valor) {
   return formatadorMoeda.format(Number(valor) || 0);
 }
 
+// Converte uma data para o formato ISO usado nos campos HTML e nas consultas à base de dados.
+// É construída com componentes locais para evitar alterações de dia causadas pelo fuso horário.
 function formatarDataLocal(data = new Date()) {
   const ano = data.getFullYear();
   const mes = String(data.getMonth() + 1).padStart(2, "0");
@@ -216,6 +235,7 @@ function formatarDataLocal(data = new Date()) {
   return `${ano}-${mes}-${dia}`;
 }
 
+// Converte a data recebida da base de dados (AAAA-MM-DD) para o formato português.
 function formatarDataApresentacao(data) {
   if (!data) return "Data não disponível";
 
@@ -238,6 +258,8 @@ function obterNomeApresentacao(utilizador) {
     : "Utilizador";
 }
 
+// Melhora apenas a apresentação da descrição. O valor original guardado na base de dados
+// não é alterado por esta função.
 function formatarDescricaoMovimento(valor) {
   return String(valor ?? "")
     .toLocaleLowerCase("pt-PT")
@@ -249,10 +271,14 @@ function formatarDescricaoMovimento(valor) {
     });
 }
 
+// Escapa caracteres especiais antes de inserir texto dinâmico no HTML, reduzindo o risco
+// de interpretar uma descrição do utilizador como código HTML.
 function escaparHTML(valor) {
   return String(valor).replace(/[&<>"']/g, caractere => entidadesHTML[caractere]);
 }
 
+// Recebe um objeto de categorias e cria as opções do seletor usado no formulário.
+// Assim, despesas e receitas partilham a mesma lógica de construção do campo.
 function criarOpcoesCategoria(listaCategorias) {
   const opcoes = Object.entries(listaCategorias)
     .map(([valor, nome]) => `<option value="${valor}">${nome}</option>`)
@@ -275,11 +301,15 @@ function obterMensagemErro(erro, mensagemPadrao) {
   return erro?.message || mensagemPadrao;
 }
 
+// A chave identifica o utilizador, o período e a categoria. Assim, cada combinação
+// tem a sua própria entrada de cache no armazenamento local do navegador.
 function obterChaveCache() {
   const intervalo = obterIntervaloPeriodo();
   return "meu-bolso:" + utilizadorAtualId + ":" + intervalo.inicio + ":" + intervalo.fim + ":" + categoryFilter.value;
 }
 
+// Guarda localmente os últimos dados carregados. O cache permite consultar informação
+// anteriormente obtida quando não existe ligação à internet.
 function guardarDadosEmCache(dados) {
   try {
     localStorage.setItem(obterChaveCache(), JSON.stringify({
@@ -291,6 +321,7 @@ function guardarDadosEmCache(dados) {
   }
 }
 
+// Recupera e converte de JSON para objeto os dados guardados no localStorage.
 function obterDadosEmCache() {
   try {
     const dados = localStorage.getItem(obterChaveCache());
@@ -307,6 +338,8 @@ function atualizarAvisoLigacao(mensagem) {
   offlineStatus.classList.toggle("d-none", !mensagem);
 }
 
+// Reconstitui o estado da interface a partir do cache. Estes dados são apenas os movimentos
+// que já tinham sido carregados anteriormente; não representam necessariamente o período completo.
 function aplicarDadosEmCache(cache) {
   despesasAtuais = Array.isArray(cache.despesas) ? cache.despesas : [];
   receitasAtuais = Array.isArray(cache.receitas) ? cache.receitas : [];
@@ -331,6 +364,8 @@ function aplicarDadosEmCache(cache) {
 
 // ======================================
 // DATA E HORA
+// Atualização da data apresentada no cabeçalho da aplicação.
+// ======================================
 // ======================================
 
 function atualizarDataHora() {
@@ -343,7 +378,9 @@ function atualizarDataHora() {
 }
 
 // ======================================
-// CONTROLO DO PERÍODO
+// NAVEGAÇÃO ENTRE PERÍODOS
+// Define o mês selecionado e calcula o intervalo usado para filtrar movimentos.
+// ======================================
 // ======================================
 
 function obterIntervaloPeriodo() {
@@ -385,7 +422,9 @@ function selecionarMes() {
 }
 
 // ======================================
-// RESUMO FINANCEIRO
+// RESUMO E HISTÓRICO DE MOVIMENTOS
+// O resumo financeiro é calculado sobre todos os registos do período; a lista pode estar paginada.
+// ======================================
 // ======================================
 
 function atualizarResumo() {
@@ -394,6 +433,8 @@ function atualizarResumo() {
   balanceAmount.textContent = formatarValor(totalReceitasPeriodo - totalDespesasPeriodo);
 }
 
+// Prepara os parâmetros comuns enviados aos módulos despesas.js e receitas.js.
+// A categoria "all" da interface significa que não deve ser aplicado filtro de categoria.
 function obterParametrosConsulta(inicio, fim, categoria) {
   return {
     inicio,
@@ -431,6 +472,8 @@ function mostrarErroCarregamento() {
   atualizarResumo();
 }
 
+// Junta despesas e receitas numa única lista visual, aplica o filtro selecionado,
+// ordena por data e apresenta apenas a quantidade atualmente visível.
 function renderizarMovimentos() {
   const movimentos = [
     ...despesasAtuais.map(item => ({ ...item, tipo: "despesa", data: item.expense_date })),
@@ -499,7 +542,9 @@ function renderizarMovimentos() {
   }).join("") + controlosLista;
 }
 
-
+// Carregamento inicial ou atualização do histórico após mudar o mês, categoria ou registo.
+// Promise.all permite consultar despesas, receitas e respetivos totais em paralelo.
+// O identificador da requisição impede uma resposta antiga de substituir dados mais recentes.
 async function carregarDados() {
   const requisicaoAtual = ++requisicaoLista;
   const intervalo = obterIntervaloPeriodo();
@@ -573,6 +618,8 @@ async function carregarDados() {
   renderizarMovimentos();
 }
 
+// Paginação manual: só consulta mais registos quando o utilizador pede para ver mais.
+// Despesas e receitas têm offsets separados porque são tabelas distintas na base de dados.
 async function carregarMaisMovimentos() {
   if (aCarregarMais) return;
 
@@ -648,6 +695,7 @@ async function carregarMaisMovimentos() {
   }
 }
 
+// Altera o filtro visual (todos, despesas ou receitas) sem voltar a consultar a base de dados.
 function alterarFiltroMovimentos(filtro) {
   filtroMovimentos = filtro;
   quantidadeMovimentosVisiveis = obterQuantidadeInicialMovimentos();
@@ -671,9 +719,13 @@ function alterarFiltroMovimentos(filtro) {
 }
 
 // ======================================
-// AUTENTICAÇÃO
+// AUTENTICAÇÃO E SESSÃO
+// O main.js gere a interação com o formulário e delega as operações de autenticação em auth.js.
+// ======================================
 // ======================================
 
+// Alterna entre os formulários de início de sessão e criação de conta, atualizando os campos
+// obrigatórios, textos e atributos de preenchimento automático.
 function alternarModoAutenticacao() {
   modoRegisto = !modoRegisto;
   signupNameGroup.classList.toggle("d-none", !modoRegisto);
@@ -709,6 +761,8 @@ function alternarModoAutenticacao() {
   ocultarMensagem(authMessage);
 }
 
+// Trata o envio do formulário. A operação concreta é delegada a criarUsuario() ou iniciarSessao().
+// Se o registo exigir confirmação por email, apresenta a mensagem sem iniciar a aplicação.
 async function processarAutenticacao(evento) {
   evento.preventDefault();
 
@@ -780,9 +834,12 @@ async function processarAutenticacao(evento) {
 
 // ======================================
 // CONTROLO DE INATIVIDADE
+// auth.js deteta a inatividade e chama as funções de retorno (callbacks) definidas aqui.
+// O Bootstrap apresenta o modal e o main.js atualiza a interface conforme o estado da sessão.
+// ======================================
 // ======================================
 
-
+// Liga o monitor de inatividade ao modal do Bootstrap e apresenta a contagem decrescente.
 function iniciarControloInatividade() {
   modalInatividade = bootstrap.Modal.getOrCreateInstance(
     inactivityModalElement
@@ -814,11 +871,13 @@ function iniciarControloInatividade() {
   });
 }
 
-
+// Fecha o aviso de inatividade. O monitor em auth.js trata da continuação da sessão.
 function continuarSessao() {
   modalInatividade.hide();
 }
 
+// Termina a sessão remota. Se essa operação falhar, tenta limpar a sessão apenas localmente
+// para não deixar a interface presa numa conta que o utilizador já pretende abandonar.
 async function terminarSessao() {
   pararMonitoramentoInatividade();
 
@@ -839,9 +898,12 @@ async function terminarSessao() {
 }
 
 // ======================================
-// NOVO LANÇAMENTO
+// FORMULÁRIO DE DESPESAS E RECEITAS
+// O mesmo formulário serve para criar e editar os dois tipos de movimento.
+// ======================================
 // ======================================
 
+// Atualiza o formulário para despesa ou receita: textos, cores, botões e categorias disponíveis.
 function atualizarTipoLancamento(tipo) {
   tipoLancamento = tipo;
   const isReceita = tipo === "receita";
@@ -873,6 +935,8 @@ function atualizarTipoLancamento(tipo) {
   );
 }
 
+// Procura o movimento carregado em memória e preenche o formulário com os seus dados.
+// O tipo determina em que lista procurar e qual campo de data utilizar.
 function iniciarEdicaoMovimento(tipo, id) {
   const lista = tipo === "receita" ? receitasAtuais : despesasAtuais;
   const movimento = lista.find(item => String(item.id) === id);
@@ -900,6 +964,7 @@ function iniciarEdicaoMovimento(tipo, id) {
   expenseDescription.focus({ preventScroll: true });
 }
 
+// Trata a seleção do tipo de movimento. Em ecrãs pequenos, abre também o painel recolhível.
 function selecionarTipoLancamento(tipo) {
   if (edicaoAtual) {
     if (tipo === edicaoAtual.tipo && window.matchMedia(MEDIA_QUERY_MOVEL).matches) {
@@ -921,6 +986,7 @@ function sincronizarEstadoPainel() {
   incomeTypeButton.setAttribute("aria-expanded", String(aberto));
 }
 
+// Descarta as alterações ainda não guardadas e repõe o formulário no modo de criação.
 function cancelarEdicao() {
   if (!edicaoAtual) return;
 
@@ -935,6 +1001,8 @@ function cancelarEdicao() {
   }
 }
 
+// Valida os campos e decide entre inserir ou atualizar, e entre despesa ou receita.
+// As operações de persistência são delegadas aos módulos despesas.js e receitas.js.
 async function guardarMovimento(evento) {
   evento.preventDefault();
   if (!navigator.onLine) {
@@ -1005,6 +1073,7 @@ async function guardarMovimento(evento) {
   }
 }
 
+// Confirma a intenção do utilizador, delega a eliminação no módulo correto e atualiza o histórico.
 async function eliminarMovimento(tipo, id) {
   if (!navigator.onLine) {
     alert("Não é possível eliminar movimentos sem ligação à internet.");
@@ -1038,9 +1107,13 @@ async function eliminarMovimento(tipo, id) {
 
 // ======================================
 // CONVERSOR DE MOEDAS
+// O conversor é independente dos movimentos financeiros e serve apenas para consultar valores.
+// ======================================
 // ======================================
 
 // Regra de negócio: o conversor apenas consulta a API; não cria nem altera movimentos.
+// Valida o valor, consulta a taxa através de api.js e apresenta o resultado formatado.
+// Se as moedas forem iguais, não é necessário fazer qualquer pedido à API.
 async function converterMoeda() {
   const valor = Number(conversionAmount.value);
   const moedaOrigem = conversionFrom.value;
@@ -1101,8 +1174,12 @@ async function converterMoeda() {
 
 // ======================================
 // INICIALIZAÇÃO DA APLICAÇÃO
+// Verifica a sessão e prepara os dados e componentes necessários antes de mostrar o dashboard.
+// ======================================
 // ======================================
 
+// Fluxo principal após abrir a página ou autenticar: valida sessão, configura conta,
+// tema, período, formulário, histórico e monitorização de inatividade.
 async function iniciarAplicacao() {
   alterarVista("loading");
 
@@ -1153,7 +1230,10 @@ async function iniciarAplicacao() {
 }
 
 // ======================================
-// EVENTOS
+// REGISTO DOS EVENTOS DA INTERFACE
+// Aqui ligamos ações do utilizador (cliques, submissões e alterações) às funções da aplicação.
+// A delegação de eventos na lista permite tratar também os botões criados dinamicamente.
+// ======================================
 // ======================================
 
 loginForm.addEventListener("submit", processarAutenticacao);
@@ -1237,7 +1317,9 @@ conversionAmount.addEventListener("keydown", evento => {
 });
 
 // ======================================
-// EXECUÇÃO INICIAL
+// ARRANQUE E FUNCIONALIDADES DO NAVEGADOR
+// Inicia a aplicação e regista eventos globais relacionados com rede, instalação e PWA.
+// ======================================
 // ======================================
 
 iniciarAplicacao();
