@@ -872,6 +872,10 @@ function cancelarEdicao() {
 
 async function guardarMovimento(evento) {
   evento.preventDefault();
+  if (!navigator.onLine) {
+    alert("Não é possível guardar movimentos sem ligação à internet.");
+    return;
+  }
   if (!expenseForm.reportValidity()) return;
 
   const dados = {
@@ -919,6 +923,11 @@ async function guardarMovimento(evento) {
 }
 
 async function eliminarMovimento(tipo, id) {
+  if (!navigator.onLine) {
+    alert("Não é possível eliminar movimentos sem ligação à internet.");
+    return;
+  }
+
   const nomeTipo = tipo === "receita" ? "receita" : "despesa";
   if (!window.confirm(`Tens a certeza de que queres eliminar esta ${nomeTipo}?`)) return;
 
