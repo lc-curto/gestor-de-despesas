@@ -62,7 +62,7 @@ export async function verificarSessao() {
 // ======================================
 
 // Cria uma conta e guarda o nome no metadata do utilizador.
-export async function criarUsuario(email, password, nomeCompleto) {
+export async function criarUsuario(email, password, nomeCompleto, moeda = "EUR") {
   const nome = String(nomeCompleto || "").trim();
   if (!nome) {
     return { user: null, session: null, error: new Error("Indica o teu nome completo.") };
@@ -72,7 +72,7 @@ export async function criarUsuario(email, password, nomeCompleto) {
     email,
     password,
     options: {
-      data: { full_name: nome }
+      data: { full_name: nome, currency: moeda }
     }
   });
 
