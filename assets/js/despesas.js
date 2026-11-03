@@ -49,12 +49,23 @@ export async function adicionarDespesa(dados) {
 export async function listarDespesas({
   inicio,
   fim,
-  categoria = null
+  categoria = null,
+  userId,
+  offset = 0,
+  limite = null,
+  somenteMontantes = false
 } = {}) {
   let consulta = supabase
     .from(TABELA)
-    .select("*")
-    .order("expense_date", { ascending: false });
+    .select(somenteMontantes ? "amount" : "*")
+    .order("expense_date", { ascending: false })
+    .order("id", { ascending: true });
+
+  if (!userId) {
+    return { data: [], error: new Error("Utilizador não autenticado.") };
+  }
+
+  consulta = consulta.eq("user_id", userId);
 
   if (inicio) {
     consulta = consulta.gte("expense_date", inicio);
@@ -66,6 +77,10 @@ export async function listarDespesas({
 
   if (categoria) {
     consulta = consulta.eq("category", categoria);
+  }
+
+  if (limite !== null) {
+    consulta = consulta.range(offset, offset + limite - 1);
   }
 
   const { data, error } = await consulta;
@@ -80,7 +95,11 @@ export async function listarDespesas({
 // ATUALIZAR DESPESA
 // ======================================
 
-export async function atualizarDespesa(id, dados) {
+export async function atualizarDespesa(id, dados, userId) {
+  if (!userId) {
+    return { data: null, error: new Error("Utilizador não autenticado.") };
+  }
+
   const despesaAtualizada = {
     description: dados.description.trim(),
     amount: Number(dados.amount),
@@ -93,6 +112,7 @@ export async function atualizarDespesa(id, dados) {
     .from(TABELA)
     .update(despesaAtualizada)
     .eq("id", id)
+    .eq("user_id", userId)
     .select()
     .single();
 
@@ -103,11 +123,17 @@ export async function atualizarDespesa(id, dados) {
 // ELIMINAR DESPESA
 // ======================================
 
-export async function eliminarDespesa(id) {
-  const { error } = await supabase
+export async function eliminarDespesa(id, userId) {
+  if (!userId) {
+    return { data: null, error: new Error("Utilizador não autenticado.") };
+  }
+
+  const { data, error } = await supabase
     .from(TABELA)
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", userId)
+    .select("id");
 
-  return { error };
+  return { data, error };
 }

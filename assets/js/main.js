@@ -9,8 +9,18 @@ import {
 } from "./auth.js";
 
 import { inicializarTema, alternarTema } from "./tema.js";
-import { adicionarDespesa, listarDespesas } from "./despesas.js";
-import { adicionarReceita, listarReceitas } from "./receitas.js";
+import {
+  adicionarDespesa,
+  listarDespesas,
+  atualizarDespesa,
+  eliminarDespesa
+} from "./despesas.js";
+import {
+  adicionarReceita,
+  listarReceitas,
+  atualizarReceita,
+  eliminarReceita
+} from "./receitas.js";
 import { obterTaxaCambio } from "./api.js";
 
 // ======================================
@@ -55,6 +65,7 @@ const categoryLabel = document.getElementById("categoryLabel");
 const transactionFilterAll = document.getElementById("transactionFilterAll");
 const transactionFilterExpenses = document.getElementById("transactionFilterExpenses");
 const transactionFilterIncome = document.getElementById("transactionFilterIncome");
+const cancelEditButton = document.getElementById("cancelEditButton");
 
 const expenseForm = document.getElementById("expenseForm");
 const expenseDate = document.getElementById("expenseDate");
@@ -86,6 +97,21 @@ let despesasAtuais = [];
 let receitasAtuais = [];
 let tipoLancamento = "despesa";
 let filtroMovimentos = "todos";
+let edicaoAtual = null;
+let tipoAntesEdicao = "despesa";
+let offsetDespesas = 0;
+let offsetReceitas = 0;
+let haMaisDespesas = false;
+let haMaisReceitas = false;
+let aCarregarMais = false;
+let totalDespesasPeriodo = 0;
+let totalReceitasPeriodo = 0;
+let quantidadeDespesasPeriodo = 0;
+let quantidadeReceitasPeriodo = 0;
+let requisicaoLista = 0;
+let utilizadorAtualId = null;
+
+const TAMANHO_PAGINA = 10;
 
 let modalInatividade = null;
 
@@ -237,13 +263,10 @@ function selecionarMes() {
 // RESUMO FINANCEIRO
 // ======================================
 
-function atualizarResumo(despesas, receitas) {
-  const totalDespesas = despesas.reduce((soma, item) => soma + Number(item.amount), 0);
-  const totalReceitas = receitas.reduce((soma, item) => soma + Number(item.amount), 0);
-
-  totalAmount.textContent = formatarValor(totalDespesas);
-  totalIncome.textContent = formatarValor(totalReceitas);
-  balanceAmount.textContent = formatarValor(totalReceitas - totalDespesas);
+function atualizarResumo() {
+  totalAmount.textContent = formatarValor(totalDespesasPeriodo);
+  totalIncome.textContent = formatarValor(totalReceitasPeriodo);
+  balanceAmount.textContent = formatarValor(totalReceitasPeriodo - totalDespesasPeriodo);
 }
 
 function renderizarMovimentos() {
@@ -252,15 +275,37 @@ function renderizarMovimentos() {
     ...receitasAtuais.map(item => ({ ...item, tipo: "receita", data: item.income_date }))
   ]
     .filter(item => filtroMovimentos === "todos" || item.tipo === filtroMovimentos)
-    .sort((a, b) => b.data.localeCompare(a.data));
+    .sort((a, b) => b.data.localeCompare(a.data) || String(a.id).localeCompare(String(b.id)));
+
+  const haMais = filtroMovimentos === "despesa"
+    ? haMaisDespesas
+    : filtroMovimentos === "receita"
+      ? haMaisReceitas
+      : haMaisDespesas || haMaisReceitas;
+  const totalFiltrado = filtroMovimentos === "despesa"
+    ? quantidadeDespesasPeriodo
+    : filtroMovimentos === "receita"
+      ? quantidadeReceitasPeriodo
+      : quantidadeDespesasPeriodo + quantidadeReceitasPeriodo;
+  const textoContagem = `A mostrar ${movimentos.length} de ${totalFiltrado} ${totalFiltrado === 1 ? "movimento" : "movimentos"}`;
+  const controlosLista = `
+    <div class="pt-3 pb-4 border-top">
+      <p class="small text-secondary text-center mb-2" aria-live="polite">${textoContagem}</p>
+      ${haMais ? `
+        <button type="button" class="btn btn-outline-primary w-100" id="loadMoreButton" ${aCarregarMais ? "disabled" : ""}>
+          ${aCarregarMais ? "A carregar..." : "Carregar mais"}
+        </button>
+      ` : ""}
+    </div>
+  `;
 
   if (movimentos.length === 0) {
     expensesList.innerHTML = `
       <div class="empty-state text-center py-4">
         <div class="empty-icon mb-3" aria-hidden="true">◎</div>
-        <h3 class="h6">Ainda não existem movimentos</h3>
-        <p class="small text-secondary mb-0">Adiciona uma despesa ou receita para começar.</p>
-      </div>
+        <h3 class="h6">${haMais ? "Ainda não há movimentos carregados para este filtro" : "Não existem movimentos para este filtro"}</h3>
+        <p class="small text-secondary mb-0">${haMais ? "Carrega mais para continuar a procurar." : "Adiciona um movimento ou altera os filtros."}</p>
+      </div>${controlosLista}
     `;
     return;
   }
@@ -274,6 +319,7 @@ function renderizarMovimentos() {
     const classeTipo = item.tipo === "despesa" ? "expense-icon" : "expense-icon income-icon";
     const classeValor = item.tipo === "despesa" ? "text-danger" : "text-success";
     const icone = item.tipo === "despesa" ? "bi-arrow-up-right" : "bi-arrow-down-left";
+    const id = escaparHTML(item.id);
 
     return `
       <article class="expense-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom">
@@ -286,15 +332,38 @@ function renderizarMovimentos() {
             <p class="small text-secondary mb-0">${categoria} · ${formatarDataApresentacao(item.data)}</p>
           </div>
         </div>
-        <strong class="${classeValor} text-nowrap">${item.tipo === "despesa" ? "−" : "+"}${valor}</strong>
+        <div class="expense-actions d-flex align-items-center justify-content-end gap-2">
+          <strong class="${classeValor} text-nowrap">${item.tipo === "despesa" ? "−" : "+"}${valor}</strong>
+          <div class="btn-group btn-group-sm" role="group" aria-label="Ações de ${descricao}">
+            <button type="button" class="btn btn-outline-secondary" data-acao="editar" data-id="${id}" data-tipo="${item.tipo}" aria-label="Editar ${descricao}" title="Editar">
+              <i class="bi bi-pencil" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="btn btn-outline-danger" data-acao="eliminar" data-id="${id}" data-tipo="${item.tipo}" aria-label="Eliminar ${descricao}" title="Eliminar">
+              <i class="bi bi-trash" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
       </article>
     `;
-  }).join("");
+  }).join("") + controlosLista;
 }
 
 async function carregarDados() {
+  const requisicaoAtual = ++requisicaoLista;
   const intervalo = obterIntervaloPeriodo();
   const categoria = categoryFilter.value;
+
+  despesasAtuais = [];
+  receitasAtuais = [];
+  offsetDespesas = 0;
+  offsetReceitas = 0;
+  haMaisDespesas = false;
+  haMaisReceitas = false;
+  aCarregarMais = false;
+  totalDespesasPeriodo = 0;
+  totalReceitasPeriodo = 0;
+  quantidadeDespesasPeriodo = 0;
+  quantidadeReceitasPeriodo = 0;
 
   expensesList.innerHTML = `
     <div class="text-center py-4">
@@ -304,23 +373,98 @@ async function carregarDados() {
     </div>
   `;
 
-  const [resultadoDespesas, resultadoReceitas] = await Promise.all([
-    listarDespesas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria: categoria === "all" ? null : categoria }),
-    listarReceitas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria: categoria === "all" ? null : categoria })
-  ]);
-
-  if (resultadoDespesas.error || resultadoReceitas.error) {
-    expensesList.innerHTML = '<div class="alert alert-danger mb-0">Não foi possível carregar os movimentos.</div>';
-    despesasAtuais = [];
-    receitasAtuais = [];
-    atualizarResumo(despesasAtuais, receitasAtuais);
+  let resultados;
+  try {
+    resultados = await Promise.all([
+      listarDespesas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria: categoria === "all" ? null : categoria, userId: utilizadorAtualId, offset: 0, limite: TAMANHO_PAGINA + 1 }),
+      listarReceitas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria: categoria === "all" ? null : categoria, userId: utilizadorAtualId, offset: 0, limite: TAMANHO_PAGINA + 1 }),
+      listarDespesas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria: categoria === "all" ? null : categoria, userId: utilizadorAtualId, somenteMontantes: true }),
+      listarReceitas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria: categoria === "all" ? null : categoria, userId: utilizadorAtualId, somenteMontantes: true })
+    ]);
+  } catch {
+    if (requisicaoAtual !== requisicaoLista) return;
+    expensesList.innerHTML = '<div class="alert alert-danger mb-0" role="alert">Não foi possível carregar os movimentos. Tenta novamente.</div>';
+    atualizarResumo();
     return;
   }
 
-  despesasAtuais = resultadoDespesas.data || [];
-  receitasAtuais = resultadoReceitas.data || [];
-  atualizarResumo(despesasAtuais, receitasAtuais);
+  const [resultadoDespesas, resultadoReceitas, resumoDespesas, resumoReceitas] = resultados;
+
+  if (requisicaoAtual !== requisicaoLista) return;
+
+  if (resultadoDespesas.error || resultadoReceitas.error || resumoDespesas.error || resumoReceitas.error) {
+    expensesList.innerHTML = '<div class="alert alert-danger mb-0">Não foi possível carregar os movimentos.</div>';
+    despesasAtuais = [];
+    receitasAtuais = [];
+    atualizarResumo();
+    return;
+  }
+
+  const dadosDespesas = resultadoDespesas.data || [];
+  const dadosReceitas = resultadoReceitas.data || [];
+  despesasAtuais = dadosDespesas.slice(0, TAMANHO_PAGINA);
+  receitasAtuais = dadosReceitas.slice(0, TAMANHO_PAGINA);
+  offsetDespesas = despesasAtuais.length;
+  offsetReceitas = receitasAtuais.length;
+  haMaisDespesas = dadosDespesas.length > TAMANHO_PAGINA;
+  haMaisReceitas = dadosReceitas.length > TAMANHO_PAGINA;
+  totalDespesasPeriodo = (resumoDespesas.data || []).reduce((soma, item) => soma + Number(item.amount), 0);
+  totalReceitasPeriodo = (resumoReceitas.data || []).reduce((soma, item) => soma + Number(item.amount), 0);
+  quantidadeDespesasPeriodo = (resumoDespesas.data || []).length;
+  quantidadeReceitasPeriodo = (resumoReceitas.data || []).length;
+  atualizarResumo();
   renderizarMovimentos();
+}
+
+async function carregarMaisMovimentos() {
+  if (aCarregarMais) return;
+
+  const requisicaoAtual = requisicaoLista;
+  aCarregarMais = true;
+  renderizarMovimentos();
+  try {
+    const intervalo = obterIntervaloPeriodo();
+    const categoria = categoryFilter.value === "all" ? null : categoryFilter.value;
+    const [resultadoDespesas, resultadoReceitas] = await Promise.all([
+      haMaisDespesas
+        ? listarDespesas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria, userId: utilizadorAtualId, offset: offsetDespesas, limite: TAMANHO_PAGINA + 1 })
+        : Promise.resolve(null),
+      haMaisReceitas
+        ? listarReceitas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria, userId: utilizadorAtualId, offset: offsetReceitas, limite: TAMANHO_PAGINA + 1 })
+        : Promise.resolve(null)
+    ]);
+
+    if (requisicaoAtual !== requisicaoLista) return;
+
+    if (resultadoDespesas?.error || resultadoReceitas?.error) {
+      throw resultadoDespesas?.error || resultadoReceitas?.error;
+    }
+
+    if (resultadoDespesas) {
+      const dados = resultadoDespesas.data || [];
+      const novos = dados.slice(0, TAMANHO_PAGINA);
+      despesasAtuais = [...despesasAtuais, ...novos];
+      offsetDespesas += novos.length;
+      haMaisDespesas = dados.length > TAMANHO_PAGINA;
+    }
+
+    if (resultadoReceitas) {
+      const dados = resultadoReceitas.data || [];
+      const novos = dados.slice(0, TAMANHO_PAGINA);
+      receitasAtuais = [...receitasAtuais, ...novos];
+      offsetReceitas += novos.length;
+      haMaisReceitas = dados.length > TAMANHO_PAGINA;
+    }
+  } catch (erro) {
+    if (requisicaoAtual === requisicaoLista) {
+      alert(obterMensagemErro(erro, "Não foi possível carregar mais movimentos."));
+    }
+  } finally {
+    if (requisicaoAtual === requisicaoLista) {
+      aCarregarMais = false;
+      renderizarMovimentos();
+    }
+  }
 }
 
 function alterarFiltroMovimentos(filtro) {
@@ -516,9 +660,14 @@ function atualizarTipoLancamento(tipo) {
   descriptionLabel.textContent = "Descrição";
   amountLabel.textContent = "Valor";
   categoryLabel.textContent = "Categoria";
-  saveRecordButton.textContent = isReceita ? "Guardar receita" : "Guardar despesa";
+  saveRecordButton.textContent = edicaoAtual
+    ? (isReceita ? "Atualizar receita" : "Atualizar despesa")
+    : (isReceita ? "Guardar receita" : "Guardar despesa");
   saveRecordButton.classList.toggle("btn-success", isReceita);
   saveRecordButton.classList.toggle("btn-danger", !isReceita);
+  expenseTypeButton.disabled = Boolean(edicaoAtual);
+  incomeTypeButton.disabled = Boolean(edicaoAtual);
+  cancelEditButton.classList.toggle("d-none", !edicaoAtual);
 
   expenseTypeButton.classList.toggle("active", !isReceita);
   expenseTypeButton.classList.toggle("btn-danger", !isReceita);
@@ -544,6 +693,34 @@ function atualizarTipoLancamento(tipo) {
        <option value="outros">Outros</option>`;
 }
 
+function iniciarEdicaoMovimento(tipo, id) {
+  const lista = tipo === "receita" ? receitasAtuais : despesasAtuais;
+  const movimento = lista.find(item => String(item.id) === id);
+  if (!movimento) return;
+
+  tipoAntesEdicao = tipoLancamento;
+  edicaoAtual = { tipo, id };
+  atualizarTipoLancamento(tipo);
+  recordTitle.textContent = tipo === "receita" ? "Editar receita" : "Editar despesa";
+  expenseDescription.value = movimento.description;
+  expenseAmount.value = movimento.amount;
+  expenseCategory.value = movimento.category;
+  expenseDate.value = tipo === "receita" ? movimento.income_date : movimento.expense_date;
+
+  expenseForm.scrollIntoView({ behavior: "smooth", block: "center" });
+  expenseDescription.focus({ preventScroll: true });
+}
+
+function cancelarEdicao() {
+  if (!edicaoAtual) return;
+
+  const tipoRestaurado = tipoAntesEdicao;
+  edicaoAtual = null;
+  expenseForm.reset();
+  expenseDate.value = formatarDataLocal();
+  atualizarTipoLancamento(tipoRestaurado);
+}
+
 async function guardarMovimento(evento) {
   evento.preventDefault();
   if (!expenseForm.reportValidity()) return;
@@ -561,24 +738,60 @@ async function guardarMovimento(evento) {
   saveRecordButton.textContent = "A guardar...";
 
   try {
-    const resultado = tipoLancamento === "receita"
-      ? await adicionarReceita({ ...dados, income_date: dados.date })
-      : await adicionarDespesa({ ...dados, expense_date: dados.date });
+    const resultado = edicaoAtual
+      ? (edicaoAtual.tipo === "receita"
+        ? await atualizarReceita(edicaoAtual.id, { ...dados, income_date: dados.date }, utilizadorAtualId)
+        : await atualizarDespesa(edicaoAtual.id, { ...dados, expense_date: dados.date }, utilizadorAtualId))
+      : (tipoLancamento === "receita"
+        ? await adicionarReceita({ ...dados, income_date: dados.date })
+        : await adicionarDespesa({ ...dados, expense_date: dados.date }));
 
     if (resultado.error) {
-      alert(obterMensagemErro(resultado.error, "Não foi possível guardar o lançamento."));
+      alert(obterMensagemErro(resultado.error, "Não foi possível guardar as alterações."));
       return;
     }
 
-    expenseForm.reset();
-    expenseDate.value = formatarDataLocal();
-    atualizarTipoLancamento(tipoLancamento);
+    if (edicaoAtual) {
+      cancelarEdicao();
+    } else {
+      expenseForm.reset();
+      expenseDate.value = formatarDataLocal();
+      atualizarTipoLancamento(tipoLancamento);
+    }
     await carregarDados();
   } catch (erro) {
     alert(obterMensagemErro(erro, "Ocorreu um erro ao guardar o lançamento."));
   } finally {
     saveRecordButton.disabled = false;
-    saveRecordButton.textContent = tipoLancamento === "receita" ? "Guardar receita" : "Guardar despesa";
+    saveRecordButton.textContent = edicaoAtual
+      ? (edicaoAtual.tipo === "receita" ? "Atualizar receita" : "Atualizar despesa")
+      : (tipoLancamento === "receita" ? "Guardar receita" : "Guardar despesa");
+  }
+}
+
+async function eliminarMovimento(tipo, id) {
+  const nomeTipo = tipo === "receita" ? "receita" : "despesa";
+  if (!window.confirm(`Tens a certeza de que queres eliminar esta ${nomeTipo}?`)) return;
+
+  try {
+    const resultado = tipo === "receita"
+      ? await eliminarReceita(id, utilizadorAtualId)
+      : await eliminarDespesa(id, utilizadorAtualId);
+
+    if (resultado.error) {
+      alert(obterMensagemErro(resultado.error, `Não foi possível eliminar a ${nomeTipo}.`));
+      return;
+    }
+
+    if (!resultado.data?.length) {
+      alert(`A ${nomeTipo} não foi eliminada. Pode já não existir ou não teres permissão.`);
+      return;
+    }
+
+    if (edicaoAtual?.tipo === tipo && edicaoAtual.id === id) cancelarEdicao();
+    await carregarDados();
+  } catch (erro) {
+    alert(obterMensagemErro(erro, `Ocorreu um erro ao eliminar a ${nomeTipo}.`));
   }
 }
 
@@ -656,10 +869,13 @@ async function iniciarAplicacao() {
     const resultado = await verificarSessao();
 
     if (resultado.error || !resultado.user) {
+      utilizadorAtualId = null;
       pararMonitoramentoInatividade();
       alterarVista("login");
       return;
     }
+
+    utilizadorAtualId = resultado.user.id;
 
     inicializarTema();
 
@@ -707,6 +923,23 @@ categoryFilter.addEventListener("change", carregarDados);
 transactionFilterAll.addEventListener("click", () => alterarFiltroMovimentos("todos"));
 transactionFilterExpenses.addEventListener("click", () => alterarFiltroMovimentos("despesa"));
 transactionFilterIncome.addEventListener("click", () => alterarFiltroMovimentos("receita"));
+cancelEditButton.addEventListener("click", cancelarEdicao);
+
+expensesList.addEventListener("click", async evento => {
+  if (evento.target.closest("#loadMoreButton")) {
+    await carregarMaisMovimentos();
+    return;
+  }
+
+  const botao = evento.target.closest("button[data-acao]");
+  if (!botao) return;
+
+  if (botao.dataset.acao === "editar") {
+    iniciarEdicaoMovimento(botao.dataset.tipo, botao.dataset.id);
+  } else if (botao.dataset.acao === "eliminar") {
+    await eliminarMovimento(botao.dataset.tipo, botao.dataset.id);
+  }
+});
 
 periodPrevious.addEventListener("click", () => {
   alterarPeriodo(-1);

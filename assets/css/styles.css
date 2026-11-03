@@ -340,8 +340,10 @@ body {
 ====================================== */
 
 .expense-item {
-  display: grid;
-  grid-template-columns: auto 1fr;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 0.75rem;
   padding: 1rem 0;
   border-top: 1px solid var(--app-border);
@@ -363,7 +365,8 @@ body {
 }
 
 .expense-actions {
-  grid-column: 2;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .expense-actions p {
@@ -458,14 +461,5 @@ body {
 @media (min-width: 576px) {
   .dashboard-hero {
     padding: 2rem;
-  }
-
-  .expense-item {
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
-  }
-
-  .expense-actions {
-    grid-column: 3;
   }
 }
