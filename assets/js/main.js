@@ -25,7 +25,6 @@ import {
   eliminarReceita,
 } from "./receitas.js";
 import { obterTaxaCambio } from "./api.js";
-import { supabase } from "./supabase.js";
 
 // ======================================
 // REFERÊNCIAS AO HTML
@@ -686,12 +685,14 @@ async function carregarDados() {
 
   if (requisicaoAtual !== requisicaoLista) return;
 
-  if (
+  const erroConsulta =
     resultadoDespesas.error ||
     resultadoReceitas.error ||
     resumoDespesas.error ||
-    resumoReceitas.error
-  ) {
+    resumoReceitas.error;
+
+  if (erroConsulta) {
+    console.error("Erro nas consultas dos movimentos:", erroConsulta);
     mostrarErroCarregamento();
     return;
   }
@@ -1506,162 +1507,6 @@ conversionAmount.addEventListener("keydown", (evento) => {
     converterMoeda();
   }
 });
-
-// ======================================
-// DIAGNÓSTICO TEMPORÁRIO
-// Painel para identificar falhas de rede, autenticação, consultas e Service Worker.
-// É temporário e pode ser removido depois de identificada a causa.
-// ======================================
-
-function criarPainelDiagnostico() {
-  const botao = document.createElement("button");
-  botao.type = "button";
-  botao.textContent = "Diagnóstico";
-  botao.className = "btn btn-dark btn-sm";
-  botao.style.cssText = "position:fixed;right:12px;bottom:18px;z-index:1080;border-radius:20px;box-shadow:0 2px 8px #0004;";
-
-  const painel = document.createElement("section");
-  painel.setAttribute("aria-label", "Diagnóstico da aplicação");
-  painel.style.cssText = "display:none;position:fixed;inset:auto 10px 62px 10px;max-height:70vh;overflow:auto;z-index:1081;background:#fff;color:#212529;border:1px solid #adb5bd;border-radius:12px;padding:16px;box-shadow:0 4px 20px #0004;font:14px/1.45 system-ui,sans-serif;";
-
-  const titulo = document.createElement("h2");
-  titulo.textContent = "Diagnóstico do Meu Bolso";
-  titulo.style.cssText = "font-size:18px;margin:0 0 10px;";
-
-  const resultados = document.createElement("pre");
-  resultados.style.cssText = "white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 monospace;margin:12px 0;";
-
-  const executar = document.createElement("button");
-  executar.type = "button";
-  executar.textContent = "Executar diagnóstico";
-  executar.className = "btn btn-primary btn-sm";
-
-  const fechar = document.createElement("button");
-  fechar.type = "button";
-  fechar.textContent = "Fechar";
-  fechar.className = "btn btn-outline-secondary btn-sm ms-2";
-  fechar.addEventListener("click", () => {
-    painel.style.display = "none";
-  });
-
-  painel.append(titulo, executar, fechar, resultados);
-  document.body.append(botao, painel);
-
-  botao.addEventListener("click", () => {
-    painel.style.display = painel.style.display === "none" ? "block" : "none";
-  });
-
-  executar.addEventListener("click", async () => {
-    executar.disabled = true;
-    executar.textContent = "A testar...";
-    resultados.textContent = "A executar testes...";
-
-    const linhas = [];
-    const registo = (nome, valor) => linhas.push(nome + ": " + valor);
-
-    registo("Navegador online", navigator.onLine ? "SIM" : "NÃO");
-    registo(
-      "Service Worker controlador",
-      navigator.serviceWorker?.controller?.scriptURL || "Nenhum",
-    );
-
-    try {
-      const cachesAtivos = "caches" in window ? await caches.keys() : [];
-      registo("Caches existentes", cachesAtivos.join(", ") || "Nenhum");
-    } catch (erro) {
-      registo("Leitura de caches", erro.message);
-    }
-
-    try {
-      const { data, error } = await supabase.auth.getSession();
-      registo("Sessão Supabase", error ? "ERRO: " + error.message : data.session ? "ATIVA" : "SEM SESSÃO");
-      registo("ID de utilizador", data.session?.user?.id || "Indisponível");
-    } catch (erro) {
-      registo("Sessão Supabase", "EXCEÇÃO: " + erro.message);
-    }
-
-    try {
-      const { data, error } = await supabase.auth.getUser();
-      registo("Validação do utilizador", error ? "ERRO: " + error.message : data.user ? "OK" : "SEM UTILIZADOR");
-    } catch (erro) {
-      registo("Validação do utilizador", "EXCEÇÃO: " + erro.message);
-    }
-
-    if (utilizadorAtualId) {
-      const intervalo = obterIntervaloPeriodo();
-      const parametros = obterParametrosConsulta(
-        intervalo.inicio,
-        intervalo.fim,
-        categoryFilter.value,
-      );
-
-      // Reproduz as quatro consultas do carregamento normal, incluindo os totais sem limite.
-      const testesConsulta = [
-        ["Despesas (lista)", () =>
-          listarDespesas({ ...parametros, offset: 0, limite: obterLimiteMovimentos() })],
-        ["Receitas (lista)", () =>
-          listarReceitas({ ...parametros, offset: 0, limite: obterLimiteMovimentos() })],
-        ["Despesas (total)", () =>
-          listarDespesas({ ...parametros, somenteMontantes: true })],
-        ["Receitas (total)", () =>
-          listarReceitas({ ...parametros, somenteMontantes: true })],
-      ];
-
-      const resultadosConsulta = await Promise.all(
-        testesConsulta.map(async ([nome, executarTeste]) => {
-          try {
-            const resultado = await executarTeste();
-
-            if (resultado.error) {
-              return {
-                nome,
-                estado: "ERRO",
-                detalhe: resultado.error.message || String(resultado.error),
-              };
-            }
-
-            return {
-              nome,
-              estado: "OK",
-              detalhe: (resultado.data?.length || 0) + " registo(s)",
-            };
-          } catch (erro) {
-            return {
-              nome,
-              estado: "EXCEÇÃO",
-              detalhe: erro.message || String(erro),
-            };
-          }
-        }),
-      );
-
-      resultadosConsulta.forEach((resultado) => {
-        registo(
-          resultado.nome,
-          resultado.estado + " — " + resultado.detalhe,
-        );
-      });
-    } else {
-      registo("Consultas às tabelas", "Não executadas: utilizadorAtualId indisponível.");
-    }
-
-    try {
-      const resposta = await obterTaxaCambio("USD", "EUR");
-      registo("API de câmbio", "OK (taxa " + resposta.rate + ")");
-    } catch (erro) {
-      registo("API de câmbio", "ERRO: " + erro.message);
-    }
-
-    registo("Versão do painel", "diagnostico-temporario-3");
-    resultados.textContent = linhas.join("\n");
-    executar.disabled = false;
-    executar.textContent = "Executar novamente";
-  });
-
-  return botao;
-}
-
-criarPainelDiagnostico();
 
 // ======================================
 // ARRANQUE E FUNCIONALIDADES DO NAVEGADOR
