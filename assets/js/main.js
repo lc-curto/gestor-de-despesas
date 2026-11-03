@@ -30,6 +30,7 @@ import { obterTaxaCambio } from "./api.js";
 const loadingView = document.getElementById("loadingView");
 const loginView = document.getElementById("loginView");
 const appView = document.getElementById("appView");
+const offlineStatus = document.getElementById("offlineStatus");
 
 const loginForm = document.getElementById("loginForm");
 const signupNameGroup = document.getElementById("signupNameGroup");
@@ -226,6 +227,60 @@ function obterMensagemErro(erro, mensagemPadrao) {
   return erro?.message || mensagemPadrao;
 }
 
+function obterChaveCache() {
+  const intervalo = obterIntervaloPeriodo();
+  return "meu-bolso:" + utilizadorAtualId + ":" + intervalo.inicio + ":" + intervalo.fim + ":" + categoryFilter.value;
+}
+
+function guardarDadosEmCache(dados) {
+  try {
+    localStorage.setItem(obterChaveCache(), JSON.stringify({
+      guardadoEm: new Date().toISOString(),
+      ...dados
+    }));
+  } catch (erro) {
+    console.warn("Não foi possível guardar os dados localmente:", erro);
+  }
+}
+
+function obterDadosEmCache() {
+  try {
+    const dados = localStorage.getItem(obterChaveCache());
+    return dados ? JSON.parse(dados) : null;
+  } catch (erro) {
+    console.warn("Não foi possível ler os dados locais:", erro);
+    return null;
+  }
+}
+
+function atualizarAvisoLigacao(mensagem) {
+  if (!offlineStatus) return;
+  offlineStatus.textContent = mensagem || "";
+  offlineStatus.classList.toggle("d-none", !mensagem);
+}
+
+function aplicarDadosEmCache(cache) {
+  despesasAtuais = Array.isArray(cache.despesas) ? cache.despesas : [];
+  receitasAtuais = Array.isArray(cache.receitas) ? cache.receitas : [];
+  totalDespesasPeriodo = Number(cache.totalDespesasPeriodo) || 0;
+  totalReceitasPeriodo = Number(cache.totalReceitasPeriodo) || 0;
+  quantidadeDespesasPeriodo = despesasAtuais.length;
+  quantidadeReceitasPeriodo = receitasAtuais.length;
+  offsetDespesas = despesasAtuais.length;
+  offsetReceitas = receitasAtuais.length;
+  haMaisDespesas = false;
+  haMaisReceitas = false;
+  quantidadeMovimentosVisiveis = TAMANHO_PAGINA;
+
+  const dataCache = cache.guardadoEm
+    ? new Intl.DateTimeFormat("pt-PT", { dateStyle: "short", timeStyle: "short" }).format(new Date(cache.guardadoEm))
+    : "data desconhecida";
+
+  atualizarAvisoLigacao("Sem ligação à internet. Dados guardados em " + dataCache + ". Apenas são apresentados os movimentos previamente carregados.");
+  atualizarResumo();
+  renderizarMovimentos();
+}
+
 // ======================================
 // DATA E HORA
 // ======================================
@@ -408,7 +463,12 @@ async function carregarDados() {
     ]);
   } catch {
     if (requisicaoAtual !== requisicaoLista) return;
-    expensesList.innerHTML = '<div class="alert alert-danger mb-0" role="alert">Não foi possível carregar os movimentos. Tenta novamente.</div>';
+    const cache = obterDadosEmCache();
+    if (cache) {
+      aplicarDadosEmCache(cache);
+      return;
+    }
+    expensesList.innerHTML = '<div class="alert alert-danger mb-0" role="alert">Não foi possível carregar os movimentos e ainda não existem dados guardados neste dispositivo.</div>';
     atualizarResumo();
     return;
   }
@@ -418,7 +478,12 @@ async function carregarDados() {
   if (requisicaoAtual !== requisicaoLista) return;
 
   if (resultadoDespesas.error || resultadoReceitas.error || resumoDespesas.error || resumoReceitas.error) {
-    expensesList.innerHTML = '<div class="alert alert-danger mb-0">Não foi possível carregar os movimentos.</div>';
+    const cache = obterDadosEmCache();
+    if (cache) {
+      aplicarDadosEmCache(cache);
+      return;
+    }
+    expensesList.innerHTML = '<div class="alert alert-danger mb-0">Não foi possível carregar os movimentos e ainda não existem dados guardados neste dispositivo.</div>';
     despesasAtuais = [];
     receitasAtuais = [];
     atualizarResumo();
@@ -437,6 +502,13 @@ async function carregarDados() {
   totalReceitasPeriodo = (resumoReceitas.data || []).reduce((soma, item) => soma + Number(item.amount), 0);
   quantidadeDespesasPeriodo = (resumoDespesas.data || []).length;
   quantidadeReceitasPeriodo = (resumoReceitas.data || []).length;
+  guardarDadosEmCache({
+    despesas: despesasAtuais,
+    receitas: receitasAtuais,
+    totalDespesasPeriodo,
+    totalReceitasPeriodo
+  });
+  atualizarAvisoLigacao("");
   atualizarResumo();
   renderizarMovimentos();
 }
@@ -1051,5 +1123,24 @@ conversionAmount.addEventListener("keydown", evento => {
 // ======================================
 
 iniciarAplicacao();
+
+window.addEventListener("online", () => {
+  atualizarAvisoLigacao("Ligação restabelecida. A atualizar os dados...");
+  if (utilizadorAtualId) carregarDados();
+});
+
+window.addEventListener("offline", () => {
+  const cache = obterDadosEmCache();
+  if (cache) aplicarDadosEmCache(cache);
+  else atualizarAvisoLigacao("Sem ligação à internet. Ainda não existem dados guardados para este período.");
+});
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js").catch(erro => {
+      console.warn("Não foi possível registar o Service Worker:", erro);
+    });
+  });
+}
 
 window.setInterval(atualizarDataHora, 60000);
