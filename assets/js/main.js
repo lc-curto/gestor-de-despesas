@@ -440,11 +440,7 @@ function renderizarMovimentos() {
     .sort((a, b) => b.data.localeCompare(a.data) || String(a.id).localeCompare(String(b.id)));
 
   const movimentosVisiveis = movimentos.slice(0, quantidadeMovimentosVisiveis);
-  const totalFiltrado = filtroMovimentos === "despesa"
-    ? quantidadeDespesasPeriodo
-    : filtroMovimentos === "receita"
-      ? quantidadeReceitasPeriodo
-      : quantidadeDespesasPeriodo + quantidadeReceitasPeriodo;
+  const totalFiltrado = obterTotalMovimentos();
   const haMais = movimentosVisiveis.length < totalFiltrado;
   const textoContagem = `A mostrar ${movimentosVisiveis.length} de ${totalFiltrado} ${totalFiltrado === 1 ? "movimento" : "movimentos"}`;
   const controlosLista = `
@@ -960,13 +956,31 @@ async function guardarMovimento(evento) {
   saveRecordButton.textContent = "A guardar...";
 
   try {
-    const resultado = edicaoAtual
-      ? (edicaoAtual.tipo === "receita"
-        ? await atualizarReceita(edicaoAtual.id, { ...dados, income_date: dados.date }, utilizadorAtualId)
-        : await atualizarDespesa(edicaoAtual.id, { ...dados, expense_date: dados.date }, utilizadorAtualId))
-      : (tipoLancamento === "receita"
-        ? await adicionarReceita({ ...dados, income_date: dados.date })
-        : await adicionarDespesa({ ...dados, expense_date: dados.date }));
+    let resultado;
+
+    if (edicaoAtual?.tipo === "receita") {
+      resultado = await atualizarReceita(
+        edicaoAtual.id,
+        { ...dados, income_date: dados.date },
+        utilizadorAtualId
+      );
+    } else if (edicaoAtual?.tipo === "despesa") {
+      resultado = await atualizarDespesa(
+        edicaoAtual.id,
+        { ...dados, expense_date: dados.date },
+        utilizadorAtualId
+      );
+    } else if (tipoLancamento === "receita") {
+      resultado = await adicionarReceita({
+        ...dados,
+        income_date: dados.date
+      });
+    } else {
+      resultado = await adicionarDespesa({
+        ...dados,
+        expense_date: dados.date
+      });
+    }
 
     if (resultado.error) {
       alert(obterMensagemErro(resultado.error, "Não foi possível guardar as alterações."));
