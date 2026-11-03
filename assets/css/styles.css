@@ -714,11 +714,11 @@ body {
   overflow: hidden;
 }
 
-.history-card-body {
+.history-card > .history-card-body {
   display: flex;
-  height: 100%;
+  height: auto;
   min-height: 0;
-  flex: 1 1 auto;
+  flex: 1 1 0%;
   flex-direction: column;
   overflow: hidden;
 }
@@ -728,7 +728,7 @@ body {
   flex: 0 0 auto;
 }
 
-.history-list {
+.history-card-body > .history-list {
   display: block;
   height: 0;
   min-height: 0;
