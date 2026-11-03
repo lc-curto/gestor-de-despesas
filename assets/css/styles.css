@@ -840,3 +840,106 @@ body {
     flex-basis: 2.4rem;
   }
 }
+
+
+/* ======================================
+   HISTÓRICO — AJUSTES MOBILE
+====================================== */
+
+@media (max-width: 575.98px) {
+  .history-card {
+    height: 76vh;
+    min-height: 34rem;
+    max-height: 76vh;
+  }
+
+  .history-card-body > .p-3,
+  .history-card-body > .px-3 {
+    padding: 0.85rem 0.9rem !important;
+  }
+
+  .history-card-body > .p-3 > .d-flex {
+    gap: 0.65rem !important;
+  }
+
+  .history-card-body .period-controls {
+    gap: 0.4rem !important;
+  }
+
+  .history-card-body .period-controls .btn {
+    min-width: 2.4rem;
+    min-height: 2.5rem;
+    padding: 0.35rem;
+  }
+
+  #periodCaption {
+    display: none;
+  }
+
+  .transaction-filters {
+    gap: 0.35rem !important;
+    padding-bottom: 0.65rem !important;
+  }
+
+  .transaction-filters .mobile-tap-target {
+    min-height: 2.35rem;
+    min-width: auto;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.9rem;
+  }
+
+  .transaction-filters .filter-control {
+    margin-left: 0 !important;
+  }
+
+  .transaction-filters .filter-control .form-select {
+    min-height: 2.5rem;
+    font-size: 0.9rem;
+  }
+
+  .history-card-body > .history-list {
+    padding: 0 0.9rem !important;
+  }
+
+  .history-list .expense-item {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.45rem !important;
+    padding: 0.75rem 0;
+  }
+
+  .history-list .expense-item > :first-child {
+    min-width: 0;
+    flex: 1 1 auto;
+    gap: 0.55rem !important;
+  }
+
+  .history-list .expense-icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    flex: 0 0 2.25rem;
+  }
+
+  .history-list .expense-item h3 {
+    font-size: 0.9rem;
+  }
+
+  .history-list .expense-item p {
+    font-size: 0.78rem;
+  }
+
+  .history-list .expense-actions {
+    flex: 0 0 auto;
+    gap: 0.35rem !important;
+  }
+
+  .history-list .expense-actions strong {
+    font-size: 0.82rem;
+  }
+
+  .history-list .expense-actions .btn {
+    min-width: 2.15rem;
+    min-height: 2.35rem;
+    padding: 0.3rem 0.45rem;
+  }
+}
