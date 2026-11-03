@@ -1143,3 +1143,32 @@ html {
     scroll-margin-top: 1rem;
   }
 }
+
+
+/* MOBILE: scroll único da página, sem scroll aninhado no histórico */
+@media (max-width: 991.98px) {
+  .history-card {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .history-card > .history-card-body {
+    display: flex;
+    height: auto !important;
+    min-height: 0 !important;
+    flex: 0 1 auto !important;
+    overflow: visible !important;
+  }
+
+  .history-card-body > .history-list {
+    display: block;
+    height: auto !important;
+    min-height: 0 !important;
+    flex: 0 1 auto !important;
+    overflow: visible !important;
+    overscroll-behavior-y: auto !important;
+    -webkit-overflow-scrolling: auto;
+  }
+}
