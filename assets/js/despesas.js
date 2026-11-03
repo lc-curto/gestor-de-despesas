@@ -28,7 +28,7 @@ export async function adicionarDespesa(dados) {
     user_id: user.id,
     description: dados.description.trim(),
     amount: Number(dados.amount),
-    currency: "EUR",
+    currency: user.user_metadata?.currency || "EUR",
     category: dados.category,
     expense_date: dados.expense_date
   };
@@ -100,10 +100,11 @@ export async function atualizarDespesa(id, dados, userId) {
     return { data: null, error: new Error("Utilizador não autenticado.") };
   }
 
+  const { data: { user } } = await supabase.auth.getUser();
   const despesaAtualizada = {
     description: dados.description.trim(),
     amount: Number(dados.amount),
-    currency: "EUR",
+    currency: user?.user_metadata?.currency || "EUR",
     category: dados.category,
     expense_date: dados.expense_date
   };
