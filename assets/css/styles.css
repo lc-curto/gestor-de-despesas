@@ -946,80 +946,61 @@ body {
 
 
 /* ======================================
-   EXPERIÊNCIA MOBILE — DASHBOARD
+   MOBILE — LAYOUT COMPACTO E FUNCIONAL
 ====================================== */
 
 @media (max-width: 991.98px) {
   .summary-card {
+    min-height: 4.6rem;
     padding: 0.65rem 0.55rem;
     border-radius: 0.8rem;
   }
 
-  .summary-card > .d-flex {
-    min-height: 3.2rem;
-  }
-
-  .summary-card > .d-flex > div {
-    min-width: 0;
-  }
+  .summary-card > .d-flex { min-height: 3.2rem; }
+  .summary-card > .d-flex > div { min-width: 0; }
 
   .summary-card p.small {
+    margin-bottom: 0.2rem !important;
     font-size: 0.68rem;
-    line-height: 1.2;
+    line-height: 1.15;
   }
 
   .summary-card .summary-value,
   .summary-card-primary .summary-value {
-    font-size: clamp(0.88rem, 3.5vw, 1.15rem);
+    font-size: clamp(0.82rem, 3.5vw, 1.05rem);
     line-height: 1.2;
     overflow-wrap: anywhere;
   }
 
   .summary-card-compact {
-    min-height: 0;
     justify-content: center;
     gap: 0.25rem;
   }
 
-  .summary-card-compact > p:first-child {
-    min-height: 0;
-    margin-bottom: 0.15rem !important;
-  }
+  .summary-card-compact > p:first-child { min-height: 0; }
+  .summary-card-compact > p:last-child { display: none; }
 
-  .summary-card-compact > p:last-child {
-    display: none;
-  }
-
-  .record-toolbar {
-    min-height: 3.1rem;
-  }
-
-  .record-toolbar > div:first-child {
-    flex: 0 0 auto;
-  }
-
+  .record-toolbar { min-height: 3.1rem; }
   .record-toolbar .record-type-buttons {
     width: min(68%, 15rem);
     flex: 0 1 auto;
   }
 
   .record-type-buttons .btn {
-    min-height: 2.65rem;
-    padding: 0.35rem 0.55rem;
-    font-size: 0.85rem;
+    min-height: 2.5rem;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.82rem;
     white-space: nowrap;
   }
 
   .history-card {
-    height: 39rem;
-    min-height: 39rem;
-    max-height: 39rem;
+    height: clamp(27rem, 58vh, 34rem);
+    min-height: 27rem;
+    max-height: 34rem;
   }
 
   .history-card-body > .p-3,
-  .history-card-body > .px-3 {
-    flex: 0 0 auto;
-  }
+  .history-card-body > .px-3 { flex: 0 0 auto; }
 
   .history-card-body > .history-list {
     height: 0;
@@ -1030,37 +1011,32 @@ body {
     -webkit-overflow-scrolling: touch;
   }
 
-  .history-card-body > .p-3 > .d-flex {
-    gap: 0.5rem !important;
-  }
+  .history-card-body > .p-3 > .d-flex { gap: 0.55rem !important; }
+  .history-card-body .period-controls { gap: 0.4rem !important; }
 
-  .history-card-body .period-controls {
-    gap: 0.35rem !important;
-  }
+  .history-card-body .period-controls .btn,
+  .history-card-body .period-controls .form-control { min-height: 2.4rem; }
 
   .history-card-body .period-controls .btn {
-    min-width: 2.25rem;
-    min-height: 2.35rem;
+    min-width: 2.4rem;
     padding: 0.25rem;
   }
 
   .history-card-body .period-controls .form-control {
-    min-height: 2.35rem;
-    font-size: 0.88rem;
+    min-width: 0;
+    font-size: 0.9rem;
   }
 
-  #periodCaption {
-    display: none;
-  }
+  #periodCaption { display: none; }
 
   .transaction-filters {
-    gap: 0.25rem !important;
-    padding-bottom: 0.6rem !important;
+    gap: 0.3rem !important;
+    padding-bottom: 0.65rem !important;
   }
 
   .transaction-filters .mobile-tap-target {
-    min-height: 2.2rem;
-    padding: 0.3rem 0.6rem;
+    min-height: 2.25rem;
+    padding: 0.3rem 0.65rem;
     font-size: 0.85rem;
   }
 
@@ -1070,65 +1046,61 @@ body {
   }
 
   .transaction-filters .filter-control .form-select {
-    min-height: 2.35rem;
-    font-size: 0.85rem;
+    min-height: 2.4rem;
+    font-size: 0.88rem;
   }
 
   .history-card-body > .history-list {
-    padding-right: 0.85rem !important;
-    padding-left: 0.85rem !important;
+    padding-right: 0.9rem !important;
+    padding-left: 0.9rem !important;
   }
 
   .history-list .expense-item {
-    gap: 0.4rem !important;
-    padding: 0.55rem 0;
+    gap: 0.45rem !important;
+    padding: 0.65rem 0;
   }
 
   .history-list .expense-item > :first-child {
     min-width: 0;
     flex: 1 1 auto;
-    gap: 0.5rem !important;
+    gap: 0.55rem !important;
   }
 
   .history-list .expense-icon {
-    width: 2rem;
-    height: 2rem;
-    flex: 0 0 2rem;
+    width: 2.15rem;
+    height: 2.15rem;
+    flex: 0 0 2.15rem;
   }
 
   .history-list .expense-item h3 {
     margin-bottom: 0.1rem !important;
-    font-size: 0.85rem;
+    font-size: 0.88rem;
   }
 
-  .history-list .expense-item p {
-    font-size: 0.72rem;
-  }
-
-  .history-list .expense-actions {
-    flex: 0 0 auto;
-    gap: 0.25rem !important;
-  }
-
-  .history-list .expense-actions strong {
-    font-size: 0.78rem;
-  }
+  .history-list .expense-item p { font-size: 0.75rem; }
+  .history-list .expense-actions { flex: 0 0 auto; gap: 0.3rem !important; }
+  .history-list .expense-actions strong { font-size: 0.8rem; }
 
   .history-list .expense-actions .btn {
-    min-width: 2rem;
-    min-height: 2.15rem;
-    padding: 0.2rem 0.35rem;
+    min-width: 2.15rem;
+    min-height: 2.25rem;
+    padding: 0.25rem 0.35rem;
   }
 }
 
 @media (max-width: 575.98px) {
+  .summary-card { padding: 0.6rem 0.45rem; }
+
   .history-card {
-    height: 39rem;
-    min-height: 39rem;
-    max-height: 39rem;
+    height: clamp(26rem, 58vh, 32rem);
+    min-height: 26rem;
+    max-height: 32rem;
   }
 
-  .summary-card {
-    padding: 0.6rem 0.45rem;
+  .record-toolbar .record-type-buttons { width: auto; }
+
+  .record-type-buttons .btn {
+    padding-right: 0.45rem;
+    padding-left: 0.45rem;
   }
 }
