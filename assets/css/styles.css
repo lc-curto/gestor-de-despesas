@@ -995,11 +995,10 @@ html {
   }
 
   .history-card {
-    height: 110vh;
-    height: 110svh;
-    height: 110dvh;
-    min-height: 36rem;
-    max-height: 52rem;
+    height: calc(110dvh + 5rem);
+    height: calc(110svh + 5rem);
+    min-height: 41rem;
+    max-height: 57rem;
   }
 
   .history-card-body > .p-3,
@@ -1083,7 +1082,10 @@ html {
     white-space: nowrap;
   }
 
-  .history-list .expense-item p {
+   .history-list .expense-item p {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
     overflow: hidden;
     font-size: 0.69rem;
     line-height: 1.2;
@@ -1107,11 +1109,10 @@ html {
 
 @media (max-width: 575.98px) {
   .history-card {
-    height: 110vh;
-    height: 110svh;
-    height: 110dvh;
-    min-height: 36rem;
-    max-height: 52rem;
+    height: calc(110dvh + 5rem);
+    height: calc(110svh + 5rem);
+    min-height: 41rem;
+    max-height: 57rem;
   }
 
   .summary-card { padding: 0.55rem 0.4rem; }
