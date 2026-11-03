@@ -113,6 +113,7 @@ let totalDespesasPeriodo = 0;
 let totalReceitasPeriodo = 0;
 let quantidadeDespesasPeriodo = 0;
 let quantidadeReceitasPeriodo = 0;
+let quantidadeMovimentosVisiveis = TAMANHO_PAGINA;
 let requisicaoLista = 0;
 let utilizadorAtualId = null;
 
@@ -299,16 +300,18 @@ function renderizarMovimentos() {
     .sort((a, b) => b.data.localeCompare(a.data) || String(a.id).localeCompare(String(b.id)));
 
   const haMais = filtroMovimentos === "despesa"
-    ? haMaisDespesas
+    ? despesasAtuais.length < quantidadeDespesasPeriodo
     : filtroMovimentos === "receita"
-      ? haMaisReceitas
-      : haMaisDespesas || haMaisReceitas;
+      ? receitasAtuais.length < quantidadeReceitasPeriodo
+      : despesasAtuais.length + receitasAtuais.length < quantidadeDespesasPeriodo + quantidadeReceitasPeriodo;
+
+  const movimentosVisiveis = movimentos.slice(0, quantidadeMovimentosVisiveis);
   const totalFiltrado = filtroMovimentos === "despesa"
     ? quantidadeDespesasPeriodo
     : filtroMovimentos === "receita"
       ? quantidadeReceitasPeriodo
       : quantidadeDespesasPeriodo + quantidadeReceitasPeriodo;
-  const textoContagem = `A mostrar ${movimentos.length} de ${totalFiltrado} ${totalFiltrado === 1 ? "movimento" : "movimentos"}`;
+  const textoContagem = `A mostrar ${movimentosVisiveis.length} de ${totalFiltrado} ${totalFiltrado === 1 ? "movimento" : "movimentos"}`;
   const controlosLista = `
     <div class="pt-3 pb-4 border-top">
       <p class="small text-secondary text-center mb-2" aria-live="polite">${textoContagem}</p>
@@ -320,7 +323,7 @@ function renderizarMovimentos() {
     </div>
   `;
 
-  if (movimentos.length === 0) {
+  if (movimentosVisiveis.length === 0) {
     expensesList.innerHTML = `
       <div class="empty-state text-center py-4">
         <div class="empty-icon mb-3" aria-hidden="true">◎</div>
@@ -331,7 +334,7 @@ function renderizarMovimentos() {
     return;
   }
 
-  expensesList.innerHTML = movimentos.map(item => {
+  expensesList.innerHTML = movimentosVisiveis.map(item => {
     const descricao = escaparHTML(item.description);
     const categoria = item.tipo === "despesa"
       ? categorias[item.category] || "Outros"
@@ -381,6 +384,7 @@ async function carregarDados() {
   haMaisDespesas = false;
   haMaisReceitas = false;
   aCarregarMais = false;
+  quantidadeMovimentosVisiveis = TAMANHO_PAGINA;
   totalDespesasPeriodo = 0;
   totalReceitasPeriodo = 0;
   quantidadeDespesasPeriodo = 0;
@@ -397,8 +401,8 @@ async function carregarDados() {
   let resultados;
   try {
     resultados = await Promise.all([
-      listarDespesas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria: categoria === "all" ? null : categoria, userId: utilizadorAtualId, offset: 0, limite: TAMANHO_PAGINA + 1 }),
-      listarReceitas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria: categoria === "all" ? null : categoria, userId: utilizadorAtualId, offset: 0, limite: TAMANHO_PAGINA + 1 }),
+      listarDespesas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria: categoria === "all" ? null : categoria, userId: utilizadorAtualId, offset: 0, limite: TAMANHO_PAGINA }),
+      listarReceitas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria: categoria === "all" ? null : categoria, userId: utilizadorAtualId, offset: 0, limite: TAMANHO_PAGINA }),
       listarDespesas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria: categoria === "all" ? null : categoria, userId: utilizadorAtualId, somenteMontantes: true }),
       listarReceitas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria: categoria === "all" ? null : categoria, userId: utilizadorAtualId, somenteMontantes: true })
     ]);
@@ -427,8 +431,8 @@ async function carregarDados() {
   receitasAtuais = dadosReceitas.slice(0, TAMANHO_PAGINA);
   offsetDespesas = despesasAtuais.length;
   offsetReceitas = receitasAtuais.length;
-  haMaisDespesas = dadosDespesas.length > TAMANHO_PAGINA;
-  haMaisReceitas = dadosReceitas.length > TAMANHO_PAGINA;
+  haMaisDespesas = dadosDespesas.length === TAMANHO_PAGINA;
+  haMaisReceitas = dadosReceitas.length === TAMANHO_PAGINA;
   totalDespesasPeriodo = (resumoDespesas.data || []).reduce((soma, item) => soma + Number(item.amount), 0);
   totalReceitasPeriodo = (resumoReceitas.data || []).reduce((soma, item) => soma + Number(item.amount), 0);
   quantidadeDespesasPeriodo = (resumoDespesas.data || []).length;
@@ -441,41 +445,49 @@ async function carregarMaisMovimentos() {
   if (aCarregarMais) return;
 
   const requisicaoAtual = requisicaoLista;
+  const totalMovimentos = filtroMovimentos === "despesa"
+    ? quantidadeDespesasPeriodo
+    : filtroMovimentos === "receita"
+      ? quantidadeReceitasPeriodo
+      : quantidadeDespesasPeriodo + quantidadeReceitasPeriodo;
+
+  if (quantidadeMovimentosVisiveis >= totalMovimentos) return;
+
   aCarregarMais = true;
   renderizarMovimentos();
+
   try {
     const intervalo = obterIntervaloPeriodo();
     const categoria = categoryFilter.value === "all" ? null : categoryFilter.value;
     const [resultadoDespesas, resultadoReceitas] = await Promise.all([
       haMaisDespesas
-        ? listarDespesas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria, userId: utilizadorAtualId, offset: offsetDespesas, limite: TAMANHO_PAGINA + 1 })
+        ? listarDespesas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria, userId: utilizadorAtualId, offset: offsetDespesas, limite: TAMANHO_PAGINA })
         : Promise.resolve(null),
       haMaisReceitas
-        ? listarReceitas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria, userId: utilizadorAtualId, offset: offsetReceitas, limite: TAMANHO_PAGINA + 1 })
+        ? listarReceitas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria, userId: utilizadorAtualId, offset: offsetReceitas, limite: TAMANHO_PAGINA })
         : Promise.resolve(null)
     ]);
 
     if (requisicaoAtual !== requisicaoLista) return;
-
     if (resultadoDespesas?.error || resultadoReceitas?.error) {
       throw resultadoDespesas?.error || resultadoReceitas?.error;
     }
 
     if (resultadoDespesas) {
-      const dados = resultadoDespesas.data || [];
-      const novos = dados.slice(0, TAMANHO_PAGINA);
+      const novos = resultadoDespesas.data || [];
       despesasAtuais = [...despesasAtuais, ...novos];
       offsetDespesas += novos.length;
-      haMaisDespesas = dados.length > TAMANHO_PAGINA;
+      haMaisDespesas = novos.length === TAMANHO_PAGINA;
     }
 
     if (resultadoReceitas) {
-      const dados = resultadoReceitas.data || [];
-      const novos = dados.slice(0, TAMANHO_PAGINA);
+      const novos = resultadoReceitas.data || [];
       receitasAtuais = [...receitasAtuais, ...novos];
       offsetReceitas += novos.length;
-      haMaisReceitas = dados.length > TAMANHO_PAGINA;
+      haMaisReceitas = novos.length === TAMANHO_PAGINA;
     }
+
+    quantidadeMovimentosVisiveis = Math.min(quantidadeMovimentosVisiveis + TAMANHO_PAGINA, totalMovimentos);
   } catch (erro) {
     if (requisicaoAtual === requisicaoLista) {
       alert(obterMensagemErro(erro, "Não foi possível carregar mais movimentos."));
@@ -490,6 +502,7 @@ async function carregarMaisMovimentos() {
 
 function alterarFiltroMovimentos(filtro) {
   filtroMovimentos = filtro;
+  quantidadeMovimentosVisiveis = TAMANHO_PAGINA;
 
   [transactionFilterAll, transactionFilterExpenses, transactionFilterIncome].forEach(botao => {
     botao.classList.toggle("btn-primary", botao === {
