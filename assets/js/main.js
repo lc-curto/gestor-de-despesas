@@ -1589,21 +1589,58 @@ function criarPainelDiagnostico() {
 
     if (utilizadorAtualId) {
       const intervalo = obterIntervaloPeriodo();
-      const parametros = obterParametrosConsulta(intervalo.inicio, intervalo.fim, categoryFilter.value);
+      const parametros = obterParametrosConsulta(
+        intervalo.inicio,
+        intervalo.fim,
+        categoryFilter.value,
+      );
 
-      try {
-        const resultado = await listarDespesas({ ...parametros, offset: 0, limite: 1 });
-        registo("Consulta despesas", resultado.error ? "ERRO: " + resultado.error.message : "OK (" + (resultado.data?.length || 0) + " registo(s) de teste)");
-      } catch (erro) {
-        registo("Consulta despesas", "EXCEÇÃO: " + erro.message);
-      }
+      // Reproduz as quatro consultas do carregamento normal, incluindo os totais sem limite.
+      const testesConsulta = [
+        ["Despesas (lista)", () =>
+          listarDespesas({ ...parametros, offset: 0, limite: TAMANHO_PAGINA })],
+        ["Receitas (lista)", () =>
+          listarReceitas({ ...parametros, offset: 0, limite: TAMANHO_PAGINA })],
+        ["Despesas (total)", () =>
+          listarDespesas({ ...parametros, somenteMontantes: true })],
+        ["Receitas (total)", () =>
+          listarReceitas({ ...parametros, somenteMontantes: true })],
+      ];
 
-      try {
-        const resultado = await listarReceitas({ ...parametros, offset: 0, limite: 1 });
-        registo("Consulta receitas", resultado.error ? "ERRO: " + resultado.error.message : "OK (" + (resultado.data?.length || 0) + " registo(s) de teste)");
-      } catch (erro) {
-        registo("Consulta receitas", "EXCEÇÃO: " + erro.message);
-      }
+      const resultadosConsulta = await Promise.all(
+        testesConsulta.map(async ([nome, executarTeste]) => {
+          try {
+            const resultado = await executarTeste();
+
+            if (resultado.error) {
+              return {
+                nome,
+                estado: "ERRO",
+                detalhe: resultado.error.message || String(resultado.error),
+              };
+            }
+
+            return {
+              nome,
+              estado: "OK",
+              detalhe: (resultado.data?.length || 0) + " registo(s)",
+            };
+          } catch (erro) {
+            return {
+              nome,
+              estado: "EXCEÇÃO",
+              detalhe: erro.message || String(erro),
+            };
+          }
+        }),
+      );
+
+      resultadosConsulta.forEach((resultado) => {
+        registo(
+          resultado.nome,
+          resultado.estado + " — " + resultado.detalhe,
+        );
+      });
     } else {
       registo("Consultas às tabelas", "Não executadas: utilizadorAtualId indisponível.");
     }
