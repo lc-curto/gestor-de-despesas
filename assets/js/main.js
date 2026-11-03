@@ -40,13 +40,21 @@ const logoutButton = document.getElementById("logoutButton");
 const themeToggle = document.getElementById("themeToggle");
 const currentDateTime = document.getElementById("currentDateTime");
 
-const periodModeMonth = document.getElementById("periodModeMonth");
-const periodModeYear = document.getElementById("periodModeYear");
 const periodMonth = document.getElementById("periodMonth");
-const periodYear = document.getElementById("periodYear");
 const periodPrevious = document.getElementById("periodPrevious");
 const periodNext = document.getElementById("periodNext");
 const periodCaption = document.getElementById("periodCaption");
+
+const expenseTypeButton = document.getElementById("expenseTypeButton");
+const incomeTypeButton = document.getElementById("incomeTypeButton");
+const recordTitle = document.getElementById("recordTitle");
+const saveRecordButton = document.getElementById("saveExpenseButton");
+const descriptionLabel = document.getElementById("descriptionLabel");
+const amountLabel = document.getElementById("amountLabel");
+const categoryLabel = document.getElementById("categoryLabel");
+const transactionFilterAll = document.getElementById("transactionFilterAll");
+const transactionFilterExpenses = document.getElementById("transactionFilterExpenses");
+const transactionFilterIncome = document.getElementById("transactionFilterIncome");
 
 const expenseForm = document.getElementById("expenseForm");
 const expenseDate = document.getElementById("expenseDate");
@@ -61,14 +69,6 @@ const totalAmount = document.getElementById("totalAmount");
 const totalIncome = document.getElementById("totalIncome");
 const balanceAmount = document.getElementById("balanceAmount");
 
-const incomeForm = document.getElementById("incomeForm");
-const incomeDate = document.getElementById("incomeDate");
-const incomeAmount = document.getElementById("incomeAmount");
-const incomeDescription = document.getElementById("incomeDescription");
-const incomeCategory = document.getElementById("incomeCategory");
-const incomeCategoryFilter = document.getElementById("incomeCategoryFilter");
-const incomesList = document.getElementById("incomesList");
-
 const conversionAmount = document.getElementById("conversionAmount");
 const conversionFrom = document.getElementById("conversionFrom");
 const conversionTo = document.getElementById("conversionTo");
@@ -81,10 +81,11 @@ const conversionRate = document.getElementById("conversionRate");
 // ======================================
 
 let modoRegisto = false;
-let modoPeriodo = "month";
 let dataReferencia = new Date();
 let despesasAtuais = [];
 let receitasAtuais = [];
+let tipoLancamento = "despesa";
+let filtroMovimentos = "todos";
 
 let modalInatividade = null;
 
@@ -197,19 +198,8 @@ function atualizarDataHora() {
 function obterIntervaloPeriodo() {
   const ano = dataReferencia.getFullYear();
   const mes = dataReferencia.getMonth();
-
-  if (modoPeriodo === "month") {
-    const inicio = new Date(ano, mes, 1);
-    const fim = new Date(ano, mes + 1, 1);
-
-    return {
-      inicio: formatarDataLocal(inicio),
-      fim: formatarDataLocal(fim)
-    };
-  }
-
-  const inicio = new Date(ano, 0, 1);
-  const fim = new Date(ano + 1, 0, 1);
+  const inicio = new Date(ano, mes, 1);
+  const fim = new Date(ano, mes + 1, 1);
 
   return {
     inicio: formatarDataLocal(inicio),
@@ -221,69 +211,15 @@ function atualizarSeletorPeriodo() {
   const ano = dataReferencia.getFullYear();
   const mes = String(dataReferencia.getMonth() + 1).padStart(2, "0");
 
-  periodModeMonth.classList.toggle(
-    "btn-primary",
-    modoPeriodo === "month"
-  );
-
-  periodModeMonth.classList.toggle(
-    "btn-outline-primary",
-    modoPeriodo !== "month"
-  );
-
-  periodModeYear.classList.toggle(
-    "btn-primary",
-    modoPeriodo === "year"
-  );
-
-  periodModeYear.classList.toggle(
-    "btn-outline-primary",
-    modoPeriodo !== "year"
-  );
-
-  periodModeMonth.setAttribute(
-    "aria-pressed",
-    String(modoPeriodo === "month")
-  );
-
-  periodModeYear.setAttribute(
-    "aria-pressed",
-    String(modoPeriodo === "year")
-  );
-
-  periodMonth.classList.toggle("d-none", modoPeriodo !== "month");
-  periodYear.classList.toggle("d-none", modoPeriodo !== "year");
-
   periodMonth.value = `${ano}-${mes}`;
-  periodYear.value = ano;
-
-  if (modoPeriodo === "month") {
-    periodCaption.textContent = new Intl.DateTimeFormat("pt-PT", {
-      month: "long",
-      year: "numeric"
-    }).format(dataReferencia);
-  } else {
-    periodCaption.textContent = `Ano de ${ano}`;
-  }
-}
-
-function alterarModoPeriodo(modo) {
-  modoPeriodo = modo;
-  atualizarSeletorPeriodo();
-  carregarDados();
+  periodCaption.textContent = new Intl.DateTimeFormat("pt-PT", {
+    month: "long",
+    year: "numeric"
+  }).format(dataReferencia);
 }
 
 function alterarPeriodo(direcao) {
-  if (modoPeriodo === "month") {
-    dataReferencia.setMonth(
-      dataReferencia.getMonth() + direcao
-    );
-  } else {
-    dataReferencia.setFullYear(
-      dataReferencia.getFullYear() + direcao
-    );
-  }
-
+  dataReferencia.setMonth(dataReferencia.getMonth() + direcao);
   atualizarSeletorPeriodo();
   carregarDados();
 }
@@ -292,20 +228,7 @@ function selecionarMes() {
   if (!periodMonth.value) return;
 
   const [ano, mes] = periodMonth.value.split("-").map(Number);
-
   dataReferencia = new Date(ano, mes - 1, 1);
-
-  atualizarSeletorPeriodo();
-  carregarDados();
-}
-
-function selecionarAno() {
-  const ano = Number(periodYear.value);
-
-  if (!Number.isInteger(ano) || ano < 1) return;
-
-  dataReferencia = new Date(ano, 0, 1);
-
   atualizarSeletorPeriodo();
   carregarDados();
 }
@@ -331,61 +254,65 @@ function atualizarResumo(despesas, receitas) {
 }
 
 // ======================================
-// HISTÓRICO DE DESPESAS
+// LISTA DE MOVIMENTOS
 // ======================================
 
-function renderizarDespesas(despesas) {
-  if (despesas.length === 0) {
+function atualizarResumo(despesas, receitas) {
+  const totalDespesas = despesas.reduce((soma, item) => soma + Number(item.amount), 0);
+  const totalReceitas = receitas.reduce((soma, item) => soma + Number(item.amount), 0);
+
+  totalAmount.textContent = formatarValor(totalDespesas);
+  totalIncome.textContent = formatarValor(totalReceitas);
+  balanceAmount.textContent = formatarValor(totalReceitas - totalDespesas);
+}
+
+function renderizarMovimentos() {
+  const movimentos = [
+    ...despesasAtuais.map(item => ({ ...item, tipo: "despesa", data: item.expense_date })),
+    ...receitasAtuais.map(item => ({ ...item, tipo: "receita", data: item.income_date }))
+  ]
+    .filter(item => filtroMovimentos === "todos" || item.tipo === filtroMovimentos)
+    .sort((a, b) => b.data.localeCompare(a.data));
+
+  if (movimentos.length === 0) {
     expensesList.innerHTML = `
       <div class="empty-state text-center py-4">
         <div class="empty-icon mb-3" aria-hidden="true">◎</div>
-
-        <h3 class="h6">
-          Ainda não existem despesas registadas
-        </h3>
-
-        <p class="small text-secondary mb-0">
-          Adiciona uma despesa para começares a acompanhar os teus gastos.
-        </p>
+        <h3 class="h6">Ainda não existem movimentos</h3>
+        <p class="small text-secondary mb-0">Adiciona uma despesa ou receita para começar.</p>
       </div>
     `;
-
     return;
   }
 
-  expensesList.innerHTML = despesas.map(despesa => {
-    const descricao = escaparHTML(despesa.description);
-    const categoria = categorias[despesa.category] || "Outros";
-    const data = formatarDataApresentacao(despesa.expense_date);
-    const valor = formatarValor(despesa.amount);
+  expensesList.innerHTML = movimentos.map(item => {
+    const descricao = escaparHTML(item.description);
+    const categoria = item.tipo === "despesa"
+      ? categorias[item.category] || "Outros"
+      : categoriasReceita[item.category] || "Outros";
+    const valor = formatarValor(item.amount);
+    const classeTipo = item.tipo === "despesa" ? "expense-icon" : "expense-icon income-icon";
+    const classeValor = item.tipo === "despesa" ? "text-danger" : "text-success";
+    const icone = item.tipo === "despesa" ? "bi-arrow-up-right" : "bi-arrow-down-left";
 
     return `
       <article class="expense-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom">
         <div class="d-flex align-items-center gap-3 min-w-0">
-          <div class="expense-icon flex-shrink-0" aria-hidden="true">
-            <i class="bi bi-receipt"></i>
+          <div class="${classeTipo} flex-shrink-0" aria-hidden="true">
+            <i class="bi ${icone}"></i>
           </div>
-
           <div class="min-w-0">
-            <h3 class="h6 fw-semibold mb-1 text-break">
-              ${descricao}
-            </h3>
-
-            <p class="small text-secondary mb-0">
-              ${categoria} · ${data}
-            </p>
+            <h3 class="h6 fw-semibold mb-1 text-break">${descricao}</h3>
+            <p class="small text-secondary mb-0">${categoria} · ${formatarDataApresentacao(item.data)}</p>
           </div>
         </div>
-
-        <strong class="text-nowrap">
-          ${valor}
-        </strong>
+        <strong class="${classeValor} text-nowrap">${item.tipo === "despesa" ? "−" : "+"}${valor}</strong>
       </article>
     `;
   }).join("");
 }
 
-async function carregarDespesas() {
+async function carregarDados() {
   const intervalo = obterIntervaloPeriodo();
   const categoria = categoryFilter.value;
 
@@ -397,97 +324,45 @@ async function carregarDespesas() {
     </div>
   `;
 
-  const resultado = await listarDespesas({
-    inicio: intervalo.inicio,
-    fim: intervalo.fim,
-    categoria: categoria === "all" ? null : categoria
-  });
+  const [resultadoDespesas, resultadoReceitas] = await Promise.all([
+    listarDespesas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria: categoria === "all" ? null : categoria }),
+    listarReceitas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria: categoria === "all" ? null : categoria })
+  ]);
 
-  if (resultado.error) {
-    expensesList.innerHTML = `
-      <div class="alert alert-danger mb-0">
-        Não foi possível carregar as despesas.
-      </div>
-    `;
-
+  if (resultadoDespesas.error || resultadoReceitas.error) {
+    expensesList.innerHTML = '<div class="alert alert-danger mb-0">Não foi possível carregar os movimentos.</div>';
     despesasAtuais = [];
-    atualizarResumo(despesasAtuais, receitasAtuais);
-    return;
-  }
-
-  despesasAtuais = resultado.data || [];
-
-  atualizarResumo(despesasAtuais, receitasAtuais);
-  renderizarDespesas(despesasAtuais);
-}
-
-function renderizarReceitas(receitas) {
-  if (receitas.length === 0) {
-    incomesList.innerHTML = `
-      <div class="empty-state text-center py-4">
-        <div class="empty-icon mb-3" aria-hidden="true">◎</div>
-        <h3 class="h6">Ainda não existem receitas registadas</h3>
-        <p class="small text-secondary mb-0">Adiciona uma receita para acompanhares o teu saldo.</p>
-      </div>
-    `;
-    return;
-  }
-
-  incomesList.innerHTML = receitas.map(receita => {
-    const descricao = escaparHTML(receita.description);
-    const categoria = categoriasReceita[receita.category] || "Outros";
-    const data = formatarDataApresentacao(receita.income_date);
-    const valor = formatarValor(receita.amount);
-
-    return `
-      <article class="expense-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom">
-        <div class="d-flex align-items-center gap-3 min-w-0">
-          <div class="expense-icon income-icon flex-shrink-0" aria-hidden="true">
-            <i class="bi bi-arrow-down-left"></i>
-          </div>
-          <div class="min-w-0">
-            <h3 class="h6 fw-semibold mb-1 text-break">${descricao}</h3>
-            <p class="small text-secondary mb-0">${categoria} · ${data}</p>
-          </div>
-        </div>
-        <strong class="text-success text-nowrap">${valor}</strong>
-      </article>
-    `;
-  }).join("");
-}
-
-async function carregarReceitas() {
-  const intervalo = obterIntervaloPeriodo();
-  const categoria = incomeCategoryFilter.value;
-
-  incomesList.innerHTML = `
-    <div class="text-center py-4">
-      <div class="spinner-border spinner-border-sm text-success" role="status">
-        <span class="visually-hidden">A carregar...</span>
-      </div>
-    </div>
-  `;
-
-  const resultado = await listarReceitas({
-    inicio: intervalo.inicio,
-    fim: intervalo.fim,
-    categoria: categoria === "all" ? null : categoria
-  });
-
-  if (resultado.error) {
-    incomesList.innerHTML = '<div class="alert alert-danger mb-0">Não foi possível carregar as receitas.</div>';
     receitasAtuais = [];
     atualizarResumo(despesasAtuais, receitasAtuais);
     return;
   }
 
-  receitasAtuais = resultado.data || [];
+  despesasAtuais = resultadoDespesas.data || [];
+  receitasAtuais = resultadoReceitas.data || [];
   atualizarResumo(despesasAtuais, receitasAtuais);
-  renderizarReceitas(receitasAtuais);
+  renderizarMovimentos();
 }
 
-async function carregarDados() {
-  await Promise.all([carregarDespesas(), carregarReceitas()]);
+function alterarFiltroMovimentos(filtro) {
+  filtroMovimentos = filtro;
+
+  [transactionFilterAll, transactionFilterExpenses, transactionFilterIncome].forEach(botao => {
+    botao.classList.toggle("btn-primary", botao === {
+      todos: transactionFilterAll,
+      despesa: transactionFilterExpenses,
+      receita: transactionFilterIncome
+    }[filtro]);
+    botao.classList.toggle("btn-link", botao !== {
+      todos: transactionFilterAll,
+      despesa: transactionFilterExpenses,
+      receita: transactionFilterIncome
+    }[filtro]);
+  });
+
+  transactionFilterAll.setAttribute("aria-pressed", String(filtro === "todos"));
+  transactionFilterExpenses.setAttribute("aria-pressed", String(filtro === "despesa"));
+  transactionFilterIncome.setAttribute("aria-pressed", String(filtro === "receita"));
+  renderizarMovimentos();
 }
 
 // ======================================
@@ -650,101 +525,80 @@ async function terminarSessao() {
 }
 
 // ======================================
-// REGISTAR DESPESA
+// NOVO LANÇAMENTO
 // ======================================
 
-async function guardarDespesa(evento) {
-  evento.preventDefault();
+function atualizarTipoLancamento(tipo) {
+  tipoLancamento = tipo;
+  const isReceita = tipo === "receita";
 
+  recordTitle.textContent = isReceita ? "Adicionar receita" : "Adicionar despesa";
+  descriptionLabel.textContent = "Descrição";
+  amountLabel.textContent = "Valor";
+  categoryLabel.textContent = "Categoria";
+  saveRecordButton.textContent = isReceita ? "Guardar receita" : "Guardar despesa";
+  saveRecordButton.classList.toggle("btn-success", isReceita);
+  saveRecordButton.classList.toggle("btn-danger", !isReceita);
+
+  expenseTypeButton.classList.toggle("active", !isReceita);
+  expenseTypeButton.classList.toggle("btn-danger", !isReceita);
+  expenseTypeButton.classList.toggle("btn-outline-danger", isReceita);
+  incomeTypeButton.classList.toggle("active", isReceita);
+  incomeTypeButton.classList.toggle("btn-success", isReceita);
+  incomeTypeButton.classList.toggle("btn-outline-success", !isReceita);
+  expenseTypeButton.setAttribute("aria-pressed", String(!isReceita));
+  incomeTypeButton.setAttribute("aria-pressed", String(isReceita));
+
+  expenseCategory.innerHTML = isReceita
+    ? `<option value="" selected disabled>Seleciona uma categoria</option>
+       <option value="salario">Salário</option>
+       <option value="freelance">Freelance</option>
+       <option value="investimento">Investimento</option>
+       <option value="outros">Outros</option>`
+    : `<option value="" selected disabled>Seleciona uma categoria</option>
+       <option value="casa">Casa</option>
+       <option value="alimentacao">Alimentação</option>
+       <option value="transportes">Transportes</option>
+       <option value="lazer">Lazer</option>
+       <option value="saude">Saúde</option>
+       <option value="outros">Outros</option>`;
+}
+
+async function guardarMovimento(evento) {
+  evento.preventDefault();
   if (!expenseForm.reportValidity()) return;
 
   const dados = {
     description: expenseDescription.value.trim(),
     amount: Number(expenseAmount.value),
     category: expenseCategory.value,
-    expense_date: expenseDate.value
+    date: expenseDate.value
   };
 
-  if (
-    !dados.description ||
-    !Number.isFinite(dados.amount) ||
-    dados.amount <= 0 ||
-    !dados.category ||
-    !dados.expense_date
-  ) {
-    return;
-  }
+  if (!dados.description || !Number.isFinite(dados.amount) || dados.amount <= 0 || !dados.category || !dados.date) return;
 
-  const botao = document.getElementById("saveExpenseButton");
-
-  botao.disabled = true;
-  botao.textContent = "A guardar...";
+  saveRecordButton.disabled = true;
+  saveRecordButton.textContent = "A guardar...";
 
   try {
-    const resultado = await adicionarDespesa(dados);
+    const resultado = tipoLancamento === "receita"
+      ? await adicionarReceita({ ...dados, income_date: dados.date })
+      : await adicionarDespesa({ ...dados, expense_date: dados.date });
 
     if (resultado.error) {
-      alert(
-        obterMensagemErro(
-          resultado.error,
-          "Não foi possível guardar a despesa."
-        )
-      );
-
+      alert(obterMensagemErro(resultado.error, "Não foi possível guardar o lançamento."));
       return;
     }
 
     expenseForm.reset();
     expenseDate.value = formatarDataLocal();
-
-    await carregarDespesas();
+    atualizarTipoLancamento(tipoLancamento);
+    await carregarDados();
   } catch (erro) {
-    alert(
-      obterMensagemErro(
-        erro,
-        "Ocorreu um erro ao guardar a despesa."
-      )
-    );
+    alert(obterMensagemErro(erro, "Ocorreu um erro ao guardar o lançamento."));
   } finally {
-    botao.disabled = false;
-    botao.textContent = "Guardar despesa";
-  }
-}
-
-async function guardarReceita(evento) {
-  evento.preventDefault();
-
-  if (!incomeForm.reportValidity()) return;
-
-  const dados = {
-    description: incomeDescription.value.trim(),
-    amount: Number(incomeAmount.value),
-    category: incomeCategory.value,
-    income_date: incomeDate.value
-  };
-
-  if (!dados.description || !Number.isFinite(dados.amount) || dados.amount <= 0 || !dados.category || !dados.income_date) return;
-
-  const botao = document.getElementById("saveIncomeButton");
-  botao.disabled = true;
-  botao.textContent = "A guardar...";
-
-  try {
-    const resultado = await adicionarReceita(dados);
-
-    if (resultado.error) {
-      alert(obterMensagemErro(resultado.error, "Não foi possível guardar a receita."));
-      return;
-    }
-
-    incomeForm.reset();
-    incomeDate.value = formatarDataLocal();
-    await carregarReceitas();
-  } catch (erro) {
-    alert(obterMensagemErro(erro, "Ocorreu um erro ao guardar a receita."));
-  } finally {
-    botao.disabled = false;
-    botao.textContent = "Guardar receita";
+    saveRecordButton.disabled = false;
+    saveRecordButton.textContent = tipoLancamento === "receita" ? "Guardar receita" : "Guardar despesa";
   }
 }
 
@@ -832,7 +686,7 @@ async function iniciarAplicacao() {
     dataReferencia = new Date();
 
     expenseDate.value = formatarDataLocal();
-    incomeDate.value = formatarDataLocal();
+    atualizarTipoLancamento("despesa");
 
     atualizarSeletorPeriodo();
     atualizarDataHora();
@@ -865,19 +719,14 @@ logoutButton.addEventListener("click", terminarSessao);
 
 continueSessionButton.addEventListener("click", continuarSessao);
 
-expenseForm.addEventListener("submit", guardarDespesa);
-incomeForm.addEventListener("submit", guardarReceita);
+expenseForm.addEventListener("submit", guardarMovimento);
+expenseTypeButton.addEventListener("click", () => atualizarTipoLancamento("despesa"));
+incomeTypeButton.addEventListener("click", () => atualizarTipoLancamento("receita"));
 
-categoryFilter.addEventListener("change", carregarDespesas);
-incomeCategoryFilter.addEventListener("change", carregarReceitas);
-
-periodModeMonth.addEventListener("click", () => {
-  alterarModoPeriodo("month");
-});
-
-periodModeYear.addEventListener("click", () => {
-  alterarModoPeriodo("year");
-});
+categoryFilter.addEventListener("change", carregarDados);
+transactionFilterAll.addEventListener("click", () => alterarFiltroMovimentos("todos"));
+transactionFilterExpenses.addEventListener("click", () => alterarFiltroMovimentos("despesa"));
+transactionFilterIncome.addEventListener("click", () => alterarFiltroMovimentos("receita"));
 
 periodPrevious.addEventListener("click", () => {
   alterarPeriodo(-1);
@@ -888,8 +737,6 @@ periodNext.addEventListener("click", () => {
 });
 
 periodMonth.addEventListener("change", selecionarMes);
-
-periodYear.addEventListener("change", selecionarAno);
 
 convertButton.addEventListener("click", converterMoeda);
 
