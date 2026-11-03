@@ -394,6 +394,43 @@ function atualizarResumo() {
   balanceAmount.textContent = formatarValor(totalReceitasPeriodo - totalDespesasPeriodo);
 }
 
+function obterParametrosConsulta(inicio, fim, categoria) {
+  return {
+    inicio,
+    fim,
+    categoria: categoria === "all" ? null : categoria,
+    userId: utilizadorAtualId
+  };
+}
+
+function obterTotalMovimentos() {
+  if (filtroMovimentos === "despesa") return quantidadeDespesasPeriodo;
+  if (filtroMovimentos === "receita") return quantidadeReceitasPeriodo;
+
+  return quantidadeDespesasPeriodo + quantidadeReceitasPeriodo;
+}
+
+function obterQuantidadeMovimentosCarregados() {
+  if (filtroMovimentos === "despesa") return despesasAtuais.length;
+  if (filtroMovimentos === "receita") return receitasAtuais.length;
+
+  return despesasAtuais.length + receitasAtuais.length;
+}
+
+function mostrarErroCarregamento() {
+  const cache = obterDadosEmCache();
+
+  if (cache) {
+    aplicarDadosEmCache(cache);
+    return;
+  }
+
+  despesasAtuais = [];
+  receitasAtuais = [];
+  expensesList.innerHTML = '<div class="alert alert-danger mb-0" role="alert">Não foi possível carregar os movimentos e ainda não existem dados guardados neste dispositivo.</div>';
+  atualizarResumo();
+}
+
 function renderizarMovimentos() {
   const movimentos = [
     ...despesasAtuais.map(item => ({ ...item, tipo: "despesa", data: item.expense_date })),
@@ -493,23 +530,18 @@ async function carregarDados() {
     </div>
   `;
 
+  const parametros = obterParametrosConsulta(intervalo.inicio, intervalo.fim, categoria);
   let resultados;
+
   try {
     resultados = await Promise.all([
-      listarDespesas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria: categoria === "all" ? null : categoria, userId: utilizadorAtualId, offset: 0, limite: TAMANHO_PAGINA }),
-      listarReceitas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria: categoria === "all" ? null : categoria, userId: utilizadorAtualId, offset: 0, limite: TAMANHO_PAGINA }),
-      listarDespesas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria: categoria === "all" ? null : categoria, userId: utilizadorAtualId, somenteMontantes: true }),
-      listarReceitas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria: categoria === "all" ? null : categoria, userId: utilizadorAtualId, somenteMontantes: true })
+      listarDespesas({ ...parametros, offset: 0, limite: TAMANHO_PAGINA }),
+      listarReceitas({ ...parametros, offset: 0, limite: TAMANHO_PAGINA }),
+      listarDespesas({ ...parametros, somenteMontantes: true }),
+      listarReceitas({ ...parametros, somenteMontantes: true })
     ]);
   } catch {
-    if (requisicaoAtual !== requisicaoLista) return;
-    const cache = obterDadosEmCache();
-    if (cache) {
-      aplicarDadosEmCache(cache);
-      return;
-    }
-    expensesList.innerHTML = '<div class="alert alert-danger mb-0" role="alert">Não foi possível carregar os movimentos e ainda não existem dados guardados neste dispositivo.</div>';
-    atualizarResumo();
+    if (requisicaoAtual === requisicaoLista) mostrarErroCarregamento();
     return;
   }
 
@@ -518,15 +550,7 @@ async function carregarDados() {
   if (requisicaoAtual !== requisicaoLista) return;
 
   if (resultadoDespesas.error || resultadoReceitas.error || resumoDespesas.error || resumoReceitas.error) {
-    const cache = obterDadosEmCache();
-    if (cache) {
-      aplicarDadosEmCache(cache);
-      return;
-    }
-    expensesList.innerHTML = '<div class="alert alert-danger mb-0">Não foi possível carregar os movimentos e ainda não existem dados guardados neste dispositivo.</div>';
-    despesasAtuais = [];
-    receitasAtuais = [];
-    atualizarResumo();
+    mostrarErroCarregamento();
     return;
   }
 
@@ -557,18 +581,12 @@ async function carregarMaisMovimentos() {
   if (aCarregarMais) return;
 
   const requisicaoAtual = requisicaoLista;
-  const totalMovimentos = filtroMovimentos === "despesa"
-    ? quantidadeDespesasPeriodo
-    : filtroMovimentos === "receita"
-      ? quantidadeReceitasPeriodo
-      : quantidadeDespesasPeriodo + quantidadeReceitasPeriodo;
-
-  const proximoLimite = Math.min(quantidadeMovimentosVisiveis + obterIncrementoMovimentos(), totalMovimentos);
-  const movimentosCarregados = filtroMovimentos === "despesa"
-    ? despesasAtuais.length
-    : filtroMovimentos === "receita"
-      ? receitasAtuais.length
-      : despesasAtuais.length + receitasAtuais.length;
+  const totalMovimentos = obterTotalMovimentos();
+  const proximoLimite = Math.min(
+    quantidadeMovimentosVisiveis + obterIncrementoMovimentos(),
+    totalMovimentos
+  );
+  const movimentosCarregados = obterQuantidadeMovimentosCarregados();
 
   if (quantidadeMovimentosVisiveis >= totalMovimentos) return;
 
@@ -578,16 +596,20 @@ async function carregarMaisMovimentos() {
   try {
     if (movimentosCarregados < proximoLimite) {
       const intervalo = obterIntervaloPeriodo();
-      const categoria = categoryFilter.value === "all" ? null : categoryFilter.value;
+      const parametros = obterParametrosConsulta(
+        intervalo.inicio,
+        intervalo.fim,
+        categoryFilter.value
+      );
       const carregarDespesas = filtroMovimentos !== "receita" && haMaisDespesas;
       const carregarReceitas = filtroMovimentos !== "despesa" && haMaisReceitas;
 
       const [resultadoDespesas, resultadoReceitas] = await Promise.all([
         carregarDespesas
-          ? listarDespesas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria, userId: utilizadorAtualId, offset: offsetDespesas, limite: TAMANHO_PAGINA })
+          ? listarDespesas({ ...parametros, offset: offsetDespesas, limite: TAMANHO_PAGINA })
           : Promise.resolve(null),
         carregarReceitas
-          ? listarReceitas({ inicio: intervalo.inicio, fim: intervalo.fim, categoria, userId: utilizadorAtualId, offset: offsetReceitas, limite: TAMANHO_PAGINA })
+          ? listarReceitas({ ...parametros, offset: offsetReceitas, limite: TAMANHO_PAGINA })
           : Promise.resolve(null)
       ]);
 
