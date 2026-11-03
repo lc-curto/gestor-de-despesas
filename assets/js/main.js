@@ -215,9 +215,21 @@ function obterNomeApresentacao(utilizador) {
     : "Utilizador";
 }
 
-function capitalizarPrimeiraLetra(valor) {
-  const texto = String(valor ?? "");
-  return texto ? texto[0].toLocaleUpperCase("pt-PT") + texto.slice(1) : texto;
+function formatarDescricaoMovimento(valor) {
+  const palavrasLigacao = new Set([
+    "a", "as", "o", "os", "um", "uma", "uns", "umas",
+    "de", "da", "das", "do", "dos", "em", "na", "nas",
+    "no", "nos", "por", "para", "com", "sem", "e", "ou"
+  ]);
+
+  return String(valor ?? "")
+    .toLocaleLowerCase("pt-PT")
+    .replace(/\\S+/gu, (palavra, indice, texto) => {
+      const inicioFrase = indice === 0 || /[.!?;:]\\s+$/u.test(texto.slice(0, indice));
+      if (!inicioFrase && palavrasLigacao.has(palavra)) return palavra;
+
+      return palavra.charAt(0).toLocaleUpperCase("pt-PT") + palavra.slice(1);
+    });
 }
 
 function escaparHTML(valor) {
@@ -402,7 +414,7 @@ function renderizarMovimentos() {
   }
 
   expensesList.innerHTML = movimentosVisiveis.map(item => {
-    const descricao = escaparHTML(capitalizarPrimeiraLetra(item.description));
+    const descricao = escaparHTML(formatarDescricaoMovimento(item.description));
     const categoria = item.tipo === "despesa"
       ? categorias[item.category] || "Outros"
       : categoriasReceita[item.category] || "Outros";
