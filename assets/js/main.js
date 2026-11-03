@@ -34,6 +34,8 @@ const offlineStatus = document.getElementById("offlineStatus");
 
 const loginForm = document.getElementById("loginForm");
 const signupNameGroup = document.getElementById("signupNameGroup");
+const signupCurrencyGroup = document.getElementById("signupCurrencyGroup");
+const signupCurrency = document.getElementById("signupCurrency");
 const signupNameInput = document.getElementById("signupName");
 const loginEmail = document.getElementById("loginEmail");
 const loginPassword = document.getElementById("loginPassword");
@@ -130,6 +132,7 @@ let quantidadeReceitasPeriodo = 0;
 let quantidadeMovimentosVisiveis = obterQuantidadeInicialMovimentos();
 let requisicaoLista = 0;
 let utilizadorAtualId = null;
+let moedaAtual = "EUR";
 let observadorLista = null;
 let eventoInstalacaoPendente = null;
 
@@ -157,9 +160,9 @@ const categoriasReceita = {
   outros: "Outros"
 };
 
-const formatadorMoeda = new Intl.NumberFormat("pt-PT", {
+let formatadorMoeda = new Intl.NumberFormat("pt-PT", {
   style: "currency",
-  currency: "EUR"
+  currency: moedaAtual
 });
 
 const formatadorData = new Intl.DateTimeFormat("pt-PT", {
@@ -625,6 +628,7 @@ function alterarFiltroMovimentos(filtro) {
 function alternarModoAutenticacao() {
   modoRegisto = !modoRegisto;
   signupNameGroup.classList.toggle("d-none", !modoRegisto);
+  signupCurrencyGroup.classList.toggle("d-none", !modoRegisto);
   signupNameInput.required = modoRegisto;
 
   if (!modoRegisto) signupNameInput.value = "";
@@ -662,6 +666,7 @@ async function processarAutenticacao(evento) {
   const email = loginEmail.value.trim();
   const password = loginPassword.value;
   const nomeCompleto = signupNameInput.value.trim();
+  const moeda = signupCurrency.value;
 
   if (!email || !password || (modoRegisto && !nomeCompleto)) {
     mostrarMensagem(
@@ -681,7 +686,7 @@ async function processarAutenticacao(evento) {
 
   try {
     const resultado = modoRegisto
-      ? await criarUsuario(email, password, nomeCompleto)
+      ? await criarUsuario(email, password, nomeCompleto, moeda)
       : await iniciarSessao(email, password);
 
     if (resultado.error) {
@@ -1057,6 +1062,14 @@ async function iniciarAplicacao() {
     }
 
     utilizadorAtualId = resultado.user.id;
+    moedaAtual = resultado.user.user_metadata?.currency || "EUR";
+    try {
+      formatadorMoeda = new Intl.NumberFormat("pt-PT", { style: "currency", currency: moedaAtual });
+    } catch {
+      moedaAtual = "EUR";
+      formatadorMoeda = new Intl.NumberFormat("pt-PT", { style: "currency", currency: moedaAtual });
+    }
+    conversionFrom.value = moedaAtual;
     const nomeUtilizador = obterNomeApresentacao(resultado.user);
     greetingTitle.textContent = `Olá, ${nomeUtilizador}!`;
     accountDisplayName.textContent = nomeUtilizador;
