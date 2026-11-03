@@ -999,11 +999,11 @@ html {
   }
 
   .history-card {
-    height: 74vh;
-    height: 74svh;
-    height: 74dvh;
-    min-height: 32rem;
-    max-height: 44rem;
+    height: 88vh;
+    height: 88svh;
+    height: 88dvh;
+    min-height: 34rem;
+    max-height: 48rem;
   }
 
   .history-card-body > .p-3,
@@ -1097,11 +1097,11 @@ html {
 
 @media (max-width: 575.98px) {
   .history-card {
-    height: 74vh;
-    height: 74svh;
-    height: 74dvh;
-    min-height: 32rem;
-    max-height: 44rem;
+    height: 88vh;
+    height: 88svh;
+    height: 88dvh;
+    min-height: 34rem;
+    max-height: 48rem;
   }
 
   .summary-card { padding: 0.55rem 0.4rem; }
