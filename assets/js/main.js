@@ -102,6 +102,10 @@ const conversionRate = document.getElementById("conversionRate");
 
 const TAMANHO_PAGINA = 10;
 
+function obterIncrementoMovimentos() {
+  return window.matchMedia("(max-width: 991.98px)").matches ? 6 : TAMANHO_PAGINA;
+}
+
 function obterQuantidadeInicialMovimentos() {
   return window.matchMedia("(max-width: 991.98px)").matches ? 6 : TAMANHO_PAGINA;
 }
@@ -374,7 +378,7 @@ function renderizarMovimentos() {
   const controlosLista = `
     <div class="pt-3 pb-4">
       <p class="small text-secondary text-center mb-0" aria-live="polite">${textoContagem}</p>
-      ${haMais ? `<div id="loadMoreSentinel" class="py-3 text-center" aria-hidden="true">${aCarregarMais ? '<span class="spinner-border spinner-border-sm text-primary" role="status"></span>' : ""}</div>` : ""}
+      ${haMais ? `<div class="d-flex justify-content-center pt-3"><button type="button" class="btn btn-outline-primary btn-sm px-4" id="loadMoreMovements" ${aCarregarMais ? "disabled" : ""}>${aCarregarMais ? '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>A carregar…' : "Ver mais movimentos"}</button></div>` : ""}
     </div>
   `;
 
@@ -386,7 +390,6 @@ function renderizarMovimentos() {
         <p class="small text-secondary mb-0">Adiciona um movimento ou altera os filtros.</p>
       </div>${controlosLista}
     `;
-    observarFimDaLista();
     return;
   }
 
@@ -429,25 +432,6 @@ function renderizarMovimentos() {
   observarFimDaLista();
 }
 
-function observarFimDaLista() {
-  if (!("IntersectionObserver" in window)) return;
-
-  if (observadorLista) observadorLista.disconnect();
-
-  const mobile = window.matchMedia("(max-width: 991.98px)").matches;
-  observadorLista = new IntersectionObserver(entradas => {
-    if (entradas.some(entrada => entrada.isIntersecting)) {
-      carregarMaisMovimentos();
-    }
-  }, {
-    root: mobile ? null : expensesList,
-    rootMargin: mobile ? "500px 0px" : "180px 0px",
-    threshold: 0
-  });
-
-  const sentinela = document.getElementById("loadMoreSentinel");
-  if (sentinela && !aCarregarMais) observadorLista.observe(sentinela);
-}
 
 async function carregarDados() {
   const requisicaoAtual = ++requisicaoLista;
@@ -545,7 +529,7 @@ async function carregarMaisMovimentos() {
       ? quantidadeReceitasPeriodo
       : quantidadeDespesasPeriodo + quantidadeReceitasPeriodo;
 
-  const proximoLimite = Math.min(quantidadeMovimentosVisiveis + TAMANHO_PAGINA, totalMovimentos);
+  const proximoLimite = Math.min(quantidadeMovimentosVisiveis + obterIncrementoMovimentos(), totalMovimentos);
   const movimentosCarregados = filtroMovimentos === "despesa"
     ? despesasAtuais.length
     : filtroMovimentos === "receita"
@@ -1151,6 +1135,11 @@ window.matchMedia("(min-width: 992px)").addEventListener("change", sincronizarEs
 sincronizarEstadoPainel();
 
 expensesList.addEventListener("click", async evento => {
+  if (evento.target.closest("#loadMoreMovements")) {
+    carregarMaisMovimentos();
+    return;
+  }
+
   const botao = evento.target.closest("button[data-acao]");
   if (!botao) return;
 
