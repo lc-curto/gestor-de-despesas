@@ -703,20 +703,20 @@ body {
 
 
 /* ======================================
-   HISTÓRICO — ÁREA DE SCROLL
+   HISTÓRICO — SCROLL INTERNO
 ====================================== */
 
 .history-card {
   display: flex;
-  height: min(52rem, 78vh);
-  min-height: 28rem;
+  height: min(48rem, 72vh);
+  min-height: 30rem;
   flex-direction: column;
   overflow: hidden;
 }
 
 .history-card-body {
   display: flex;
-  height: 0;
+  height: 100%;
   min-height: 0;
   flex: 1 1 auto;
   flex-direction: column;
@@ -730,9 +730,9 @@ body {
 
 .history-list {
   display: block;
-  height: auto;
-  min-height: 12rem;
-  flex: 1 1 auto;
+  height: 0;
+  min-height: 0;
+  flex: 1 1 0%;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -746,31 +746,19 @@ body {
 
 @media (max-width: 991.98px) {
   .history-card {
-    height: 70vh;
-    min-height: 24rem;
-    max-height: 70vh;
+    height: 68vh;
+    min-height: 26rem;
+    max-height: 68vh;
   }
 }
 
 @media (max-width: 575.98px) {
   .history-card {
-    height: 68vh;
-    min-height: 22rem;
-    max-height: 68vh;
-  }
-
-  .history-card-body > .p-3,
-  .history-card-body > .px-3 {
-    padding-right: 1rem !important;
-    padding-left: 1rem !important;
-  }
-
-  .history-list {
-    padding-right: 1rem !important;
-    padding-left: 1rem !important;
+    height: 65vh;
+    min-height: 24rem;
+    max-height: 65vh;
   }
 }
-
 
 /* ======================================
    NAVBAR — AÇÕES E IDENTIDADE
