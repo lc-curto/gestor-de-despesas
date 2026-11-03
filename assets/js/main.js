@@ -96,6 +96,8 @@ const conversionRate = document.getElementById("conversionRate");
 // ESTADO DA APLICAÇÃO
 // ======================================
 
+const TAMANHO_PAGINA = 10;
+
 let modoRegisto = false;
 let dataReferencia = new Date();
 let despesasAtuais = [];
@@ -116,8 +118,6 @@ let quantidadeReceitasPeriodo = 0;
 let quantidadeMovimentosVisiveis = TAMANHO_PAGINA;
 let requisicaoLista = 0;
 let utilizadorAtualId = null;
-
-const TAMANHO_PAGINA = 10;
 
 let modalInatividade = null;
 
