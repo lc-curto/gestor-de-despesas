@@ -380,7 +380,11 @@ function atualizarAvisoLigacao(mensagem) {
 
 // Reconstitui o estado da interface a partir do cache. Estes dados são apenas os movimentos
 // que já tinham sido carregados anteriormente; não representam necessariamente o período completo.
-function aplicarDadosEmCache(cache) {
+// Reconstitui o estado da interface a partir do cache e apresenta o motivo correto da utilização dos dados locais.
+function aplicarDadosEmCache(
+  cache,
+  mensagemAviso = "Sem ligação à internet.",
+) {
   despesasAtuais = Array.isArray(cache.despesas) ? cache.despesas : [];
   receitasAtuais = Array.isArray(cache.receitas) ? cache.receitas : [];
   totalDespesasPeriodo = Number(cache.totalDespesasPeriodo) || 0;
@@ -401,7 +405,8 @@ function aplicarDadosEmCache(cache) {
     : "data desconhecida";
 
   atualizarAvisoLigacao(
-    "Sem ligação à internet. Dados guardados em " +
+    mensagemAviso +
+      " Dados guardados em " +
       dataCache +
       ". Apenas são apresentados os movimentos previamente carregados.",
   );
@@ -513,17 +518,23 @@ function obterQuantidadeMovimentosCarregados() {
 
 // Define o comportamento quando a consulta falha: tenta recuperar o cache ou apresenta um erro.
 function mostrarErroCarregamento() {
+  const estaOffline = !navigator.onLine;
   const cache = obterDadosEmCache();
+  const mensagemAviso = estaOffline
+    ? "Sem ligação à internet."
+    : "Não foi possível sincronizar os dados com o servidor.";
 
   if (cache) {
-    aplicarDadosEmCache(cache);
+    aplicarDadosEmCache(cache, mensagemAviso);
     return;
   }
 
   despesasAtuais = [];
   receitasAtuais = [];
-  expensesList.innerHTML =
-    '<div class="alert alert-danger mb-0" role="alert">Não foi possível carregar os movimentos e ainda não existem dados guardados neste dispositivo.</div>';
+  expensesList.innerHTML = estaOffline
+    ? '<div class="alert alert-warning mb-0" role="alert">Sem ligação à internet e sem dados guardados neste dispositivo.</div>'
+    : '<div class="alert alert-danger mb-0" role="alert">Não foi possível sincronizar os movimentos com o servidor. Verifica a ligação e tenta novamente.</div>';
+  atualizarAvisoLigacao(mensagemAviso);
   atualizarResumo();
 }
 
@@ -663,7 +674,8 @@ async function carregarDados() {
       listarDespesas({ ...parametros, somenteMontantes: true }),
       listarReceitas({ ...parametros, somenteMontantes: true }),
     ]);
-  } catch {
+  } catch (erro) {
+    console.error("Erro ao carregar movimentos:", erro);
     if (requisicaoAtual === requisicaoLista) mostrarErroCarregamento();
     return;
   }
