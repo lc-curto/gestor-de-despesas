@@ -103,13 +103,21 @@ const conversionRate = document.getElementById("conversionRate");
 // ======================================
 
 const TAMANHO_PAGINA = 10;
+const TAMANHO_PAGINA_MOVEL = 6;
+const MEDIA_QUERY_MOVEL = "(max-width: 991.98px)";
+
+function obterLimiteMovimentos() {
+  return window.matchMedia(MEDIA_QUERY_MOVEL).matches
+    ? TAMANHO_PAGINA_MOVEL
+    : TAMANHO_PAGINA;
+}
 
 function obterIncrementoMovimentos() {
-  return window.matchMedia("(max-width: 991.98px)").matches ? 6 : TAMANHO_PAGINA;
+  return obterLimiteMovimentos();
 }
 
 function obterQuantidadeInicialMovimentos() {
-  return window.matchMedia("(max-width: 991.98px)").matches ? 6 : TAMANHO_PAGINA;
+  return obterLimiteMovimentos();
 }
 
 let modoRegisto = false;
@@ -133,7 +141,6 @@ let quantidadeMovimentosVisiveis = obterQuantidadeInicialMovimentos();
 let requisicaoLista = 0;
 let utilizadorAtualId = null;
 let moedaAtual = "EUR";
-let observadorLista = null;
 let eventoInstalacaoPendente = null;
 
 let modalInatividade = null;
@@ -160,6 +167,20 @@ const categoriasReceita = {
   investimentos: "Investimentos",
   reembolsos: "Reembolsos",
   outros: "Outros"
+};
+
+const palavrasLigacao = new Set([
+  "a", "as", "o", "os", "um", "uma", "uns", "umas",
+  "de", "da", "das", "do", "dos", "em", "na", "nas",
+  "no", "nos", "por", "para", "com", "sem", "e", "ou"
+]);
+
+const entidadesHTML = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#039;"
 };
 
 let formatadorMoeda = new Intl.NumberFormat("pt-PT", {
@@ -218,12 +239,6 @@ function obterNomeApresentacao(utilizador) {
 }
 
 function formatarDescricaoMovimento(valor) {
-  const palavrasLigacao = new Set([
-    "a", "as", "o", "os", "um", "uma", "uns", "umas",
-    "de", "da", "das", "do", "dos", "em", "na", "nas",
-    "no", "nos", "por", "para", "com", "sem", "e", "ou"
-  ]);
-
   return String(valor ?? "")
     .toLocaleLowerCase("pt-PT")
     .replace(/\S+/gu, (palavra, indice, texto) => {
@@ -235,17 +250,15 @@ function formatarDescricaoMovimento(valor) {
 }
 
 function escaparHTML(valor) {
-  return String(valor).replace(/[&<>"']/g, caractere => {
-    const entidades = {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#039;"
-    };
+  return String(valor).replace(/[&<>"']/g, caractere => entidadesHTML[caractere]);
+}
 
-    return entidades[caractere];
-  });
+function criarOpcoesCategoria(listaCategorias) {
+  const opcoes = Object.entries(listaCategorias)
+    .map(([valor, nome]) => `<option value="${valor}">${nome}</option>`)
+    .join("");
+
+  return `<option value="" selected disabled>Seleciona uma categoria</option>${opcoes}`;
 }
 
 function mostrarMensagem(elemento, mensagem, tipo = "danger") {
@@ -621,17 +634,16 @@ function alterarFiltroMovimentos(filtro) {
   filtroMovimentos = filtro;
   quantidadeMovimentosVisiveis = obterQuantidadeInicialMovimentos();
 
+  const botaoAtivo = {
+    todos: transactionFilterAll,
+    despesa: transactionFilterExpenses,
+    receita: transactionFilterIncome
+  }[filtro];
+
   [transactionFilterAll, transactionFilterExpenses, transactionFilterIncome].forEach(botao => {
-    botao.classList.toggle("btn-primary", botao === {
-      todos: transactionFilterAll,
-      despesa: transactionFilterExpenses,
-      receita: transactionFilterIncome
-    }[filtro]);
-    botao.classList.toggle("btn-link", botao !== {
-      todos: transactionFilterAll,
-      despesa: transactionFilterExpenses,
-      receita: transactionFilterIncome
-    }[filtro]);
+    const ativo = botao === botaoAtivo;
+    botao.classList.toggle("btn-primary", ativo);
+    botao.classList.toggle("btn-link", !ativo);
   });
 
   transactionFilterAll.setAttribute("aria-pressed", String(filtro === "todos"));
@@ -838,21 +850,9 @@ function atualizarTipoLancamento(tipo) {
   expenseTypeButton.setAttribute("aria-pressed", String(!isReceita));
   incomeTypeButton.setAttribute("aria-pressed", String(isReceita));
 
-  expenseCategory.innerHTML = isReceita
-    ? `<option value="" selected disabled>Seleciona uma categoria</option>
-       <option value="salario">Salário</option>
-       <option value="vendas">Vendas</option>
-       <option value="trabalho_extra">Trabalho extra</option>
-       <option value="investimentos">Investimentos</option>
-       <option value="reembolsos">Reembolsos</option>
-       <option value="outros">Outros</option>`
-    : `<option value="" selected disabled>Seleciona uma categoria</option>
-       <option value="casa">Casa</option>
-       <option value="alimentacao">Alimentação</option>
-       <option value="transportes">Transportes</option>
-       <option value="lazer">Lazer</option>
-       <option value="saude">Saúde</option>
-       <option value="outros">Outros</option>`;
+  expenseCategory.innerHTML = criarOpcoesCategoria(
+    isReceita ? categoriasReceita : categorias
+  );
 }
 
 function iniciarEdicaoMovimento(tipo, id) {
