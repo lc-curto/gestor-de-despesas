@@ -429,7 +429,6 @@ function renderizarMovimentos() {
       </article>
     `;
   }).join("") + controlosLista;
-  observarFimDaLista();
 }
 
 
