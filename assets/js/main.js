@@ -1,4 +1,3 @@
-
 // PONTO DE ENTRADA DA INTERFACE
 // Este ficheiro coordena os módulos da aplicação. A lógica específica de autenticação,
 // dados, tema e câmbio continua nos respetivos módulos importados abaixo.
@@ -9,7 +8,7 @@ import {
   iniciarSessao,
   encerrarSessao,
   iniciarMonitoramentoInatividade,
-  pararMonitoramentoInatividade
+  pararMonitoramentoInatividade,
 } from "./auth.js";
 
 import { inicializarTema, alternarTema } from "./tema.js";
@@ -17,13 +16,13 @@ import {
   adicionarDespesa,
   listarDespesas,
   atualizarDespesa,
-  eliminarDespesa
+  eliminarDespesa,
 } from "./despesas.js";
 import {
   adicionarReceita,
   listarReceitas,
   atualizarReceita,
-  eliminarReceita
+  eliminarReceita,
 } from "./receitas.js";
 import { obterTaxaCambio } from "./api.js";
 
@@ -80,8 +79,12 @@ const descriptionLabel = document.getElementById("descriptionLabel");
 const amountLabel = document.getElementById("amountLabel");
 const categoryLabel = document.getElementById("categoryLabel");
 const transactionFilterAll = document.getElementById("transactionFilterAll");
-const transactionFilterExpenses = document.getElementById("transactionFilterExpenses");
-const transactionFilterIncome = document.getElementById("transactionFilterIncome");
+const transactionFilterExpenses = document.getElementById(
+  "transactionFilterExpenses",
+);
+const transactionFilterIncome = document.getElementById(
+  "transactionFilterIncome",
+);
 const cancelEditButton = document.getElementById("cancelEditButton");
 
 const expenseForm = document.getElementById("expenseForm");
@@ -110,7 +113,7 @@ const conversionRate = document.getElementById("conversionRate");
 // Não são dados permanentes: os movimentos são obtidos e guardados através dos módulos de dados.
 // ======================================
 
-const TAMANHO_PAGINA = 10;
+const TAMANHO_PAGINA_DESKTOP = 10;
 const TAMANHO_PAGINA_MOVEL = 6;
 const MEDIA_QUERY_MOVEL = "(max-width: 991.98px)";
 
@@ -119,7 +122,7 @@ const MEDIA_QUERY_MOVEL = "(max-width: 991.98px)";
 function obterLimiteMovimentos() {
   return window.matchMedia(MEDIA_QUERY_MOVEL).matches
     ? TAMANHO_PAGINA_MOVEL
-    : TAMANHO_PAGINA;
+    : TAMANHO_PAGINA_DESKTOP;
 }
 
 // Mantém o tamanho de cada carregamento adicional alinhado com o limite inicial.
@@ -170,7 +173,7 @@ const categoriasDespesa = {
   lazer: "Lazer",
   compras: "Compras",
   educacao: "Educação",
-  outros: "Outros"
+  outros: "Outros",
 };
 
 const categoriasReceita = {
@@ -179,13 +182,34 @@ const categoriasReceita = {
   trabalho_extra: "Trabalho extra",
   investimentos: "Investimentos",
   reembolsos: "Reembolsos",
-  outros: "Outros"
+  outros: "Outros",
 };
 
 const palavrasLigacao = new Set([
-  "a", "as", "o", "os", "um", "uma", "uns", "umas",
-  "de", "da", "das", "do", "dos", "em", "na", "nas",
-  "no", "nos", "por", "para", "com", "sem", "e", "ou"
+  "a",
+  "as",
+  "o",
+  "os",
+  "um",
+  "uma",
+  "uns",
+  "umas",
+  "de",
+  "da",
+  "das",
+  "do",
+  "dos",
+  "em",
+  "na",
+  "nas",
+  "no",
+  "nos",
+  "por",
+  "para",
+  "com",
+  "sem",
+  "e",
+  "ou",
 ]);
 
 const entidadesHTML = {
@@ -193,18 +217,18 @@ const entidadesHTML = {
   "<": "&lt;",
   ">": "&gt;",
   '"': "&quot;",
-  "'": "&#039;"
+  "'": "&#039;",
 };
 
 let formatadorMoeda = new Intl.NumberFormat("pt-PT", {
   style: "currency",
-  currency: moedaAtual
+  currency: moedaAtual,
 });
 
 const formatadorData = new Intl.DateTimeFormat("pt-PT", {
   day: "2-digit",
   month: "2-digit",
-  year: "numeric"
+  year: "numeric",
 });
 
 // ======================================
@@ -243,16 +267,12 @@ function formatarDataApresentacao(data) {
   return formatadorData.format(new Date(ano, mes - 1, dia));
 }
 
-// Obtém o nome a apresentar na interface, dando prioridade aos metadados da conta.
+// Obtém o nome guardado nos metadados da conta para apresentar na interface.
 function obterNomeApresentacao(utilizador) {
-  // A conta existente nesta alteração é a única sem nome; novos cadastros guardam full_name.
-  const dataReferenciaContaExistente = Date.parse("2026-11-03T10:10:48Z");
-  const dataCriacao = Date.parse(utilizador.created_at || "");
-  if (Number.isFinite(dataCriacao) && dataCriacao < dataReferenciaContaExistente) {
-    return "Lucas Curto";
-  }
+  const nomeGuardado =
+    utilizador.user_metadata?.full_name ||
+    utilizador.user_metadata?.name;
 
-  const nomeGuardado = utilizador.user_metadata?.full_name || utilizador.user_metadata?.name;
   return typeof nomeGuardado === "string" && nomeGuardado.trim()
     ? nomeGuardado.trim()
     : "Utilizador";
@@ -264,7 +284,8 @@ function formatarDescricaoMovimento(valor) {
   return String(valor ?? "")
     .toLocaleLowerCase("pt-PT")
     .replace(/\S+/gu, (palavra, indice, texto) => {
-      const inicioFrase = indice === 0 || /[.!?;:]\s+$/u.test(texto.slice(0, indice));
+      const inicioFrase =
+        indice === 0 || /[.!?;:]\s+$/u.test(texto.slice(0, indice));
       if (!inicioFrase && palavrasLigacao.has(palavra)) return palavra;
 
       return palavra.charAt(0).toLocaleUpperCase("pt-PT") + palavra.slice(1);
@@ -274,7 +295,10 @@ function formatarDescricaoMovimento(valor) {
 // Escapa caracteres especiais antes de inserir texto dinâmico no HTML, reduzindo o risco
 // de interpretar uma descrição do utilizador como código HTML.
 function escaparHTML(valor) {
-  return String(valor).replace(/[&<>"']/g, caractere => entidadesHTML[caractere]);
+  return String(valor).replace(
+    /[&<>"']/g,
+    (caractere) => entidadesHTML[caractere],
+  );
 }
 
 // Recebe um objeto de categoriasDespesa e cria as opções do seletor usado no formulário.
@@ -308,17 +332,29 @@ function obterMensagemErro(erro, mensagemPadrao) {
 // tem a sua própria entrada de cache no armazenamento local do navegador.
 function obterChaveCache() {
   const intervalo = obterIntervaloPeriodo();
-  return "meu-bolso:" + utilizadorAtualId + ":" + intervalo.inicio + ":" + intervalo.fim + ":" + categoryFilter.value;
+  return (
+    "meu-bolso:" +
+    utilizadorAtualId +
+    ":" +
+    intervalo.inicio +
+    ":" +
+    intervalo.fim +
+    ":" +
+    categoryFilter.value
+  );
 }
 
 // Guarda localmente os últimos dados carregados. O cache permite consultar informação
 // anteriormente obtida quando não existe ligação à internet.
 function guardarDadosEmCache(dados) {
   try {
-    localStorage.setItem(obterChaveCache(), JSON.stringify({
-      guardadoEm: new Date().toISOString(),
-      ...dados
-    }));
+    localStorage.setItem(
+      obterChaveCache(),
+      JSON.stringify({
+        guardadoEm: new Date().toISOString(),
+        ...dados,
+      }),
+    );
   } catch (erro) {
     console.warn("Não foi possível guardar os dados localmente:", erro);
   }
@@ -358,10 +394,17 @@ function aplicarDadosEmCache(cache) {
   quantidadeMovimentosVisiveis = obterQuantidadeInicialMovimentos();
 
   const dataCache = cache.guardadoEm
-    ? new Intl.DateTimeFormat("pt-PT", { dateStyle: "short", timeStyle: "short" }).format(new Date(cache.guardadoEm))
+    ? new Intl.DateTimeFormat("pt-PT", {
+        dateStyle: "short",
+        timeStyle: "short",
+      }).format(new Date(cache.guardadoEm))
     : "data desconhecida";
 
-  atualizarAvisoLigacao("Sem ligação à internet. Dados guardados em " + dataCache + ". Apenas são apresentados os movimentos previamente carregados.");
+  atualizarAvisoLigacao(
+    "Sem ligação à internet. Dados guardados em " +
+      dataCache +
+      ". Apenas são apresentados os movimentos previamente carregados.",
+  );
   atualizarResumo();
   renderizarMovimentos();
 }
@@ -377,7 +420,7 @@ function atualizarDataHora() {
 
   currentDateTime.textContent = new Intl.DateTimeFormat("pt-PT", {
     dateStyle: "full",
-    timeStyle: "short"
+    timeStyle: "short",
   }).format(agora);
 }
 
@@ -394,7 +437,7 @@ function obterIntervaloPeriodo() {
 
   return {
     inicio: formatarDataLocal(inicio),
-    fim: formatarDataLocal(fim)
+    fim: formatarDataLocal(fim),
   };
 }
 
@@ -406,7 +449,7 @@ function atualizarSeletorPeriodo() {
   periodMonth.value = `${ano}-${mes}`;
   periodCaption.textContent = new Intl.DateTimeFormat("pt-PT", {
     month: "long",
-    year: "numeric"
+    year: "numeric",
   }).format(dataReferencia);
 }
 
@@ -436,7 +479,9 @@ function selecionarMes() {
 function atualizarResumo() {
   totalAmount.textContent = formatarValor(totalDespesasPeriodo);
   totalIncome.textContent = formatarValor(totalReceitasPeriodo);
-  balanceAmount.textContent = formatarValor(totalReceitasPeriodo - totalDespesasPeriodo);
+  balanceAmount.textContent = formatarValor(
+    totalReceitasPeriodo - totalDespesasPeriodo,
+  );
 }
 
 // Prepara os parâmetros comuns enviados aos módulos despesas.js e receitas.js.
@@ -446,7 +491,7 @@ function obterParametrosConsulta(inicio, fim, categoria) {
     inicio,
     fim,
     categoria: categoria === "all" ? null : categoria,
-    userId: utilizadorAtualId
+    userId: utilizadorAtualId,
   };
 }
 
@@ -477,7 +522,8 @@ function mostrarErroCarregamento() {
 
   despesasAtuais = [];
   receitasAtuais = [];
-  expensesList.innerHTML = '<div class="alert alert-danger mb-0" role="alert">Não foi possível carregar os movimentos e ainda não existem dados guardados neste dispositivo.</div>';
+  expensesList.innerHTML =
+    '<div class="alert alert-danger mb-0" role="alert">Não foi possível carregar os movimentos e ainda não existem dados guardados neste dispositivo.</div>';
   atualizarResumo();
 }
 
@@ -485,11 +531,25 @@ function mostrarErroCarregamento() {
 // ordena por data e apresenta apenas a quantidade atualmente visível.
 function renderizarMovimentos() {
   const movimentos = [
-    ...despesasAtuais.map(item => ({ ...item, tipo: "despesa", data: item.expense_date })),
-    ...receitasAtuais.map(item => ({ ...item, tipo: "receita", data: item.income_date }))
+    ...despesasAtuais.map((item) => ({
+      ...item,
+      tipo: "despesa",
+      data: item.expense_date,
+    })),
+    ...receitasAtuais.map((item) => ({
+      ...item,
+      tipo: "receita",
+      data: item.income_date,
+    })),
   ]
-    .filter(item => filtroMovimentos === "todos" || item.tipo === filtroMovimentos)
-    .sort((a, b) => b.data.localeCompare(a.data) || String(a.id).localeCompare(String(b.id)));
+    .filter(
+      (item) => filtroMovimentos === "todos" || item.tipo === filtroMovimentos,
+    )
+    .sort(
+      (a, b) =>
+        b.data.localeCompare(a.data) ||
+        String(a.id).localeCompare(String(b.id)),
+    );
 
   const movimentosVisiveis = movimentos.slice(0, quantidadeMovimentosVisiveis);
   const totalFiltrado = obterTotalMovimentos();
@@ -513,18 +573,26 @@ function renderizarMovimentos() {
     return;
   }
 
-  expensesList.innerHTML = movimentosVisiveis.map(item => {
-    const descricao = escaparHTML(formatarDescricaoMovimento(item.description));
-    const categoria = item.tipo === "despesa"
-      ? categoriasDespesa[item.category] || "Outros"
-      : categoriasReceita[item.category] || "Outros";
-    const valor = formatarValor(item.amount);
-    const classeTipo = item.tipo === "despesa" ? "expense-icon" : "expense-icon income-icon";
-    const classeValor = item.tipo === "despesa" ? "text-danger" : "text-success";
-    const icone = item.tipo === "despesa" ? "bi-arrow-up-right" : "bi-arrow-down-left";
-    const id = escaparHTML(item.id);
+  expensesList.innerHTML =
+    movimentosVisiveis
+      .map((item) => {
+        const descricao = escaparHTML(
+          formatarDescricaoMovimento(item.description),
+        );
+        const categoria =
+          item.tipo === "despesa"
+            ? categoriasDespesa[item.category] || "Outros"
+            : categoriasReceita[item.category] || "Outros";
+        const valor = formatarValor(item.amount);
+        const classeTipo =
+          item.tipo === "despesa" ? "expense-icon" : "expense-icon income-icon";
+        const classeValor =
+          item.tipo === "despesa" ? "text-danger" : "text-success";
+        const icone =
+          item.tipo === "despesa" ? "bi-arrow-up-right" : "bi-arrow-down-left";
+        const id = escaparHTML(item.id);
 
-    return `
+        return `
       <article class="expense-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom">
         <div class="d-flex align-items-center gap-3 min-w-0">
           <div class="${classeTipo} flex-shrink-0" aria-hidden="true">
@@ -548,7 +616,8 @@ function renderizarMovimentos() {
         </div>
       </article>
     `;
-  }).join("") + controlosLista;
+      })
+      .join("") + controlosLista;
 }
 
 // Carregamento inicial ou atualização do histórico após mudar o mês, categoria ou registo.
@@ -580,7 +649,11 @@ async function carregarDados() {
     </div>
   `;
 
-  const parametros = obterParametrosConsulta(intervalo.inicio, intervalo.fim, categoria);
+  const parametros = obterParametrosConsulta(
+    intervalo.inicio,
+    intervalo.fim,
+    categoria,
+  );
   let resultados;
 
   try {
@@ -588,18 +661,24 @@ async function carregarDados() {
       listarDespesas({ ...parametros, offset: 0, limite: TAMANHO_PAGINA }),
       listarReceitas({ ...parametros, offset: 0, limite: TAMANHO_PAGINA }),
       listarDespesas({ ...parametros, somenteMontantes: true }),
-      listarReceitas({ ...parametros, somenteMontantes: true })
+      listarReceitas({ ...parametros, somenteMontantes: true }),
     ]);
   } catch {
     if (requisicaoAtual === requisicaoLista) mostrarErroCarregamento();
     return;
   }
 
-  const [resultadoDespesas, resultadoReceitas, resumoDespesas, resumoReceitas] = resultados;
+  const [resultadoDespesas, resultadoReceitas, resumoDespesas, resumoReceitas] =
+    resultados;
 
   if (requisicaoAtual !== requisicaoLista) return;
 
-  if (resultadoDespesas.error || resultadoReceitas.error || resumoDespesas.error || resumoReceitas.error) {
+  if (
+    resultadoDespesas.error ||
+    resultadoReceitas.error ||
+    resumoDespesas.error ||
+    resumoReceitas.error
+  ) {
     mostrarErroCarregamento();
     return;
   }
@@ -612,15 +691,21 @@ async function carregarDados() {
   offsetReceitas = receitasAtuais.length;
   haMaisDespesas = dadosDespesas.length === TAMANHO_PAGINA;
   haMaisReceitas = dadosReceitas.length === TAMANHO_PAGINA;
-  totalDespesasPeriodo = (resumoDespesas.data || []).reduce((soma, item) => soma + Number(item.amount), 0);
-  totalReceitasPeriodo = (resumoReceitas.data || []).reduce((soma, item) => soma + Number(item.amount), 0);
+  totalDespesasPeriodo = (resumoDespesas.data || []).reduce(
+    (soma, item) => soma + Number(item.amount),
+    0,
+  );
+  totalReceitasPeriodo = (resumoReceitas.data || []).reduce(
+    (soma, item) => soma + Number(item.amount),
+    0,
+  );
   quantidadeDespesasPeriodo = (resumoDespesas.data || []).length;
   quantidadeReceitasPeriodo = (resumoReceitas.data || []).length;
   guardarDadosEmCache({
     despesas: despesasAtuais,
     receitas: receitasAtuais,
     totalDespesasPeriodo,
-    totalReceitasPeriodo
+    totalReceitasPeriodo,
   });
   atualizarAvisoLigacao("");
   atualizarResumo();
@@ -636,7 +721,7 @@ async function carregarMaisMovimentos() {
   const totalMovimentos = obterTotalMovimentos();
   const proximoLimite = Math.min(
     quantidadeMovimentosVisiveis + obterIncrementoMovimentos(),
-    totalMovimentos
+    totalMovimentos,
   );
   const movimentosCarregados = obterQuantidadeMovimentosCarregados();
 
@@ -651,18 +736,26 @@ async function carregarMaisMovimentos() {
       const parametros = obterParametrosConsulta(
         intervalo.inicio,
         intervalo.fim,
-        categoryFilter.value
+        categoryFilter.value,
       );
       const carregarDespesas = filtroMovimentos !== "receita" && haMaisDespesas;
       const carregarReceitas = filtroMovimentos !== "despesa" && haMaisReceitas;
 
       const [resultadoDespesas, resultadoReceitas] = await Promise.all([
         carregarDespesas
-          ? listarDespesas({ ...parametros, offset: offsetDespesas, limite: TAMANHO_PAGINA })
+          ? listarDespesas({
+              ...parametros,
+              offset: offsetDespesas,
+              limite: TAMANHO_PAGINA,
+            })
           : Promise.resolve(null),
         carregarReceitas
-          ? listarReceitas({ ...parametros, offset: offsetReceitas, limite: TAMANHO_PAGINA })
-          : Promise.resolve(null)
+          ? listarReceitas({
+              ...parametros,
+              offset: offsetReceitas,
+              limite: TAMANHO_PAGINA,
+            })
+          : Promise.resolve(null),
       ]);
 
       if (requisicaoAtual !== requisicaoLista) return;
@@ -690,11 +783,13 @@ async function carregarMaisMovimentos() {
       despesas: despesasAtuais,
       receitas: receitasAtuais,
       totalDespesasPeriodo,
-      totalReceitasPeriodo
+      totalReceitasPeriodo,
     });
   } catch (erro) {
     if (requisicaoAtual === requisicaoLista) {
-      alert(obterMensagemErro(erro, "Não foi possível carregar mais movimentos."));
+      alert(
+        obterMensagemErro(erro, "Não foi possível carregar mais movimentos."),
+      );
     }
   } finally {
     if (requisicaoAtual === requisicaoLista) {
@@ -712,18 +807,28 @@ function alterarFiltroMovimentos(filtro) {
   const botaoAtivo = {
     todos: transactionFilterAll,
     despesa: transactionFilterExpenses,
-    receita: transactionFilterIncome
+    receita: transactionFilterIncome,
   }[filtro];
 
-  [transactionFilterAll, transactionFilterExpenses, transactionFilterIncome].forEach(botao => {
+  [
+    transactionFilterAll,
+    transactionFilterExpenses,
+    transactionFilterIncome,
+  ].forEach((botao) => {
     const ativo = botao === botaoAtivo;
     botao.classList.toggle("btn-primary", ativo);
     botao.classList.toggle("btn-link", !ativo);
   });
 
   transactionFilterAll.setAttribute("aria-pressed", String(filtro === "todos"));
-  transactionFilterExpenses.setAttribute("aria-pressed", String(filtro === "despesa"));
-  transactionFilterIncome.setAttribute("aria-pressed", String(filtro === "receita"));
+  transactionFilterExpenses.setAttribute(
+    "aria-pressed",
+    String(filtro === "despesa"),
+  );
+  transactionFilterIncome.setAttribute(
+    "aria-pressed",
+    String(filtro === "receita"),
+  );
   renderizarMovimentos();
 }
 
@@ -742,25 +847,19 @@ function alternarModoAutenticacao() {
 
   if (!modoRegisto) signupNameInput.value = "";
 
-  authTitle.textContent = modoRegisto
-    ? "Criar conta"
-    : "Bem-vindo";
+  authTitle.textContent = modoRegisto ? "Criar conta" : "Bem-vindo";
 
   authDescription.textContent = modoRegisto
     ? "Regista-te para começares a gerir as tuas despesas."
     : "Inicia sessão para acompanhares as tuas despesas.";
 
-  authSubmitButton.textContent = modoRegisto
-    ? "Criar conta"
-    : "Entrar";
+  authSubmitButton.textContent = modoRegisto ? "Criar conta" : "Entrar";
 
   authToggleText.textContent = modoRegisto
     ? "Já tens uma conta?"
     : "Ainda não tens uma conta?";
 
-  authToggleButton.textContent = modoRegisto
-    ? "Iniciar sessão"
-    : "Criar conta";
+  authToggleButton.textContent = modoRegisto ? "Iniciar sessão" : "Criar conta";
 
   loginPassword.autocomplete = modoRegisto
     ? "new-password"
@@ -784,7 +883,7 @@ async function processarAutenticacao(evento) {
       authMessage,
       modoRegisto
         ? "Preenche o nome, o email e a palavra-passe."
-        : "Preenche o email e a palavra-passe."
+        : "Preenche o email e a palavra-passe.",
     );
 
     return;
@@ -805,8 +904,8 @@ async function processarAutenticacao(evento) {
         authMessage,
         obterMensagemErro(
           resultado.error,
-          "Não foi possível concluir a autenticação."
-        )
+          "Não foi possível concluir a autenticação.",
+        ),
       );
 
       return;
@@ -816,7 +915,7 @@ async function processarAutenticacao(evento) {
       mostrarMensagem(
         authMessage,
         "Conta criada. Verifica o teu email para confirmares o registo.",
-        "success"
+        "success",
       );
 
       loginForm.reset();
@@ -827,16 +926,11 @@ async function processarAutenticacao(evento) {
   } catch (erro) {
     mostrarMensagem(
       authMessage,
-      obterMensagemErro(
-        erro,
-        "Ocorreu um erro durante a autenticação."
-      )
+      obterMensagemErro(erro, "Ocorreu um erro durante a autenticação."),
     );
   } finally {
     authSubmitButton.disabled = false;
-    authSubmitButton.textContent = modoRegisto
-      ? "Criar conta"
-      : "Entrar";
+    authSubmitButton.textContent = modoRegisto ? "Criar conta" : "Entrar";
   }
 }
 
@@ -849,7 +943,7 @@ async function processarAutenticacao(evento) {
 // Liga o monitor de inatividade ao modal do Bootstrap e apresenta a contagem decrescente.
 function iniciarControloInatividade() {
   modalInatividade = bootstrap.Modal.getOrCreateInstance(
-    inactivityModalElement
+    inactivityModalElement,
   );
 
   iniciarMonitoramentoInatividade({
@@ -862,8 +956,7 @@ function iniciarControloInatividade() {
       const minutos = Math.floor(segundos / 60);
       const resto = segundos % 60;
 
-      inactivityCountdown.textContent =
-        `${String(minutos).padStart(2, "0")}:${String(resto).padStart(2, "0")}`;
+      inactivityCountdown.textContent = `${String(minutos).padStart(2, "0")}:${String(resto).padStart(2, "0")}`;
 
       modalInatividade.show();
     },
@@ -874,7 +967,7 @@ function iniciarControloInatividade() {
       loginForm.reset();
       modoRegisto = false;
       alternarModoAutenticacao();
-    }
+    },
   });
 }
 
@@ -914,17 +1007,27 @@ function atualizarTipoLancamento(tipo) {
   tipoLancamento = tipo;
   const isReceita = tipo === "receita";
 
-  recordTitle.textContent = isReceita ? "Adicionar receita" : "Adicionar despesa";
+  recordTitle.textContent = isReceita
+    ? "Adicionar receita"
+    : "Adicionar despesa";
   descriptionLabel.textContent = "Descrição";
   amountLabel.textContent = "Valor";
   categoryLabel.textContent = "Categoria";
   saveRecordButton.textContent = edicaoAtual
-    ? (isReceita ? "Atualizar receita" : "Atualizar despesa")
-    : (isReceita ? "Guardar receita" : "Guardar despesa");
+    ? isReceita
+      ? "Atualizar receita"
+      : "Atualizar despesa"
+    : isReceita
+      ? "Guardar receita"
+      : "Guardar despesa";
   saveRecordButton.classList.toggle("btn-success", isReceita);
   saveRecordButton.classList.toggle("btn-danger", !isReceita);
-  expenseTypeButton.disabled = Boolean(edicaoAtual && edicaoAtual.tipo !== "despesa");
-  incomeTypeButton.disabled = Boolean(edicaoAtual && edicaoAtual.tipo !== "receita");
+  expenseTypeButton.disabled = Boolean(
+    edicaoAtual && edicaoAtual.tipo !== "despesa",
+  );
+  incomeTypeButton.disabled = Boolean(
+    edicaoAtual && edicaoAtual.tipo !== "receita",
+  );
   cancelEditButton.classList.toggle("d-none", !edicaoAtual);
 
   expenseTypeButton.classList.toggle("active", !isReceita);
@@ -937,7 +1040,7 @@ function atualizarTipoLancamento(tipo) {
   incomeTypeButton.setAttribute("aria-pressed", String(isReceita));
 
   expenseCategory.innerHTML = criarOpcoesCategoria(
-    isReceita ? categoriasReceita : categoriasDespesa
+    isReceita ? categoriasReceita : categoriasDespesa,
   );
 }
 
@@ -945,24 +1048,35 @@ function atualizarTipoLancamento(tipo) {
 // O tipo determina em que lista procurar e qual campo de data utilizar.
 function iniciarEdicaoMovimento(tipo, id) {
   const lista = tipo === "receita" ? receitasAtuais : despesasAtuais;
-  const movimento = lista.find(item => String(item.id) === id);
+  const movimento = lista.find((item) => String(item.id) === id);
   if (!movimento) return;
 
   tipoAntesEdicao = tipoLancamento;
   edicaoAtual = { tipo, id };
   atualizarTipoLancamento(tipo);
-  recordTitle.textContent = tipo === "receita" ? "Editar receita" : "Editar despesa";
+  recordTitle.textContent =
+    tipo === "receita" ? "Editar receita" : "Editar despesa";
   expenseDescription.value = movimento.description;
   expenseAmount.value = movimento.amount;
   expenseCategory.value = movimento.category;
-  expenseDate.value = tipo === "receita" ? movimento.income_date : movimento.expense_date;
+  expenseDate.value =
+    tipo === "receita" ? movimento.income_date : movimento.expense_date;
 
-  if (window.matchMedia(MEDIA_QUERY_MOVEL).matches && !recordEditorPanel.classList.contains("show")) {
-    recordEditorPanel.addEventListener("shown.bs.collapse", () => {
-      expenseForm.scrollIntoView({ behavior: "smooth", block: "center" });
-      expenseDescription.focus({ preventScroll: true });
-    }, { once: true });
-    bootstrap.Collapse.getOrCreateInstance(recordEditorPanel, { toggle: false }).show();
+  if (
+    window.matchMedia(MEDIA_QUERY_MOVEL).matches &&
+    !recordEditorPanel.classList.contains("show")
+  ) {
+    recordEditorPanel.addEventListener(
+      "shown.bs.collapse",
+      () => {
+        expenseForm.scrollIntoView({ behavior: "smooth", block: "center" });
+        expenseDescription.focus({ preventScroll: true });
+      },
+      { once: true },
+    );
+    bootstrap.Collapse.getOrCreateInstance(recordEditorPanel, {
+      toggle: false,
+    }).show();
     return;
   }
 
@@ -973,8 +1087,13 @@ function iniciarEdicaoMovimento(tipo, id) {
 // Trata a seleção do tipo de movimento. Em ecrãs pequenos, abre também o painel recolhível.
 function selecionarTipoLancamento(tipo) {
   if (edicaoAtual) {
-    if (tipo === edicaoAtual.tipo && window.matchMedia(MEDIA_QUERY_MOVEL).matches) {
-      bootstrap.Collapse.getOrCreateInstance(recordEditorPanel, { toggle: false }).show();
+    if (
+      tipo === edicaoAtual.tipo &&
+      window.matchMedia(MEDIA_QUERY_MOVEL).matches
+    ) {
+      bootstrap.Collapse.getOrCreateInstance(recordEditorPanel, {
+        toggle: false,
+      }).show();
     }
     return;
   }
@@ -982,13 +1101,17 @@ function selecionarTipoLancamento(tipo) {
   atualizarTipoLancamento(tipo);
 
   if (window.matchMedia(MEDIA_QUERY_MOVEL).matches) {
-    bootstrap.Collapse.getOrCreateInstance(recordEditorPanel, { toggle: false }).show();
+    bootstrap.Collapse.getOrCreateInstance(recordEditorPanel, {
+      toggle: false,
+    }).show();
   }
 }
 
 // Mantém os atributos de acessibilidade coerentes com o estado aberto/fechado do painel.
 function sincronizarEstadoPainel() {
-  const aberto = window.matchMedia("(min-width: 992px)").matches || recordEditorPanel.classList.contains("show");
+  const aberto =
+    window.matchMedia("(min-width: 992px)").matches ||
+    recordEditorPanel.classList.contains("show");
   expenseTypeButton.setAttribute("aria-expanded", String(aberto));
   incomeTypeButton.setAttribute("aria-expanded", String(aberto));
 }
@@ -1004,7 +1127,9 @@ function cancelarEdicao() {
   atualizarTipoLancamento(tipoRestaurado);
 
   if (window.matchMedia(MEDIA_QUERY_MOVEL).matches) {
-    bootstrap.Collapse.getOrCreateInstance(recordEditorPanel, { toggle: false }).hide();
+    bootstrap.Collapse.getOrCreateInstance(recordEditorPanel, {
+      toggle: false,
+    }).hide();
   }
 }
 
@@ -1022,10 +1147,17 @@ async function guardarMovimento(evento) {
     description: expenseDescription.value.trim(),
     amount: Number(expenseAmount.value),
     category: expenseCategory.value,
-    date: expenseDate.value
+    date: expenseDate.value,
   };
 
-  if (!dados.description || !Number.isFinite(dados.amount) || dados.amount <= 0 || !dados.category || !dados.date) return;
+  if (
+    !dados.description ||
+    !Number.isFinite(dados.amount) ||
+    dados.amount <= 0 ||
+    !dados.category ||
+    !dados.date
+  )
+    return;
 
   saveRecordButton.disabled = true;
   saveRecordButton.textContent = "A guardar...";
@@ -1037,28 +1169,33 @@ async function guardarMovimento(evento) {
       resultado = await atualizarReceita(
         edicaoAtual.id,
         { ...dados, income_date: dados.date },
-        utilizadorAtualId
+        utilizadorAtualId,
       );
     } else if (edicaoAtual?.tipo === "despesa") {
       resultado = await atualizarDespesa(
         edicaoAtual.id,
         { ...dados, expense_date: dados.date },
-        utilizadorAtualId
+        utilizadorAtualId,
       );
     } else if (tipoLancamento === "receita") {
       resultado = await adicionarReceita({
         ...dados,
-        income_date: dados.date
+        income_date: dados.date,
       });
     } else {
       resultado = await adicionarDespesa({
         ...dados,
-        expense_date: dados.date
+        expense_date: dados.date,
       });
     }
 
     if (resultado.error) {
-      alert(obterMensagemErro(resultado.error, "Não foi possível guardar as alterações."));
+      alert(
+        obterMensagemErro(
+          resultado.error,
+          "Não foi possível guardar as alterações.",
+        ),
+      );
       return;
     }
 
@@ -1075,8 +1212,12 @@ async function guardarMovimento(evento) {
   } finally {
     saveRecordButton.disabled = false;
     saveRecordButton.textContent = edicaoAtual
-      ? (edicaoAtual.tipo === "receita" ? "Atualizar receita" : "Atualizar despesa")
-      : (tipoLancamento === "receita" ? "Guardar receita" : "Guardar despesa");
+      ? edicaoAtual.tipo === "receita"
+        ? "Atualizar receita"
+        : "Atualizar despesa"
+      : tipoLancamento === "receita"
+        ? "Guardar receita"
+        : "Guardar despesa";
   }
 }
 
@@ -1088,27 +1229,40 @@ async function eliminarMovimento(tipo, id) {
   }
 
   const nomeTipo = tipo === "receita" ? "receita" : "despesa";
-  if (!window.confirm(`Tens a certeza de que queres eliminar esta ${nomeTipo}?`)) return;
+  if (
+    !window.confirm(`Tens a certeza de que queres eliminar esta ${nomeTipo}?`)
+  )
+    return;
 
   try {
-    const resultado = tipo === "receita"
-      ? await eliminarReceita(id, utilizadorAtualId)
-      : await eliminarDespesa(id, utilizadorAtualId);
+    const resultado =
+      tipo === "receita"
+        ? await eliminarReceita(id, utilizadorAtualId)
+        : await eliminarDespesa(id, utilizadorAtualId);
 
     if (resultado.error) {
-      alert(obterMensagemErro(resultado.error, `Não foi possível eliminar a ${nomeTipo}.`));
+      alert(
+        obterMensagemErro(
+          resultado.error,
+          `Não foi possível eliminar a ${nomeTipo}.`,
+        ),
+      );
       return;
     }
 
     if (!resultado.data?.length) {
-      alert(`A ${nomeTipo} não foi eliminada. Pode já não existir ou não teres permissão.`);
+      alert(
+        `A ${nomeTipo} não foi eliminada. Pode já não existir ou não teres permissão.`,
+      );
       return;
     }
 
     if (edicaoAtual?.tipo === tipo && edicaoAtual.id === id) cancelarEdicao();
     await carregarDados();
   } catch (erro) {
-    alert(obterMensagemErro(erro, `Ocorreu um erro ao eliminar a ${nomeTipo}.`));
+    alert(
+      obterMensagemErro(erro, `Ocorreu um erro ao eliminar a ${nomeTipo}.`),
+    );
   }
 }
 
@@ -1139,17 +1293,14 @@ async function converterMoeda() {
     if (moedaOrigem === moedaDestino) {
       convertedValue.textContent = new Intl.NumberFormat("pt-PT", {
         style: "currency",
-        currency: moedaDestino
+        currency: moedaDestino,
       }).format(valor);
 
       conversionRate.textContent = "As moedas selecionadas são iguais.";
       return;
     }
 
-    const resultado = await obterTaxaCambio(
-      moedaOrigem,
-      moedaDestino
-    );
+    const resultado = await obterTaxaCambio(moedaOrigem, moedaDestino);
 
     if (!resultado || !Number.isFinite(Number(resultado.rate))) {
       throw new Error("Não foi possível obter a taxa de câmbio.");
@@ -1160,7 +1311,7 @@ async function converterMoeda() {
 
     convertedValue.textContent = new Intl.NumberFormat("pt-PT", {
       style: "currency",
-      currency: moedaDestino
+      currency: moedaDestino,
     }).format(convertido);
 
     conversionRate.textContent =
@@ -1171,7 +1322,7 @@ async function converterMoeda() {
 
     conversionRate.textContent = obterMensagemErro(
       erro,
-      "Não foi possível consultar a taxa de câmbio."
+      "Não foi possível consultar a taxa de câmbio.",
     );
   } finally {
     convertButton.disabled = false;
@@ -1201,10 +1352,16 @@ async function iniciarAplicacao() {
     utilizadorAtualId = resultado.user.id;
     moedaAtual = resultado.user.user_metadata?.currency || "EUR";
     try {
-      formatadorMoeda = new Intl.NumberFormat("pt-PT", { style: "currency", currency: moedaAtual });
+      formatadorMoeda = new Intl.NumberFormat("pt-PT", {
+        style: "currency",
+        currency: moedaAtual,
+      });
     } catch {
       moedaAtual = "EUR";
-      formatadorMoeda = new Intl.NumberFormat("pt-PT", { style: "currency", currency: moedaAtual });
+      formatadorMoeda = new Intl.NumberFormat("pt-PT", {
+        style: "currency",
+        currency: moedaAtual,
+      });
     }
     conversionTo.value = moedaAtual;
     conversionFrom.value = moedaAtual === "USD" ? "EUR" : "USD";
@@ -1242,10 +1399,7 @@ async function iniciarAplicacao() {
 
 loginForm.addEventListener("submit", processarAutenticacao);
 
-authToggleButton.addEventListener(
-  "click",
-  alternarModoAutenticacao
-);
+authToggleButton.addEventListener("click", alternarModoAutenticacao);
 
 themeToggle.addEventListener("click", alternarTema);
 
@@ -1268,25 +1422,45 @@ logoutButton.addEventListener("click", terminarSessao);
 continueSessionButton.addEventListener("click", continuarSessao);
 
 expenseForm.addEventListener("submit", guardarMovimento);
-expenseTypeButton.addEventListener("click", () => selecionarTipoLancamento("despesa"));
-incomeTypeButton.addEventListener("click", () => selecionarTipoLancamento("receita"));
+expenseTypeButton.addEventListener("click", () =>
+  selecionarTipoLancamento("despesa"),
+);
+incomeTypeButton.addEventListener("click", () =>
+  selecionarTipoLancamento("receita"),
+);
 
 categoryFilter.addEventListener("change", carregarDados);
-transactionFilterAll.addEventListener("click", () => alterarFiltroMovimentos("todos"));
-transactionFilterExpenses.addEventListener("click", () => alterarFiltroMovimentos("despesa"));
-transactionFilterIncome.addEventListener("click", () => alterarFiltroMovimentos("receita"));
+transactionFilterAll.addEventListener("click", () =>
+  alterarFiltroMovimentos("todos"),
+);
+transactionFilterExpenses.addEventListener("click", () =>
+  alterarFiltroMovimentos("despesa"),
+);
+transactionFilterIncome.addEventListener("click", () =>
+  alterarFiltroMovimentos("receita"),
+);
 cancelEditButton.addEventListener("click", cancelarEdicao);
 
 recordPanelClose.addEventListener("click", () => {
-  bootstrap.Collapse.getOrCreateInstance(recordEditorPanel, { toggle: false }).hide();
+  bootstrap.Collapse.getOrCreateInstance(recordEditorPanel, {
+    toggle: false,
+  }).hide();
 });
 
-recordEditorPanel.addEventListener("shown.bs.collapse", sincronizarEstadoPainel);
-recordEditorPanel.addEventListener("hidden.bs.collapse", sincronizarEstadoPainel);
-window.matchMedia("(min-width: 992px)").addEventListener("change", sincronizarEstadoPainel);
+recordEditorPanel.addEventListener(
+  "shown.bs.collapse",
+  sincronizarEstadoPainel,
+);
+recordEditorPanel.addEventListener(
+  "hidden.bs.collapse",
+  sincronizarEstadoPainel,
+);
+window
+  .matchMedia("(min-width: 992px)")
+  .addEventListener("change", sincronizarEstadoPainel);
 sincronizarEstadoPainel();
 
-expensesList.addEventListener("click", async evento => {
+expensesList.addEventListener("click", async (evento) => {
   if (evento.target.closest("#loadMoreMovements")) {
     carregarMaisMovimentos();
     return;
@@ -1314,7 +1488,7 @@ periodMonth.addEventListener("change", selecionarMes);
 
 convertButton.addEventListener("click", converterMoeda);
 
-conversionAmount.addEventListener("keydown", evento => {
+conversionAmount.addEventListener("keydown", (evento) => {
   if (evento.key === "Enter") {
     converterMoeda();
   }
@@ -1335,10 +1509,13 @@ window.addEventListener("online", () => {
 window.addEventListener("offline", () => {
   const cache = obterDadosEmCache();
   if (cache) aplicarDadosEmCache(cache);
-  else atualizarAvisoLigacao("Sem ligação à internet. Ainda não existem dados guardados para este período.");
+  else
+    atualizarAvisoLigacao(
+      "Sem ligação à internet. Ainda não existem dados guardados para este período.",
+    );
 });
 
-window.addEventListener("beforeinstallprompt", evento => {
+window.addEventListener("beforeinstallprompt", (evento) => {
   evento.preventDefault();
   eventoInstalacaoPendente = evento;
   installAppButton.classList.remove("d-none");
@@ -1351,7 +1528,7 @@ window.addEventListener("appinstalled", () => {
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js").catch(erro => {
+    navigator.serviceWorker.register("./service-worker.js").catch((erro) => {
       console.warn("Não foi possível registar o Service Worker:", erro);
     });
   });
