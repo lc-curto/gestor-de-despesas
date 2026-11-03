@@ -1172,3 +1172,7 @@ html {
     -webkit-overflow-scrolling: auto;
   }
 }
+
+
+#loadMoreMovements { min-height: 2.5rem; border-radius: 0.75rem; font-weight: 600; }
+@media (max-width: 991.98px) { #loadMoreMovements { width: 100%; max-width: 20rem; } }
