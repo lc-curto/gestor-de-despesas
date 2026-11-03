@@ -163,7 +163,7 @@ let modalInatividade = null;
 // ======================================
 // ======================================
 
-const categorias = {
+const categoriasDespesa = {
   casa: "Casa",
   alimentacao: "Alimentação",
   transportes: "Transporte",
@@ -277,7 +277,7 @@ function escaparHTML(valor) {
   return String(valor).replace(/[&<>"']/g, caractere => entidadesHTML[caractere]);
 }
 
-// Recebe um objeto de categorias e cria as opções do seletor usado no formulário.
+// Recebe um objeto de categoriasDespesa e cria as opções do seletor usado no formulário.
 // Assim, despesas e receitas partilham a mesma lógica de construção do campo.
 function criarOpcoesCategoria(listaCategorias) {
   const opcoes = Object.entries(listaCategorias)
@@ -507,7 +507,7 @@ function renderizarMovimentos() {
   expensesList.innerHTML = movimentosVisiveis.map(item => {
     const descricao = escaparHTML(formatarDescricaoMovimento(item.description));
     const categoria = item.tipo === "despesa"
-      ? categorias[item.category] || "Outros"
+      ? categoriasDespesa[item.category] || "Outros"
       : categoriasReceita[item.category] || "Outros";
     const valor = formatarValor(item.amount);
     const classeTipo = item.tipo === "despesa" ? "expense-icon" : "expense-icon income-icon";
@@ -903,7 +903,7 @@ async function terminarSessao() {
 // ======================================
 // ======================================
 
-// Atualiza o formulário para despesa ou receita: textos, cores, botões e categorias disponíveis.
+// Atualiza o formulário para despesa ou receita: textos, cores, botões e categoriasDespesa disponíveis.
 function atualizarTipoLancamento(tipo) {
   tipoLancamento = tipo;
   const isReceita = tipo === "receita";
@@ -931,7 +931,7 @@ function atualizarTipoLancamento(tipo) {
   incomeTypeButton.setAttribute("aria-pressed", String(isReceita));
 
   expenseCategory.innerHTML = criarOpcoesCategoria(
-    isReceita ? categoriasReceita : categorias
+    isReceita ? categoriasReceita : categoriasDespesa
   );
 }
 
