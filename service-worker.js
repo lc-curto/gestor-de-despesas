@@ -1,7 +1,8 @@
-const CACHE_NAME = "meu-bolso-shell-v1";
+const CACHE_NAME = "meu-bolso-shell-v2";
 const RECURSOS = [
   "./",
   "./index.html",
+  "./manifest.json",
   "./assets/css/styles.css",
   "./assets/js/main.js",
   "./assets/js/auth.js",
@@ -10,18 +11,25 @@ const RECURSOS = [
   "./assets/js/receitas.js",
   "./assets/js/api.js",
   "./assets/js/supabase.js",
-  "./assets/images/favicon.png"
+  "./assets/images/favicon.png",
+  "./assets/images/pwa-icon.svg"
 ];
 
 self.addEventListener("install", evento => {
-  evento.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(RECURSOS)));
+  evento.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(RECURSOS))
+  );
   self.skipWaiting();
 });
 
 self.addEventListener("activate", evento => {
   evento.waitUntil(
     caches.keys().then(chaves =>
-      Promise.all(chaves.filter(chave => chave !== CACHE_NAME).map(chave => caches.delete(chave)))
+      Promise.all(
+        chaves
+          .filter(chave => chave.startsWith("meu-bolso-shell-") && chave !== CACHE_NAME)
+          .map(chave => caches.delete(chave))
+      )
     )
   );
   self.clients.claim();
@@ -29,6 +37,7 @@ self.addEventListener("activate", evento => {
 
 self.addEventListener("fetch", evento => {
   if (evento.request.method !== "GET") return;
+
   const url = new URL(evento.request.url);
 
   if (url.origin === self.location.origin) {
@@ -39,17 +48,24 @@ self.addEventListener("fetch", evento => {
           caches.open(CACHE_NAME).then(cache => cache.put(evento.request, copia));
         }
         return resposta;
-      }).catch(() =>
-        caches.match(evento.request).then(resposta => resposta || caches.match("./index.html"))
-      )
+      }).catch(async () => {
+        const guardada = await caches.match(evento.request);
+        if (guardada) return guardada;
+
+        if (evento.request.mode === "navigate") {
+          return caches.match("./index.html");
+        }
+
+        return Response.error();
+      })
     );
     return;
   }
 
   if (url.hostname === "cdn.jsdelivr.net") {
     evento.respondWith(
-      caches.match(evento.request).then(cached =>
-        cached || fetch(evento.request).then(resposta => {
+      caches.match(evento.request).then(guardada =>
+        guardada || fetch(evento.request).then(resposta => {
           if (resposta.ok) {
             const copia = resposta.clone();
             caches.open(CACHE_NAME).then(cache => cache.put(evento.request, copia));
