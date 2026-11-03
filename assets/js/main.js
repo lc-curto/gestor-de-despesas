@@ -145,9 +145,11 @@ let modalInatividade = null;
 const categorias = {
   casa: "Casa",
   alimentacao: "Alimentação",
-  transportes: "Transportes",
-  lazer: "Lazer",
+  transportes: "Transporte",
   saude: "Saúde",
+  lazer: "Lazer",
+  compras: "Compras",
+  educacao: "Educação",
   outros: "Outros"
 };
 
