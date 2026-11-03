@@ -770,3 +770,85 @@ body {
     padding-left: 1rem !important;
   }
 }
+
+
+/* ======================================
+   NAVBAR — AÇÕES E IDENTIDADE
+====================================== */
+
+.navbar {
+  min-height: 4.5rem;
+}
+
+.navbar > .container {
+  padding-top: 0.65rem !important;
+  padding-bottom: 0.65rem !important;
+}
+
+.navbar-brand {
+  gap: 0.65rem !important;
+  margin-right: 1rem;
+  font-size: 1.15rem;
+  font-weight: 750 !important;
+  letter-spacing: -0.045em;
+}
+
+.navbar-brand .brand-mark-sm {
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 2.25rem;
+  border-radius: 0.7rem;
+  font-size: 1rem;
+}
+
+.navbar-actions {
+  gap: 0.55rem !important;
+}
+
+.navbar-icon-btn {
+  display: inline-flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 2.5rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 0.7rem;
+  font-size: 1rem;
+}
+
+.navbar-icon-btn.rounded-circle {
+  border-radius: 50% !important;
+}
+
+.navbar-icon-btn:focus-visible {
+  outline: 3px solid rgba(99, 91, 255, 0.25);
+  outline-offset: 2px;
+}
+
+@media (max-width: 575.98px) {
+  .navbar {
+    min-height: 4.25rem;
+  }
+
+  .navbar-brand {
+    gap: 0.55rem !important;
+    font-size: 1.05rem;
+  }
+
+  .navbar-brand .brand-mark-sm {
+    width: 2.1rem;
+    height: 2.1rem;
+    flex-basis: 2.1rem;
+  }
+
+  .navbar-actions {
+    gap: 0.45rem !important;
+  }
+
+  .navbar-icon-btn {
+    width: 2.4rem;
+    height: 2.4rem;
+    flex-basis: 2.4rem;
+  }
+}
