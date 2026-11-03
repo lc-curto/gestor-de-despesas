@@ -435,8 +435,8 @@ function observarFimDaLista() {
         carregarMaisMovimentos();
       }
     }, {
-      root: null,
-      rootMargin: "300px 0px",
+      root: expensesList,
+      rootMargin: "180px 0px",
       threshold: 0
     });
   }
