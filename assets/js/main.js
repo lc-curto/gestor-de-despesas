@@ -224,8 +224,8 @@ function formatarDescricaoMovimento(valor) {
 
   return String(valor ?? "")
     .toLocaleLowerCase("pt-PT")
-    .replace(/\\S+/gu, (palavra, indice, texto) => {
-      const inicioFrase = indice === 0 || /[.!?;:]\\s+$/u.test(texto.slice(0, indice));
+    .replace(/\S+/gu, (palavra, indice, texto) => {
+      const inicioFrase = indice === 0 || /[.!?;:]\s+$/u.test(texto.slice(0, indice));
       if (!inicioFrase && palavrasLigacao.has(palavra)) return palavra;
 
       return palavra.charAt(0).toLocaleUpperCase("pt-PT") + palavra.slice(1);
