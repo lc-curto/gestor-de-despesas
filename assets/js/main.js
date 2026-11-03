@@ -32,6 +32,8 @@ const loginView = document.getElementById("loginView");
 const appView = document.getElementById("appView");
 
 const loginForm = document.getElementById("loginForm");
+const signupNameGroup = document.getElementById("signupNameGroup");
+const signupNameInput = document.getElementById("signupName");
 const loginEmail = document.getElementById("loginEmail");
 const loginPassword = document.getElementById("loginPassword");
 
@@ -49,6 +51,7 @@ const continueSessionButton = document.getElementById("continueSessionButton");
 const logoutButton = document.getElementById("logoutButton");
 const themeToggle = document.getElementById("themeToggle");
 const currentDateTime = document.getElementById("currentDateTime");
+const greetingTitle = document.getElementById("greetingTitle");
 
 const periodMonth = document.getElementById("periodMonth");
 const periodPrevious = document.getElementById("periodPrevious");
@@ -174,6 +177,20 @@ function formatarDataApresentacao(data) {
   const [ano, mes, dia] = data.split("-").map(Number);
 
   return formatadorData.format(new Date(ano, mes - 1, dia));
+}
+
+function obterNomeApresentacao(utilizador) {
+  // A conta existente nesta alteração é a única sem nome; novos cadastros guardam full_name.
+  const dataReferenciaContaExistente = Date.parse("2026-11-03T10:10:48Z");
+  const dataCriacao = Date.parse(utilizador.created_at || "");
+  if (Number.isFinite(dataCriacao) && dataCriacao < dataReferenciaContaExistente) {
+    return "Lucas Curto";
+  }
+
+  const nomeGuardado = utilizador.user_metadata?.full_name || utilizador.user_metadata?.name;
+  return typeof nomeGuardado === "string" && nomeGuardado.trim()
+    ? nomeGuardado.trim()
+    : "Utilizador";
 }
 
 function escaparHTML(valor) {
@@ -495,6 +512,10 @@ function alterarFiltroMovimentos(filtro) {
 
 function alternarModoAutenticacao() {
   modoRegisto = !modoRegisto;
+  signupNameGroup.classList.toggle("d-none", !modoRegisto);
+  signupNameInput.required = modoRegisto;
+
+  if (!modoRegisto) signupNameInput.value = "";
 
   authTitle.textContent = modoRegisto
     ? "Criar conta"
@@ -528,11 +549,14 @@ async function processarAutenticacao(evento) {
 
   const email = loginEmail.value.trim();
   const password = loginPassword.value;
+  const nomeCompleto = signupNameInput.value.trim();
 
-  if (!email || !password) {
+  if (!email || !password || (modoRegisto && !nomeCompleto)) {
     mostrarMensagem(
       authMessage,
-      "Preenche o email e a palavra-passe."
+      modoRegisto
+        ? "Preenche o nome, o email e a palavra-passe."
+        : "Preenche o email e a palavra-passe."
     );
 
     return;
@@ -545,7 +569,7 @@ async function processarAutenticacao(evento) {
 
   try {
     const resultado = modoRegisto
-      ? await criarUsuario(email, password)
+      ? await criarUsuario(email, password, nomeCompleto)
       : await iniciarSessao(email, password);
 
     if (resultado.error) {
@@ -876,6 +900,7 @@ async function iniciarAplicacao() {
     }
 
     utilizadorAtualId = resultado.user.id;
+    greetingTitle.textContent = `Olá, ${obterNomeApresentacao(resultado.user)}!`;
 
     inicializarTema();
 

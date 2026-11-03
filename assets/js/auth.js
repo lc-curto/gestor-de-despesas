@@ -54,11 +54,19 @@ export async function verificarSessao() {
 // REGISTO DE UTILIZADOR
 // ======================================
 
-// Cria uma nova conta utilizando email e palavra-passe.
-export async function criarUsuario(email, password) {
+// Cria uma conta e guarda o nome no metadata do utilizador.
+export async function criarUsuario(email, password, nomeCompleto) {
+  const nome = String(nomeCompleto || "").trim();
+  if (!nome) {
+    return { user: null, session: null, error: new Error("Indica o teu nome completo.") };
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email,
-    password
+    password,
+    options: {
+      data: { full_name: nome }
+    }
   });
 
   if (error) {

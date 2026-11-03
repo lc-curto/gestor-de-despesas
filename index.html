@@ -87,7 +87,7 @@
               id="authCard"
               class="card border-0 shadow-sm rounded-4 bg-body"
             >
-              <div class="card-body p-4 p-sm-5">
+              <div class="card-body p-3 p-sm-5">
                 <div
                   class="brand-mark mb-4 mx-auto d-flex justify-content-center align-items-center"
                   aria-hidden="true"
@@ -110,6 +110,19 @@
                 </p>
 
                 <form id="loginForm" method="post" novalidate>
+                  <div class="mb-3 d-none" id="signupNameGroup">
+                    <label for="signupName" class="form-label">Nome completo</label>
+                    <input
+                      type="text"
+                      class="form-control form-control-lg"
+                      id="signupName"
+                      name="fullName"
+                      placeholder="Ex.: Maria Silva"
+                      autocomplete="name"
+                      maxlength="80"
+                    />
+                  </div>
+
                   <div class="mb-4">
                     <label for="loginEmail" class="form-label">Email</label>
 
@@ -214,7 +227,7 @@
             <span>Meu Bolso</span>
           </a>
 
-          <div class="d-flex align-items-center gap-2">
+          <div class="navbar-actions d-flex align-items-center gap-2">
             <button
               type="button"
               class="btn btn-outline-secondary btn-sm"
@@ -239,7 +252,7 @@
 
       <!-- CONTEÚDO PRINCIPAL -->
 
-      <main id="top" class="container py-4 py-lg-5">
+      <main id="top" class="container py-3 py-lg-5">
 
         <!-- CABEÇALHO -->
 
@@ -251,7 +264,7 @@
                 Resumo financeiro
               </div>
 
-              <h1 class="display-6 fw-bold mb-2">Olá!</h1>
+              <h1 class="display-6 fw-bold mb-2" id="greetingTitle">Olá, Lucas Curto</h1>
 
               <p class="text-secondary mb-0">
                 Aqui tens uma visão simples das tuas despesas pessoais.
@@ -259,7 +272,7 @@
             </div>
 
             <div class="col-12 col-lg-4">
-              <div class="date-time-card text-lg-end">
+              <div class="date-time-card d-flex flex-column flex-sm-row justify-content-between gap-1 text-lg-end">
                 <span class="small text-secondary d-block">
                   Data e hora atual
                 </span>
@@ -270,42 +283,47 @@
           </div>
         </header>
 
-        <section class="row g-3 mb-4" aria-label="Resumo financeiro">
+        <section class="row g-2 g-md-3 mb-3 mb-lg-4" aria-label="Resumo financeiro">
           <div class="col-12 col-md-4">
             <article class="summary-card summary-card-primary h-100">
-              <p class="small mb-2 opacity-75">Despesas</p>
-              <p class="summary-value mb-0" id="totalAmount">—</p>
-              <p class="small mb-0 mt-3 opacity-75">Total no período</p>
+              <div class="d-flex justify-content-between align-items-center gap-3">
+                <div>
+                  <p class="small mb-1 opacity-75">Saldo do período</p>
+                  <p class="summary-value summary-value-text mb-0" id="balanceAmount">—</p>
+                  <p class="small mb-0 mt-2 opacity-75">Receitas menos despesas</p>
+                </div>
+                <span class="summary-icon" aria-hidden="true"><i class="bi bi-wallet2"></i></span>
+              </div>
             </article>
           </div>
-          <div class="col-12 col-md-4">
-            <article class="summary-card h-100">
+          <div class="col-6 col-md-4">
+            <article class="summary-card summary-card-compact h-100">
+              <p class="small text-secondary mb-2">Despesas</p>
+              <p class="summary-value mb-0 text-danger" id="totalAmount">—</p>
+              <p class="small text-secondary mb-0 mt-2">Total no período</p>
+            </article>
+          </div>
+          <div class="col-6 col-md-4">
+            <article class="summary-card summary-card-compact h-100">
               <p class="small text-secondary mb-2">Receitas</p>
               <p class="summary-value mb-0 text-success" id="totalIncome">—</p>
-              <p class="small text-secondary mb-0 mt-3">Total no período</p>
-            </article>
-          </div>
-          <div class="col-12 col-md-4">
-            <article class="summary-card h-100">
-              <p class="small text-secondary mb-2">Saldo do período</p>
-              <p class="summary-value summary-value-text mb-0" id="balanceAmount">—</p>
-              <p class="small text-secondary mb-0 mt-3">Receitas menos despesas</p>
+              <p class="small text-secondary mb-0 mt-2">Total no período</p>
             </article>
           </div>
         </section>
 
         <!-- LANÇAMENTOS E MOVIMENTOS -->
 
-        <section class="row g-4 mb-4" aria-label="Lançamentos e movimentos">
+        <section class="row g-3 g-lg-4 mb-4" aria-label="Lançamentos e movimentos">
           <div class="col-12 col-lg-4">
             <article class="card border-0 shadow-sm rounded-4 h-100">
-              <div class="card-body p-4">
+              <div class="card-body p-3 p-md-4">
                 <div class="mb-4">
                   <p class="text-primary fw-semibold small mb-1">Novo registo</p>
                   <h2 id="recordTitle" class="h4 fw-bold mb-0">Adicionar despesa</h2>
                 </div>
 
-                <div class="btn-group w-100 mb-4" role="group" aria-label="Tipo de lançamento">
+                  <div class="btn-group w-100 mb-3 mb-md-4" role="group" aria-label="Tipo de lançamento">
                   <button type="button" class="btn btn-danger active" id="expenseTypeButton" aria-pressed="true">
                     <i class="bi bi-arrow-up-right me-1" aria-hidden="true"></i>Despesa
                   </button>
@@ -321,14 +339,14 @@
                   </div>
 
                   <div class="row g-3 mb-3">
-                    <div class="col-6">
+                    <div class="col-12 col-sm-6">
                       <label for="expenseAmount" class="form-label" id="amountLabel">Valor</label>
                       <div class="input-group">
                         <input type="number" class="form-control" id="expenseAmount" name="amount" placeholder="0,00" min="0.01" step="0.01" required />
                         <span class="input-group-text">€</span>
                       </div>
                     </div>
-                    <div class="col-6">
+                    <div class="col-12 col-sm-6">
                       <label for="expenseDate" class="form-label" id="dateLabel">Data</label>
                       <input type="date" class="form-control" id="expenseDate" name="date" required />
                     </div>
@@ -362,19 +380,19 @@
           <div class="col-12 col-lg-8">
             <article class="card border-0 shadow-sm rounded-4 h-100">
               <div class="card-body p-0">
-                <div class="p-4 pb-3">
+                <div class="p-3 p-sm-4 pb-3">
                   <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3">
                     <div>
                       <p class="text-primary fw-semibold small mb-1">Histórico</p>
                       <h2 class="h4 fw-bold mb-0">Movimentos</h2>
                     </div>
-                    <div class="d-flex align-items-center gap-2">
-                      <button type="button" class="btn btn-outline-secondary btn-sm" id="periodPrevious" aria-label="Período anterior">
+                    <div class="period-controls d-flex align-items-center gap-2">
+                      <button type="button" class="btn btn-outline-secondary mobile-tap-target" id="periodPrevious" aria-label="Período anterior">
                         <i class="bi bi-chevron-left" aria-hidden="true"></i>
                       </button>
                       <label for="periodMonth" class="visually-hidden">Selecionar mês</label>
-                      <input type="month" id="periodMonth" class="form-control form-control-sm" aria-describedby="periodCaption" />
-                      <button type="button" class="btn btn-outline-secondary btn-sm" id="periodNext" aria-label="Período seguinte">
+                      <input type="month" id="periodMonth" class="form-control" aria-describedby="periodCaption" />
+                      <button type="button" class="btn btn-outline-secondary mobile-tap-target" id="periodNext" aria-label="Período seguinte">
                         <i class="bi bi-chevron-right" aria-hidden="true"></i>
                       </button>
                     </div>
@@ -382,14 +400,14 @@
                   <p id="periodCaption" class="small text-secondary mb-0 mt-2" aria-live="polite">Seleciona um mês.</p>
                 </div>
 
-                <div class="px-4 border-bottom">
-                  <div class="d-flex flex-wrap align-items-center gap-2 pb-3" role="group" aria-label="Filtrar movimentos por tipo">
-                    <button type="button" class="btn btn-primary btn-sm" id="transactionFilterAll" aria-pressed="true">Tudo</button>
-                    <button type="button" class="btn btn-link btn-sm text-decoration-none" id="transactionFilterExpenses" aria-pressed="false">Despesas</button>
-                    <button type="button" class="btn btn-link btn-sm text-decoration-none" id="transactionFilterIncome" aria-pressed="false">Receitas</button>
+                <div class="px-3 px-sm-4 border-bottom">
+                  <div class="transaction-filters d-flex flex-wrap align-items-center gap-2 pb-3" role="group" aria-label="Filtrar movimentos por tipo">
+                    <button type="button" class="btn btn-primary mobile-tap-target" id="transactionFilterAll" aria-pressed="true">Tudo</button>
+                    <button type="button" class="btn btn-link text-decoration-none mobile-tap-target" id="transactionFilterExpenses" aria-pressed="false">Despesas</button>
+                    <button type="button" class="btn btn-link text-decoration-none mobile-tap-target" id="transactionFilterIncome" aria-pressed="false">Receitas</button>
                     <div class="ms-auto filter-control">
                       <label for="categoryFilter" class="visually-hidden">Filtrar por categoria</label>
-                      <select class="form-select form-select-sm" id="categoryFilter" name="categoryFilter">
+                      <select class="form-select" id="categoryFilter" name="categoryFilter">
                         <option value="all" selected>Todas as categorias</option>
                         <option value="casa">Casa</option>
                         <option value="alimentacao">Alimentação</option>
@@ -405,7 +423,7 @@
                   </div>
                 </div>
 
-                <div id="expensesList" class="expense-list px-4" aria-live="polite">
+                <div id="expensesList" class="expense-list px-3 px-sm-4" aria-live="polite">
                   <div class="empty-state text-center py-4">
                     <div class="empty-icon mb-3" aria-hidden="true">◎</div>
                     <h3 class="h6">Ainda não existem movimentos</h3>
