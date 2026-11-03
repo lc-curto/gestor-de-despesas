@@ -103,7 +103,7 @@ const conversionRate = document.getElementById("conversionRate");
 const TAMANHO_PAGINA = 10;
 
 function obterQuantidadeInicialMovimentos() {
-  return window.matchMedia("(max-width: 991.98px)").matches ? 8 : TAMANHO_PAGINA;
+  return window.matchMedia("(max-width: 991.98px)").matches ? 6 : TAMANHO_PAGINA;
 }
 
 let modoRegisto = false;
