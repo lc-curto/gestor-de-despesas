@@ -28,7 +28,7 @@ export async function adicionarReceita(dados) {
     user_id: user.id,
     description: dados.description.trim(),
     amount: Number(dados.amount),
-    currency: "EUR",
+    currency: user.user_metadata?.currency || "EUR",
     category: dados.category,
     income_date: dados.income_date
   };
@@ -100,10 +100,11 @@ export async function atualizarReceita(id, dados, userId) {
     return { data: null, error: new Error("Utilizador não autenticado.") };
   }
 
+  const { data: { user } } = await supabase.auth.getUser();
   const receitaAtualizada = {
     description: dados.description.trim(),
     amount: Number(dados.amount),
-    currency: "EUR",
+    currency: user?.user_metadata?.currency || "EUR",
     category: dados.category,
     income_date: dados.income_date
   };
