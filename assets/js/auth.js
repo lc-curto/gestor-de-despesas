@@ -41,6 +41,13 @@ export async function verificarSessao() {
     await supabase.auth.getUser();
 
   if (userError) {
+    if (!navigator.onLine && data.session.user) {
+      return {
+        user: data.session.user,
+        error: null
+      };
+    }
+
     return { user: null, error: userError };
   }
 
