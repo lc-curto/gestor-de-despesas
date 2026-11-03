@@ -700,3 +700,23 @@ body {
     font-size: 0.95rem;
   }
 }
+
+
+/* Histórico: scroll natural da página e carregamento automático */
+.history-card {
+  max-height: none;
+  overflow: visible;
+}
+
+.history-card-body {
+  overflow: visible;
+}
+
+.history-list {
+  overflow: visible;
+  overscroll-behavior: auto;
+}
+
+#loadMoreSentinel {
+  min-height: 1.5rem;
+}
