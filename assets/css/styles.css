@@ -702,21 +702,65 @@ body {
 }
 
 
-/* Histórico: scroll natural da página e carregamento automático */
+/* ======================================
+   HISTÓRICO COM SCROLL INTERNO
+====================================== */
+
 .history-card {
-  max-height: none;
-  overflow: visible;
+  display: flex;
+  height: 52rem;
+  max-height: 80vh;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .history-card-body {
-  overflow: visible;
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.history-card-body > .p-3,
+.history-card-body > .px-3 {
+  flex-shrink: 0;
 }
 
 .history-list {
-  overflow: visible;
-  overscroll-behavior: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 #loadMoreSentinel {
   min-height: 1.5rem;
+}
+
+@media (max-width: 991.98px) {
+  .history-card {
+    height: calc(100svh - 5.5rem);
+    max-height: calc(100svh - 5.5rem);
+  }
+}
+
+@media (max-width: 575.98px) {
+  .history-card {
+    height: calc(100svh - 5rem);
+    max-height: calc(100svh - 5rem);
+  }
+
+  .history-card-body > .p-3,
+  .history-card-body > .px-3 {
+    padding-right: 1rem !important;
+    padding-left: 1rem !important;
+  }
+
+  .history-list {
+    padding-right: 1rem !important;
+    padding-left: 1rem !important;
+  }
 }
