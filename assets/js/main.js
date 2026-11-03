@@ -61,6 +61,8 @@ const periodCaption = document.getElementById("periodCaption");
 const expenseTypeButton = document.getElementById("expenseTypeButton");
 const incomeTypeButton = document.getElementById("incomeTypeButton");
 const recordTitle = document.getElementById("recordTitle");
+const recordEditorPanel = document.getElementById("recordEditorPanel");
+const recordPanelClose = document.getElementById("recordPanelClose");
 const saveRecordButton = document.getElementById("saveExpenseButton");
 const descriptionLabel = document.getElementById("descriptionLabel");
 const amountLabel = document.getElementById("amountLabel");
@@ -689,8 +691,8 @@ function atualizarTipoLancamento(tipo) {
     : (isReceita ? "Guardar receita" : "Guardar despesa");
   saveRecordButton.classList.toggle("btn-success", isReceita);
   saveRecordButton.classList.toggle("btn-danger", !isReceita);
-  expenseTypeButton.disabled = Boolean(edicaoAtual);
-  incomeTypeButton.disabled = Boolean(edicaoAtual);
+  expenseTypeButton.disabled = Boolean(edicaoAtual && edicaoAtual.tipo !== "despesa");
+  incomeTypeButton.disabled = Boolean(edicaoAtual && edicaoAtual.tipo !== "receita");
   cancelEditButton.classList.toggle("d-none", !edicaoAtual);
 
   expenseTypeButton.classList.toggle("active", !isReceita);
@@ -731,8 +733,38 @@ function iniciarEdicaoMovimento(tipo, id) {
   expenseCategory.value = movimento.category;
   expenseDate.value = tipo === "receita" ? movimento.income_date : movimento.expense_date;
 
+  if (window.matchMedia("(max-width: 991.98px)").matches && !recordEditorPanel.classList.contains("show")) {
+    recordEditorPanel.addEventListener("shown.bs.collapse", () => {
+      expenseForm.scrollIntoView({ behavior: "smooth", block: "center" });
+      expenseDescription.focus({ preventScroll: true });
+    }, { once: true });
+    bootstrap.Collapse.getOrCreateInstance(recordEditorPanel, { toggle: false }).show();
+    return;
+  }
+
   expenseForm.scrollIntoView({ behavior: "smooth", block: "center" });
   expenseDescription.focus({ preventScroll: true });
+}
+
+function selecionarTipoLancamento(tipo) {
+  if (edicaoAtual) {
+    if (tipo === edicaoAtual.tipo && window.matchMedia("(max-width: 991.98px)").matches) {
+      bootstrap.Collapse.getOrCreateInstance(recordEditorPanel, { toggle: false }).show();
+    }
+    return;
+  }
+
+  atualizarTipoLancamento(tipo);
+
+  if (window.matchMedia("(max-width: 991.98px)").matches) {
+    bootstrap.Collapse.getOrCreateInstance(recordEditorPanel, { toggle: false }).show();
+  }
+}
+
+function sincronizarEstadoPainel() {
+  const aberto = window.matchMedia("(min-width: 992px)").matches || recordEditorPanel.classList.contains("show");
+  expenseTypeButton.setAttribute("aria-expanded", String(aberto));
+  incomeTypeButton.setAttribute("aria-expanded", String(aberto));
 }
 
 function cancelarEdicao() {
@@ -743,6 +775,10 @@ function cancelarEdicao() {
   expenseForm.reset();
   expenseDate.value = formatarDataLocal();
   atualizarTipoLancamento(tipoRestaurado);
+
+  if (window.matchMedia("(max-width: 991.98px)").matches) {
+    bootstrap.Collapse.getOrCreateInstance(recordEditorPanel, { toggle: false }).hide();
+  }
 }
 
 async function guardarMovimento(evento) {
@@ -941,14 +977,23 @@ logoutButton.addEventListener("click", terminarSessao);
 continueSessionButton.addEventListener("click", continuarSessao);
 
 expenseForm.addEventListener("submit", guardarMovimento);
-expenseTypeButton.addEventListener("click", () => atualizarTipoLancamento("despesa"));
-incomeTypeButton.addEventListener("click", () => atualizarTipoLancamento("receita"));
+expenseTypeButton.addEventListener("click", () => selecionarTipoLancamento("despesa"));
+incomeTypeButton.addEventListener("click", () => selecionarTipoLancamento("receita"));
 
 categoryFilter.addEventListener("change", carregarDados);
 transactionFilterAll.addEventListener("click", () => alterarFiltroMovimentos("todos"));
 transactionFilterExpenses.addEventListener("click", () => alterarFiltroMovimentos("despesa"));
 transactionFilterIncome.addEventListener("click", () => alterarFiltroMovimentos("receita"));
 cancelEditButton.addEventListener("click", cancelarEdicao);
+
+recordPanelClose.addEventListener("click", () => {
+  bootstrap.Collapse.getOrCreateInstance(recordEditorPanel, { toggle: false }).hide();
+});
+
+recordEditorPanel.addEventListener("shown.bs.collapse", sincronizarEstadoPainel);
+recordEditorPanel.addEventListener("hidden.bs.collapse", sincronizarEstadoPainel);
+window.matchMedia("(min-width: 992px)").addEventListener("change", sincronizarEstadoPainel);
+sincronizarEstadoPainel();
 
 expensesList.addEventListener("click", async evento => {
   if (evento.target.closest("#loadMoreButton")) {

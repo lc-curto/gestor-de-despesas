@@ -318,61 +318,67 @@
           <div class="col-12 col-lg-4">
             <article class="card border-0 shadow-sm rounded-4 h-100">
               <div class="card-body p-3 p-md-4">
-                <div class="mb-4">
+                <div class="mb-3 mb-md-4">
                   <p class="text-primary fw-semibold small mb-1">Novo registo</p>
                   <h2 id="recordTitle" class="h4 fw-bold mb-0">Adicionar despesa</h2>
                 </div>
 
-                  <div class="btn-group w-100 mb-3 mb-md-4" role="group" aria-label="Tipo de lançamento">
-                  <button type="button" class="btn btn-danger active" id="expenseTypeButton" aria-pressed="true">
+                <div class="btn-group w-100 mb-3 mb-md-4" role="group" aria-label="Tipo de lançamento">
+                  <button type="button" class="btn btn-danger active" id="expenseTypeButton" aria-pressed="true" aria-controls="recordEditorPanel" aria-expanded="false">
                     <i class="bi bi-arrow-up-right me-1" aria-hidden="true"></i>Despesa
                   </button>
-                  <button type="button" class="btn btn-outline-success" id="incomeTypeButton" aria-pressed="false">
+                  <button type="button" class="btn btn-outline-success" id="incomeTypeButton" aria-pressed="false" aria-controls="recordEditorPanel" aria-expanded="false">
                     <i class="bi bi-arrow-down-left me-1" aria-hidden="true"></i>Receita
                   </button>
                 </div>
 
-                <form id="expenseForm">
-                  <div class="mb-3">
-                    <label for="expenseDescription" class="form-label" id="descriptionLabel">Descrição</label>
-                    <input type="text" class="form-control" id="expenseDescription" name="description" placeholder="Ex.: Supermercado" required />
+                <div class="collapse d-lg-block" id="recordEditorPanel">
+                  <div class="d-flex justify-content-end d-lg-none mb-2">
+                    <button type="button" class="btn-close record-panel-close" id="recordPanelClose" aria-label="Fechar formulário"></button>
                   </div>
 
-                  <div class="row g-3 mb-3">
-                    <div class="col-12 col-sm-6">
-                      <label for="expenseAmount" class="form-label" id="amountLabel">Valor</label>
-                      <div class="input-group">
-                        <input type="number" class="form-control" id="expenseAmount" name="amount" placeholder="0,00" min="0.01" step="0.01" required />
-                        <span class="input-group-text">€</span>
+                  <form id="expenseForm">
+                    <div class="mb-3">
+                      <label for="expenseDescription" class="form-label" id="descriptionLabel">Descrição</label>
+                      <input type="text" class="form-control" id="expenseDescription" name="description" placeholder="Ex.: Supermercado" required />
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                      <div class="col-12 col-sm-6">
+                        <label for="expenseAmount" class="form-label" id="amountLabel">Valor</label>
+                        <div class="input-group">
+                          <input type="number" class="form-control" id="expenseAmount" name="amount" placeholder="0,00" min="0.01" step="0.01" required />
+                          <span class="input-group-text">€</span>
+                        </div>
+                      </div>
+                      <div class="col-12 col-sm-6">
+                        <label for="expenseDate" class="form-label" id="dateLabel">Data</label>
+                        <input type="date" class="form-control" id="expenseDate" name="date" required />
                       </div>
                     </div>
-                    <div class="col-12 col-sm-6">
-                      <label for="expenseDate" class="form-label" id="dateLabel">Data</label>
-                      <input type="date" class="form-control" id="expenseDate" name="date" required />
+
+                    <div class="mb-4">
+                      <label for="expenseCategory" class="form-label" id="categoryLabel">Categoria</label>
+                      <select class="form-select" id="expenseCategory" name="category" required>
+                        <option value="" selected disabled>Seleciona uma categoria</option>
+                        <option value="casa">Casa</option>
+                        <option value="alimentacao">Alimentação</option>
+                        <option value="transportes">Transportes</option>
+                        <option value="lazer">Lazer</option>
+                        <option value="saude">Saúde</option>
+                        <option value="outros">Outros</option>
+                      </select>
                     </div>
-                  </div>
 
-                  <div class="mb-4">
-                    <label for="expenseCategory" class="form-label" id="categoryLabel">Categoria</label>
-                    <select class="form-select" id="expenseCategory" name="category" required>
-                      <option value="" selected disabled>Seleciona uma categoria</option>
-                      <option value="casa">Casa</option>
-                      <option value="alimentacao">Alimentação</option>
-                      <option value="transportes">Transportes</option>
-                      <option value="lazer">Lazer</option>
-                      <option value="saude">Saúde</option>
-                      <option value="outros">Outros</option>
-                    </select>
-                  </div>
+                    <button type="submit" class="btn btn-danger w-100" id="saveExpenseButton">
+                      Guardar despesa
+                    </button>
 
-                  <button type="submit" class="btn btn-danger w-100" id="saveExpenseButton">
-                    Guardar despesa
-                  </button>
-
-                  <button type="button" class="btn btn-outline-secondary w-100 mt-2 d-none" id="cancelEditButton">
-                    Cancelar edição
-                  </button>
-                </form>
+                    <button type="button" class="btn btn-outline-secondary w-100 mt-2 d-none" id="cancelEditButton">
+                      Cancelar edição
+                    </button>
+                  </form>
+                </div>
               </div>
             </article>
           </div>

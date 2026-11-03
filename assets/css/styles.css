@@ -338,6 +338,12 @@ body {
   min-width: 12rem;
 }
 
+.record-panel-close {
+  width: var(--app-touch-target);
+  height: var(--app-touch-target);
+  background-size: 0.75rem;
+}
+
 /* ======================================
    HISTÓRICO DE DESPESAS
 ====================================== */
