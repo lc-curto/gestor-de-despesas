@@ -869,7 +869,7 @@ function iniciarEdicaoMovimento(tipo, id) {
   expenseCategory.value = movimento.category;
   expenseDate.value = tipo === "receita" ? movimento.income_date : movimento.expense_date;
 
-  if (window.matchMedia("(max-width: 991.98px)").matches && !recordEditorPanel.classList.contains("show")) {
+  if (window.matchMedia(MEDIA_QUERY_MOVEL).matches && !recordEditorPanel.classList.contains("show")) {
     recordEditorPanel.addEventListener("shown.bs.collapse", () => {
       expenseForm.scrollIntoView({ behavior: "smooth", block: "center" });
       expenseDescription.focus({ preventScroll: true });
@@ -884,7 +884,7 @@ function iniciarEdicaoMovimento(tipo, id) {
 
 function selecionarTipoLancamento(tipo) {
   if (edicaoAtual) {
-    if (tipo === edicaoAtual.tipo && window.matchMedia("(max-width: 991.98px)").matches) {
+    if (tipo === edicaoAtual.tipo && window.matchMedia(MEDIA_QUERY_MOVEL).matches) {
       bootstrap.Collapse.getOrCreateInstance(recordEditorPanel, { toggle: false }).show();
     }
     return;
@@ -892,7 +892,7 @@ function selecionarTipoLancamento(tipo) {
 
   atualizarTipoLancamento(tipo);
 
-  if (window.matchMedia("(max-width: 991.98px)").matches) {
+  if (window.matchMedia(MEDIA_QUERY_MOVEL).matches) {
     bootstrap.Collapse.getOrCreateInstance(recordEditorPanel, { toggle: false }).show();
   }
 }
@@ -912,7 +912,7 @@ function cancelarEdicao() {
   expenseDate.value = formatarDataLocal();
   atualizarTipoLancamento(tipoRestaurado);
 
-  if (window.matchMedia("(max-width: 991.98px)").matches) {
+  if (window.matchMedia(MEDIA_QUERY_MOVEL).matches) {
     bootstrap.Collapse.getOrCreateInstance(recordEditorPanel, { toggle: false }).hide();
   }
 }
