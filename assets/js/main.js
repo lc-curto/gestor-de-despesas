@@ -1652,7 +1652,7 @@ function criarPainelDiagnostico() {
       registo("API de câmbio", "ERRO: " + erro.message);
     }
 
-    registo("Versão do painel", "diagnostico-temporario-1");
+    registo("Versão do painel", "diagnostico-temporario-2");
     resultados.textContent = linhas.join("\n");
     executar.disabled = false;
     executar.textContent = "Executar novamente";
