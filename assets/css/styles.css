@@ -716,6 +716,7 @@ body {
 
 .history-card-body {
   display: flex;
+  height: 0;
   min-height: 0;
   flex: 1 1 auto;
   flex-direction: column;
@@ -729,14 +730,13 @@ body {
 
 .history-list {
   display: block;
-  height: 0;
-  min-height: 0;
-  flex: 1 1 0%;
+  height: auto;
+  min-height: 12rem;
+  flex: 1 1 auto;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: auto;
-  touch-action: pan-y;
+  overscroll-behavior-y: contain;
   scrollbar-gutter: stable;
 }
 
