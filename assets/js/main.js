@@ -102,6 +102,10 @@ const conversionRate = document.getElementById("conversionRate");
 
 const TAMANHO_PAGINA = 10;
 
+function obterQuantidadeInicialMovimentos() {
+  return window.matchMedia("(max-width: 991.98px)").matches ? 8 : TAMANHO_PAGINA;
+}
+
 let modoRegisto = false;
 let dataReferencia = new Date();
 let despesasAtuais = [];
@@ -119,7 +123,7 @@ let totalDespesasPeriodo = 0;
 let totalReceitasPeriodo = 0;
 let quantidadeDespesasPeriodo = 0;
 let quantidadeReceitasPeriodo = 0;
-let quantidadeMovimentosVisiveis = TAMANHO_PAGINA;
+let quantidadeMovimentosVisiveis = obterQuantidadeInicialMovimentos();
 let requisicaoLista = 0;
 let utilizadorAtualId = null;
 let observadorLista = null;
@@ -275,7 +279,7 @@ function aplicarDadosEmCache(cache) {
   offsetReceitas = receitasAtuais.length;
   haMaisDespesas = false;
   haMaisReceitas = false;
-  quantidadeMovimentosVisiveis = TAMANHO_PAGINA;
+  quantidadeMovimentosVisiveis = obterQuantidadeInicialMovimentos();
 
   const dataCache = cache.guardadoEm
     ? new Intl.DateTimeFormat("pt-PT", { dateStyle: "short", timeStyle: "short" }).format(new Date(cache.guardadoEm))
@@ -457,7 +461,7 @@ async function carregarDados() {
   haMaisDespesas = false;
   haMaisReceitas = false;
   aCarregarMais = false;
-  quantidadeMovimentosVisiveis = TAMANHO_PAGINA;
+  quantidadeMovimentosVisiveis = obterQuantidadeInicialMovimentos();
   totalDespesasPeriodo = 0;
   totalReceitasPeriodo = 0;
   quantidadeDespesasPeriodo = 0;
@@ -610,7 +614,7 @@ async function carregarMaisMovimentos() {
 
 function alterarFiltroMovimentos(filtro) {
   filtroMovimentos = filtro;
-  quantidadeMovimentosVisiveis = TAMANHO_PAGINA;
+  quantidadeMovimentosVisiveis = obterQuantidadeInicialMovimentos();
 
   [transactionFilterAll, transactionFilterExpenses, transactionFilterIncome].forEach(botao => {
     botao.classList.toggle("btn-primary", botao === {
