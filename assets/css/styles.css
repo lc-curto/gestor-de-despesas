@@ -703,14 +703,13 @@ body {
 
 
 /* ======================================
-   HISTÓRICO COM SCROLL INTERNO
+   HISTÓRICO — ÁREA DE SCROLL
 ====================================== */
 
 .history-card {
   display: flex;
-  height: 52rem;
-  max-height: 80vh;
-  min-height: 0;
+  height: min(52rem, 78vh);
+  min-height: 28rem;
   flex-direction: column;
   overflow: hidden;
 }
@@ -725,14 +724,19 @@ body {
 
 .history-card-body > .p-3,
 .history-card-body > .px-3 {
-  flex-shrink: 0;
+  flex: 0 0 auto;
 }
 
 .history-list {
+  display: block;
+  height: 0;
   min-height: 0;
-  flex: 1 1 auto;
+  flex: 1 1 0%;
+  overflow-x: hidden;
   overflow-y: auto;
-  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: auto;
+  touch-action: pan-y;
   scrollbar-gutter: stable;
 }
 
@@ -742,15 +746,17 @@ body {
 
 @media (max-width: 991.98px) {
   .history-card {
-    height: calc(100svh - 5.5rem);
-    max-height: calc(100svh - 5.5rem);
+    height: 70vh;
+    min-height: 24rem;
+    max-height: 70vh;
   }
 }
 
 @media (max-width: 575.98px) {
   .history-card {
-    height: calc(100svh - 5rem);
-    max-height: calc(100svh - 5rem);
+    height: 68vh;
+    min-height: 22rem;
+    max-height: 68vh;
   }
 
   .history-card-body > .p-3,
