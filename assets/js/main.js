@@ -670,8 +670,8 @@ async function carregarDados() {
 
   try {
     resultados = await Promise.all([
-      listarDespesas({ ...parametros, offset: 0, limite: TAMANHO_PAGINA }),
-      listarReceitas({ ...parametros, offset: 0, limite: TAMANHO_PAGINA }),
+      listarDespesas({ ...parametros, offset: 0, limite: obterLimiteMovimentos() }),
+      listarReceitas({ ...parametros, offset: 0, limite: obterLimiteMovimentos() }),
       listarDespesas({ ...parametros, somenteMontantes: true }),
       listarReceitas({ ...parametros, somenteMontantes: true }),
     ]);
@@ -698,12 +698,12 @@ async function carregarDados() {
 
   const dadosDespesas = resultadoDespesas.data || [];
   const dadosReceitas = resultadoReceitas.data || [];
-  despesasAtuais = dadosDespesas.slice(0, TAMANHO_PAGINA);
-  receitasAtuais = dadosReceitas.slice(0, TAMANHO_PAGINA);
+  despesasAtuais = dadosDespesas.slice(0, obterLimiteMovimentos());
+  receitasAtuais = dadosReceitas.slice(0, obterLimiteMovimentos());
   offsetDespesas = despesasAtuais.length;
   offsetReceitas = receitasAtuais.length;
-  haMaisDespesas = dadosDespesas.length === TAMANHO_PAGINA;
-  haMaisReceitas = dadosReceitas.length === TAMANHO_PAGINA;
+  haMaisDespesas = dadosDespesas.length === obterLimiteMovimentos();
+  haMaisReceitas = dadosReceitas.length === obterLimiteMovimentos();
   totalDespesasPeriodo = (resumoDespesas.data || []).reduce(
     (soma, item) => soma + Number(item.amount),
     0,
@@ -759,14 +759,14 @@ async function carregarMaisMovimentos() {
           ? listarDespesas({
               ...parametros,
               offset: offsetDespesas,
-              limite: TAMANHO_PAGINA,
+              limite: obterLimiteMovimentos(),
             })
           : Promise.resolve(null),
         carregarReceitas
           ? listarReceitas({
               ...parametros,
               offset: offsetReceitas,
-              limite: TAMANHO_PAGINA,
+              limite: obterLimiteMovimentos(),
             })
           : Promise.resolve(null),
       ]);
@@ -780,14 +780,14 @@ async function carregarMaisMovimentos() {
         const novos = resultadoDespesas.data || [];
         despesasAtuais = [...despesasAtuais, ...novos];
         offsetDespesas += novos.length;
-        haMaisDespesas = novos.length === TAMANHO_PAGINA;
+        haMaisDespesas = novos.length === obterLimiteMovimentos();
       }
 
       if (resultadoReceitas) {
         const novos = resultadoReceitas.data || [];
         receitasAtuais = [...receitasAtuais, ...novos];
         offsetReceitas += novos.length;
-        haMaisReceitas = novos.length === TAMANHO_PAGINA;
+        haMaisReceitas = novos.length === obterLimiteMovimentos();
       }
     }
 
@@ -1598,9 +1598,9 @@ function criarPainelDiagnostico() {
       // Reproduz as quatro consultas do carregamento normal, incluindo os totais sem limite.
       const testesConsulta = [
         ["Despesas (lista)", () =>
-          listarDespesas({ ...parametros, offset: 0, limite: TAMANHO_PAGINA })],
+          listarDespesas({ ...parametros, offset: 0, limite: obterLimiteMovimentos() })],
         ["Receitas (lista)", () =>
-          listarReceitas({ ...parametros, offset: 0, limite: TAMANHO_PAGINA })],
+          listarReceitas({ ...parametros, offset: 0, limite: obterLimiteMovimentos() })],
         ["Despesas (total)", () =>
           listarDespesas({ ...parametros, somenteMontantes: true })],
         ["Receitas (total)", () =>
@@ -1652,7 +1652,7 @@ function criarPainelDiagnostico() {
       registo("API de câmbio", "ERRO: " + erro.message);
     }
 
-    registo("Versão do painel", "diagnostico-temporario-2");
+    registo("Versão do painel", "diagnostico-temporario-3");
     resultados.textContent = linhas.join("\n");
     executar.disabled = false;
     executar.textContent = "Executar novamente";
