@@ -215,6 +215,11 @@ function obterNomeApresentacao(utilizador) {
     : "Utilizador";
 }
 
+function capitalizarPrimeiraLetra(valor) {
+  const texto = String(valor ?? "");
+  return texto ? texto[0].toLocaleUpperCase("pt-PT") + texto.slice(1) : texto;
+}
+
 function escaparHTML(valor) {
   return String(valor).replace(/[&<>"']/g, caractere => {
     const entidades = {
@@ -397,7 +402,7 @@ function renderizarMovimentos() {
   }
 
   expensesList.innerHTML = movimentosVisiveis.map(item => {
-    const descricao = escaparHTML(item.description);
+    const descricao = escaparHTML(capitalizarPrimeiraLetra(item.description));
     const categoria = item.tipo === "despesa"
       ? categorias[item.category] || "Outros"
       : categoriasReceita[item.category] || "Outros";
