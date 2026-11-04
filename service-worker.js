@@ -1,10 +1,10 @@
-const CACHE_NAME = "meu-bolso-shell-v15";
+const CACHE_NAME = "meu-bolso-shell-v16";
 const RECURSOS = [
   "./",
   "./index.html",
   "./manifest.json",
   "./assets/css/styles.css",
-  "./assets/js/main.js?v=final-1",
+  "./assets/js/main.js?v=final-2",
   "./assets/js/auth.js",
   "./assets/js/tema.js",
   "./assets/js/despesas.js",
