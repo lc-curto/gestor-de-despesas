@@ -325,7 +325,19 @@ function ocultarMensagem(elemento) {
 
 // Usa a mensagem original do erro quando existe; caso contrário, devolve uma alternativa compreensível.
 function obterMensagemErro(erro, mensagemPadrao) {
-  return erro?.message || mensagemPadrao;
+  const mensagemOriginal = String(erro?.message || "").trim();
+  const mensagemNormalizada = mensagemOriginal.toLowerCase();
+
+  // O Supabase limita o envio de emails de autenticação num determinado período.
+  // Traduzimos este erro técnico e indicamos ao utilizador como pode prosseguir.
+  if (
+    mensagemNormalizada.includes("email rate limit exceeded") ||
+    mensagemNormalizada.includes("rate limit")
+  ) {
+    return "Atingiste o limite de emails de confirmação. Aguarda alguns minutos antes de tentares novamente. Se já recebeste um email, verifica a tua caixa de entrada e a pasta de spam.";
+  }
+
+  return mensagemOriginal || mensagemPadrao;
 }
 
 // A chave identifica o utilizador, o período e a categoria. Assim, cada combinação
