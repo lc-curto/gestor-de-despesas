@@ -726,8 +726,6 @@ async function carregarDados() {
   receitasAtuais = dadosReceitas.slice(0, obterLimiteMovimentos());
   offsetDespesas = despesasAtuais.length;
   offsetReceitas = receitasAtuais.length;
-  haMaisDespesas = offsetDespesas < quantidadeDespesasFiltradas;
-  haMaisReceitas = offsetReceitas < quantidadeReceitasFiltradas;
   totalDespesasPeriodo = (resumoDespesas.data || []).reduce(
     (soma, item) => soma + Number(item.amount),
     0,
@@ -738,6 +736,8 @@ async function carregarDados() {
   );
   quantidadeDespesasFiltradas = resultadoDespesas.count ?? dadosDespesas.length;
   quantidadeReceitasFiltradas = resultadoReceitas.count ?? dadosReceitas.length;
+  haMaisDespesas = offsetDespesas < quantidadeDespesasFiltradas;
+  haMaisReceitas = offsetReceitas < quantidadeReceitasFiltradas;
   guardarDadosEmCache({
     despesas: despesasAtuais,
     receitas: receitasAtuais,
