@@ -477,7 +477,12 @@ function atualizarSeletorPeriodo() {
 
 // Avança ou recua um mês e volta a carregar os movimentos correspondentes.
 function alterarPeriodo(direcao) {
-  dataReferencia.setMonth(dataReferencia.getMonth() + direcao);
+  dataReferencia = new Date(
+    dataReferencia.getFullYear(),
+    dataReferencia.getMonth() + direcao,
+    1
+  );
+
   atualizarSeletorPeriodo();
   carregarDados(); // Função async que Carrega os dados do DB e monta a interface
 }
