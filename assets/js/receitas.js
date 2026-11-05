@@ -57,7 +57,7 @@ export async function listarReceitas({
 } = {}) {
   let consulta = supabase
     .from(TABELA)
-    .select(somenteMontantes ? "amount" : "*")
+    .select(somenteMontantes ? "amount" : "*", { count: "exact" })
     .order("income_date", { ascending: false })
     .order("id", { ascending: true });
 
@@ -83,10 +83,11 @@ export async function listarReceitas({
     consulta = consulta.range(offset, offset + limite - 1);
   }
 
-  const { data, error } = await consulta;
+  const { data, error, count } = await consulta;
 
   return {
     data: data || [],
+    count: count ?? data?.length ?? 0,
     error
   };
 }
