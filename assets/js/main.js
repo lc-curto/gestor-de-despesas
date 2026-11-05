@@ -675,10 +675,16 @@ async function carregarDados() {
     </div>
   `;
 
+  // O histórico respeita a categoria selecionada; os totais dos cards abrangem todo o período.
   const parametros = obterParametrosConsulta(
     intervalo.inicio,
     intervalo.fim,
     categoria,
+  );
+  const parametrosResumo = obterParametrosConsulta(
+    intervalo.inicio,
+    intervalo.fim,
+    "all",
   );
   let resultados;
 
@@ -686,8 +692,8 @@ async function carregarDados() {
     resultados = await Promise.all([
       listarDespesas({ ...parametros, offset: 0, limite: obterLimiteMovimentos() }),
       listarReceitas({ ...parametros, offset: 0, limite: obterLimiteMovimentos() }),
-      listarDespesas({ ...parametros, somenteMontantes: true }),
-      listarReceitas({ ...parametros, somenteMontantes: true }),
+      listarDespesas({ ...parametrosResumo, somenteMontantes: true }),
+      listarReceitas({ ...parametrosResumo, somenteMontantes: true }),
     ]);
   } catch (erro) {
     console.error("Erro ao carregar movimentos:", erro);
