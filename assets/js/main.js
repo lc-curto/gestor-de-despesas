@@ -274,8 +274,7 @@ function formatarDataApresentacao(data) {
 // Obtém o nome guardado nos metadados da conta para apresentar na interface.
 function obterNomeApresentacao(utilizador) {
   const nomeGuardado =
-    utilizador.user_metadata?.full_name ||
-    utilizador.user_metadata?.name;
+    utilizador.user_metadata?.full_name || utilizador.user_metadata?.name;
 
   return typeof nomeGuardado === "string" && nomeGuardado.trim()
     ? nomeGuardado.trim()
@@ -406,10 +405,7 @@ function atualizarAvisoLigacao(mensagem) {
 // Reconstitui o estado da interface a partir do cache. Estes dados são apenas os movimentos
 // que já tinham sido carregados anteriormente; não representam necessariamente o período completo.
 // Reconstitui o estado da interface a partir do cache e apresenta o motivo correto da utilização dos dados locais.
-function aplicarDadosEmCache(
-  cache,
-  mensagemAviso = "Sem ligação à internet.",
-) {
+function aplicarDadosEmCache(cache, mensagemAviso = "Sem ligação à internet.") {
   despesasAtuais = Array.isArray(cache.despesas) ? cache.despesas : [];
   receitasAtuais = Array.isArray(cache.receitas) ? cache.receitas : [];
   totalDespesasPeriodo = Number(cache.totalDespesasPeriodo) || 0;
@@ -490,7 +486,7 @@ function alterarPeriodo(direcao) {
   dataReferencia = new Date(
     dataReferencia.getFullYear(),
     dataReferencia.getMonth() + direcao,
-    1
+    1,
   );
 
   atualizarSeletorPeriodo();
@@ -567,7 +563,7 @@ function mostrarErroCarregamento() {
     ? '<div class="alert alert-warning mb-0" role="alert">Sem ligação à internet e sem dados guardados neste dispositivo.</div>'
     : '<div class="alert alert-danger mb-0" role="alert">Não foi possível sincronizar os movimentos com o servidor. Verifica a ligação e tenta novamente.</div>';
   atualizarAvisoLigacao(mensagemAviso);
-  atualizarResumo(); 
+  atualizarResumo();
 }
 
 // Junta despesas e receitas numa única lista visual, aplica o filtro selecionado,
@@ -707,8 +703,16 @@ async function carregarDados() {
 
   try {
     resultados = await Promise.all([
-      listarDespesas({ ...parametros, offset: 0, limite: obterLimiteMovimentos() }),
-      listarReceitas({ ...parametros, offset: 0, limite: obterLimiteMovimentos() }),
+      listarDespesas({
+        ...parametros,
+        offset: 0,
+        limite: obterLimiteMovimentos(),
+      }),
+      listarReceitas({
+        ...parametros,
+        offset: 0,
+        limite: obterLimiteMovimentos(),
+      }),
       listarDespesas({ ...parametrosResumo, somenteMontantes: true }),
       listarReceitas({ ...parametrosResumo, somenteMontantes: true }),
     ]);
@@ -745,7 +749,8 @@ async function carregarDados() {
     (soma, item) => soma + Number(item.amount),
     0,
   );
-  totalReceitasPeriodo = (resumoReceitas.data || []).reduce( //O reduce() percorre um array e acumula os seus elementos num único resultado.
+  totalReceitasPeriodo = (resumoReceitas.data || []).reduce(
+    //O reduce() percorre um array e acumula os seus elementos num único resultado.
     (soma, item) => soma + Number(item.amount),
     0,
   );
@@ -799,8 +804,8 @@ async function carregarMaisMovimentos() {
         carregarDespesas
           ? listarDespesas({
               ...parametros,
-              offset: offsetDespesas,
-              limite: obterLimiteMovimentos(),
+              offset: offsetDespesas, // a partir de onde
+              limite: obterLimiteMovimentos(), // até onde
             })
           : Promise.resolve(null),
         carregarReceitas
@@ -819,14 +824,14 @@ async function carregarMaisMovimentos() {
 
       if (resultadoDespesas) {
         const novos = resultadoDespesas.data || [];
-        despesasAtuais = [...despesasAtuais, ...novos];
+        despesasAtuais = [...despesasAtuais, ...novos]; // vai juntar tudo que tem nas despesas atuais com tudo que tem nas novas despesas
         offsetDespesas += novos.length;
         haMaisDespesas = offsetDespesas < quantidadeDespesasFiltradas;
       }
 
       if (resultadoReceitas) {
         const novos = resultadoReceitas.data || [];
-        receitasAtuais = [...receitasAtuais, ...novos];
+        receitasAtuais = [...receitasAtuais, ...novos]; // vai juntar tudo que tem nas receitas atuais com tudo que tem nas novas receitas
         offsetReceitas += novos.length;
         haMaisReceitas = offsetReceitas < quantidadeReceitasFiltradas;
       }
@@ -999,11 +1004,13 @@ async function processarAutenticacao(evento) {
 // Liga o monitor de inatividade ao modal do Bootstrap e apresenta a contagem decrescente.
 function iniciarControloInatividade() {
   modalInatividade = bootstrap.Modal.getOrCreateInstance(
+    //procura uma instância existente do modal. Se não existir, cria uma.
     inactivityModalElement,
   );
 
   iniciarMonitoramentoInatividade({
     onCountdown(segundos) {
+      // recebe por parametro em segundos quando deve aparecer o modal de contagem regressiva (5 min)
       if (segundos === null) {
         modalInatividade.hide();
         return;
@@ -1018,6 +1025,7 @@ function iniciarControloInatividade() {
     },
 
     onTimeout() {
+      // quando o tempo de inatividade zera
       modalInatividade.hide();
       alterarVista("login");
       loginForm.reset();
@@ -1068,15 +1076,16 @@ function atualizarTipoLancamento(tipo) {
   descriptionLabel.textContent = "Descrição";
   amountLabel.textContent = "Valor";
   amountCurrencySymbol.textContent = new Intl.NumberFormat("pt-PT", {
+    // api formata o valor monetario de acordo com a moeda escolhida
     style: "currency",
-    currency: moedaAtual,
+    currency: moedaAtual, // variavel controladora na app (EUR, USD, BRL, GBP)
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   })
     .formatToParts(0)
     .find((parte) => parte.type === "currency").value;
   categoryLabel.textContent = "Categoria";
-  saveRecordButton.textContent = edicaoAtual
+  saveRecordButton.textContent = edicaoAtual // altera o icone da moeda no formulario
     ? isReceita
       ? "Atualizar receita"
       : "Atualizar despesa"
@@ -1109,7 +1118,7 @@ function atualizarTipoLancamento(tipo) {
 
 // Procura o movimento carregado em memória e preenche o formulário com os seus dados.
 // O tipo determina em que lista procurar e qual campo de data utilizar.
-function iniciarEdicaoMovimento(tipo, id) {
+function iniciarEdicaoMovimento(tipo, id) { // formulario que abre quando clica em editar na listagem de movimentos
   const lista = tipo === "receita" ? receitasAtuais : despesasAtuais;
   const movimento = lista.find((item) => String(item.id) === id);
   if (!movimento) return;
@@ -1126,16 +1135,16 @@ function iniciarEdicaoMovimento(tipo, id) {
     tipo === "receita" ? movimento.income_date : movimento.expense_date;
 
   if (
-    window.matchMedia(MEDIA_QUERY_MOVEL).matches &&
+    window.matchMedia(MEDIA_QUERY_MOVEL).matches && // se for telemovel
     !recordEditorPanel.classList.contains("show")
   ) {
     recordEditorPanel.addEventListener(
-      "shown.bs.collapse",
+      "shown.bs.collapse", // garante que a animacao do painel termine antes de posicionar o formulario
       () => {
         expenseForm.scrollIntoView({ behavior: "smooth", block: "center" });
         expenseDescription.focus({ preventScroll: true });
       },
-      { once: true },
+      { once: true }, // garante que so vai ser executado uma vez
     );
     bootstrap.Collapse.getOrCreateInstance(recordEditorPanel, {
       toggle: false,
@@ -1143,7 +1152,7 @@ function iniciarEdicaoMovimento(tipo, id) {
     return;
   }
 
-  expenseForm.scrollIntoView({ behavior: "smooth", block: "center" });
+  expenseForm.scrollIntoView({ behavior: "smooth", block: "center" }); // se nao for telemovel
   expenseDescription.focus({ preventScroll: true });
 }
 
