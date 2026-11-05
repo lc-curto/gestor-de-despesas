@@ -331,6 +331,15 @@ function obterMensagemErro(erro, mensagemPadrao) {
   const mensagemOriginal = String(erro?.message || "").trim();
   const mensagemNormalizada = mensagemOriginal.toLowerCase();
 
+  // Traduz o erro de moeda inválida na tabela de receitas sem expor detalhes da base de dados.
+  if (
+    mensagemNormalizada.includes("receitas_currency_check") ||
+    (mensagemNormalizada.includes("check constraint") &&
+      mensagemNormalizada.includes("receitas"))
+  ) {
+    return "Não foi possível guardar a receita porque a moeda da tua conta não é aceite para este tipo de movimento. A receita não foi guardada. Verifica a configuração da moeda da conta ou contacta o suporte.";
+  }
+
   // O Supabase limita o envio de emails de autenticação num determinado período.
   // Traduzimos este erro técnico e indicamos ao utilizador como pode prosseguir.
   if (
