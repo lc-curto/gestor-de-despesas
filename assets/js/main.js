@@ -12,18 +12,21 @@ import {
 } from "./auth.js";
 
 import { inicializarTema, alternarTema } from "./tema.js";
+
 import {
   adicionarDespesa,
   listarDespesas,
   atualizarDespesa,
   eliminarDespesa,
 } from "./despesas.js";
+
 import {
   adicionarReceita,
   listarReceitas,
   atualizarReceita,
   eliminarReceita,
 } from "./receitas.js";
+
 import { obterTaxaCambio } from "./api.js";
 
 // ======================================
