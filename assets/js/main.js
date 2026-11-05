@@ -93,6 +93,7 @@ const cancelEditButton = document.getElementById("cancelEditButton");
 const expenseForm = document.getElementById("expenseForm");
 const expenseDate = document.getElementById("expenseDate");
 const expenseAmount = document.getElementById("expenseAmount");
+const amountCurrencySymbol = document.getElementById("amountCurrencySymbol");
 const expenseDescription = document.getElementById("expenseDescription");
 const expenseCategory = document.getElementById("expenseCategory");
 
@@ -1067,6 +1068,14 @@ function atualizarTipoLancamento(tipo) {
     : "Adicionar despesa";
   descriptionLabel.textContent = "Descrição";
   amountLabel.textContent = "Valor";
+  amountCurrencySymbol.textContent = new Intl.NumberFormat("pt-PT", {
+    style: "currency",
+    currency: moedaAtual,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })
+    .formatToParts(0)
+    .find((parte) => parte.type === "currency").value;
   categoryLabel.textContent = "Categoria";
   saveRecordButton.textContent = edicaoAtual
     ? isReceita
