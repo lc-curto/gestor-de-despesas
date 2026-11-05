@@ -567,7 +567,7 @@ function mostrarErroCarregamento() {
     ? '<div class="alert alert-warning mb-0" role="alert">Sem ligação à internet e sem dados guardados neste dispositivo.</div>'
     : '<div class="alert alert-danger mb-0" role="alert">Não foi possível sincronizar os movimentos com o servidor. Verifica a ligação e tenta novamente.</div>';
   atualizarAvisoLigacao(mensagemAviso);
-  atualizarResumo(); // Atualiza os KPIS
+  atualizarResumo(); 
 }
 
 // Junta despesas e receitas numa única lista visual, aplica o filtro selecionado,
@@ -697,12 +697,12 @@ async function carregarDados() {
     intervalo.inicio,
     intervalo.fim,
     categoria,
-  );
+  ); // utilizado na lsitagem
   const parametrosResumo = obterParametrosConsulta(
     intervalo.inicio,
     intervalo.fim,
     "all",
-  );
+  ); // Utilizado nos KPIS
   let resultados;
 
   try {
@@ -737,10 +737,10 @@ async function carregarDados() {
 
   const dadosDespesas = resultadoDespesas.data || [];
   const dadosReceitas = resultadoReceitas.data || [];
-  despesasAtuais = dadosDespesas.slice(0, obterLimiteMovimentos());
+  despesasAtuais = dadosDespesas.slice(0, obterLimiteMovimentos()); // vai trazer a quantidade pre definida de movimentos para PC (10) ou mobile (6)
   receitasAtuais = dadosReceitas.slice(0, obterLimiteMovimentos());
   offsetDespesas = despesasAtuais.length;
-  offsetReceitas = receitasAtuais.length;
+  offsetReceitas = receitasAtuais.length; // define as quantidades na paginacao
   totalDespesasPeriodo = (resumoDespesas.data || []).reduce(
     (soma, item) => soma + Number(item.amount),
     0,
