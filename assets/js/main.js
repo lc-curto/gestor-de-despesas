@@ -740,12 +740,12 @@ async function carregarDados() {
   despesasAtuais = dadosDespesas.slice(0, obterLimiteMovimentos()); // vai trazer a quantidade pre definida de movimentos para PC (10) ou mobile (6)
   receitasAtuais = dadosReceitas.slice(0, obterLimiteMovimentos());
   offsetDespesas = despesasAtuais.length;
-  offsetReceitas = receitasAtuais.length; // define as quantidades na paginacao
+  offsetReceitas = receitasAtuais.length; // define a partir de onde vamos buscar na base de dados, esta relacionado com a paginacao dos movimentos
   totalDespesasPeriodo = (resumoDespesas.data || []).reduce(
     (soma, item) => soma + Number(item.amount),
     0,
   );
-  totalReceitasPeriodo = (resumoReceitas.data || []).reduce(
+  totalReceitasPeriodo = (resumoReceitas.data || []).reduce( //O reduce() percorre um array e acumula os seus elementos num único resultado.
     (soma, item) => soma + Number(item.amount),
     0,
   );
