@@ -1346,7 +1346,7 @@ async function eliminarMovimento(tipo, id) {
 // Regra de negócio: o conversor apenas consulta a API; não cria nem altera movimentos.
 // Valida o valor, consulta a taxa através de api.js e apresenta o resultado formatado.
 // Se as moedas forem iguais, não é necessário fazer qualquer pedido à API.
-async function converterMoeda() {
+async function converterMoeda() { // API fornece informações sobre moedas e taxas de câmbio
   const valor = Number(conversionAmount.value);
   const moedaOrigem = conversionFrom.value;
   const moedaDestino = conversionTo.value;
