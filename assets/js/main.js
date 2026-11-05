@@ -806,14 +806,14 @@ async function carregarMaisMovimentos() {
         const novos = resultadoDespesas.data || [];
         despesasAtuais = [...despesasAtuais, ...novos];
         offsetDespesas += novos.length;
-        haMaisDespesas = novos.length === obterLimiteMovimentos();
+        haMaisDespesas = offsetDespesas < quantidadeDespesasFiltradas;
       }
 
       if (resultadoReceitas) {
         const novos = resultadoReceitas.data || [];
         receitasAtuais = [...receitasAtuais, ...novos];
         offsetReceitas += novos.length;
-        haMaisReceitas = novos.length === obterLimiteMovimentos();
+        haMaisReceitas = offsetReceitas < quantidadeReceitasFiltradas;
       }
     }
 
