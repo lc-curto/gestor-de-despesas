@@ -57,7 +57,7 @@ export async function listarDespesas({
 } = {}) {
   let consulta = supabase
     .from(TABELA)
-    .select(somenteMontantes ? "amount" : "*")
+    .select(somenteMontantes ? "amount" : "*", { count: "exact" })
     .order("expense_date", { ascending: false })
     .order("id", { ascending: true });
 
@@ -83,10 +83,11 @@ export async function listarDespesas({
     consulta = consulta.range(offset, offset + limite - 1);
   }
 
-  const { data, error } = await consulta;
+  const { data, error, count } = await consulta;
 
   return {
     data: data || [],
+    count: count ?? data?.length ?? 0,
     error
   };
 }
