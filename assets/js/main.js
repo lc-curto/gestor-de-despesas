@@ -479,7 +479,7 @@ function atualizarSeletorPeriodo() {
 function alterarPeriodo(direcao) {
   dataReferencia.setMonth(dataReferencia.getMonth() + direcao);
   atualizarSeletorPeriodo();
-  carregarDados();
+  carregarDados(); // Função async que Carrega os dados do DB e monta a interface
 }
 
 // Lê o mês escolhido no seletor, atualiza a referência e consulta os respetivos dados.
@@ -489,7 +489,7 @@ function selecionarMes() {
   const [ano, mes] = periodMonth.value.split("-").map(Number);
   dataReferencia = new Date(ano, mes - 1, 1);
   atualizarSeletorPeriodo();
-  carregarDados();
+  carregarDados(); //Função async que Carrega os dados do DB e monta a interface
 }
 
 // ======================================
@@ -552,7 +552,7 @@ function mostrarErroCarregamento() {
     ? '<div class="alert alert-warning mb-0" role="alert">Sem ligação à internet e sem dados guardados neste dispositivo.</div>'
     : '<div class="alert alert-danger mb-0" role="alert">Não foi possível sincronizar os movimentos com o servidor. Verifica a ligação e tenta novamente.</div>';
   atualizarAvisoLigacao(mensagemAviso);
-  atualizarResumo();
+  atualizarResumo(); // Atualiza os KPIS
 }
 
 // Junta despesas e receitas numa única lista visual, aplica o filtro selecionado,
@@ -747,8 +747,8 @@ async function carregarDados() {
     quantidadeReceitasFiltradas,
   });
   atualizarAvisoLigacao("");
-  atualizarResumo();
-  renderizarMovimentos();
+  atualizarResumo(); // Atualiza os KPIS
+  renderizarMovimentos(); // Monsta a lista de movimentos
 }
 
 // Paginação manual: só consulta mais registos quando o utilizador pede para ver mais.
