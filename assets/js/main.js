@@ -895,8 +895,8 @@ function alterarFiltroMovimentos(filtro) {
 
 // Alterna entre os formulários de início de sessão e criação de conta, atualizando os campos
 // obrigatórios, textos e atributos de preenchimento automático.
-function alternarModoAutenticacao() {
-  modoRegisto = !modoRegisto;
+function alternarModoAutenticacao(modo = !modoRegisto) {
+  modoRegisto = modo;
   signupNameGroup.classList.toggle("d-none", !modoRegisto);
   signupCurrencyGroup.classList.toggle("d-none", !modoRegisto);
   signupNameInput.required = modoRegisto;
@@ -1049,8 +1049,7 @@ async function terminarSessao() {
 
   alterarVista("login");
   loginForm.reset();
-  modoRegisto = false;
-  alternarModoAutenticacao();
+  alternarModoAutenticacao(false);
 }
 
 // ======================================
@@ -1463,7 +1462,7 @@ async function iniciarAplicacao() {
 
 loginForm.addEventListener("submit", processarAutenticacao);
 
-authToggleButton.addEventListener("click", alternarModoAutenticacao);
+authToggleButton.addEventListener("click", () => alternarModoAutenticacao());
 
 themeToggle.addEventListener("click", alternarTema);
 
