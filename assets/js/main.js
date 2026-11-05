@@ -1030,7 +1030,7 @@ function iniciarControloInatividade() {
       alterarVista("login");
       loginForm.reset();
       modoRegisto = false;
-      alternarModoAutenticacao();
+      alternarModoAutenticacao(false);
     },
   });
 }
