@@ -153,8 +153,8 @@ let haMaisReceitas = false;
 let aCarregarMais = false;
 let totalDespesasPeriodo = 0;
 let totalReceitasPeriodo = 0;
-let quantidadeDespesasPeriodo = 0;
-let quantidadeReceitasPeriodo = 0;
+let quantidadeDespesasFiltradas = 0;
+let quantidadeReceitasFiltradas = 0;
 let quantidadeMovimentosVisiveis = obterQuantidadeInicialMovimentos();
 let requisicaoLista = 0;
 let utilizadorAtualId = null;
@@ -404,8 +404,10 @@ function aplicarDadosEmCache(
   receitasAtuais = Array.isArray(cache.receitas) ? cache.receitas : [];
   totalDespesasPeriodo = Number(cache.totalDespesasPeriodo) || 0;
   totalReceitasPeriodo = Number(cache.totalReceitasPeriodo) || 0;
-  quantidadeDespesasPeriodo = despesasAtuais.length;
-  quantidadeReceitasPeriodo = receitasAtuais.length;
+  quantidadeDespesasFiltradas =
+    Number(cache.quantidadeDespesasFiltradas) || despesasAtuais.length;
+  quantidadeReceitasFiltradas =
+    Number(cache.quantidadeReceitasFiltradas) || receitasAtuais.length;
   offsetDespesas = despesasAtuais.length;
   offsetReceitas = receitasAtuais.length;
   haMaisDespesas = false;
@@ -517,10 +519,10 @@ function obterParametrosConsulta(inicio, fim, categoria) {
 
 // Devolve a quantidade total correspondente ao filtro de tipo atualmente selecionado.
 function obterTotalMovimentos() {
-  if (filtroMovimentos === "despesa") return quantidadeDespesasPeriodo;
-  if (filtroMovimentos === "receita") return quantidadeReceitasPeriodo;
+  if (filtroMovimentos === "despesa") return quantidadeDespesasFiltradas;
+  if (filtroMovimentos === "receita") return quantidadeReceitasFiltradas;
 
-  return quantidadeDespesasPeriodo + quantidadeReceitasPeriodo;
+  return quantidadeDespesasFiltradas + quantidadeReceitasFiltradas;
 }
 
 // Conta apenas os registos já recebidos da base de dados, não o total do período.
@@ -664,8 +666,8 @@ async function carregarDados() {
   quantidadeMovimentosVisiveis = obterQuantidadeInicialMovimentos();
   totalDespesasPeriodo = 0;
   totalReceitasPeriodo = 0;
-  quantidadeDespesasPeriodo = 0;
-  quantidadeReceitasPeriodo = 0;
+  quantidadeDespesasFiltradas = 0;
+  quantidadeReceitasFiltradas = 0;
 
   expensesList.innerHTML = `
     <div class="text-center py-4">
@@ -724,8 +726,8 @@ async function carregarDados() {
   receitasAtuais = dadosReceitas.slice(0, obterLimiteMovimentos());
   offsetDespesas = despesasAtuais.length;
   offsetReceitas = receitasAtuais.length;
-  haMaisDespesas = dadosDespesas.length === obterLimiteMovimentos();
-  haMaisReceitas = dadosReceitas.length === obterLimiteMovimentos();
+  haMaisDespesas = offsetDespesas < quantidadeDespesasFiltradas;
+  haMaisReceitas = offsetReceitas < quantidadeReceitasFiltradas;
   totalDespesasPeriodo = (resumoDespesas.data || []).reduce(
     (soma, item) => soma + Number(item.amount),
     0,
@@ -734,13 +736,15 @@ async function carregarDados() {
     (soma, item) => soma + Number(item.amount),
     0,
   );
-  quantidadeDespesasPeriodo = (resumoDespesas.data || []).length;
-  quantidadeReceitasPeriodo = (resumoReceitas.data || []).length;
+  quantidadeDespesasFiltradas = resultadoDespesas.count ?? dadosDespesas.length;
+  quantidadeReceitasFiltradas = resultadoReceitas.count ?? dadosReceitas.length;
   guardarDadosEmCache({
     despesas: despesasAtuais,
     receitas: receitasAtuais,
     totalDespesasPeriodo,
     totalReceitasPeriodo,
+    quantidadeDespesasFiltradas,
+    quantidadeReceitasFiltradas,
   });
   atualizarAvisoLigacao("");
   atualizarResumo();
@@ -819,6 +823,8 @@ async function carregarMaisMovimentos() {
       receitas: receitasAtuais,
       totalDespesasPeriodo,
       totalReceitasPeriodo,
+      quantidadeDespesasFiltradas,
+      quantidadeReceitasFiltradas,
     });
   } catch (erro) {
     if (requisicaoAtual === requisicaoLista) {
