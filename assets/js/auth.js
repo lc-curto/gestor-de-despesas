@@ -72,6 +72,9 @@ export async function criarUsuario(email, password, nomeCompleto, moeda = "EUR")
     email,
     password,
     options: {
+      // Após confirmar o email, regressa à origem onde a pessoa iniciou o registo.
+      // Em produção, esta origem é o GitHub Pages; em desenvolvimento, é o servidor local.
+      emailRedirectTo: new URL("./", window.location.href).href,
       data: { full_name: nome, currency: moeda }
     }
   });
