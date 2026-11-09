@@ -1,4 +1,4 @@
-const CACHE_NAME = "meu-bolso-shell-v24";
+const CACHE_NAME = "meu-bolso-shell-v25";
 const RECURSOS = [
   "./",
   "./index.html",
@@ -19,7 +19,8 @@ const RECURSOS = [
   "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",
   "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css",
   "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js",
-  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"
+  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0",
+  "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff2"
 ];
 
 self.addEventListener("install", evento => {
@@ -49,7 +50,10 @@ const RECURSOS_CACHEAVEIS = new Set(
 );
 
 async function obterDaCacheOuRede(pedido) {
-  const guardado = await caches.match(pedido, { ignoreVary: true });
+  const guardado = await caches.match(pedido, {
+    ignoreVary: true,
+    ignoreSearch: true,
+  });
   if (guardado) return guardado;
 
   const resposta = await fetch(pedido);
