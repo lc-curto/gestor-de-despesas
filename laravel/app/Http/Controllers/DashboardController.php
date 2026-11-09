@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\\Http\\Controllers;
 
-use App\Support\Categorias;
-use Illuminate\Database\Query\Builder;
-use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
+use App\\Support\\Categorias;
+use Illuminate\\Database\\Query\\Builder;
+use Illuminate\\Http\\Request;
+use Illuminate\\Support\\Carbon;
+use Illuminate\\Support\\Facades\\DB;
 
 class DashboardController extends Controller
 {
@@ -21,17 +21,13 @@ class DashboardController extends Controller
             ? $request->query('categoria', 'todas')
             : 'todas';
 
-        // Os totais são calculados sobre todos os movimentos do mês, independentemente da paginação.
-        $despesasPorMoeda = $user->despesas()
+        // A versão original soma os montantes do período, independentemente da paginação.
+        $totalDespesas = (float) $user->despesas()
             ->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()])
-            ->selectRaw('currency, SUM(amount) AS total')->groupBy('currency')->pluck('total', 'currency');
-        $receitasPorMoeda = $user->receitas()
+            ->sum('amount');
+        $totalReceitas = (float) $user->receitas()
             ->whereBetween('income_date', [$inicio->toDateString(), $fim->toDateString()])
-            ->selectRaw('currency, SUM(amount) AS total')->groupBy('currency')->pluck('total', 'currency');
-
-        $moeda = $user->currency;
-        $totalDespesas = (float) ($despesasPorMoeda[$moeda] ?? 0);
-        $totalReceitas = (float) ($receitasPorMoeda[$moeda] ?? 0);
+            ->sum('amount');
 
         $query = $this->movimentosQuery($user->id, $inicio, $fim, $filtroTipo, $filtroCategoria);
         $limit = $this->pageSize($request);
@@ -40,14 +36,16 @@ class DashboardController extends Controller
 
         return view('dashboard', compact(
             'inicio', 'mes', 'movimentos', 'categorias', 'filtroTipo',
-            'filtroCategoria', 'moeda', 'totalDespesas', 'totalReceitas',
-            'despesasPorMoeda', 'receitasPorMoeda', 'totalMovimentos', 'limit'
-        ));
+            'filtroCategoria', 'totalDespesas', 'totalReceitas',
+            'totalMovimentos', 'limit'
+        ))->with('moeda', $user->currency);
     }
 
     public function movimentos(Request $request)
     {
+        $user = $request->user();
         [$inicio] = $this->periodo($request->query('mes'));
+        $fim = $inicio->copy()->endOfMonth();
         $categorias = Categorias::DESPESAS + Categorias::RECEITAS;
         $tipo = in_array($request->query('tipo'), ['despesa', 'receita'], true) ? $request->query('tipo') : 'todos';
         $categoria = array_key_exists($request->query('categoria', 'todas'), $categorias)
@@ -55,9 +53,18 @@ class DashboardController extends Controller
             : 'todas';
         $limit = $this->pageSize($request);
         $page = max(1, (int) $request->query('page', 1));
-        $query = $this->movimentosQuery($request->user()->id, $inicio, $inicio->copy()->endOfMonth(), $tipo, $categoria);
+
+        $query = $this->movimentosQuery($user->id, $inicio, $fim, $tipo, $categoria);
         $total = (clone $query)->count();
         $items = (clone $query)->offset(($page - 1) * $limit)->limit($limit)->get();
+
+        // Os indicadores são do mês inteiro, não apenas da página nem dos filtros do histórico.
+        $totalDespesas = (float) $user->despesas()
+            ->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->sum('amount');
+        $totalReceitas = (float) $user->receitas()
+            ->whereBetween('income_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->sum('amount');
 
         return response()->json([
             'data' => $items,
@@ -65,6 +72,10 @@ class DashboardController extends Controller
             'per_page' => $limit,
             'total' => $total,
             'has_more' => $page * $limit < $total,
+            'total_despesas' => $totalDespesas,
+            'total_receitas' => $totalReceitas,
+            'moeda' => $user->currency,
+            'mes' => $inicio->format('Y-m'),
         ])->header('Cache-Control', 'private, no-store');
     }
 
@@ -73,9 +84,9 @@ class DashboardController extends Controller
         try {
             $inicio = Carbon::createFromFormat('!Y-m', (string) $mes)->startOfMonth();
             if ($inicio->format('Y-m') !== $mes) {
-                throw new \InvalidArgumentException();
+                throw new \\InvalidArgumentException();
             }
-        } catch (\Throwable) {
+        } catch (\\Throwable) {
             $inicio = now()->startOfMonth();
         }
 
