@@ -1417,6 +1417,25 @@ async function iniciarAplicacao() {
     atualizarSeletorPeriodo();
     atualizarDataHora();
 
+    // Offline: evita consultas ao Supabase e abre a aplicação com os dados locais.
+    if (!navigator.onLine) {
+      const cache = obterDadosEmCache(obterChaveCache());
+
+      if (cache) {
+        aplicarDadosEmCache(cache);
+      } else {
+        atualizarAvisoLigacao(
+          "Sem ligação à internet. Ainda não existem dados guardados para este período.",
+        );
+        atualizarResumo();
+        renderizarMovimentos();
+      }
+
+      alterarVista("app");
+      iniciarControloInatividade();
+      return;
+    }
+
     await carregarDados();
 
     alterarVista("app");
