@@ -76,6 +76,7 @@
                     <div class="alert alert-danger small"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
                 @endif
 
+                <div id="recordEditorPanel" class="record-editor-panel">
                 <form id="dashboardMovementForm" method="POST" action="{{ route('despesas.store') }}">
                     @csrf
                     <input type="hidden" name="_method" id="movementMethod" value="POST">
@@ -108,6 +109,7 @@
                     </div>
                     <div class="d-grid gap-2"><button type="submit" class="btn btn-danger w-100" id="saveMovementButton">Guardar despesa</button><button type="button" class="btn btn-outline-secondary d-none" id="cancelMovementEdit">Cancelar edição</button></div>
                 </form>
+                </div>
             </div>
         </article>
     </div>
