@@ -354,6 +354,8 @@
         else if (filterForm) cfg.type = filterForm.querySelector('input[name="tipo"]')?.value || cfg.type || 'todos';
         cfg.category = document.getElementById('categoryFilter')?.value || 'todas';
 
+        const hiddenType = filterForm?.querySelector('input[name="tipo"]');
+        if (hiddenType) hiddenType.value = cfg.type;
         filterForm?.querySelectorAll('button[name="tipo"]').forEach((button) => {
             const active = button.value === cfg.type;
             button.classList.toggle('btn-primary', active);
@@ -570,7 +572,9 @@
 
     expenseButton?.addEventListener('click', () => {
         if (!editing) {
-            setMovementType('despesa');
+            movementType = cfg.initialType === 'receita' ? 'receita' : 'despesa';
+    setMovementType(movementType);
+    if (cfg.initialCategory) category.value = cfg.initialCategory;
             openEditor();
         }
     });
@@ -602,6 +606,10 @@
     document.getElementById('periodPrevious')?.addEventListener('click', () => changeMonth(-1));
     document.getElementById('periodNext')?.addEventListener('click', () => changeMonth(1));
     monthInput?.addEventListener('change', () => setMonth(monthInput.value));
+    document.getElementById('periodForm')?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        setMonth(monthInput.value);
+    });
     document.getElementById('loadMoreMovements')?.addEventListener('click', loadMore);
     document.getElementById('convertButton')?.addEventListener('click', convertCurrency);
     document.getElementById('conversionAmount')?.addEventListener('keydown', (event) => {
