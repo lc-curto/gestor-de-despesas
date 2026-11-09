@@ -1,4 +1,4 @@
-const CACHE_NAME = "meu-bolso-shell-v22";
+const CACHE_NAME = "meu-bolso-shell-v23";
 const RECURSOS = [
   "./",
   "./index.html",
@@ -42,12 +42,24 @@ self.addEventListener("activate", evento => {
   self.clients.claim();
 });
 
-// Apenas recursos estáticos da aplicação entram na estratégia de cache local.
 const RECURSOS_CACHEAVEIS = new Set(
   RECURSOS
     .filter(recurso => !recurso.startsWith("http"))
     .map(recurso => new URL(recurso, self.location.href).pathname)
 );
+
+async function obterDaCacheOuRede(pedido) {
+  const guardado = await caches.match(pedido, { ignoreVary: true });
+  if (guardado) return guardado;
+
+  const resposta = await fetch(pedido);
+  if (resposta.ok) {
+    const copia = resposta.clone();
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put(pedido, copia);
+  }
+  return resposta;
+}
 
 self.addEventListener("fetch", evento => {
   if (evento.request.method !== "GET") return;
@@ -58,42 +70,31 @@ self.addEventListener("fetch", evento => {
     const eNavegacao = evento.request.mode === "navigate";
     const eRecursoEstatico = RECURSOS_CACHEAVEIS.has(url.pathname);
 
-    // Pedidos que não sejam navegação nem recursos estáticos seguem diretamente
-    // para a rede, sem entrar na cache da aplicação.
     if (!eNavegacao && !eRecursoEstatico) return;
 
+    if (eNavegacao) {
+      evento.respondWith(
+        fetch(evento.request).catch(async () => {
+          const pagina = await caches.match("./index.html", { ignoreVary: true });
+          return pagina || Response.error();
+        })
+      );
+      return;
+    }
+
+    // Recursos estáticos usam cache-first: a aplicação não depende da rede
+    // para recuperar CSS, JavaScript, imagens e o manifesto já instalados.
     evento.respondWith(
-      fetch(evento.request).then(resposta => {
-        if (resposta.ok) {
-          const copia = resposta.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(evento.request, copia));
-        }
-        return resposta;
-      }).catch(async () => {
-        const guardada = await caches.match(evento.request);
-        if (guardada) return guardada;
-
-        if (eNavegacao) {
-          return caches.match("./index.html");
-        }
-
-        return Response.error();
-      })
+      obterDaCacheOuRede(evento.request).catch(() => Response.error())
     );
     return;
   }
 
   if (url.hostname === "cdn.jsdelivr.net") {
+    // Dependências externas também usam cache-first para manter o layout
+    // e os componentes disponíveis quando não existe ligação à internet.
     evento.respondWith(
-      caches.match(evento.request).then(guardada =>
-        guardada || fetch(evento.request).then(resposta => {
-          if (resposta.ok) {
-            const copia = resposta.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(evento.request, copia));
-          }
-          return resposta;
-        })
-      )
+      obterDaCacheOuRede(evento.request).catch(() => Response.error())
     );
   }
 });
