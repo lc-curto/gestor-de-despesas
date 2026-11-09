@@ -29,6 +29,8 @@ import {
 
 import { obterTaxaCambio } from "./api.js";
 
+import { guardarDadosEmCache, obterDadosEmCache } from "./cache.js";
+
 // ======================================
 // REFERÊNCIAS AO HTML
 // Guardamos os elementos do DOM uma única vez para os reutilizar nas funções.
@@ -358,33 +360,6 @@ function obterChaveCache() {
   );
 }
 
-// Guarda localmente os últimos dados carregados. O cache permite consultar informação
-// anteriormente obtida quando não existe ligação à internet.
-function guardarDadosEmCache(dados) {
-  try {
-    localStorage.setItem(
-      obterChaveCache(),
-      JSON.stringify({
-        guardadoEm: new Date().toISOString(),
-        ...dados,
-      }),
-    );
-  } catch (erro) {
-    console.warn("Não foi possível guardar os dados localmente:", erro);
-  }
-}
-
-// Recupera e converte de JSON para objeto os dados guardados no localStorage.
-function obterDadosEmCache() {
-  try {
-    const dados = localStorage.getItem(obterChaveCache());
-    return dados ? JSON.parse(dados) : null;
-  } catch (erro) {
-    console.warn("Não foi possível ler os dados locais:", erro);
-    return null;
-  }
-}
-
 // Atualiza o aviso de ligação à internet; uma mensagem vazia esconde o elemento.
 function atualizarAvisoLigacao(mensagem) {
   if (!offlineStatus) return;
@@ -537,7 +512,7 @@ function obterQuantidadeMovimentosCarregados() {
 // Define o comportamento quando a consulta falha: tenta recuperar o cache ou apresenta um erro.
 function mostrarErroCarregamento() {
   const estaOffline = !navigator.onLine;
-  const cache = obterDadosEmCache();
+  const cache = obterDadosEmCache(obterChaveCache());
   const mensagemAviso = estaOffline
     ? "Sem ligação à internet."
     : "Não foi possível sincronizar os dados com o servidor.";
@@ -748,7 +723,7 @@ async function carregarDados() {
   quantidadeReceitasFiltradas = resultadoReceitas.count ?? dadosReceitas.length;
   haMaisDespesas = offsetDespesas < quantidadeDespesasFiltradas;
   haMaisReceitas = offsetReceitas < quantidadeReceitasFiltradas;
-  guardarDadosEmCache({
+  guardarDadosEmCache(obterChaveCache(), {
     despesas: despesasAtuais,
     receitas: receitasAtuais,
     totalDespesasPeriodo,
@@ -828,7 +803,7 @@ async function carregarMaisMovimentos() {
     }
 
     quantidadeMovimentosVisiveis = proximoLimite;
-    guardarDadosEmCache({
+    guardarDadosEmCache(obterChaveCache(), {
       despesas: despesasAtuais,
       receitas: receitasAtuais,
       totalDespesasPeriodo,
@@ -1569,7 +1544,7 @@ window.addEventListener("online", () => {
 });
 
 window.addEventListener("offline", () => {
-  const cache = obterDadosEmCache();
+  const cache = obterDadosEmCache(obterChaveCache());
   if (cache) aplicarDadosEmCache(cache);
   else
     atualizarAvisoLigacao(
