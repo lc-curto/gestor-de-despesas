@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#635bff">
     <title>@yield('title') · Meu Bolso</title>
     <link rel="icon" href="{{ asset('images/pwa-icon.svg') }}" type="image/svg+xml">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet" crossorigin="anonymous">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
 </head>
