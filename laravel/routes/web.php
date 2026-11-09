@@ -17,6 +17,7 @@ Route::middleware('guest')->group(function(){
 Route::middleware('auth')->group(function(){
  Route::post('/logout',[AccountController::class,'logout'])->name('logout');
  Route::get('/dashboard',DashboardController::class)->name('dashboard');
+ Route::post('/session/activity',fn()=>response()->noContent())->name('session.activity');
  foreach(['despesas'=>'despesa','receitas'=>'receita'] as $uri=>$tipo){
   Route::get("/$uri",[FinanceController::class,'index'])->defaults('tipo',$tipo)->name("$uri.index");
   Route::get("/$uri/criar",[FinanceController::class,'create'])->defaults('tipo',$tipo)->name("$uri.create");
