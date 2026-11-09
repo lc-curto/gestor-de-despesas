@@ -37,6 +37,12 @@ export async function verificarSessao() {
     return { user: null, error: null };
   }
 
+  // Sem internet, utiliza a sessão já persistida neste dispositivo.
+  // Não chama getUser(), pois essa operação exige validação no servidor.
+  if (!navigator.onLine && data.session.user) {
+    return { user: data.session.user, error: null };
+  }
+
   const { data: userData, error: userError } =
     await supabase.auth.getUser();
 
