@@ -1111,3 +1111,15 @@ html {
 
 #loadMoreMovements { min-height: 2.5rem; border-radius: 0.75rem; font-weight: 600; }
 @media (max-width: 991.98px) { #loadMoreMovements { width: 100%; max-width: 20rem; } }
+
+
+/* O editor recolhe em ecrãs pequenos e abre quando o utilizador escolhe o tipo ou edita. */
+@media (max-width: 991.98px) {
+    #recordEditorPanel:not(.is-open) {
+        display: none;
+    }
+
+    #recordEditorPanel.is-open {
+        display: block;
+    }
+}
