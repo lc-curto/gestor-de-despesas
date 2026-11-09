@@ -89,6 +89,10 @@ class FinanceController extends Controller
         [$tipo] = $this->config($request);
         $this->query($request)->create($this->validatedData($request));
 
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true, 'message' => 'Registo criado.']);
+        }
+
         if ($request->boolean('return_to_dashboard')) {
             return redirect()->route('dashboard')->with('success', 'Registo criado.');
         }
@@ -112,6 +116,10 @@ class FinanceController extends Controller
         [$tipo] = $this->config($request);
         $this->query($request)->findOrFail($id)->update($this->validatedData($request));
 
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true, 'message' => 'Registo atualizado.']);
+        }
+
         if ($request->boolean('return_to_dashboard')) {
             return redirect()->route('dashboard')->with('success', 'Registo atualizado.');
         }
@@ -123,6 +131,10 @@ class FinanceController extends Controller
     public function destroy(Request $request, string $id)
     {
         $this->query($request)->findOrFail($id)->delete();
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true, 'message' => 'Registo eliminado.']);
+        }
 
         return back()->with('success', 'Registo eliminado.');
     }
