@@ -1,1 +1,46 @@
-<!doctype html><html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sem ligação · Meu Bolso</title><link rel="stylesheet" href="/css/styles.css"></head><body><main class="min-vh-100 d-flex align-items-center"><div class="container text-center"><h1 class="h3 fw-bold">Sem ligação à internet</h1><p class="text-secondary">Os dados financeiros e as operações de escrita exigem ligação ao servidor. Volta a ligar-te para continuar.</p><button class="btn btn-primary" onclick="location.reload()">Tentar novamente</button></div></main></body></html>
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#635bff">
+  <title>Sem ligação · Meu Bolso</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <main class="min-vh-100 py-5">
+    <div class="container">
+      <div class="text-center mb-4">
+        <h1 class="h3 fw-bold">Sem ligação à internet</h1>
+        <p class="text-secondary">Consulta os movimentos guardados anteriormente. Os dados não podem ser alterados offline.</p>
+        <button class="btn btn-primary" onclick="location.reload()">Tentar novamente</button>
+      </div>
+      <section class="card border-0 shadow-sm rounded-4">
+        <div class="card-body">
+          <h2 class="h5 fw-bold">Últimos movimentos guardados</h2>
+          <p id="cacheDate" class="small text-secondary"></p>
+          <div id="cachedMovements" class="expense-list"></div>
+          <p id="emptyCache" class="text-secondary small mb-0">Não existem movimentos guardados neste dispositivo.</p>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script>
+    (() => {
+      const candidates = Object.keys(localStorage)
+        .filter((key) => key.startsWith('meu-bolso:dashboard:'))
+        .map((key) => {
+          try { return JSON.parse(localStorage.getItem(key)); } catch (_) { return null; }
+        })
+        .filter((entry) => entry && entry.html)
+        .sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
+      if (!candidates.length) return;
+      const latest = candidates[0];
+      document.getElementById('cachedMovements').innerHTML = latest.html;
+      document.getElementById('cacheDate').textContent = 'Última atualização: ' + new Date(latest.savedAt).toLocaleString('pt-PT');
+      document.getElementById('emptyCache').hidden = true;
+      document.querySelectorAll('#cachedMovements button, #cachedMovements form').forEach((element) => element.remove());
+    })();
+  </script>
+</body>
+</html>
