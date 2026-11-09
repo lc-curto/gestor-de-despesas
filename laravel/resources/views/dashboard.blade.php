@@ -316,7 +316,7 @@
             if (!response.ok) throw new Error('Taxa indisponível');
             const data = await response.json();
             value.textContent = (amount * data.rate).toLocaleString('pt-PT', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ' + to;
-            rateLabel.textContent = amount.toLocaleString('pt-PT') + ' ' + from + ' = ' + value.textContent + ' · Taxa ' + data.rate;
+            rateLabel.textContent = '1 ' + from + ' = ' + Number(data.rate).toFixed(6) + ' ' + to + (data.date ? ' · Taxa de ' + data.date : '');
         } catch {
             value.textContent = 'Conversão indisponível.';
             rateLabel.textContent = 'Verifica a ligação à internet e tenta novamente.';
