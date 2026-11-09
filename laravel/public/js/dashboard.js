@@ -602,9 +602,7 @@
 
     expenseButton?.addEventListener('click', () => {
         if (!editing) {
-            movementType = cfg.initialType === 'receita' ? 'receita' : 'despesa';
-    setMovementType(movementType);
-    if (cfg.initialCategory) category.value = cfg.initialCategory;
+            setMovementType('despesa');
             openEditor();
         }
     });
@@ -664,6 +662,10 @@
     }
 
     setMovementType('despesa');
+    movementType = cfg.initialType === 'receita' ? 'receita' : 'despesa';
+    setMovementType(movementType);
+    if (cfg.initialCategory) category.value = cfg.initialCategory;
+
     const initialRows = Array.from(list.querySelectorAll('[data-movement-id]'));
     initialRows.forEach((row) => {
         const value = row.querySelector('.movement-value');
