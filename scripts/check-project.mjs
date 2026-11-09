@@ -97,7 +97,20 @@ verificar(Boolean(blocoCache), "Não foi possível localizar a lista RECURSOS no
 if (blocoCache) {
   const recursos = [...blocoCache[1].matchAll(/["']([^"']+)["']/g)].map(match => match[1]);
 
+  verificar(
+    recursos.includes("./assets/js/cache.js"),
+    "O módulo cache.js não está incluído no precache do Service Worker.",
+  );
+
   for (const recurso of recursos) {
+    if (recurso.startsWith("http://") || recurso.startsWith("https://")) {
+      verificar(
+        recurso.startsWith("https://cdn.jsdelivr.net/"),
+        `Origem externa não autorizada no precache: ${recurso}`,
+      );
+      continue;
+    }
+
     const destino = caminhoLocal(recurso);
     verificar(
       existsSync(destino),
