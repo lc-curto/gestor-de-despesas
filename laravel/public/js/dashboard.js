@@ -121,7 +121,8 @@
                 totalReceitasPeriodo: totalIncome,
                 quantidadeDespesasFiltradas: totalExpenseCount,
                 quantidadeReceitasFiltradas: totalIncomeCount,
-                moeda: cfg.currency || 'EUR'
+                moeda: cfg.currency || 'EUR',
+                nome: cfg.name || 'Utilizador'
             }));
         } catch (error) {
             console.warn('Não foi possível guardar os dados localmente:', error);
