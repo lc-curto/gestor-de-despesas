@@ -23,6 +23,10 @@
 
     let page = 1;
     let hasMore = cfg.hasMore === true;
+    let loadedMovements = [];
+    let totalExpenseCount = 0;
+    let totalIncomeCount = 0;
+    let offlineMode = false;
     let movementType = 'despesa';
     let typeBeforeEdit = 'despesa';
     let editing = false;
@@ -86,32 +90,23 @@
 
     function cacheKey() {
         const range = currentMonthRange();
-        return 'meu-bolso:' + cfg.userId + ':' + range.start + ':' + range.end + ':' + (cfg.category || 'todas');
+        return 'meu-bolso:' + cfg.userId + ':' + range.start + ':' + range.end + ':' + (cfg.category || 'all');
     }
 
     function saveCache() {
-        if (!cfg.userId) return;
-        const rows = Array.from(list.querySelectorAll('[data-movement-id]')).map((row) => ({
-            id: row.dataset.movementId,
-            tipo: row.dataset.movementType,
-            description: row.dataset.description,
-            amount: Number(row.dataset.amount),
-            currency: row.dataset.currency,
-            category: row.dataset.category,
-            data_movimento: row.dataset.date
-        }));
-        const expenses = rows.filter((item) => item.tipo === 'despesa').map((item) => ({
+        if (!cfg.userId || !navigator.onLine) return;
+        const expenses = loadedMovements.filter((item) => item.tipo === 'despesa').map((item) => ({
             id: item.id,
             description: item.description,
-            amount: item.amount,
+            amount: Number(item.amount),
             currency: item.currency,
             category: item.category,
             expense_date: item.data_movimento
         }));
-        const incomes = rows.filter((item) => item.tipo === 'receita').map((item) => ({
+        const incomes = loadedMovements.filter((item) => item.tipo === 'receita').map((item) => ({
             id: item.id,
             description: item.description,
-            amount: item.amount,
+            amount: Number(item.amount),
             currency: item.currency,
             category: item.category,
             income_date: item.data_movimento
@@ -124,8 +119,9 @@
                 receitas: incomes,
                 totalDespesasPeriodo: totalExpenses,
                 totalReceitasPeriodo: totalIncome,
-                quantidadeDespesasFiltradas: expenses.length,
-                quantidadeReceitasFiltradas: incomes.length
+                quantidadeDespesasFiltradas: totalExpenseCount,
+                quantidadeReceitasFiltradas: totalIncomeCount,
+                moeda: cfg.currency || 'EUR'
             }));
         } catch (error) {
             console.warn('Não foi possível guardar os dados localmente:', error);
@@ -214,23 +210,43 @@
         return article;
     }
 
-    function renderMovements(items, total) {
+    function renderMovements() {
+        const filtered = loadedMovements
+            .filter((item) => cfg.type === 'todos' || item.tipo === cfg.type)
+            .sort((a, b) =>
+                String(b.data_movimento).localeCompare(String(a.data_movimento)) ||
+                String(a.id).localeCompare(String(b.id))
+            );
+        const total = cfg.type === 'despesa'
+            ? totalExpenseCount
+            : cfg.type === 'receita'
+                ? totalIncomeCount
+                : totalExpenseCount + totalIncomeCount;
+        const visibleLimit = offlineMode ? pageSize() : page * pageSize();
+        const visible = filtered.slice(0, visibleLimit);
+        hasMore = !offlineMode && visible.length < total;
+
         list.replaceChildren();
-        if (!items.length) {
+        if (!visible.length) {
             const empty = document.createElement('div');
             empty.className = 'empty-state text-center py-4';
             empty.innerHTML = '<div class="empty-icon mb-3" aria-hidden="true">◎</div><h3 class="h6">Não existem movimentos para este filtro</h3><p class="small text-secondary mb-0">Adiciona um movimento ou altera os filtros.</p>';
             list.append(empty);
         } else {
-            items.forEach((item) => list.append(renderItem(item)));
+            visible.forEach((item) => list.append(renderItem(item)));
         }
 
         const count = document.createElement('p');
         count.className = 'small text-secondary text-center mt-3 mb-0';
         count.setAttribute('aria-live', 'polite');
-        count.textContent = 'A mostrar ' + items.length + ' de ' + total + ' ' + (total === 1 ? 'movimento' : 'movimentos');
+        count.textContent = 'A mostrar ' + visible.length + ' de ' + total + ' ' + (total === 1 ? 'movimento' : 'movimentos');
         list.append(count);
-        if (loadMoreContainer) loadMoreContainer.hidden = !hasMore;
+
+        if (loadMoreContainer) {
+            loadMoreContainer.hidden = !hasMore;
+            const button = document.getElementById('loadMoreMovements');
+            if (button) button.textContent = 'Ver mais movimentos';
+        }
         saveCache();
     }
 
@@ -294,8 +310,8 @@
         const selectedPage = options.page || 1;
         const params = new URLSearchParams({
             mes: monthInput.value,
-            tipo: cfg.type || 'todos',
-            categoria: cfg.category || 'todas',
+            tipo: 'todos',
+            categoria: cfg.category || 'all',
             page: String(selectedPage),
             limit: String(pageSize())
         });
@@ -313,10 +329,13 @@
         const result = await fetchMovements({ page: 1 });
         if (!result) return;
         page = 1;
-        hasMore = result.has_more;
+        offlineMode = false;
+        loadedMovements = result.data || [];
+        totalExpenseCount = Number(result.total_despesas_filtradas) || 0;
+        totalIncomeCount = Number(result.total_receitas_filtradas) || 0;
         updateSummary(result.total_despesas, result.total_receitas);
         updatePeriodCaption();
-        renderMovements(result.data, result.total);
+        renderMovements();
     }
 
     async function loadMore() {
@@ -329,21 +348,16 @@
         try {
             const result = await fetchMovements({ page: page + 1 });
             if (!result) return;
-            result.data.forEach((item) => list.insertBefore(renderItem(item), list.querySelector('p[aria-live="polite"]')));
+            loadedMovements = loadedMovements.concat(result.data || []);
             page = result.page;
-            hasMore = result.has_more;
-            const count = list.querySelector('p[aria-live="polite"]');
-            if (count) count.textContent = 'A mostrar ' + list.querySelectorAll('[data-movement-id]').length + ' de ' + result.total + ' movimentos';
-            if (loadMoreContainer) loadMoreContainer.hidden = !hasMore;
-            saveCache();
+            totalExpenseCount = Number(result.total_despesas_filtradas) || totalExpenseCount;
+            totalIncomeCount = Number(result.total_receitas_filtradas) || totalIncomeCount;
+            renderMovements();
         } catch (error) {
             alert('Não foi possível carregar mais movimentos.');
         } finally {
             const currentButton = document.getElementById('loadMoreMovements');
-            if (currentButton) {
-                currentButton.disabled = false;
-                currentButton.textContent = 'Carregar mais';
-            }
+            if (currentButton) currentButton.disabled = false;
         }
     }
 
@@ -351,12 +365,15 @@
         event?.preventDefault();
         const filterForm = document.querySelector('.transaction-filters');
         const submitter = event?.submitter;
+        const previousCategory = cfg.category;
         if (submitter?.name === 'tipo') cfg.type = submitter.value;
-        else if (filterForm) cfg.type = filterForm.querySelector('input[name="tipo"]')?.value || cfg.type || 'todos';
-        cfg.category = document.getElementById('categoryFilter')?.value || 'todas';
+
+        const selectedCategory = document.getElementById('categoryFilter')?.value || 'all';
+        cfg.category = selectedCategory;
 
         const hiddenType = filterForm?.querySelector('input[name="tipo"]');
         if (hiddenType) hiddenType.value = cfg.type;
+
         filterForm?.querySelectorAll('button[name="tipo"]').forEach((button) => {
             const active = button.value === cfg.type;
             button.classList.toggle('btn-primary', active);
@@ -365,10 +382,14 @@
             button.setAttribute('aria-pressed', String(active));
         });
 
-        try {
-            await refreshDashboard();
-        } catch (error) {
-            alert('Não foi possível carregar os movimentos.');
+        if (previousCategory !== selectedCategory) {
+            try {
+                await refreshDashboard();
+            } catch (error) {
+                alert('Não foi possível carregar os movimentos.');
+            }
+        } else {
+            renderMovements();
         }
     }
 
@@ -530,6 +551,7 @@
         try {
             const cached = JSON.parse(localStorage.getItem(cacheKey()) || 'null');
             if (!cached) return false;
+
             const expenses = (cached.despesas || []).map((item) => ({
                 ...item,
                 tipo: 'despesa',
@@ -540,13 +562,18 @@
                 tipo: 'receita',
                 data_movimento: item.income_date
             }));
-            cachedMovements = [...expenses, ...incomes].sort((a, b) =>
-                b.data_movimento.localeCompare(a.data_movimento) || String(a.id).localeCompare(String(b.id))
-            );
+            loadedMovements = [...expenses, ...incomes];
+            totalExpenseCount = Number(cached.quantidadeDespesasFiltradas) || expenses.length;
+            totalIncomeCount = Number(cached.quantidadeReceitasFiltradas) || incomes.length;
             totalExpenses = Number(cached.totalDespesasPeriodo) || 0;
             totalIncome = Number(cached.totalReceitasPeriodo) || 0;
+            cfg.currency = cached.moeda || cfg.currency || 'EUR';
+            page = 1;
+            offlineMode = true;
+            hasMore = false;
             updateSummary(totalExpenses, totalIncome);
-            renderMovements(cachedMovements, cachedMovements.length);
+            renderMovements();
+
             const saved = cached.guardadoEm
                 ? new Intl.DateTimeFormat('pt-PT', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(cached.guardadoEm))
                 : 'data desconhecida';
@@ -559,12 +586,14 @@
     }
 
     function handleOffline() {
+        offlineMode = true;
         if (!restoreCachedData()) {
             showStatus('Sem ligação à internet. Ainda não existem dados guardados para este período.');
         }
     }
 
     function handleOnline() {
+        offlineMode = false;
         showStatus('');
         refreshDashboard().catch(() => {
             showStatus('Não foi possível sincronizar os dados com o servidor.');
@@ -645,8 +674,6 @@
     });
     updateSummary(totalExpenses, totalIncome);
     updatePeriodCaption();
-    saveCache();
-
     // A lista inicial server-side é adaptada ao mesmo limite usado pela aplicação original.
     if (navigator.onLine) {
         refreshDashboard().catch(() => showStatus('Não foi possível sincronizar os movimentos com o servidor.'));
@@ -655,7 +682,4 @@
     }
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    window.matchMedia('(max-width: 991.98px)').addEventListener('change', () => {
-        if (navigator.onLine) refreshDashboard().catch(() => {});
-    });
 })();
