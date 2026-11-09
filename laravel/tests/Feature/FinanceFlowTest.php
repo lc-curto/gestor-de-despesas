@@ -118,7 +118,12 @@ class FinanceFlowTest extends TestCase
             ->assertJsonCount(7, 'data');
 
         $this->assertNotContains('Movimento privado', collect($response->json('data'))->pluck('description'));
-        $this->assertSame('private, no-store', $response->headers->get('Cache-Control'));
+        $cacheDirectives = array_map(
+            'trim',
+            explode(',', strtolower($response->headers->get('Cache-Control')))
+        );
+        sort($cacheDirectives);
+        $this->assertSame(['no-store', 'private'], $cacheDirectives);
     }
 
     public function test_dashboard_totals_include_all_month_movements_not_only_first_page(): void
