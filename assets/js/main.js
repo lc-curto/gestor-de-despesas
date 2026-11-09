@@ -121,22 +121,12 @@ const TAMANHO_PAGINA_DESKTOP = 10;
 const TAMANHO_PAGINA_MOVEL = 6;
 const MEDIA_QUERY_MOVEL = "(max-width: 991.98px)";
 
-// Define quantos movimentos são apresentados inicialmente e quantos são acrescentados
-// em cada pedido. No telemóvel são usados grupos menores para facilitar a navegação.
-function obterLimiteMovimentos() {
+// Devolve o tamanho da página de movimentos conforme o ecrã.
+// O mesmo valor é usado no carregamento inicial e nos carregamentos adicionais.
+function obterTamanhoPaginaMovimentos() {
   return window.matchMedia(MEDIA_QUERY_MOVEL).matches
     ? TAMANHO_PAGINA_MOVEL
     : TAMANHO_PAGINA_DESKTOP;
-}
-
-// Mantém o tamanho de cada carregamento adicional alinhado com o limite inicial.
-function obterIncrementoMovimentos() {
-  return obterLimiteMovimentos();
-}
-
-// Define quantos movimentos são apresentados na primeira renderização da lista.
-function obterQuantidadeInicialMovimentos() {
-  return obterLimiteMovimentos();
 }
 
 let modoRegisto = false;
@@ -156,7 +146,7 @@ let totalDespesasPeriodo = 0;
 let totalReceitasPeriodo = 0;
 let quantidadeDespesasFiltradas = 0;
 let quantidadeReceitasFiltradas = 0;
-let quantidadeMovimentosVisiveis = obterQuantidadeInicialMovimentos();
+let quantidadeMovimentosVisiveis = obterTamanhoPaginaMovimentos();
 let requisicaoLista = 0;
 let utilizadorAtualId = null;
 let moedaAtual = "EUR";
@@ -418,7 +408,7 @@ function aplicarDadosEmCache(cache, mensagemAviso = "Sem ligação à internet."
   offsetReceitas = receitasAtuais.length;
   haMaisDespesas = false;
   haMaisReceitas = false;
-  quantidadeMovimentosVisiveis = obterQuantidadeInicialMovimentos();
+  quantidadeMovimentosVisiveis = obterTamanhoPaginaMovimentos();
 
   const dataCache = cache.guardadoEm
     ? new Intl.DateTimeFormat("pt-PT", {
@@ -674,7 +664,7 @@ async function carregarDados() {
   haMaisDespesas = false;
   haMaisReceitas = false;
   aCarregarMais = false;
-  quantidadeMovimentosVisiveis = obterQuantidadeInicialMovimentos();
+  quantidadeMovimentosVisiveis = obterTamanhoPaginaMovimentos();
   totalDespesasPeriodo = 0;
   totalReceitasPeriodo = 0;
   quantidadeDespesasFiltradas = 0;
@@ -706,12 +696,12 @@ async function carregarDados() {
       listarDespesas({
         ...parametros,
         offset: 0,
-        limite: obterLimiteMovimentos(),
+        limite: obterTamanhoPaginaMovimentos(),
       }),
       listarReceitas({
         ...parametros,
         offset: 0,
-        limite: obterLimiteMovimentos(),
+        limite: obterTamanhoPaginaMovimentos(),
       }),
       listarDespesas({ ...parametrosResumo, somenteMontantes: true }),
       listarReceitas({ ...parametrosResumo, somenteMontantes: true }),
@@ -741,8 +731,8 @@ async function carregarDados() {
 
   const dadosDespesas = resultadoDespesas.data || [];
   const dadosReceitas = resultadoReceitas.data || [];
-  despesasAtuais = dadosDespesas.slice(0, obterLimiteMovimentos()); // vai trazer a quantidade pre definida de movimentos para PC (10) ou mobile (6)
-  receitasAtuais = dadosReceitas.slice(0, obterLimiteMovimentos());
+  despesasAtuais = dadosDespesas.slice(0, obterTamanhoPaginaMovimentos()); // vai trazer a quantidade pre definida de movimentos para PC (10) ou mobile (6)
+  receitasAtuais = dadosReceitas.slice(0, obterTamanhoPaginaMovimentos());
   offsetDespesas = despesasAtuais.length;
   offsetReceitas = receitasAtuais.length; // define a partir de onde vamos buscar na base de dados, esta relacionado com a paginacao dos movimentos
   totalDespesasPeriodo = (resumoDespesas.data || []).reduce(
@@ -779,7 +769,7 @@ async function carregarMaisMovimentos() {
   const requisicaoAtual = requisicaoLista;
   const totalMovimentos = obterTotalMovimentos();
   const proximoLimite = Math.min(
-    quantidadeMovimentosVisiveis + obterIncrementoMovimentos(),
+    quantidadeMovimentosVisiveis + obterTamanhoPaginaMovimentos(),
     totalMovimentos,
   );
   const movimentosCarregados = obterQuantidadeMovimentosCarregados();
@@ -805,14 +795,14 @@ async function carregarMaisMovimentos() {
           ? listarDespesas({
               ...parametros,
               offset: offsetDespesas, // a partir de onde
-              limite: obterLimiteMovimentos(), // até onde
+              limite: obterTamanhoPaginaMovimentos(), // até onde
             })
           : Promise.resolve(null),
         carregarReceitas
           ? listarReceitas({
               ...parametros,
               offset: offsetReceitas,
-              limite: obterLimiteMovimentos(),
+              limite: obterTamanhoPaginaMovimentos(),
             })
           : Promise.resolve(null),
       ]);
@@ -863,7 +853,7 @@ async function carregarMaisMovimentos() {
 // Altera o filtro visual (todos, despesas ou receitas) sem voltar a consultar a base de dados.
 function alterarFiltroMovimentos(filtro) {
   filtroMovimentos = filtro;
-  quantidadeMovimentosVisiveis = obterQuantidadeInicialMovimentos();
+  quantidadeMovimentosVisiveis = obterTamanhoPaginaMovimentos();
 
   const botaoAtivo = {
     todos: transactionFilterAll,
