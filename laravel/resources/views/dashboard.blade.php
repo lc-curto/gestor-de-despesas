@@ -76,7 +76,7 @@
                     <div class="alert alert-danger small"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
                 @endif
 
-                <div id="recordEditorPanel" class="record-editor-panel">
+                <div id="recordEditorPanel" class="record-editor-panel @if($errors->any()) is-open @endif">
                 <form id="dashboardMovementForm" method="POST" action="{{ route('despesas.store') }}">
                     @csrf
                     <input type="hidden" name="_method" id="movementMethod" value="POST">
