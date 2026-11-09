@@ -19,6 +19,10 @@
   updateThemeButton();
 
   document.querySelector('form[action$="/logout"]')?.addEventListener('submit', () => {
+    const activeUser = localStorage.getItem('meu-bolso:active-user');
+    if (activeUser) {
+      Object.keys(localStorage).filter((key) => key.startsWith('meu-bolso:dashboard:') && key.split(':')[2] === activeUser).forEach((key) => localStorage.removeItem(key));
+    }
     localStorage.removeItem('meu-bolso:active-user');
   });
 
