@@ -591,41 +591,6 @@ body {
 }
 
 
-/* ======================================
-   CARTÃO DO HISTÓRICO COM SCROLL INTERNO
-====================================== */
-
-.history-card {
-  display: flex;
-  max-height: 48rem;
-  min-height: 0;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.history-card-body {
-  display: flex;
-  min-height: 0;
-  flex: 1 1 auto;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.history-list {
-  min-height: 0;
-  flex: 1 1 auto;
-  overflow-y: auto;
-  overscroll-behavior: auto;
-  scrollbar-gutter: stable;
-}
-
-@media (max-width: 991.98px) {
-  .history-card {
-    max-height: 75vh;
-  }
-}
-
-
 
 /* ======================================
    AUTENTICAÇÃO — LAYOUT SEM CARTÃO
