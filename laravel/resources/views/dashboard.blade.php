@@ -125,6 +125,8 @@
                             <button type="button" class="btn btn-outline-secondary mobile-tap-target" id="periodPrevious" aria-label="Período anterior"><i class="bi bi-chevron-left"></i></button>
                             <label for="periodMonth" class="visually-hidden">Selecionar mês</label>
                             <input type="month" id="periodMonth" name="mes" class="form-control" value="{{ $mes }}">
+                            <input type="hidden" name="tipo" value="{{ $filtroTipo }}">
+                            <input type="hidden" name="categoria" value="{{ $filtroCategoria }}">
                             <button type="button" class="btn btn-outline-secondary mobile-tap-target" id="periodNext" aria-label="Período seguinte"><i class="bi bi-chevron-right"></i></button>
                             <button class="btn btn-primary" type="submit">Ver</button>
                         </form>
