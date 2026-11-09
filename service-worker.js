@@ -1,4 +1,4 @@
-const CACHE_NAME = "meu-bolso-shell-v17";
+const CACHE_NAME = "meu-bolso-shell-v18";
 const RECURSOS = [
   "./",
   "./index.html",
@@ -35,12 +35,25 @@ self.addEventListener("activate", evento => {
   self.clients.claim();
 });
 
+// Apenas recursos estáticos listados no shell podem ser guardados em cache.
+// Isto evita armazenar respostas de futuras rotas de API ou dados de utilizadores.
+const RECURSOS_CACHEAVEIS = new Set(
+  RECURSOS.map(recurso => new URL(recurso, self.location.href).pathname)
+);
+
 self.addEventListener("fetch", evento => {
   if (evento.request.method !== "GET") return;
 
   const url = new URL(evento.request.url);
 
   if (url.origin === self.location.origin) {
+    const eNavegacao = evento.request.mode === "navigate";
+    const eRecursoEstatico = RECURSOS_CACHEAVEIS.has(url.pathname);
+
+    // Pedidos que não sejam navegação nem recursos estáticos seguem diretamente
+    // para a rede, sem entrar na cache da aplicação.
+    if (!eNavegacao && !eRecursoEstatico) return;
+
     evento.respondWith(
       fetch(evento.request).then(resposta => {
         if (resposta.ok) {
@@ -52,7 +65,7 @@ self.addEventListener("fetch", evento => {
         const guardada = await caches.match(evento.request);
         if (guardada) return guardada;
 
-        if (evento.request.mode === "navigate") {
+        if (eNavegacao) {
           return caches.match("./index.html");
         }
 
