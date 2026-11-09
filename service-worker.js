@@ -1,8 +1,8 @@
-const CACHE_NAME = "meu-bolso-shell-v16";
+const CACHE_NAME = "meu-bolso-shell-v17";
 const RECURSOS = [
   "./",
   "./index.html",
-  "./manifest.json",
+  "./assets/pwa/manifest.json",
   "./assets/css/styles.css",
   "./assets/js/main.js?v=final-2",
   "./assets/js/auth.js",
