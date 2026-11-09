@@ -86,8 +86,10 @@
   function saveCache() {
     if (!navigator.onLine) return;
     try {
+      const snapshot = list.cloneNode(true);
+      snapshot.querySelectorAll('form, .edit-movement').forEach((element) => element.remove());
       localStorage.setItem(cacheKey(), JSON.stringify({
-        html: list.innerHTML,
+        html: snapshot.innerHTML,
         savedAt: new Date().toISOString()
       }));
     } catch (_) {}
