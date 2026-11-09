@@ -1,4 +1,4 @@
-const CACHE_NAME = "meu-bolso-shell-v18";
+const CACHE_NAME = "meu-bolso-shell-v19";
 const RECURSOS = [
   "./",
   "./index.html",
