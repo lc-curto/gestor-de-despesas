@@ -143,7 +143,7 @@
                         <div class="ms-auto filter-control">
                             <label for="categoryFilter" class="visually-hidden">Filtrar por categoria</label>
                             <select class="form-select" id="categoryFilter" name="categoria">
-                                <option value="todas">Todas as categorias</option>
+                                <option value="all">Todas as categorias</option>
                                 @foreach ($categorias as $key => $label)
                                     <option value="{{ $key }}" @selected($filtroCategoria === $key)>{{ $label }}</option>
                                 @endforeach
@@ -205,7 +205,7 @@
             </div>
             <div class="col-12 col-sm-4 col-lg-2">
                 <label for="conversionAmount" class="form-label">Valor</label>
-                <input type="number" class="form-control" id="conversionAmount" placeholder="100,00" min="0.01" step="0.01" value="1">
+                <input type="number" class="form-control" id="conversionAmount" placeholder="100,00" min="0.01" step="0.01">
             </div>
             <div class="col-6 col-sm-4 col-lg-2">
                 <label for="conversionFrom" class="form-label">De</label>
