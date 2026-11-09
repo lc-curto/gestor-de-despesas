@@ -192,8 +192,7 @@
                         </div>
                     @endforelse
                 </div>
-                <div class="px-3 px-sm-4 pb-3 text-center" id="loadMoreContainer" @if($totalMovimentos <= $limit) hidden @endif><button type="button" class="btn btn-outline-primary" id="loadMoreMovements">Carregar mais</button></div>
-            </div>
+                            </div>
         </article>
     </div>
 </section>
