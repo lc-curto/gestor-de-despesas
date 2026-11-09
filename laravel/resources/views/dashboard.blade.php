@@ -30,7 +30,7 @@
             <div class="d-flex justify-content-between align-items-center gap-3">
                 <div>
                     <p class="small mb-1 opacity-75">Saldo do período</p>
-                    <p class="summary-value summary-value-text mb-0" id="balanceAmount">{{ number_format($totalReceitas - $totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
+                    <p class="summary-value summary-value-text mb-0" id="balanceAmount" data-total="{{ $totalReceitas - $totalDespesas }}">{{ number_format($totalReceitas - $totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
                     <p class="small mb-0 mt-2 opacity-75 d-none d-md-block">Receitas menos despesas</p>
                 </div>
                 <span class="summary-icon d-none d-md-flex" aria-hidden="true"><i class="bi bi-wallet2"></i></span>
@@ -40,14 +40,14 @@
     <div class="col-4 col-md-4">
         <article class="summary-card summary-card-compact h-100">
             <p class="small text-secondary mb-2">Despesas</p>
-            <p class="summary-value mb-0 text-danger" id="totalAmount">{{ number_format($totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
+            <p class="summary-value mb-0 text-danger" id="totalAmount" data-total="{{ $totalDespesas }}">{{ number_format($totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
             <p class="small text-secondary mb-0 mt-2">Total no período</p>
         </article>
     </div>
     <div class="col-4 col-md-4">
         <article class="summary-card summary-card-compact h-100">
             <p class="small text-secondary mb-2">Receitas</p>
-            <p class="summary-value mb-0 text-success" id="totalIncome">{{ number_format($totalReceitas, 2, ',', '.') }} {{ $moeda }}</p>
+            <p class="summary-value mb-0 text-success" id="totalIncome" data-total="{{ $totalReceitas }}">{{ number_format($totalReceitas, 2, ',', '.') }} {{ $moeda }}</p>
             <p class="small text-secondary mb-0 mt-2">Total no período</p>
         </article>
     </div>
