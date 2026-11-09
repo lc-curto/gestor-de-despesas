@@ -119,7 +119,7 @@
 
   function updateOfflineState() {
     const offline = !navigator.onLine;
-    document.querySelectorAll('#dashboardMovementForm input, #dashboardMovementForm select, #dashboardMovementForm button, #expensesList form button, #loadMoreMovements').forEach((control) => {
+    document.querySelectorAll('#dashboardMovementForm input, #dashboardMovementForm select, #dashboardMovementForm button, #expensesList button, #loadMoreMovements').forEach((control) => {
       control.disabled = offline;
     });
     if (offline) {
