@@ -28,7 +28,7 @@
   <script>
     (() => {
       const candidates = Object.keys(localStorage)
-        .filter((key) => key.startsWith('meu-bolso:dashboard:'))
+        .filter((key) => key.startsWith('meu-bolso:dashboard:') && key.split(':')[2] === localStorage.getItem('meu-bolso:active-user'))
         .map((key) => {
           try { return JSON.parse(localStorage.getItem(key)); } catch (_) { return null; }
         })
