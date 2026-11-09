@@ -21,6 +21,7 @@
     const loadMoreContainer = document.getElementById('loadMoreContainer');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
 
+    const pageSize = () => window.matchMedia('(max-width: 991.98px)').matches ? 6 : 10;
     let page = 1;
     let visibleCount = pageSize();
     let hasMore = cfg.hasMore === true;
@@ -41,7 +42,6 @@
     } catch (error) {
         console.warn('Não foi possível identificar a sessão neste dispositivo:', error);
     }
-    const pageSize = () => window.matchMedia('(max-width: 991.98px)').matches ? 6 : 10;
 
     function currentMonthRange() {
         const parts = (monthInput?.value || '').split('-').map(Number);
