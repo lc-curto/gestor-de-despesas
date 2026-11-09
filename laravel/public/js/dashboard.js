@@ -31,6 +31,7 @@
     let totalExpenses = Number(document.getElementById('totalAmount')?.dataset.total || 0);
     let totalIncome = Number(document.getElementById('totalIncome')?.dataset.total || 0);
 
+    if (cfg.userId) localStorage.setItem('meu-bolso:active-user', String(cfg.userId));
     const pageSize = () => window.matchMedia('(max-width: 991.98px)').matches ? 6 : 10;
 
     function currentMonthRange() {
