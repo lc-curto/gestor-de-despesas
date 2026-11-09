@@ -1,0 +1,25 @@
+name: Verificação do projeto
+
+on:
+  push:
+    branches:
+      - main
+      - refactor/estrutura-e-css
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obter código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Executar verificações
+        run: npm run check

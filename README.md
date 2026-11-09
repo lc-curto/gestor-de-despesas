@@ -48,9 +48,12 @@ A lógica JavaScript está dividida por módulos, de acordo com as responsabilid
 ```text
 gestor-de-despesas/
 ├── index.html
-├── manifest.json
+├── README.md
+├── .gitignore
 ├── service-worker.js
 └── assets/
+    ├── pwa/
+    │   └── manifest.json
     ├── css/
     │   └── styles.css
     ├── images/
@@ -75,6 +78,18 @@ gestor-de-despesas/
 - **api.js** — comunica com a API Frankfurter para obter taxas de câmbio.
 - **supabase.js** — configura e exporta o cliente Supabase utilizado pelos restantes módulos.
 - **tema.js** — inicializa, aplica e alterna entre os temas claro e escuro.
+
+## Verificações automáticas
+
+O projeto inclui verificações estruturais sem dependências externas. Com Node.js 22 ou superior instalado, executar na raiz do repositório:
+
+```bash
+npm run check
+```
+
+O comando verifica a sintaxe dos ficheiros JavaScript, os imports relativos, as referências locais do HTML, o manifesto PWA e os recursos declarados no cache do Service Worker. As mesmas verificações são executadas automaticamente pelo GitHub Actions em cada atualização da branch de trabalho e em pull requests para `main`.
+
+Estas verificações não substituem testes funcionais no navegador nem testes de integração com o Supabase.
 
 ## Como utilizar
 
