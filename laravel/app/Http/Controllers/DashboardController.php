@@ -1,12 +1,12 @@
 <?php
 
-namespace App\\Http\\Controllers;
+namespace App\Http\Controllers;
 
-use App\\Support\\Categorias;
-use Illuminate\\Database\\Query\\Builder;
-use Illuminate\\Http\\Request;
-use Illuminate\\Support\\Carbon;
-use Illuminate\\Support\\Facades\\DB;
+use App\Support\Categorias;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -21,6 +21,7 @@ class DashboardController extends Controller
             ? $request->query('categoria', 'todas')
             : 'todas';
 
+        // Os totais são calculados sobre todos os movimentos do mês, independentemente da paginação.
         $despesasPorMoeda = $user->despesas()
             ->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()])
             ->selectRaw('currency, SUM(amount) AS total')->groupBy('currency')->pluck('total', 'currency');
@@ -35,7 +36,7 @@ class DashboardController extends Controller
         $query = $this->movimentosQuery($user->id, $inicio, $fim, $filtroTipo, $filtroCategoria);
         $limit = $this->pageSize($request);
         $totalMovimentos = (clone $query)->count();
-        $movimentos = (clone $query)->offset(0)->limit($limit)->get();
+        $movimentos = (clone $query)->limit($limit)->get();
 
         return view('dashboard', compact(
             'inicio', 'mes', 'movimentos', 'categorias', 'filtroTipo',
@@ -72,9 +73,9 @@ class DashboardController extends Controller
         try {
             $inicio = Carbon::createFromFormat('!Y-m', (string) $mes)->startOfMonth();
             if ($inicio->format('Y-m') !== $mes) {
-                throw new \\InvalidArgumentException();
+                throw new \InvalidArgumentException();
             }
-        } catch (\\Throwable) {
+        } catch (\Throwable) {
             $inicio = now()->startOfMonth();
         }
 
