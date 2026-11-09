@@ -63,7 +63,7 @@ class FinanceController extends Controller
         if (!empty($filters['fim'])) $query->whereDate($dateField, '<=', $filters['fim']);
 
         $registos = $query->paginate(10)->withQueryString();
-        return view('finance.index', compact('tipo', 'dateField', 'categories', 'registos'));
+        $data = $dateField; $cats = $categories;\n        return view('finance.index', compact('tipo', 'data', 'cats', 'registos'));
     }
 
     public function create(Request $request)
