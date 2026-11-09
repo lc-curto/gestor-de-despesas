@@ -18,7 +18,6 @@
     const closePanelButton = document.getElementById('recordPanelClose');
     const monthInput = document.getElementById('periodMonth');
     const periodCaption = document.getElementById('periodCaption');
-    const loadMoreContainer = document.getElementById('loadMoreContainer');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
 
     const pageSize = () => window.matchMedia('(max-width: 991.98px)').matches ? 6 : 10;
@@ -61,7 +60,7 @@
     function formatCurrency(value, currency) {
         return new Intl.NumberFormat('pt-PT', {
             style: 'currency',
-            currency: cfg.currency || currency || 'EUR'
+            currency: currency || cfg.currency || 'EUR'
         }).format(Number(value) || 0);
     }
 
@@ -228,12 +227,11 @@
             : cfg.type === 'receita'
                 ? totalIncomeCount
                 : totalExpenseCount + totalIncomeCount;
-        const visibleLimit = offlineMode ? pageSize() : visibleCount;
-        const visible = filtered.slice(0, visibleLimit);
+        const visible = filtered.slice(0, offlineMode ? pageSize() : visibleCount);
         hasMore = !offlineMode && visible.length < total;
 
         list.replaceChildren();
-        if (!visible.length) {
+        if (visible.length === 0) {
             const empty = document.createElement('div');
             empty.className = 'empty-state text-center py-4';
             empty.innerHTML = '<div class="empty-icon mb-3" aria-hidden="true">◎</div><h3 class="h6">Não existem movimentos para este filtro</h3><p class="small text-secondary mb-0">Adiciona um movimento ou altera os filtros.</p>';
@@ -242,17 +240,27 @@
             visible.forEach((item) => list.append(renderItem(item)));
         }
 
+        const controls = document.createElement('div');
+        controls.className = 'pt-3 pb-4';
         const count = document.createElement('p');
-        count.className = 'small text-secondary text-center mt-3 mb-0';
+        count.className = 'small text-secondary text-center mb-0';
         count.setAttribute('aria-live', 'polite');
         count.textContent = 'A mostrar ' + visible.length + ' de ' + total + ' ' + (total === 1 ? 'movimento' : 'movimentos');
-        list.append(count);
+        controls.append(count);
 
-        if (loadMoreContainer) {
-            loadMoreContainer.hidden = !hasMore;
-            const button = document.getElementById('loadMoreMovements');
-            if (button) button.textContent = 'Ver mais movimentos';
+        if (hasMore) {
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'd-flex justify-content-center pt-3';
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.id = 'loadMoreMovements';
+            button.className = 'btn btn-outline-primary btn-sm px-4';
+            button.textContent = 'Ver mais movimentos';
+            buttonContainer.append(button);
+            controls.append(buttonContainer);
         }
+
+        list.append(controls);
         saveCache();
     }
 
@@ -640,6 +648,10 @@
     cancelButton?.addEventListener('click', cancelEdit);
     form.addEventListener('submit', submitMovement);
     list.addEventListener('click', (event) => {
+        if (event.target.closest('#loadMoreMovements')) {
+            loadMore();
+            return;
+        }
         const editButton = event.target.closest('[data-acao="editar"], .edit-movement');
         if (editButton) {
             const row = editButton.closest('[data-movement-id]');
@@ -662,7 +674,6 @@
         event.preventDefault();
         setMonth(monthInput.value);
     });
-    document.getElementById('loadMoreMovements')?.addEventListener('click', loadMore);
     document.getElementById('convertButton')?.addEventListener('click', convertCurrency);
     document.getElementById('conversionAmount')?.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') convertCurrency();
