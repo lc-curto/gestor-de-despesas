@@ -7,7 +7,7 @@ Route::get('/',fn()=>auth()->check()?redirect()->route('dashboard'):redirect()->
 Route::middleware('guest')->group(function(){
  Route::view('/login','auth.login')->name('login');
  Route::post('/login',[AccountController::class,'login'])->middleware('throttle:6,1')->name('login.store');
- Route::view('/registo','auth.register')->name('register');
+ Route::view('/registo','auth.login')->name('register');
  Route::post('/registo',[AccountController::class,'register'])->middleware('throttle:6,1')->name('register.store');
  Route::view('/password/forgot','auth.forgot')->name('password.request');
  Route::post('/password/email',[AccountController::class,'sendReset'])->middleware('throttle:3,1')->name('password.email');
