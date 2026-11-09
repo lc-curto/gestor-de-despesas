@@ -97,7 +97,30 @@ verificar(Boolean(blocoCache), "Não foi possível localizar a lista RECURSOS no
 if (blocoCache) {
   const recursos = [...blocoCache[1].matchAll(/["']([^"']+)["']/g)].map(match => match[1]);
 
+  verificar(
+    recursos.includes("./assets/js/cache.js"),
+    "O módulo cache.js não está incluído no precache do Service Worker.",
+  );
+
+  verificar(
+    recursos.includes("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0"),
+    "O SDK UMD do Supabase não está incluído no precache.",
+  );
+
+  verificar(
+    recursos.includes("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff2"),
+    "A fonte Bootstrap Icons não está incluída no precache.",
+  );
+
   for (const recurso of recursos) {
+    if (recurso.startsWith("http://") || recurso.startsWith("https://")) {
+      verificar(
+        recurso.startsWith("https://cdn.jsdelivr.net/"),
+        `Origem externa não autorizada no precache: ${recurso}`,
+      );
+      continue;
+    }
+
     const destino = caminhoLocal(recurso);
     verificar(
       existsSync(destino),

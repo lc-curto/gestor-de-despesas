@@ -1,10 +1,11 @@
-const CACHE_NAME = "meu-bolso-shell-v21";
+const CACHE_NAME = "meu-bolso-shell-v25";
 const RECURSOS = [
   "./",
   "./index.html",
   "./assets/pwa/manifest.json",
   "./assets/css/styles.css",
   "./assets/js/main.js?v=final-2",
+  "./assets/js/cache.js",
   "./assets/js/auth.js",
   "./assets/js/tema.js",
   "./assets/js/despesas.js",
@@ -14,7 +15,12 @@ const RECURSOS = [
   "./assets/images/favicon.png",
   "./assets/images/pwa-icon.svg",
   "./assets/images/pwa-icon-192.png",
-  "./assets/images/pwa-icon-512.png"
+  "./assets/images/pwa-icon-512.png",
+  "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",
+  "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css",
+  "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js",
+  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0",
+  "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff2"
 ];
 
 self.addEventListener("install", evento => {
@@ -37,11 +43,27 @@ self.addEventListener("activate", evento => {
   self.clients.claim();
 });
 
-// Apenas recursos estáticos listados no shell podem ser guardados em cache.
-// Isto evita armazenar respostas de futuras rotas de API ou dados de utilizadores.
 const RECURSOS_CACHEAVEIS = new Set(
-  RECURSOS.map(recurso => new URL(recurso, self.location.href).pathname)
+  RECURSOS
+    .filter(recurso => !recurso.startsWith("http"))
+    .map(recurso => new URL(recurso, self.location.href).pathname)
 );
+
+async function obterDaCacheOuRede(pedido) {
+  const guardado = await caches.match(pedido, {
+    ignoreVary: true,
+    ignoreSearch: true,
+  });
+  if (guardado) return guardado;
+
+  const resposta = await fetch(pedido);
+  if (resposta.ok) {
+    const copia = resposta.clone();
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put(pedido, copia);
+  }
+  return resposta;
+}
 
 self.addEventListener("fetch", evento => {
   if (evento.request.method !== "GET") return;
@@ -52,42 +74,31 @@ self.addEventListener("fetch", evento => {
     const eNavegacao = evento.request.mode === "navigate";
     const eRecursoEstatico = RECURSOS_CACHEAVEIS.has(url.pathname);
 
-    // Pedidos que não sejam navegação nem recursos estáticos seguem diretamente
-    // para a rede, sem entrar na cache da aplicação.
     if (!eNavegacao && !eRecursoEstatico) return;
 
+    if (eNavegacao) {
+      evento.respondWith(
+        fetch(evento.request).catch(async () => {
+          const pagina = await caches.match("./index.html", { ignoreVary: true });
+          return pagina || Response.error();
+        })
+      );
+      return;
+    }
+
+    // Recursos estáticos usam cache-first: a aplicação não depende da rede
+    // para recuperar CSS, JavaScript, imagens e o manifesto já instalados.
     evento.respondWith(
-      fetch(evento.request).then(resposta => {
-        if (resposta.ok) {
-          const copia = resposta.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(evento.request, copia));
-        }
-        return resposta;
-      }).catch(async () => {
-        const guardada = await caches.match(evento.request);
-        if (guardada) return guardada;
-
-        if (eNavegacao) {
-          return caches.match("./index.html");
-        }
-
-        return Response.error();
-      })
+      obterDaCacheOuRede(evento.request).catch(() => Response.error())
     );
     return;
   }
 
   if (url.hostname === "cdn.jsdelivr.net") {
+    // Dependências externas também usam cache-first para manter o layout
+    // e os componentes disponíveis quando não existe ligação à internet.
     evento.respondWith(
-      caches.match(evento.request).then(guardada =>
-        guardada || fetch(evento.request).then(resposta => {
-          if (resposta.ok) {
-            const copia = resposta.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(evento.request, copia));
-          }
-          return resposta;
-        })
-      )
+      obterDaCacheOuRede(evento.request).catch(() => Response.error())
     );
   }
 });
