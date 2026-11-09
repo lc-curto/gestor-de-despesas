@@ -1,4 +1,4 @@
-const CACHE_NAME = "meu-bolso-shell-v20";
+const CACHE_NAME = "meu-bolso-shell-v21";
 const RECURSOS = [
   "./",
   "./index.html",
@@ -12,7 +12,9 @@ const RECURSOS = [
   "./assets/js/api.js",
   "./assets/js/supabase.js",
   "./assets/images/favicon.png",
-  "./assets/images/pwa-icon.svg"
+  "./assets/images/pwa-icon.svg",
+  "./assets/images/pwa-icon-192.png",
+  "./assets/images/pwa-icon-512.png"
 ];
 
 self.addEventListener("install", evento => {
