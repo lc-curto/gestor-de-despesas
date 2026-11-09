@@ -13,6 +13,7 @@
   const submit = document.getElementById('saveMovementButton');
   const method = document.getElementById('movementMethod');
   const cancel = document.getElementById('cancelMovementEdit');
+  const editorPanel = document.getElementById('recordEditorPanel');
   const month = document.getElementById('periodMonth');
   const loadButton = document.getElementById('loadMoreMovements');
   const loadContainer = document.getElementById('loadMoreContainer');
@@ -52,6 +53,7 @@
     typeExpense.disabled = false;
     typeIncome.disabled = false;
     cancel.classList.add('d-none');
+    if (window.matchMedia('(max-width: 991.98px)').matches) editorPanel?.classList.remove('is-open');
   }
 
   list.addEventListener('click', (event) => {
@@ -59,6 +61,7 @@
     if (!button) return;
     const row = button.closest('[data-movement-id]');
     const type = row.dataset.movementType;
+    editorPanel?.classList.add('is-open');
     method.value = 'PUT';
     form.action = row.dataset.editUrl;
     setType(type);
@@ -74,8 +77,8 @@
   });
 
   cancel?.addEventListener('click', resetEditor);
-  typeExpense?.addEventListener('click', () => { if (method.value === 'POST') setType('despesa'); });
-  typeIncome?.addEventListener('click', () => { if (method.value === 'POST') setType('receita'); });
+  typeExpense?.addEventListener('click', () => { if (method.value === 'POST') { editorPanel?.classList.add('is-open'); setType('despesa'); } });
+  typeIncome?.addEventListener('click', () => { if (method.value === 'POST') { editorPanel?.classList.add('is-open'); setType('receita'); } });
 
   function showStatus(message) {
     const status = document.getElementById('offlineStatus');
