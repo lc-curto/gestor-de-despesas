@@ -1,50 +1,193 @@
 <!doctype html>
-<html lang="pt-PT">
+<html lang="pt-PT" data-bs-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#635bff">
-  <title>Sem ligação · Meu Bolso</title>
+  <title>Meu Bolso · Sem ligação</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-  <main class="min-vh-100 py-5">
-    <div class="container">
-      <div class="text-center mb-4">
-        <h1 class="h3 fw-bold">Sem ligação à internet</h1>
-        <p class="text-secondary">Consulta os movimentos guardados anteriormente. Os dados não podem ser alterados offline.</p>
-        <button class="btn btn-primary" onclick="location.reload()">Tentar novamente</button>
-      </div>
-      <section class="card border-0 shadow-sm rounded-4 mb-3"><div class="card-body"><h2 class="h5 fw-bold">Resumo financeiro guardado</h2><div id="cachedSummary"></div></div></section>
-      <section class="card border-0 shadow-sm rounded-4">
-        <div class="card-body">
-          <h2 class="h5 fw-bold">Últimos movimentos guardados</h2>
-          <p id="cacheDate" class="small text-secondary"></p>
-          <div id="cachedMovements" class="expense-list"></div>
-          <p id="emptyCache" class="text-secondary small mb-0">Não existem movimentos guardados neste dispositivo.</p>
-        </div>
-      </section>
+  <div class="alert alert-warning rounded-0 mb-0" role="status" aria-live="polite">
+    Sem ligação à internet. Estás a consultar os dados guardados neste dispositivo.
+  </div>
+
+  <nav class="navbar bg-body border-bottom">
+    <div class="container py-2">
+      <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-decoration-none" href="/">
+        <span class="brand-mark brand-mark-sm" aria-hidden="true"><i class="bi bi-wallet2"></i></span>
+        <span>Meu Bolso</span>
+      </a>
     </div>
+  </nav>
+
+  <main id="top" class="container py-2 py-lg-5">
+    <header class="dashboard-hero mb-3 mb-lg-5">
+      <div class="row align-items-end g-3">
+        <div class="col-12 col-lg-8">
+          <div class="eyebrow mb-3"><span class="eyebrow-dot"></span> Resumo financeiro</div>
+          <h1 class="display-6 fw-bold mb-2" id="greetingTitle">Olá!</h1>
+        </div>
+        <div class="col-12 col-lg-4">
+          <div class="date-time-card d-flex flex-column flex-sm-row justify-content-between gap-1 text-lg-end">
+            <span class="small text-secondary">Hoje</span>
+            <time id="currentDateTime"></time>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="row g-2 g-md-3 mb-2 mb-lg-4" aria-label="Resumo financeiro">
+      <div class="col-4 col-md-4">
+        <article class="summary-card summary-card-primary h-100">
+          <p class="small mb-1 opacity-75">Saldo do período</p>
+          <p class="summary-value summary-value-text mb-0" id="balanceAmount">—</p>
+          <p class="small mb-0 mt-2 opacity-75 d-none d-md-block">Receitas menos despesas</p>
+        </article>
+      </div>
+      <div class="col-4 col-md-4">
+        <article class="summary-card summary-card-compact h-100">
+          <p class="small text-secondary mb-2">Despesas</p>
+          <p class="summary-value mb-0 text-danger" id="totalAmount">—</p>
+          <p class="small text-secondary mb-0 mt-2">Total no período</p>
+        </article>
+      </div>
+      <div class="col-4 col-md-4">
+        <article class="summary-card summary-card-compact h-100">
+          <p class="small text-secondary mb-2">Receitas</p>
+          <p class="summary-value mb-0 text-success" id="totalIncome">—</p>
+          <p class="small text-secondary mb-0 mt-2">Total no período</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="row g-2 g-lg-4 mb-3 mb-lg-4 align-items-start">
+      <div class="col-12">
+        <article class="card border-0 shadow-sm rounded-4 history-card">
+          <div class="card-body p-0 history-card-body">
+            <div class="p-3 p-sm-4 pb-3">
+              <p class="text-primary fw-semibold small mb-1">Histórico</p>
+              <h2 class="h4 fw-bold mb-0">Movimentos</h2>
+              <p id="cacheDate" class="small text-secondary mt-2 mb-0"></p>
+            </div>
+            <div id="expensesList" class="expense-list history-list px-3 px-sm-4" aria-live="polite">
+              <div class="empty-state text-center py-4">
+                <div class="empty-icon mb-3" aria-hidden="true">◎</div>
+                <h3 class="h6">Ainda não existem movimentos guardados</h3>
+                <p class="small text-secondary mb-0">Liga-te à internet para sincronizar os teus dados.</p>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
   </main>
+
+  <footer class="site-footer container mt-5 pt-4 pb-4 border-top text-center">
+    <div class="row gy-3 justify-content-center">
+      <div class="col-12">
+        <a class="footer-brand text-decoration-none" href="/">
+          <span class="brand-mark brand-mark-sm me-2" aria-hidden="true"><i class="bi bi-wallet2"></i></span>
+          <span>Meu Bolso</span>
+        </a>
+      </div>
+      <div class="col-12"><span class="small text-secondary">© 2026 Meu Bolso</span></div>
+    </div>
+  </footer>
+
   <script>
-    (() => {
-      const candidates = Object.keys(localStorage)
-        .filter((key) => key.startsWith('meu-bolso:dashboard:') && key.split(':')[2] === localStorage.getItem('meu-bolso:active-user'))
-        .map((key) => {
-          try { return JSON.parse(localStorage.getItem(key)); } catch (_) { return null; }
-        })
-        .filter((entry) => entry && entry.html)
-        .sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
-      if (!candidates.length) return;
-      const latest = candidates[0];
-      document.getElementById('cachedMovements').innerHTML = latest.html;
-      document.getElementById('cachedSummary').innerHTML = latest.summary || '<p class="small text-secondary">Resumo não disponível em cache.</p>';
-      document.getElementById('cacheDate').textContent = 'Última atualização: ' + new Date(latest.savedAt).toLocaleString('pt-PT');
-      document.getElementById('emptyCache').hidden = true;
-      document.querySelectorAll('#cachedMovements button, #cachedMovements form').forEach((element) => element.remove());
-    })();
+  (() => {
+    const activeUser = localStorage.getItem('meu-bolso:active-user');
+    if (!activeUser) return;
+
+    const candidates = Object.keys(localStorage)
+      .filter((key) => key.startsWith('meu-bolso:' + activeUser + ':'))
+      .map((key) => {
+        try { return JSON.parse(localStorage.getItem(key)); }
+        catch (_) { return null; }
+      })
+      .filter((entry) => entry && Array.isArray(entry.despesas) && Array.isArray(entry.receitas))
+      .sort((a, b) => new Date(b.guardadoEm) - new Date(a.guardadoEm));
+
+    if (!candidates.length) return;
+
+    const cached = candidates[0];
+    const currency = cached.moeda || 'EUR';
+    const formatter = new Intl.NumberFormat('pt-PT', { style: 'currency', currency });
+    const expenses = cached.despesas || [];
+    const incomes = cached.receitas || [];
+    const totalExpenses = Number(cached.totalDespesasPeriodo) || 0;
+    const totalIncome = Number(cached.totalReceitasPeriodo) || 0;
+    document.getElementById('greetingTitle').textContent = 'Olá, ' + (cached.nome || 'Utilizador') + '!';
+    document.getElementById('currentDateTime').textContent = new Intl.DateTimeFormat('pt-PT', {
+      dateStyle: 'full', timeStyle: 'short'
+    }).format(new Date());
+    document.getElementById('balanceAmount').textContent = formatter.format(totalIncome - totalExpenses);
+    document.getElementById('totalAmount').textContent = formatter.format(totalExpenses);
+    document.getElementById('totalIncome').textContent = formatter.format(totalIncome);
+    document.getElementById('cacheDate').textContent = 'Dados guardados em ' + new Intl.DateTimeFormat('pt-PT', {
+      dateStyle: 'short', timeStyle: 'short'
+    }).format(new Date(cached.guardadoEm));
+
+    const expenseCategories = {
+      casa: 'Casa', alimentacao: 'Alimentação', transportes: 'Transporte',
+      saude: 'Saúde', lazer: 'Lazer', compras: 'Compras',
+      educacao: 'Educação', outros: 'Outros'
+    };
+    const incomeCategories = {
+      salario: 'Salário', vendas: 'Vendas', trabalho_extra: 'Trabalho extra',
+      investimentos: 'Investimentos', reembolsos: 'Reembolsos', outros: 'Outros'
+    };
+
+    const movements = [
+      ...expenses.map((item) => ({ ...item, tipo: 'despesa', data: item.expense_date })),
+      ...incomes.map((item) => ({ ...item, tipo: 'receita', data: item.income_date }))
+    ].sort((a, b) =>
+      String(b.data).localeCompare(String(a.data)) || String(a.id).localeCompare(String(b.id))
+    );
+
+    const list = document.getElementById('expensesList');
+    list.replaceChildren();
+    if (!movements.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state text-center py-4';
+      empty.innerHTML = '<div class="empty-icon mb-3" aria-hidden="true">◎</div><h3 class="h6">Não existem movimentos guardados</h3>';
+      list.append(empty);
+      return;
+    }
+
+    movements.slice(0, 10).forEach((item) => {
+      const expense = item.tipo === 'despesa';
+      const parts = String(item.data).split('-').map(Number);
+      const movementDate = new Intl.DateTimeFormat('pt-PT').format(new Date(parts[0], parts[1] - 1, parts[2]));
+      const row = document.createElement('article');
+      row.className = 'expense-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom';
+
+      const info = document.createElement('div');
+      info.className = 'd-flex align-items-center gap-3 min-w-0';
+      const icon = document.createElement('div');
+      icon.className = expense ? 'expense-icon flex-shrink-0' : 'expense-icon income-icon flex-shrink-0';
+      icon.innerHTML = '<i class="bi ' + (expense ? 'bi-arrow-up-right' : 'bi-arrow-down-left') + '"></i>';
+      const details = document.createElement('div');
+      details.className = 'min-w-0';
+      const description = document.createElement('h3');
+      description.className = 'h6 fw-semibold mb-1 text-break';
+      description.textContent = item.description;
+      const meta = document.createElement('p');
+      meta.className = 'small text-secondary mb-0';
+      meta.textContent = (expense ? expenseCategories[item.category] : incomeCategories[item.category]) + ' · ' + movementDate;
+      details.append(description, meta);
+      info.append(icon, details);
+
+      const value = document.createElement('strong');
+      value.className = (expense ? 'text-danger' : 'text-success') + ' text-nowrap';
+      value.textContent = (expense ? '−' : '+') + formatter.format(Number(item.amount));
+      row.append(info, value);
+      list.append(row);
+    });
+  })();
   </script>
 </body>
 </html>
