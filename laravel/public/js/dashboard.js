@@ -223,7 +223,53 @@
     }
   }
 
+
   loadButton?.addEventListener('click', loadMore);
+
+  async function applyFilters(event) {
+    event.preventDefault();
+    const filterForm = event.currentTarget;
+    const submitter = event.submitter;
+    const formData = new FormData(filterForm);
+    cfg.type = submitter?.name === 'tipo' ? submitter.value : (formData.get('tipo') || cfg.type);
+    cfg.category = formData.get('categoria') || 'todas';
+    const params = new URLSearchParams({
+      mes: month.value,
+      tipo: cfg.type,
+      categoria: cfg.category,
+      page: '1',
+      limit: String(pageSize())
+    });
+
+    filterForm.querySelectorAll('button[name="tipo"]').forEach((button) => {
+      const active = button.value === cfg.type;
+      button.classList.toggle('btn-primary', active);
+      button.classList.toggle('btn-link', !active);
+      button.classList.toggle('text-decoration-none', !active);
+    });
+
+    try {
+      const response = await fetch(cfg.movementsUrl + '?' + params, {
+        headers: { Accept: 'application/json' },
+        credentials: 'same-origin'
+      });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const result = await response.json();
+      if (result.data.length) {
+        list.replaceChildren(...result.data.map(renderItem));
+      } else {
+        list.innerHTML = '<div class="empty-state text-center py-4"><div class="empty-icon mb-3" aria-hidden="true">◎</div><h3 class="h6">Ainda não existem movimentos</h3><p class="small text-secondary mb-0">Não há movimentos para os filtros selecionados.</p></div>';
+      }
+      page = 1;
+      hasMore = result.has_more;
+      loadContainer.hidden = !hasMore;
+      saveCache();
+    } catch (_) {
+      showStatus('Não foi possível aplicar os filtros. Tenta novamente.');
+    }
+  }
+
+  document.querySelector('.transaction-filters')?.addEventListener('submit', applyFilters);
 
   async function adaptInitialPageToViewport() {
     if (!navigator.onLine) return;
