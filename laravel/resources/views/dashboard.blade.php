@@ -324,4 +324,20 @@
     });
 })();
 </script>
+<script>
+window.meuBolsoDashboard = {
+  userId: @json(auth()->id()),
+  type: @json($filtroTipo),
+  category: @json($filtroCategoria),
+  hasMore: @json($totalMovimentos > $limit),
+  movementsUrl: @json(route('dashboard.movimentos')),
+  expenseStore: @json(route('despesas.store')),
+  expenseUpdateBase: @json(url('/despesas')),
+  incomeUpdateBase: @json(url('/receitas')),
+  expenseCategories: @json($categoriasDespesa),
+  incomeCategories: @json($categoriasReceita),
+  categories: @json($categorias)
+};
+</script>
+<script src="{{ asset('js/dashboard.js') }}" defer></script>
 @endpush
