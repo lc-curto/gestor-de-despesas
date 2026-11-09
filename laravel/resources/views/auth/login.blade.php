@@ -18,7 +18,7 @@
         <div class="alert alert-success" role="status">{{ session('status') }}</div>
     @endif
 
-    <form id="loginForm" method="POST" action="{{ route('login.store') }}">
+    <form id="loginForm" method="POST" action="{{ route('login.store') }}" novalidate>
         @csrf
         <div class="mb-3 d-none" id="signupNameGroup">
             <label for="signupName" class="form-label">Nome completo</label>
@@ -80,6 +80,8 @@
         const message = document.getElementById('authMessage');
         const registerUrl = @json(route('register.store'));
         const loginUrl = @json(route('login.store'));
+        const registerPageUrl = @json(route('register'));
+        const loginPageUrl = @json(route('login'));
         let registerMode = window.location.pathname === @json(parse_url(route('register'), PHP_URL_PATH));
 
         function setMode(register) {
@@ -98,7 +100,8 @@
             toggleText.textContent = registerMode ? 'Já tens uma conta?' : 'Ainda não tens uma conta?';
             toggleButton.textContent = registerMode ? 'Iniciar sessão' : 'Criar conta';
             passwordInput.autocomplete = registerMode ? 'new-password' : 'current-password';
-            passwordInput.minLength = registerMode ? 6 : 0;
+            passwordInput.minLength = 6;
+            window.history.replaceState({}, '', registerMode ? registerPageUrl : loginPageUrl);
             message.classList.add('d-none');
         }
 
