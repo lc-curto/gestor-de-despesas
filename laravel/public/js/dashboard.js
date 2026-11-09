@@ -18,6 +18,7 @@
   const loadContainer = document.getElementById('loadMoreContainer');
   const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
   const cfg = window.meuBolsoDashboard || {};
+  if (cfg.userId) localStorage.setItem('meu-bolso:active-user', cfg.userId);
   const pageSize = () => window.matchMedia('(max-width: 991.98px)').matches ? 6 : 10;
   let page = 1;
   let hasMore = cfg.hasMore === true;
