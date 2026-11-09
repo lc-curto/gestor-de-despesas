@@ -44,7 +44,7 @@ for (const ficheiro of ficheirosJs) {
 // 2. Confirma que os imports relativos dos módulos apontam para ficheiros existentes.
 for (const ficheiro of ficheirosJs.filter(nome => nome.startsWith("assets/js/"))) {
   const conteudo = ler(ficheiro);
-  const imports = [...conteudo.matchAll(/(?:from\\s+|import\\s*)["']([^"']+)["']/g)];
+  const imports = [...conteudo.matchAll(/(?:from\s+|import\s*)["']([^"']+)["']/g)];
 
   for (const [, referencia] of imports) {
     if (!referencia.startsWith(".")) continue;
@@ -90,7 +90,7 @@ console.log("OK manifesto PWA");
 
 // 5. Confirma que todos os recursos do precache do Service Worker existem.
 const serviceWorker = ler("service-worker.js");
-const blocoCache = serviceWorker.match(/const\\s+RECURSOS\\s*=\\s*\\[([\\s\\S]*?)\\];/);
+const blocoCache = serviceWorker.match(/const\s+RECURSOS\s*=\s*\[([\s\S]*?)\];/);
 
 verificar(Boolean(blocoCache), "Não foi possível localizar a lista RECURSOS no Service Worker.");
 
@@ -107,7 +107,7 @@ if (blocoCache) {
 }
 console.log("OK recursos do Service Worker");
 
-console.log(`\\nResultado: ${verificacoes} verificações executadas, ${erros.length} erro(s).`);
+console.log(`\nResultado: ${verificacoes} verificações executadas, ${erros.length} erro(s).`);
 
 if (erros.length) {
   for (const erro of erros) console.error("-", erro);
