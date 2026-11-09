@@ -48,9 +48,12 @@ A lógica JavaScript está dividida por módulos, de acordo com as responsabilid
 ```text
 gestor-de-despesas/
 ├── index.html
-├── manifest.json
+├── README.md
+├── .gitignore
 ├── service-worker.js
 └── assets/
+    ├── pwa/
+    │   └── manifest.json
     ├── css/
     │   └── styles.css
     ├── images/
