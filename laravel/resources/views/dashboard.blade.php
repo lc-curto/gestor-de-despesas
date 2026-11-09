@@ -159,21 +159,29 @@
                             $dataMovimento = \Illuminate\Support\Carbon::parse($movimento->data_movimento);
                             $categoriaLabel = $categorias[$movimento->category] ?? $movimento->category;
                         @endphp
-                        <article class="expense-item" data-movement-id="{{ $movimento->id }}" data-movement-type="{{ $movimento->tipo }}" data-edit-url="{{ route($isExpense ? 'despesas.update' : 'receitas.update', $movimento->id) }}" data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}" data-amount="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}" data-category="{{ $movimento->category }}">
-                            <div class="expense-info d-flex align-items-center gap-3">
-                                <span class="expense-category-icon" aria-hidden="true"><i class="bi {{ $isExpense ? 'bi-arrow-up-right' : 'bi-arrow-down-left' }}"></i></span>
-                                <div>
-                                    <strong>{{ $movimento->description }}</strong>
-                                    <div class="small text-secondary">{{ $dataMovimento->format('d/m/Y') }} · {{ $categoriaLabel }} · {{ $isExpense ? 'Despesa' : 'Receita' }}</div>
+                        <article class="expense-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom" data-movement-id="{{ $movimento->id }}" data-movement-type="{{ $movimento->tipo }}" data-edit-url="{{ route($isExpense ? 'despesas.update' : 'receitas.update', $movimento->id) }}" data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}" data-amount="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}" data-category="{{ $movimento->category }}">
+                            <div class="d-flex align-items-center gap-3 min-w-0">
+                                <div class="{{ $isExpense ? 'expense-icon' : 'expense-icon income-icon' }} flex-shrink-0" aria-hidden="true">
+                                    <i class="bi {{ $isExpense ? 'bi-arrow-up-right' : 'bi-arrow-down-left' }}"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <h3 class="h6 fw-semibold mb-1 text-break">{{ $movimento->description }}</h3>
+                                    <p class="small text-secondary mb-0">{{ $categoriaLabel }} · {{ $dataMovimento->format('d/m/Y') }}</p>
                                 </div>
                             </div>
-                            <div class="d-flex align-items-center gap-2">
-                                <strong class="{{ $isExpense ? 'text-danger' : 'text-success' }} movement-value" data-value="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}">{{ $isExpense ? '−' : '+' }} {{ number_format((float) $movimento->amount, 2, ',', '.') }} {{ $movimento->currency }}</strong>
-                                <button type="button" class="btn btn-sm btn-outline-secondary edit-movement" aria-label="Editar movimento"><i class="bi bi-pencil"></i></button>
-                                <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $movimento->id) }}" data-delete-type="{{ $movimento->tipo }}">
-                                    @csrf @method('DELETE')
-                                    <button class="btn btn-sm btn-outline-danger" aria-label="Eliminar movimento"><i class="bi bi-trash"></i></button>
-                                </form>
+                            <div class="expense-actions d-flex align-items-center justify-content-end gap-2">
+                                <strong class="{{ $isExpense ? 'text-danger' : 'text-success' }} text-nowrap movement-value" data-value="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}">{{ $isExpense ? '−' : '+' }}{{ number_format((float) $movimento->amount, 2, ',', '.') }}</strong>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Ações de {{ $movimento->description }}">
+                                    <button type="button" class="btn btn-outline-secondary edit-movement" data-acao="editar" aria-label="Editar {{ $movimento->description }}" title="Editar">
+                                        <i class="bi bi-pencil" aria-hidden="true"></i>
+                                    </button>
+                                    <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $movimento->id) }}" data-delete-type="{{ $movimento->tipo }}">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="btn btn-outline-danger" aria-label="Eliminar {{ $movimento->description }}" title="Eliminar">
+                                            <i class="bi bi-trash" aria-hidden="true"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                         </article>
                     @empty
