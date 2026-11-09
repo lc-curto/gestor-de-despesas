@@ -242,6 +242,7 @@
 <script>
 window.meuBolsoDashboard = {
     userId: @json(auth()->id()),
+    name: @json(auth()->user()->name),
     currency: @json($moeda),
     initialType: @json(old('income_date') ? 'receita' : 'despesa'),
     initialCategory: @json(old('category')),
