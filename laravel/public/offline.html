@@ -15,6 +15,7 @@
         <p class="text-secondary">Consulta os movimentos guardados anteriormente. Os dados não podem ser alterados offline.</p>
         <button class="btn btn-primary" onclick="location.reload()">Tentar novamente</button>
       </div>
+      <section class="card border-0 shadow-sm rounded-4 mb-3"><div class="card-body"><h2 class="h5 fw-bold">Resumo financeiro guardado</h2><div id="cachedSummary"></div></div></section>
       <section class="card border-0 shadow-sm rounded-4">
         <div class="card-body">
           <h2 class="h5 fw-bold">Últimos movimentos guardados</h2>
@@ -37,6 +38,7 @@
       if (!candidates.length) return;
       const latest = candidates[0];
       document.getElementById('cachedMovements').innerHTML = latest.html;
+      document.getElementById('cachedSummary').innerHTML = latest.summary || '<p class="small text-secondary">Resumo não disponível em cache.</p>';
       document.getElementById('cacheDate').textContent = 'Última atualização: ' + new Date(latest.savedAt).toLocaleString('pt-PT');
       document.getElementById('emptyCache').hidden = true;
       document.querySelectorAll('#cachedMovements button, #cachedMovements form').forEach((element) => element.remove());
