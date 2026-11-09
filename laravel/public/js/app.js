@@ -56,6 +56,16 @@
     updateDateTime();
     window.setInterval(updateDateTime, 60000);
 
+    const logoutForm = document.querySelector('form[action$="/logout"]');
+    logoutForm?.addEventListener('submit', () => {
+        // A sessão local deixa de identificar o utilizador; os dados cacheados não são apagados.
+        try {
+            localStorage.removeItem('meu-bolso:active-user');
+        } catch (error) {
+            console.warn('Não foi possível atualizar a sessão local:', error);
+        }
+    });
+
     // Instalação PWA: mantém o evento pendente até o utilizador escolher instalar.
     let pendingInstallEvent = null;
     const installButton = document.getElementById('installAppButton');
