@@ -154,7 +154,7 @@
                     @forelse ($movimentos as $movimento)
                         @php
                             $isExpense = $movimento->tipo === 'despesa';
-                            $dataMovimento = \\Illuminate\\Support\\Carbon::parse($movimento->data_movimento);
+                            $dataMovimento = \Illuminate\Support\Carbon::parse($movimento->data_movimento);
                             $categoriaLabel = $categorias[$movimento->category] ?? $movimento->category;
                         @endphp
                         <article class="expense-item" data-movement-id="{{ $movimento->id }}" data-movement-type="{{ $movimento->tipo }}" data-edit-url="{{ route($isExpense ? 'despesas.update' : 'receitas.update', $movimento->id) }}" data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}" data-amount="{{ $movimento->amount }}" data-category="{{ $movimento->category }}">
