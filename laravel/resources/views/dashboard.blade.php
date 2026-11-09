@@ -143,7 +143,7 @@
                         <button class="btn {{ $filtroTipo === 'receita' ? 'btn-primary' : 'btn-link text-decoration-none' }} mobile-tap-target" name="tipo" value="receita">Receitas</button>
                         <div class="ms-auto filter-control">
                             <label for="categoryFilter" class="visually-hidden">Filtrar por categoria</label>
-                            <select class="form-select" id="categoryFilter" name="categoria" onchange="this.form.submit()">
+                            <select class="form-select" id="categoryFilter" name="categoria">
                                 <option value="todas">Todas as categorias</option>
                                 @foreach ($categorias as $key => $label)
                                     <option value="{{ $key }}" @selected($filtroCategoria === $key)>{{ $label }}</option>
