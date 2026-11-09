@@ -256,6 +256,7 @@
   saveCache();
   updateOfflineState();
   adaptInitialPageToViewport();
+  window.matchMedia('(max-width: 991.98px)').addEventListener('change', adaptInitialPageToViewport);
   window.addEventListener('offline', updateOfflineState);
   window.addEventListener('online', () => window.location.reload());
 })();
