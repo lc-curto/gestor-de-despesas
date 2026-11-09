@@ -159,7 +159,7 @@
                             $dataMovimento = \Illuminate\Support\Carbon::parse($movimento->data_movimento);
                             $categoriaLabel = $categorias[$movimento->category] ?? $movimento->category;
                         @endphp
-                        <article class="expense-item" data-movement-id="{{ $movimento->id }}" data-movement-type="{{ $movimento->tipo }}" data-edit-url="{{ route($isExpense ? 'despesas.update' : 'receitas.update', $movimento->id) }}" data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}" data-amount="{{ $movimento->amount }}" data-category="{{ $movimento->category }}">
+                        <article class="expense-item" data-movement-id="{{ $movimento->id }}" data-movement-type="{{ $movimento->tipo }}" data-edit-url="{{ route($isExpense ? 'despesas.update' : 'receitas.update', $movimento->id) }}" data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}" data-amount="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}" data-category="{{ $movimento->category }}">
                             <div class="expense-info d-flex align-items-center gap-3">
                                 <span class="expense-category-icon" aria-hidden="true"><i class="bi {{ $isExpense ? 'bi-arrow-up-right' : 'bi-arrow-down-left' }}"></i></span>
                                 <div>
@@ -243,6 +243,8 @@
 window.meuBolsoDashboard = {
     userId: @json(auth()->id()),
     currency: @json($moeda),
+    initialType: @json(old('income_date') ? 'receita' : 'despesa'),
+    initialCategory: @json(old('category')),
     type: @json($filtroTipo),
     category: @json($filtroCategoria),
     hasMore: @json($totalMovimentos > $limit),
