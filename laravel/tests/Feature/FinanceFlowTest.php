@@ -113,7 +113,9 @@ class FinanceFlowTest extends TestCase
             ->assertJsonPath('total', 9)
             ->assertJsonPath('data.0.description', 'Salário')
             ->assertJsonPath('has_more', true)
-            ->assertJsonCount(6, 'data');
+            ->assertJsonPath('total_despesas_filtradas', 8)
+            ->assertJsonPath('total_receitas_filtradas', 1)
+            ->assertJsonCount(7, 'data');
 
         $this->assertNotContains('Movimento privado', collect($response->json('data'))->pluck('description'));
         $this->assertSame('private, no-store', $response->headers->get('Cache-Control'));
@@ -164,6 +166,35 @@ class FinanceFlowTest extends TestCase
             'amount' => '25.50',
             'currency' => 'GBP',
         ]);
+    }
+
+    public function test_dashboard_movement_crud_returns_json_for_no_reload_interactions(): void
+    {
+        $user = User::factory()->create();
+
+        $created = $this->actingAs($user)->postJson(route('despesas.store'), [
+            'description' => 'Compra online',
+            'amount' => '35.90',
+            'currency' => 'EUR',
+            'category' => 'compras',
+            'expense_date' => '2026-11-09',
+        ])->assertOk()->assertJsonPath('ok', true);
+
+        $expense = $user->despesas()->where('description', 'Compra online')->firstOrFail();
+
+        $this->putJson(route('despesas.update', $expense->id), [
+            'description' => 'Compra atualizada',
+            'amount' => '42.00',
+            'currency' => 'EUR',
+            'category' => 'compras',
+            'expense_date' => '2026-11-10',
+        ])->assertOk()->assertJsonPath('ok', true);
+
+        $this->deleteJson(route('despesas.destroy', $expense->id))
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        $this->assertDatabaseMissing('despesas', ['id' => $expense->id]);
     }
 
 }
