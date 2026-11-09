@@ -79,6 +79,18 @@ gestor-de-despesas/
 - **supabase.js** — configura e exporta o cliente Supabase utilizado pelos restantes módulos.
 - **tema.js** — inicializa, aplica e alterna entre os temas claro e escuro.
 
+## Verificações automáticas
+
+O projeto inclui verificações estruturais sem dependências externas. Com Node.js 22 ou superior instalado, executar na raiz do repositório:
+
+```bash
+npm run check
+```
+
+O comando verifica a sintaxe dos ficheiros JavaScript, os imports relativos, as referências locais do HTML, o manifesto PWA e os recursos declarados no cache do Service Worker. As mesmas verificações são executadas automaticamente pelo GitHub Actions em cada atualização da branch de trabalho e em pull requests para `main`.
+
+Estas verificações não substituem testes funcionais no navegador nem testes de integração com o Supabase.
+
 ## Como utilizar
 
 1. Abrir a aplicação através da ligação de acesso.
