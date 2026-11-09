@@ -141,17 +141,33 @@
     function renderItem(item) {
         const isExpense = item.tipo === 'despesa';
         const movementDate = item.data_movimento || item.expense_date || item.income_date;
-        const dateParts = String(movementDate).split('-').map(Number);
-        const displayDate = dateParts.length === 3
-            ? new Intl.DateTimeFormat('pt-PT').format(new Date(dateParts[0], dateParts[1] - 1, dateParts[2]))
-            : 'Data não disponível';
+        // O Laravel pode devolver uma data ISO completa; o input date precisa apenas de YYYY-MM-DD.
+        const dateMatch = String(movementDate || '').match(/^(\\d{4})-(\\d{2})-(\\d{2})/);
+        let normalizedDate = '';
+        let displayDate = 'Data não disponível';
+
+        if (dateMatch) {
+            const year = Number(dateMatch[1]);
+            const month = Number(dateMatch[2]);
+            const day = Number(dateMatch[3]);
+            const calendarDate = new Date(year, month - 1, day);
+
+            if (
+                calendarDate.getFullYear() === year &&
+                calendarDate.getMonth() === month - 1 &&
+                calendarDate.getDate() === day
+            ) {
+                normalizedDate = dateMatch[1] + '-' + dateMatch[2] + '-' + dateMatch[3];
+                displayDate = new Intl.DateTimeFormat('pt-PT').format(calendarDate);
+            }
+        }
 
         const article = document.createElement('article');
         article.className = 'expense-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom';
         article.dataset.movementId = item.id;
         article.dataset.movementType = item.tipo;
         article.dataset.editUrl = (isExpense ? cfg.expenseUpdateBase : cfg.incomeUpdateBase) + '/' + encodeURIComponent(item.id);
-        article.dataset.date = movementDate;
+        article.dataset.date = normalizedDate;
         article.dataset.description = item.description;
         article.dataset.amount = item.amount;
         article.dataset.currency = item.currency || cfg.currency || 'EUR';
