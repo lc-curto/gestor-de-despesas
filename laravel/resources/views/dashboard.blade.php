@@ -78,6 +78,7 @@
 
                 <form id="dashboardMovementForm" method="POST" action="{{ route('despesas.store') }}">
                     @csrf
+                    <input type="hidden" name="_method" id="movementMethod" value="POST">
                     <input type="hidden" name="return_to_dashboard" value="1">
                     <div class="mb-3">
                         <label for="movementDescription" class="form-label" id="descriptionLabel">Descrição</label>
@@ -105,15 +106,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="mb-3">
-                        <label for="movementCurrency" class="form-label">Moeda</label>
-                        <select class="form-select" id="movementCurrency" name="currency">
-                            @foreach (\App\Support\Categorias::MOEDAS as $currency)
-                                <option value="{{ $currency }}" @selected(old('currency', $moeda) === $currency)>{{ $currency }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-danger w-100" id="saveMovementButton">Guardar despesa</button>
+                    <div class="d-grid gap-2"><button type="submit" class="btn btn-danger w-100" id="saveMovementButton">Guardar despesa</button><button type="button" class="btn btn-outline-secondary d-none" id="cancelMovementEdit">Cancelar edição</button></div>
                 </form>
             </div>
         </article>
@@ -161,10 +154,10 @@
                     @forelse ($movimentos as $movimento)
                         @php
                             $isExpense = $movimento->tipo === 'despesa';
-                            $dataMovimento = $movimento->data_movimento;
+                            $dataMovimento = \\Illuminate\\Support\\Carbon::parse($movimento->data_movimento);
                             $categoriaLabel = $categorias[$movimento->category] ?? $movimento->category;
                         @endphp
-                        <article class="expense-item">
+                        <article class="expense-item" data-movement-id="{{ $movimento->id }}" data-movement-type="{{ $movimento->tipo }}" data-edit-url="{{ route($isExpense ? 'despesas.update' : 'receitas.update', $movimento->id) }}" data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}" data-amount="{{ $movimento->amount }}" data-category="{{ $movimento->category }}">
                             <div class="expense-info d-flex align-items-center gap-3">
                                 <span class="expense-category-icon" aria-hidden="true"><i class="bi {{ $isExpense ? 'bi-arrow-up-right' : 'bi-arrow-down-left' }}"></i></span>
                                 <div>
@@ -174,7 +167,7 @@
                             </div>
                             <div class="d-flex align-items-center gap-2">
                                 <strong class="{{ $isExpense ? 'text-danger' : 'text-success' }}">{{ $isExpense ? '−' : '+' }} {{ number_format((float) $movimento->amount, 2, ',', '.') }} {{ $movimento->currency }}</strong>
-                                <a class="btn btn-sm btn-outline-secondary" href="{{ route($isExpense ? 'despesas.edit' : 'receitas.edit', $movimento->id) }}" aria-label="Editar movimento"><i class="bi bi-pencil"></i></a>
+                                <button type="button" class="btn btn-sm btn-outline-secondary edit-movement" aria-label="Editar movimento"><i class="bi bi-pencil"></i></button>
                                 <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $movimento->id) }}" onsubmit="return confirm('Eliminar este movimento?')">
                                     @csrf @method('DELETE')
                                     <button class="btn btn-sm btn-outline-danger" aria-label="Eliminar movimento"><i class="bi bi-trash"></i></button>
@@ -189,6 +182,7 @@
                         </div>
                     @endforelse
                 </div>
+                <div class="px-3 px-sm-4 pb-3 text-center" id="loadMoreContainer" @if($totalMovimentos <= $limit) hidden @endif><button type="button" class="btn btn-outline-primary" id="loadMoreMovements">Carregar mais</button></div>
             </div>
         </article>
     </div>
