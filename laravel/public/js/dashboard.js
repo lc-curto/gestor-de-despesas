@@ -22,6 +22,7 @@
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
 
     let page = 1;
+    let visibleCount = pageSize();
     let hasMore = cfg.hasMore === true;
     let loadedMovements = [];
     let totalExpenseCount = 0;
@@ -35,7 +36,11 @@
     let totalExpenses = Number(document.getElementById('totalAmount')?.dataset.total || 0);
     let totalIncome = Number(document.getElementById('totalIncome')?.dataset.total || 0);
 
-    if (cfg.userId) localStorage.setItem('meu-bolso:active-user', String(cfg.userId));
+    try {
+        if (cfg.userId) localStorage.setItem('meu-bolso:active-user', String(cfg.userId));
+    } catch (error) {
+        console.warn('Não foi possível identificar a sessão neste dispositivo:', error);
+    }
     const pageSize = () => window.matchMedia('(max-width: 991.98px)').matches ? 6 : 10;
 
     function currentMonthRange() {
@@ -56,7 +61,7 @@
     function formatCurrency(value, currency) {
         return new Intl.NumberFormat('pt-PT', {
             style: 'currency',
-            currency: currency || cfg.currency || 'EUR'
+            currency: cfg.currency || currency || 'EUR'
         }).format(Number(value) || 0);
     }
 
@@ -223,7 +228,7 @@
             : cfg.type === 'receita'
                 ? totalIncomeCount
                 : totalExpenseCount + totalIncomeCount;
-        const visibleLimit = offlineMode ? pageSize() : page * pageSize();
+        const visibleLimit = offlineMode ? pageSize() : visibleCount;
         const visible = filtered.slice(0, visibleLimit);
         hasMore = !offlineMode && visible.length < total;
 
@@ -330,6 +335,7 @@
         const result = await fetchMovements({ page: 1 });
         if (!result) return;
         page = 1;
+        visibleCount = pageSize();
         offlineMode = false;
         loadedMovements = result.data || [];
         totalExpenseCount = Number(result.total_despesas_filtradas) || 0;
@@ -341,25 +347,35 @@
 
     async function loadMore() {
         if (!hasMore || !navigator.onLine) return;
+        visibleCount += pageSize();
+
+        const filteredLoaded = loadedMovements.filter((item) =>
+            cfg.type === 'todos' || item.tipo === cfg.type
+        );
         const button = document.getElementById('loadMoreMovements');
-        if (button) {
-            button.disabled = true;
-            button.textContent = 'A carregar…';
+
+        if (filteredLoaded.length < visibleCount) {
+            if (button) {
+                button.disabled = true;
+                button.textContent = 'A carregar…';
+            }
+
+            try {
+                const result = await fetchMovements({ page: page + 1 });
+                if (!result) return;
+                loadedMovements = loadedMovements.concat(result.data || []);
+                page = result.page;
+                totalExpenseCount = Number(result.total_despesas_filtradas) || totalExpenseCount;
+                totalIncomeCount = Number(result.total_receitas_filtradas) || totalIncomeCount;
+            } catch (error) {
+                visibleCount -= pageSize();
+                alert('Não foi possível carregar mais movimentos.');
+            } finally {
+                if (button) button.disabled = false;
+            }
         }
-        try {
-            const result = await fetchMovements({ page: page + 1 });
-            if (!result) return;
-            loadedMovements = loadedMovements.concat(result.data || []);
-            page = result.page;
-            totalExpenseCount = Number(result.total_despesas_filtradas) || totalExpenseCount;
-            totalIncomeCount = Number(result.total_receitas_filtradas) || totalIncomeCount;
-            renderMovements();
-        } catch (error) {
-            alert('Não foi possível carregar mais movimentos.');
-        } finally {
-            const currentButton = document.getElementById('loadMoreMovements');
-            if (currentButton) currentButton.disabled = false;
-        }
+
+        renderMovements();
     }
 
     async function applyFilters(event) {
@@ -367,7 +383,10 @@
         const filterForm = document.querySelector('.transaction-filters');
         const submitter = event?.submitter;
         const previousCategory = cfg.category;
-        if (submitter?.name === 'tipo') cfg.type = submitter.value;
+        if (submitter?.name === 'tipo') {
+            cfg.type = submitter.value;
+            visibleCount = pageSize();
+        }
 
         const selectedCategory = document.getElementById('categoryFilter')?.value || 'all';
         cfg.category = selectedCategory;
@@ -547,7 +566,7 @@
         }
     }
 
-    function restoreCachedData() {
+    function restoreCachedData(syncMessage = 'Sem ligação à internet.') {
         if (!cfg.userId) return false;
         try {
             const cached = JSON.parse(localStorage.getItem(cacheKey()) || 'null');
@@ -567,9 +586,11 @@
             totalExpenseCount = Number(cached.quantidadeDespesasFiltradas) || expenses.length;
             totalIncomeCount = Number(cached.quantidadeReceitasFiltradas) || incomes.length;
             totalExpenses = Number(cached.totalDespesasPeriodo) || 0;
+            visibleCount = pageSize();
             totalIncome = Number(cached.totalReceitasPeriodo) || 0;
             cfg.currency = cached.moeda || cfg.currency || 'EUR';
             page = 1;
+            visibleCount = pageSize();
             offlineMode = true;
             hasMore = false;
             updateSummary(totalExpenses, totalIncome);
@@ -578,7 +599,7 @@
             const saved = cached.guardadoEm
                 ? new Intl.DateTimeFormat('pt-PT', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(cached.guardadoEm))
                 : 'data desconhecida';
-            showStatus('Sem ligação à internet. Dados guardados em ' + saved + '. Apenas são apresentados os movimentos previamente carregados.');
+            showStatus(syncMessage + ' Dados guardados em ' + saved + '. Apenas são apresentados os movimentos previamente carregados.');
             return true;
         } catch (error) {
             console.warn('Não foi possível ler os dados locais:', error);
@@ -597,7 +618,9 @@
         offlineMode = false;
         showStatus('');
         refreshDashboard().catch(() => {
-            showStatus('Não foi possível sincronizar os dados com o servidor.');
+            if (!restoreCachedData('Não foi possível sincronizar os dados com o servidor.')) {
+                showStatus('Não foi possível sincronizar os dados com o servidor.');
+            }
         });
     }
 
@@ -672,14 +695,18 @@
         const value = row.querySelector('.movement-value');
         if (value) {
             const prefix = row.dataset.movementType === 'despesa' ? '−' : '+';
-            value.textContent = prefix + formatCurrency(row.dataset.amount, row.dataset.currency);
+            value.textContent = prefix + formatCurrency(row.dataset.amount, cfg.currency);
         }
     });
     updateSummary(totalExpenses, totalIncome);
     updatePeriodCaption();
     // A lista inicial server-side é adaptada ao mesmo limite usado pela aplicação original.
     if (navigator.onLine) {
-        refreshDashboard().catch(() => showStatus('Não foi possível sincronizar os movimentos com o servidor.'));
+        refreshDashboard().catch(() => {
+            if (!restoreCachedData('Não foi possível sincronizar os dados com o servidor.')) {
+                showStatus('Não foi possível sincronizar os movimentos com o servidor.');
+            }
+        });
     } else {
         handleOffline();
     }
