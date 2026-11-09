@@ -269,7 +269,9 @@
     }
   }
 
-  document.querySelector('.transaction-filters')?.addEventListener('submit', applyFilters);
+  const filterForm = document.querySelector('.transaction-filters');
+  filterForm?.addEventListener('submit', applyFilters);
+  document.getElementById('categoryFilter')?.addEventListener('change', () => filterForm?.requestSubmit());
 
   async function adaptInitialPageToViewport() {
     if (!navigator.onLine) return;
