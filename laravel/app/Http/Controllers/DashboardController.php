@@ -18,7 +18,7 @@ class DashboardController extends Controller
         $filtroTipo = in_array($request->query('tipo'), ['despesa', 'receita'], true) ? $request->query('tipo') : 'todos';
         $categorias = Categorias::DESPESAS + Categorias::RECEITAS;
         $filtroCategoria = array_key_exists($request->query('categoria', 'all'), $categorias)
-            ? $request->query('categoria', 'todas')
+            ? $request->query('categoria', 'all')
             : 'all';
 
         // A versão original soma os montantes do período, independentemente da paginação.
