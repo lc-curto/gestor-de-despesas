@@ -93,7 +93,7 @@
                         </div>
                         <div class="col-12 col-sm-6">
                             <label for="movementDate" class="form-label">Data</label>
-                            <input type="date" class="form-control" id="movementDate" name="date" value="{{ old('date', now()->toDateString()) }}" required>
+                            <input type="date" class="form-control" id="movementDate" name="expense_date" value="{{ old('expense_date', old('income_date', now()->toDateString())) }}" required>
                         </div>
                     </div>
                     <div class="mb-4">
@@ -261,6 +261,7 @@
     function setMovementType(type) {
         const isIncome = type === 'receita';
         form.action = isIncome ? @json(route('receitas.store')) : @json(route('despesas.store'));
+        dateInput.name = isIncome ? 'income_date' : 'expense_date';
         expenseButton.className = isIncome ? 'btn btn-outline-danger' : 'btn btn-danger active';
         incomeButton.className = isIncome ? 'btn btn-outline-success active' : 'btn btn-outline-success';
         expenseButton.setAttribute('aria-pressed', String(!isIncome));

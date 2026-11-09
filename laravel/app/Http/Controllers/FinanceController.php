@@ -28,7 +28,18 @@ class FinanceController extends Controller
         return view('finance.index',compact('tipo','data','cats','registos'));
     }
     public function create(Request $r) { [$tipo,,$data,$cats]=$this->config($r); $registo=null; return view('finance.form',compact('tipo','data','cats','registo')); }
-    public function store(Request $r) { [$tipo]=$this->config($r); $this->query($r)->create($r->validate($this->rules($r))); return redirect()->route($tipo==='despesa'?'despesas.index':'receitas.index')->with('success','Registo criado.'); }
+    public function store(Request $r)
+    {
+        [$tipo] = $this->config($r);
+        $this->query($r)->create($r->validate($this->rules($r)));
+
+        if ($r->boolean('return_to_dashboard')) {
+            return redirect()->route('dashboard')->with('success', 'Registo criado.');
+        }
+
+        return redirect()->route($tipo === 'despesa' ? 'despesas.index' : 'receitas.index')
+            ->with('success', 'Registo criado.');
+    }
     public function edit(Request $r,string $id) { [$tipo,,$data,$cats]=$this->config($r); $registo=$this->query($r)->findOrFail($id); return view('finance.form',compact('tipo','data','cats','registo')); }
     public function update(Request $r,string $id) { [$tipo]=$this->config($r); $registo=$this->query($r)->findOrFail($id); $registo->update($r->validate($this->rules($r))); return redirect()->route($tipo==='despesa'?'despesas.index':'receitas.index')->with('success','Registo atualizado.'); }
     public function destroy(Request $r,string $id) { $this->query($r)->findOrFail($id)->delete(); return back()->with('success','Registo eliminado.'); }
