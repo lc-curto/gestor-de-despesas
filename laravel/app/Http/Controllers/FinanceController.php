@@ -1,9 +1,9 @@
 <?php
 
-namespace App\\Http\\Controllers;
+namespace App\Http\Controllers;
 
-use App\\Support\\Categorias;
-use Illuminate\\Http\\Request;
+use App\Support\Categorias;
+use Illuminate\Http\Request;
 
 class FinanceController extends Controller
 {
@@ -56,21 +56,32 @@ class FinanceController extends Controller
             'fim' => 'nullable|date|after_or_equal:inicio',
         ]);
         $query = $this->query($request)->orderByDesc($dateField)->orderBy('id');
+
         if (!empty($filters['categoria']) && array_key_exists($filters['categoria'], $categories)) {
             $query->where('category', $filters['categoria']);
         }
-        if (!empty($filters['inicio'])) $query->whereDate($dateField, '>=', $filters['inicio']);
-        if (!empty($filters['fim'])) $query->whereDate($dateField, '<=', $filters['fim']);
+        if (!empty($filters['inicio'])) {
+            $query->whereDate($dateField, '>=', $filters['inicio']);
+        }
+        if (!empty($filters['fim'])) {
+            $query->whereDate($dateField, '<=', $filters['fim']);
+        }
 
         $registos = $query->paginate(10)->withQueryString();
-        $data = $dateField; $cats = $categories;\n        return view('finance.index', compact('tipo', 'data', 'cats', 'registos'));
+        $data = $dateField;
+        $cats = $categories;
+
+        return view('finance.index', compact('tipo', 'data', 'cats', 'registos'));
     }
 
     public function create(Request $request)
     {
         [$tipo, , $dateField, $categories] = $this->config($request);
         $registo = null;
-        return view('finance.form', compact('tipo', 'dateField', 'categories', 'registo'));
+        $data = $dateField;
+        $cats = $categories;
+
+        return view('finance.form', compact('tipo', 'data', 'cats', 'registo'));
     }
 
     public function store(Request $request)
@@ -90,7 +101,10 @@ class FinanceController extends Controller
     {
         [$tipo, , $dateField, $categories] = $this->config($request);
         $registo = $this->query($request)->findOrFail($id);
-        return view('finance.form', compact('tipo', 'dateField', 'categories', 'registo'));
+        $data = $dateField;
+        $cats = $categories;
+
+        return view('finance.form', compact('tipo', 'data', 'cats', 'registo'));
     }
 
     public function update(Request $request, string $id)
@@ -109,6 +123,7 @@ class FinanceController extends Controller
     public function destroy(Request $request, string $id)
     {
         $this->query($request)->findOrFail($id)->delete();
+
         return back()->with('success', 'Registo eliminado.');
     }
 }
