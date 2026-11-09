@@ -1050,13 +1050,6 @@ html {
 }
 
 @media (max-width: 575.98px) {
-  .history-card {
-    height: calc(110dvh + 5rem);
-    height: calc(110svh + 5rem);
-    min-height: 41rem;
-    max-height: 57rem;
-  }
-
   .summary-card { padding: 0.55rem 0.4rem; }
   .record-toolbar .record-type-buttons { width: auto; }
 
