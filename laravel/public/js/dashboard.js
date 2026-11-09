@@ -96,6 +96,8 @@
       snapshot.querySelectorAll('form, .edit-movement').forEach((element) => element.remove());
       localStorage.setItem(cacheKey(), JSON.stringify({
         html: snapshot.innerHTML,
+        summary: document.querySelector('[aria-label="Resumo financeiro"]')?.innerHTML || '',
+        period: month?.value || '',
         savedAt: new Date().toISOString()
       }));
     } catch (_) {}
@@ -106,6 +108,8 @@
       const cached = JSON.parse(localStorage.getItem(cacheKey()) || 'null');
       if (!cached?.html) return false;
       list.innerHTML = cached.html;
+      const summary = document.querySelector('[aria-label="Resumo financeiro"]');
+      if (summary && cached.summary) summary.innerHTML = cached.summary;
       showStatus('Sem ligação. A mostrar dados guardados em ' + new Date(cached.savedAt).toLocaleString('pt-PT') + '. Modo de leitura.');
       return true;
     } catch (_) {
