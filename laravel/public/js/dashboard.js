@@ -25,10 +25,15 @@
 
   function setType(type) {
     const income = type === 'receita';
-    typeExpense.disabled = income;
-    typeIncome.disabled = !income;
+    const editing = method.value === 'PUT';
+    typeExpense.disabled = editing && income;
+    typeIncome.disabled = editing && !income;
     typeExpense.classList.toggle('active', !income);
     typeIncome.classList.toggle('active', income);
+    typeExpense.classList.toggle('btn-danger', !income);
+    typeExpense.classList.toggle('btn-outline-danger', income);
+    typeIncome.classList.toggle('btn-success', income);
+    typeIncome.classList.toggle('btn-outline-success', !income);
     title.textContent = (method.value === 'PUT' ? 'Editar ' : 'Adicionar ') + (income ? 'receita' : 'despesa');
     submit.textContent = (method.value === 'PUT' ? 'Atualizar ' : 'Guardar ') + (income ? 'receita' : 'despesa');
     submit.className = 'btn w-100 ' + (income ? 'btn-success' : 'btn-danger');
