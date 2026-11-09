@@ -238,7 +238,7 @@
       });
       if (!response.ok) return;
       const result = await response.json();
-      list.replaceChildren(...result.data.map(renderItem));
+      if (result.data.length) list.replaceChildren(...result.data.map(renderItem));
       page = 1;
       hasMore = result.has_more;
       loadContainer.hidden = !hasMore;
