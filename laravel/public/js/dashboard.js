@@ -103,6 +103,12 @@
     } catch (_) {}
   }
 
+  function clearAccountCache() {
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith('meu-bolso:dashboard:') && key.split(':')[2] === String(cfg.userId))
+      .forEach((key) => localStorage.removeItem(key));
+  }
+
   function restoreCache() {
     try {
       const cached = JSON.parse(localStorage.getItem(cacheKey()) || 'null');
@@ -250,7 +256,12 @@
     if (!navigator.onLine) {
       event.preventDefault();
       showStatus('Liga-te à internet para guardar alterações.');
+      return;
     }
+    clearAccountCache();
+  });
+  list.addEventListener('submit', (event) => {
+    if (event.target.matches('form') && navigator.onLine) clearAccountCache();
   });
 
   saveCache();
