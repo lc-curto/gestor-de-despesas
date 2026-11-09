@@ -81,7 +81,7 @@ class DashboardController extends Controller
                 'amount' => $item->amount,
                 'currency' => $item->currency,
                 'category' => $item->category,
-                'data_movimento' => $item->expense_date,
+                'data_movimento' => $item->expense_date?->format('Y-m-d'),
             ]);
 
         $receitas = (clone $receitasQuery)
@@ -95,7 +95,7 @@ class DashboardController extends Controller
                 'amount' => $item->amount,
                 'currency' => $item->currency,
                 'category' => $item->category,
-                'data_movimento' => $item->income_date,
+                'data_movimento' => $item->income_date?->format('Y-m-d'),
             ]);
 
         $items = $despesas->concat($receitas)->sort(function ($a, $b) {
