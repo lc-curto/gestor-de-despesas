@@ -414,7 +414,9 @@
             try {
                 await refreshDashboard();
             } catch (error) {
-                alert('Não foi possível carregar os movimentos.');
+                handleSyncFailure(navigator.onLine
+                    ? 'Não foi possível sincronizar os dados com o servidor.'
+                    : 'Sem ligação à internet.');
             }
         } else {
             renderMovements();
@@ -424,7 +426,9 @@
     function setMonth(value) {
         if (!value) return;
         monthInput.value = value;
-        refreshDashboard().catch(() => alert('Não foi possível carregar os movimentos.'));
+        refreshDashboard().catch(() => handleSyncFailure(navigator.onLine
+            ? 'Não foi possível sincronizar os dados com o servidor.'
+            : 'Sem ligação à internet.'));
     }
 
     function changeMonth(offset) {
@@ -615,6 +619,19 @@
         }
     }
 
+    function handleSyncFailure(message) {
+        if (restoreCachedData(message)) return;
+
+        loadedMovements = [];
+        totalExpenseCount = 0;
+        totalIncomeCount = 0;
+        updateSummary(0, 0);
+        list.innerHTML = navigator.onLine
+            ? '<div class="alert alert-danger mb-0" role="alert">Não foi possível sincronizar os movimentos com o servidor. Verifica a ligação e tenta novamente.</div>'
+            : '<div class="alert alert-warning mb-0" role="alert">Sem ligação à internet e sem dados guardados neste dispositivo.</div>';
+        showStatus(message);
+    }
+
     function handleOffline() {
         offlineMode = true;
         if (!restoreCachedData()) {
@@ -625,11 +642,7 @@
     function handleOnline() {
         offlineMode = false;
         showStatus('');
-        refreshDashboard().catch(() => {
-            if (!restoreCachedData('Não foi possível sincronizar os dados com o servidor.')) {
-                showStatus('Não foi possível sincronizar os dados com o servidor.');
-            }
-        });
+        refreshDashboard().catch(() => handleSyncFailure('Não foi possível sincronizar os dados com o servidor.'));
     }
 
     expenseButton?.addEventListener('click', () => {
@@ -713,11 +726,7 @@
     updatePeriodCaption();
     // A lista inicial server-side é adaptada ao mesmo limite usado pela aplicação original.
     if (navigator.onLine) {
-        refreshDashboard().catch(() => {
-            if (!restoreCachedData('Não foi possível sincronizar os dados com o servidor.')) {
-                showStatus('Não foi possível sincronizar os movimentos com o servidor.');
-            }
-        });
+        refreshDashboard().catch(() => handleSyncFailure('Não foi possível sincronizar os movimentos com o servidor.'));
     } else {
         handleOffline();
     }
