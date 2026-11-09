@@ -16,7 +16,7 @@ class AccountController extends Controller
         $r->session()->regenerate(); return redirect()->intended(route('dashboard'));
     }
     public function register(Request $r) {
-        $d=$r->validate(['name'=>'required|string|max:80','email'=>'required|email|max:255|unique:users,email','password'=>['required','confirmed',PasswordRule::min(8)],'currency'=>'required|in:EUR,USD,GBP,BRL']);
+        $d=$r->validate(['name'=>'required|string|max:80','email'=>'required|email|max:255|unique:users,email','password'=>['required',PasswordRule::min(6)],'currency'=>'required|in:EUR,USD,GBP,BRL']);
         $u=User::create(['name'=>$d['name'],'email'=>Str::lower($d['email']),'password'=>$d['password'],'currency'=>$d['currency']]);
         Auth::login($u); $r->session()->regenerate(); return redirect()->route('dashboard');
     }
