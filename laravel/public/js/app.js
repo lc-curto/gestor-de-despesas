@@ -18,6 +18,10 @@
   });
   updateThemeButton();
 
+  document.querySelector('form[action$="/logout"]')?.addEventListener('submit', () => {
+    localStorage.removeItem('meu-bolso:active-user');
+  });
+
   // A instalação só é apresentada quando o navegador disponibiliza o evento PWA.
   let installPrompt = null;
   const installButton = document.getElementById('installAppButton');
