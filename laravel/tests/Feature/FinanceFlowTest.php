@@ -112,6 +112,7 @@ class FinanceFlowTest extends TestCase
             ->assertJsonPath('per_page', 6)
             ->assertJsonPath('total', 9)
             ->assertJsonPath('data.0.description', 'Salário')
+            ->assertJsonPath('data.0.data_movimento', '2026-11-10')
             ->assertJsonPath('has_more', true)
             ->assertJsonPath('total_despesas_filtradas', 8)
             ->assertJsonPath('total_receitas_filtradas', 1)
