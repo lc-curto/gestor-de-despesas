@@ -103,6 +103,11 @@ if (blocoCache) {
   );
 
   verificar(
+    recursos.includes("./assets/js/formatacao.js"),
+    "O módulo formatacao.js não está incluído no precache do Service Worker.",
+  );
+
+  verificar(
     recursos.includes("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0"),
     "O SDK UMD do Supabase não está incluído no precache.",
   );
