@@ -64,10 +64,9 @@
             </div>
             <div class="col-12">
                 <nav class="footer-nav d-flex flex-wrap justify-content-center gap-3" aria-label="Navegação do rodapé">
-                    <a href="{{ route('dashboard') }}">Resumo</a>
-                    <a href="{{ route('despesas.index') }}">Despesas</a>
-                    <a href="{{ route('receitas.index') }}">Receitas</a>
-                    <a href="{{ route('dashboard') }}#currencyTitle">Conversor</a>
+                    <a href="#top">Resumo</a>
+                    <a href="#expensesList">Despesas</a>
+                    <a href="#currencyTitle">Conversor</a>
                 </nav>
             </div>
             <div class="col-12"><span class="small text-secondary">© {{ now()->year }} Meu Bolso</span></div>
