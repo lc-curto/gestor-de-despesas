@@ -1,16 +1,18 @@
-const CACHE_NAME = 'meu-bolso-static-v2';
+const CACHE_NAME = 'meu-bolso-static-v3';
 const STATIC_ASSETS = [
   '/offline.html',
+  '/css/bootstrap.min.css',
   '/css/styles.css',
+  '/js/bootstrap.bundle.min.js',
   '/js/app.js',
   '/js/dashboard.js',
   '/manifest.webmanifest',
   '/images/pwa-icon.svg',
   '/images/pwa-icon-192.png',
   '/images/pwa-icon-512.png',
-  'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css',
+
   'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css',
-  'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js'
+
 ];
 
 self.addEventListener('install', (event) => {
