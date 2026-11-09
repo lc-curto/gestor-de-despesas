@@ -1,10 +1,11 @@
-const CACHE_NAME = "meu-bolso-shell-v21";
+const CACHE_NAME = "meu-bolso-shell-v22";
 const RECURSOS = [
   "./",
   "./index.html",
   "./assets/pwa/manifest.json",
   "./assets/css/styles.css",
   "./assets/js/main.js?v=final-2",
+  "./assets/js/cache.js",
   "./assets/js/auth.js",
   "./assets/js/tema.js",
   "./assets/js/despesas.js",
@@ -14,7 +15,11 @@ const RECURSOS = [
   "./assets/images/favicon.png",
   "./assets/images/pwa-icon.svg",
   "./assets/images/pwa-icon-192.png",
-  "./assets/images/pwa-icon-512.png"
+  "./assets/images/pwa-icon-512.png",
+  "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",
+  "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css",
+  "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js",
+  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"
 ];
 
 self.addEventListener("install", evento => {
@@ -37,10 +42,11 @@ self.addEventListener("activate", evento => {
   self.clients.claim();
 });
 
-// Apenas recursos estáticos listados no shell podem ser guardados em cache.
-// Isto evita armazenar respostas de futuras rotas de API ou dados de utilizadores.
+// Apenas recursos estáticos da aplicação entram na estratégia de cache local.
 const RECURSOS_CACHEAVEIS = new Set(
-  RECURSOS.map(recurso => new URL(recurso, self.location.href).pathname)
+  RECURSOS
+    .filter(recurso => !recurso.startsWith("http"))
+    .map(recurso => new URL(recurso, self.location.href).pathname)
 );
 
 self.addEventListener("fetch", evento => {
