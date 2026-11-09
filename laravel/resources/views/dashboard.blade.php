@@ -13,12 +13,12 @@
     <div class="row align-items-end g-3">
         <div class="col-12 col-lg-8">
             <div class="eyebrow mb-3"><span class="eyebrow-dot"></span> Resumo financeiro</div>
-            <h1 class="display-6 fw-bold mb-2">Olá, {{ auth()->user()->name }}</h1>
+            <h1 class="display-6 fw-bold mb-2" id="greetingTitle">Olá, {{ auth()->user()->name }}!</h1>
         </div>
         <div class="col-12 col-lg-4">
             <div class="date-time-card d-flex flex-column flex-sm-row justify-content-between gap-1 text-lg-end">
                 <span class="small text-secondary">Hoje</span>
-                <time>{{ now()->locale('pt_PT')->translatedFormat('l, d \d\e F \d\e Y · H:i') }}</time>
+                <time id="currentDateTime">{{ now()->locale('pt_PT')->translatedFormat('l, d \\d\\e F \\d\\e Y · H:i') }}</time>
             </div>
         </div>
     </div>
@@ -30,7 +30,7 @@
             <div class="d-flex justify-content-between align-items-center gap-3">
                 <div>
                     <p class="small mb-1 opacity-75">Saldo do período</p>
-                    <p class="summary-value summary-value-text mb-0">{{ number_format($totalReceitas - $totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
+                    <p class="summary-value summary-value-text mb-0" id="balanceAmount">{{ number_format($totalReceitas - $totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
                     <p class="small mb-0 mt-2 opacity-75 d-none d-md-block">Receitas menos despesas</p>
                 </div>
                 <span class="summary-icon d-none d-md-flex" aria-hidden="true"><i class="bi bi-wallet2"></i></span>
@@ -40,22 +40,18 @@
     <div class="col-4 col-md-4">
         <article class="summary-card summary-card-compact h-100">
             <p class="small text-secondary mb-2">Despesas</p>
-            <p class="summary-value mb-0 text-danger">{{ number_format($totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
+            <p class="summary-value mb-0 text-danger" id="totalAmount">{{ number_format($totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
             <p class="small text-secondary mb-0 mt-2">Total no período</p>
         </article>
     </div>
     <div class="col-4 col-md-4">
         <article class="summary-card summary-card-compact h-100">
             <p class="small text-secondary mb-2">Receitas</p>
-            <p class="summary-value mb-0 text-success">{{ number_format($totalReceitas, 2, ',', '.') }} {{ $moeda }}</p>
+            <p class="summary-value mb-0 text-success" id="totalIncome">{{ number_format($totalReceitas, 2, ',', '.') }} {{ $moeda }}</p>
             <p class="small text-secondary mb-0 mt-2">Total no período</p>
         </article>
     </div>
 </section>
-
-@if ($despesasPorMoeda->keys()->merge($receitasPorMoeda->keys())->unique()->count() > 1)
-    <div class="alert alert-info small">Os totais principais consideram {{ $moeda }}. Existem movimentos noutras moedas; estes são apresentados individualmente e não são somados sem conversão.</div>
-@endif
 
 <section class="row g-2 g-lg-4 mb-3 mb-lg-4 align-items-start" aria-label="Lançamentos e movimentos">
     <div class="col-12 col-lg-4">
@@ -67,8 +63,8 @@
                         <h2 id="recordTitle" class="h4 fw-bold mb-0 d-none d-lg-block">Adicionar despesa</h2>
                     </div>
                     <div class="btn-group record-type-buttons" role="group" aria-label="Tipo de lançamento">
-                        <button type="button" class="btn btn-danger active" id="expenseTypeButton" aria-pressed="true"><i class="bi bi-arrow-up-right me-1"></i>Despesa</button>
-                        <button type="button" class="btn btn-outline-success" id="incomeTypeButton" aria-pressed="false"><i class="bi bi-arrow-down-left me-1"></i>Receita</button>
+                        <button type="button" class="btn btn-danger active" id="expenseTypeButton" aria-pressed="true" aria-controls="recordEditorPanel" aria-expanded="false"><i class="bi bi-arrow-up-right me-1"></i>Despesa</button>
+                        <button type="button" class="btn btn-outline-success" id="incomeTypeButton" aria-pressed="false" aria-controls="recordEditorPanel" aria-expanded="false"><i class="bi bi-arrow-down-left me-1"></i>Receita</button>
                     </div>
                 </div>
 
@@ -76,14 +72,16 @@
                     <div class="alert alert-danger small"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
                 @endif
 
-                <div id="recordEditorPanel" class="record-editor-panel @if($errors->any()) is-open @endif">
+                <div id="recordEditorPanel" class="collapse d-lg-block @if($errors->any()) show @endif">
+                    <div class="d-flex justify-content-end d-lg-none mb-2">
+                        <button type="button" class="btn-close record-panel-close" id="recordPanelClose" aria-label="Fechar formulário"></button>
+                    </div>
                 <form id="dashboardMovementForm" method="POST" action="{{ route('despesas.store') }}">
                     @csrf
                     <input type="hidden" name="_method" id="movementMethod" value="POST">
-                    <input type="hidden" name="return_to_dashboard" value="1">
                     <div class="mb-3">
                         <label for="movementDescription" class="form-label" id="descriptionLabel">Descrição</label>
-                        <input type="text" class="form-control" id="movementDescription" name="description" placeholder="Ex.: Supermercado" maxlength="255" value="{{ old('description') }}" required>
+                        <input type="text" class="form-control" id="movementDescription" name="description" placeholder="Ex.: Supermercado" value="{{ old('description') }}" required>
                     </div>
                     <div class="row g-3 mb-3">
                         <div class="col-12 col-sm-6">
@@ -123,14 +121,13 @@
                             <p class="text-primary fw-semibold small mb-1">Histórico</p>
                             <h2 class="h4 fw-bold mb-0">Movimentos</h2>
                         </div>
-                        <form method="GET" action="{{ route('dashboard') }}" class="period-controls d-flex align-items-center gap-2">
+                        <form method="GET" action="{{ route('dashboard') }}" class="period-controls d-flex align-items-center gap-2" id="periodForm">
                             <button type="button" class="btn btn-outline-secondary mobile-tap-target" id="periodPrevious" aria-label="Período anterior"><i class="bi bi-chevron-left"></i></button>
                             <label for="periodMonth" class="visually-hidden">Selecionar mês</label>
                             <input type="month" id="periodMonth" name="mes" class="form-control" value="{{ $mes }}">
                             <input type="hidden" name="tipo" value="{{ $filtroTipo }}">
                             <input type="hidden" name="categoria" value="{{ $filtroCategoria }}">
                             <button type="button" class="btn btn-outline-secondary mobile-tap-target" id="periodNext" aria-label="Período seguinte"><i class="bi bi-chevron-right"></i></button>
-                            <button class="btn btn-primary" type="submit">Ver</button>
                         </form>
                     </div>
                     <p class="small text-secondary mb-0 mt-2" id="periodCaption">{{ $inicio->locale('pt_PT')->translatedFormat('F Y') }}</p>
@@ -171,9 +168,9 @@
                                 </div>
                             </div>
                             <div class="d-flex align-items-center gap-2">
-                                <strong class="{{ $isExpense ? 'text-danger' : 'text-success' }}">{{ $isExpense ? '−' : '+' }} {{ number_format((float) $movimento->amount, 2, ',', '.') }} {{ $movimento->currency }}</strong>
+                                <strong class="{{ $isExpense ? 'text-danger' : 'text-success' }} movement-value" data-value="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}">{{ $isExpense ? '−' : '+' }} {{ number_format((float) $movimento->amount, 2, ',', '.') }} {{ $movimento->currency }}</strong>
                                 <button type="button" class="btn btn-sm btn-outline-secondary edit-movement" aria-label="Editar movimento"><i class="bi bi-pencil"></i></button>
-                                <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $movimento->id) }}" onsubmit="return confirm('Eliminar este movimento?')">
+                                <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $movimento->id) }}" data-delete-type="{{ $movimento->tipo }}">
                                     @csrf @method('DELETE')
                                     <button class="btn btn-sm btn-outline-danger" aria-label="Eliminar movimento"><i class="bi bi-trash"></i></button>
                                 </form>
@@ -214,7 +211,7 @@
                 <label for="conversionFrom" class="form-label">De</label>
                 <select class="form-select" id="conversionFrom">
                     @foreach (\App\Support\Categorias::MOEDAS as $currency)
-                        <option value="{{ $currency }}" @selected($currency === $moeda)>{{ $currency }} ({{ $simbolos[$currency] ?? $currency }})</option>
+                        <option value="{{ $currency }}" >{{ $currency }} ({{ $simbolos[$currency] ?? $currency }})</option>
                     @endforeach
                 </select>
             </div>
@@ -222,7 +219,7 @@
                 <label for="conversionTo" class="form-label">Para</label>
                 <select class="form-select" id="conversionTo">
                     @foreach (\App\Support\Categorias::MOEDAS as $currency)
-                        <option value="{{ $currency }}" @selected($currency === 'USD')>{{ $currency }} ({{ $simbolos[$currency] ?? $currency }})</option>
+                        <option value="{{ $currency }}" >{{ $currency }} ({{ $simbolos[$currency] ?? $currency }})</option>
                     @endforeach
                 </select>
             </div>
@@ -243,105 +240,20 @@
 
 @push('scripts')
 <script>
-(() => {
-    const form = document.getElementById('dashboardMovementForm');
-    const expenseButton = document.getElementById('expenseTypeButton');
-    const incomeButton = document.getElementById('incomeTypeButton');
-    const category = document.getElementById('movementCategory');
-    const submit = document.getElementById('saveMovementButton');
-    const title = document.getElementById('recordTitle');
-    const dateInput = document.getElementById('movementDate');
-    const monthInput = document.getElementById('periodMonth');
-
-    const expenseCategories = @json($categoriasDespesa);
-    const incomeCategories = @json($categoriasReceita);
-    const oldCategory = @json(old('category'));
-
-    function setMovementType(type) {
-        const isIncome = type === 'receita';
-        form.action = isIncome ? @json(route('receitas.store')) : @json(route('despesas.store'));
-        dateInput.name = isIncome ? 'income_date' : 'expense_date';
-        expenseButton.className = isIncome ? 'btn btn-outline-danger' : 'btn btn-danger active';
-        incomeButton.className = isIncome ? 'btn btn-outline-success active' : 'btn btn-outline-success';
-        expenseButton.setAttribute('aria-pressed', String(!isIncome));
-        incomeButton.setAttribute('aria-pressed', String(isIncome));
-        title.textContent = isIncome ? 'Adicionar receita' : 'Adicionar despesa';
-        submit.textContent = isIncome ? 'Guardar receita' : 'Guardar despesa';
-        submit.className = isIncome ? 'btn btn-success w-100' : 'btn btn-danger w-100';
-        category.innerHTML = '<option value="" disabled selected>Seleciona uma categoria</option>';
-        Object.entries(isIncome ? incomeCategories : expenseCategories).forEach(([key, label]) => {
-            const option = document.createElement('option');
-            option.value = key;
-            option.textContent = label;
-            if (oldCategory === key) option.selected = true;
-            category.appendChild(option);
-        });
-    }
-
-    expenseButton.addEventListener('click', () => setMovementType('despesa'));
-    incomeButton.addEventListener('click', () => setMovementType('receita'));
-    @if (old('category') && array_key_exists(old('category'), $categoriasReceita) && !array_key_exists(old('category'), $categoriasDespesa))
-        setMovementType('receita');
-    @endif
-
-    document.getElementById('periodPrevious').addEventListener('click', () => {
-        const [year, month] = monthInput.value.split('-').map(Number);
-        const date = new Date(year, month - 2, 1);
-        monthInput.value = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
-        monthInput.form.requestSubmit();
-    });
-    document.getElementById('periodNext').addEventListener('click', () => {
-        const [year, month] = monthInput.value.split('-').map(Number);
-        const date = new Date(year, month, 1);
-        monthInput.value = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
-        monthInput.form.requestSubmit();
-    });
-
-    const convertButton = document.getElementById('convertButton');
-    convertButton.addEventListener('click', async () => {
-        const amount = Number(document.getElementById('conversionAmount').value);
-        const from = document.getElementById('conversionFrom').value;
-        const to = document.getElementById('conversionTo').value;
-        const value = document.getElementById('convertedValue');
-        const rateLabel = document.getElementById('conversionRate');
-        if (!Number.isFinite(amount) || amount <= 0) {
-            value.textContent = 'Introduz um valor superior a zero.';
-            rateLabel.textContent = '';
-            return;
-        }
-        if (from === to) {
-            value.textContent = amount.toLocaleString('pt-PT', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ' + to;
-            rateLabel.textContent = 'As moedas selecionadas são iguais.';
-            return;
-        }
-        value.textContent = 'A consultar taxa de câmbio…';
-        rateLabel.textContent = '';
-        try {
-            const response = await fetch('https://api.frankfurter.dev/v2/rate/' + encodeURIComponent(from) + '/' + encodeURIComponent(to));
-            if (!response.ok) throw new Error('Taxa indisponível');
-            const data = await response.json();
-            value.textContent = (amount * data.rate).toLocaleString('pt-PT', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ' + to;
-            rateLabel.textContent = '1 ' + from + ' = ' + Number(data.rate).toFixed(6) + ' ' + to + (data.date ? ' · Taxa de ' + data.date : '');
-        } catch {
-            value.textContent = 'Conversão indisponível.';
-            rateLabel.textContent = 'Verifica a ligação à internet e tenta novamente.';
-        }
-    });
-})();
-</script>
-<script>
 window.meuBolsoDashboard = {
-  userId: @json(auth()->id()),
-  type: @json($filtroTipo),
-  category: @json($filtroCategoria),
-  hasMore: @json($totalMovimentos > $limit),
-  movementsUrl: @json(route('dashboard.movimentos')),
-  expenseStore: @json(route('despesas.store')),
-  expenseUpdateBase: @json(url('/despesas')),
-  incomeUpdateBase: @json(url('/receitas')),
-  expenseCategories: @json($categoriasDespesa),
-  incomeCategories: @json($categoriasReceita),
-  categories: @json($categorias)
+    userId: @json(auth()->id()),
+    currency: @json($moeda),
+    type: @json($filtroTipo),
+    category: @json($filtroCategoria),
+    hasMore: @json($totalMovimentos > $limit),
+    movementsUrl: @json(route('dashboard.movimentos')),
+    expenseStore: @json(route('despesas.store')),
+    incomeStore: @json(route('receitas.store')),
+    expenseUpdateBase: @json(url('/despesas')),
+    incomeUpdateBase: @json(url('/receitas')),
+    expenseCategories: @json($categoriasDespesa),
+    incomeCategories: @json($categoriasReceita),
+    categories: @json($categorias)
 };
 </script>
 <script src="{{ asset('js/dashboard.js') }}" defer></script>
