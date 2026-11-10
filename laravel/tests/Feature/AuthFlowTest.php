@@ -3,6 +3,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class AuthFlowTest extends TestCase
@@ -51,11 +52,11 @@ class AuthFlowTest extends TestCase
         $bcryptHash = password_hash($password, PASSWORD_BCRYPT);
         $legacyHash = '$2a$' . substr($bcryptHash, 4);
 
-        // Insere o hash legado diretamente para evitar o cast "hashed" do model.
+        // Atualiza diretamente a tabela para não acionar o cast "hashed" do model.
         $user = User::factory()->create(['email' => 'legacy@example.com']);
-        $user->forceFill(['password' => $legacyHash])->saveQuietly();
+        DB::table('users')->where('id', $user->id)->update(['password' => $legacyHash]);
 
-        $this->assertSame($legacyHash, $user->fresh()->getRawOriginal('password'));
+        $this->assertSame($legacyHash, DB::table('users')->where('id', $user->id)->value('password'));
 
         $this->post(route('login.store'), [
             'email' => 'legacy@example.com',
@@ -63,7 +64,7 @@ class AuthFlowTest extends TestCase
         ])->assertRedirect(route('dashboard'));
 
         $this->assertAuthenticatedAs($user);
-        $this->assertSame($legacyHash, $user->fresh()->getRawOriginal('password'));
+        $this->assertSame($legacyHash, DB::table('users')->where('id', $user->id)->value('password'));
     }
 
     public function test_invalid_credentials_do_not_authenticate(): void
