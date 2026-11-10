@@ -16,8 +16,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Substitui o driver Bcrypt para aceitar hashes legados $2a$.
-        Hash::extend('bcrypt', function (array $config) {
-            return new LegacyBcryptHasher($config);
+        Hash::extend('bcrypt', function ($app) {
+            return new LegacyBcryptHasher($app['config']->get('hashing.bcrypt', []));
         });
 
         Paginator::useBootstrapFive();
