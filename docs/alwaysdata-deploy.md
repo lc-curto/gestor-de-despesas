@@ -1,6 +1,6 @@
 # Preparação para deploy no Alwaysdata
 
-Este guia aplica-se à aplicação Laravel localizada em `laravel/`. A aplicação original na raiz do repositório não faz parte deste deploy.
+A aplicação Laravel está agora na raiz do repositório. Este guia descreve a implantação do conteúdo dessa raiz no diretório de aplicação do Alwaysdata.
 
 ## 1. Configuração do alojamento
 
@@ -12,7 +12,7 @@ No painel Alwaysdata:
 4. Criar uma base de dados MariaDB/MySQL e um utilizador próprio para a aplicação.
 5. Copiar o host, nome da base de dados, utilizador, palavra-passe e porta apresentados pelo painel. Não assumir que o host é `localhost`.
 
-A raiz web deve apontar para `laravel/public`. Os diretórios `app`, `bootstrap`, `config`, `database`, `resources`, `routes`, `storage` e o ficheiro `.env` devem permanecer fora da raiz pública.
+A raiz web deve apontar para a pasta `public/` dentro do diretório de aplicação no servidor. Os diretórios `app`, `bootstrap`, `config`, `database`, `resources`, `routes`, `storage` e o ficheiro `.env` devem permanecer fora da raiz pública.
 
 ## 2. Código e dependências
 
@@ -21,11 +21,10 @@ Publicar a branch `feature/migracao-laravel`. Como o plano gratuito dispõe de a
 No computador local, com PHP 8.3 ou superior e extensões compatíveis com o servidor:
 
 ```bash
-cd laravel
 composer install --no-dev --prefer-dist --optimize-autoloader
 ```
 
-Depois, enviar a pasta `laravel` completa, incluindo `vendor/`, por Git/SFTP/SSH. Não enviar `.env`, dados locais, logs ou caches de desenvolvimento. O ficheiro `vendor/` não está versionado no Git, por isso tem de ser incluído no pacote de deploy.
+Depois, enviar o conteúdo da raiz do repositório para o diretório de aplicação no servidor, incluindo `vendor/`, por SFTP/SSH. Não substituir o `.env` nem os diretórios de dados existentes. Não enviar `.env`, dados locais, logs ou caches de desenvolvimento. O ficheiro `vendor/` não está versionado no Git, por isso tem de ser incluído no pacote de deploy.
 
 Se futuramente for necessário executar Composer no servidor, fazê-lo apenas depois de confirmar que a memória disponível é suficiente. Não executar o script `composer setup` em produção: inclui passos de desenvolvimento e de build que não são necessários para este deploy.
 
@@ -96,7 +95,7 @@ Se a aplicação não utilizar ficheiros no disco público, o link de storage po
 
 - [ ] HTTPS ativo e redirecionamento HTTP → HTTPS configurado.
 - [ ] `APP_ENV=production` e `APP_DEBUG=false`.
-- [ ] Raiz web aponta exclusivamente para `laravel/public`.
+- [ ] Raiz web aponta exclusivamente para `public/` dentro do diretório de aplicação no servidor.
 - [ ] Ficheiro `.env` fora da raiz pública e ignorado pelo Git.
 - [ ] Login, logout e expiração de sessão testados.
 - [ ] Utilizador A não consegue consultar, editar ou eliminar movimentos do utilizador B.

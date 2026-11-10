@@ -1,4 +1,41 @@
+# Sistema operativo
 .DS_Store
 Thumbs.db
+
+# Ambiente e credenciais
 .env
 .env.*
+!.env.example
+.env.backup
+.env.production
+
+# Logs
+*.log
+
+# Laravel
+/vendor/
+/public/build/
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+
+# Testes e caches
+.phpunit.result.cache
+/.phpunit.cache
+
+# Dependências Node
+/node_modules/
+
+# IDEs
+/.fleet/
+/.idea/
+/.nova/
+/.vscode/
+/.zed/
+
+# Outros ficheiros locais
+/auth.json
+Homestead.json
+Homestead.yaml
+/.phpactor.json

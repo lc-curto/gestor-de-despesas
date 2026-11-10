@@ -1,15 +1,34 @@
 name: Laravel quality
+
 on:
   push:
     branches: [feature/migracao-laravel]
   pull_request:
     branches: [main]
     paths:
-      - 'laravel/**'
+      - 'app/**'
+      - 'bootstrap/**'
+      - 'config/**'
+      - 'database/**'
+      - 'public/**'
+      - 'resources/**'
+      - 'routes/**'
+      - 'tests/**'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'phpunit.xml'
+      - 'vite.config.js'
+      - '.env.example'
+      - '.gitignore'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/**'
       - '.github/workflows/laravel.yml'
+
 jobs:
   tests:
     runs-on: ubuntu-latest
+
     services:
       mysql:
         image: mysql:8.0
@@ -23,23 +42,25 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
-    defaults:
-      run:
-        working-directory: laravel
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
           extensions: mbstring, pdo_mysql, xml, ctype, fileinfo, openssl, tokenizer
           coverage: none
+
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist
+
       - name: Configure application
         run: |
           cp .env.example .env
           php artisan key:generate
+
       - name: Run migrations and tests
         env:
           APP_ENV: testing
