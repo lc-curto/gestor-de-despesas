@@ -142,7 +142,7 @@
         const isExpense = item.tipo === 'despesa';
         const movementDate = item.data_movimento || item.expense_date || item.income_date;
         // O Laravel pode devolver uma data ISO completa; o input date precisa apenas de YYYY-MM-DD.
-        const dateMatch = String(movementDate || '').match(/^(\\d{4})-(\\d{2})-(\\d{2})/);
+        const dateMatch = String(movementDate || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
         let normalizedDate = '';
         let displayDate = 'Data não disponível';
 

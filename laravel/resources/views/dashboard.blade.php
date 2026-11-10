@@ -266,5 +266,5 @@ window.meuBolsoDashboard = {
     categories: @json($categorias)
 };
 </script>
-<script src="{{ asset('js/dashboard.js') }}" defer></script>
+<script src="{{ asset('js/dashboard.js') }}?v={{ filemtime(public_path('js/dashboard.js')) }}" defer></script>
 @endpush
