@@ -16,14 +16,18 @@ A raiz web deve apontar para `laravel/public`. Os diretórios `app`, `bootstrap`
 
 ## 2. Código e dependências
 
-Publicar a branch `feature/migracao-laravel` e instalar as dependências dentro da pasta `laravel`:
+Publicar a branch `feature/migracao-laravel`. Como o plano gratuito dispõe de apenas 256 MB de RAM, evitar executar o Composer no servidor na primeira instalação: a resolução de dependências pode ultrapassar esse limite.
+
+No computador local, com PHP 8.3 ou superior e extensões compatíveis com o servidor:
 
 ```bash
-cd /caminho/da/aplicacao/laravel
+cd laravel
 composer install --no-dev --prefer-dist --optimize-autoloader
 ```
 
-Não executar o script `composer setup` em produção: inclui passos de desenvolvimento e de build que não são necessários para este deploy.
+Depois, enviar a pasta `laravel` completa, incluindo `vendor/`, por Git/SFTP/SSH. Não enviar `.env`, dados locais, logs ou caches de desenvolvimento. O ficheiro `vendor/` não está versionado no Git, por isso tem de ser incluído no pacote de deploy.
+
+Se futuramente for necessário executar Composer no servidor, fazê-lo apenas depois de confirmar que a memória disponível é suficiente. Não executar o script `composer setup` em produção: inclui passos de desenvolvimento e de build que não são necessários para este deploy.
 
 ## 3. Variáveis de ambiente
 
