@@ -116,7 +116,25 @@ class FinanceFlowTest extends TestCase
             ->assertJsonPath('has_more', true)
             ->assertJsonPath('total_despesas_filtradas', 8)
             ->assertJsonPath('total_receitas_filtradas', 1)
-            ->assertJsonCount(7, 'data');
+            ->assertJsonCount(6, 'data');
+
+        // A segunda página continua a ordenação global sem repetir nem saltar movimentos.
+        $secondPage = $this->getJson(route('dashboard.movimentos', [
+            'mes' => '2026-11',
+            'limit' => 6,
+            'page' => 2,
+        ]));
+
+        $secondPage->assertOk()
+            ->assertJsonPath('page', 2)
+            ->assertJsonPath('per_page', 6)
+            ->assertJsonPath('total', 9)
+            ->assertJsonCount(3, 'data')
+            ->assertJsonPath('has_more', false);
+
+        $firstIds = collect($response->json('data'))->pluck('id');
+        $secondIds = collect($secondPage->json('data'))->pluck('id');
+        $this->assertSame([], $firstIds->intersect($secondIds)->values()->all());
 
         $this->assertNotContains('Movimento privado', collect($response->json('data'))->pluck('description'));
         $cacheDirectives = array_map(

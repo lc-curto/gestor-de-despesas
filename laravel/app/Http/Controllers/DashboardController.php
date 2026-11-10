@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\\Http\\Controllers;
 
-use App\Support\Categorias;
-use Illuminate\Database\Query\Builder;
-use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
+use App\\Support\\Categorias;
+use Illuminate\\Database\\Query\\Builder;
+use Illuminate\\Http\\Request;
+use Illuminate\\Support\\Carbon;
+use Illuminate\\Support\\Facades\\DB;
 
 class DashboardController extends Controller
 {
@@ -15,13 +15,15 @@ class DashboardController extends Controller
         $user = $request->user();
         [$inicio, $mes] = $this->periodo($request->query('mes'));
         $fim = $inicio->copy()->endOfMonth();
-        $filtroTipo = in_array($request->query('tipo'), ['despesa', 'receita'], true) ? $request->query('tipo') : 'todos';
+        $filtroTipo = in_array($request->query('tipo'), ['despesa', 'receita'], true)
+            ? $request->query('tipo')
+            : 'todos';
         $categorias = Categorias::DESPESAS + Categorias::RECEITAS;
         $filtroCategoria = array_key_exists($request->query('categoria', 'all'), $categorias)
             ? $request->query('categoria', 'all')
             : 'all';
 
-        // A versão original soma os montantes do período, independentemente da paginação.
+        // Os totais representam o mês completo, independentemente da página visível.
         $totalDespesas = (float) $user->despesas()
             ->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()])
             ->sum('amount');
@@ -29,34 +31,55 @@ class DashboardController extends Controller
             ->whereBetween('income_date', [$inicio->toDateString(), $fim->toDateString()])
             ->sum('amount');
 
-        $query = $this->movimentosQuery($user->id, $inicio, $fim, $filtroTipo, $filtroCategoria);
+        $query = $this->movimentosQuery(
+            $user->id,
+            $inicio,
+            $fim,
+            $filtroTipo,
+            $filtroCategoria
+        );
+
         $limit = $this->pageSize($request);
         $totalMovimentos = (clone $query)->count();
         $movimentos = (clone $query)->limit($limit)->get();
 
         return view('dashboard', compact(
-            'inicio', 'mes', 'movimentos', 'categorias', 'filtroTipo',
-            'filtroCategoria', 'totalDespesas', 'totalReceitas',
-            'totalMovimentos', 'limit'
+            'inicio',
+            'mes',
+            'movimentos',
+            'categorias',
+            'filtroTipo',
+            'filtroCategoria',
+            'totalDespesas',
+            'totalReceitas',
+            'totalMovimentos',
+            'limit'
         ))->with('moeda', $user->currency);
     }
 
+    /**
+     * Devolve uma página global de despesas e receitas.
+     *
+     * A união é ordenada e paginada no banco de dados. Assim, o limite é
+     * aplicado ao conjunto combinado, e não separadamente a cada tabela.
+     */
     public function movimentos(Request $request)
     {
         $user = $request->user();
         [$inicio] = $this->periodo($request->query('mes'));
         $fim = $inicio->copy()->endOfMonth();
+
         $categorias = Categorias::DESPESAS + Categorias::RECEITAS;
         $categoria = $request->query('categoria', 'all');
+
         if ($categoria !== 'all' && !array_key_exists($categoria, $categorias)) {
             $categoria = 'all';
         }
 
         $limit = $this->pageSize($request);
-        $page = max(1, (int) $request->query('page', 1));
+        $page = min(100000, max(1, (int) $request->query('page', 1)));
         $offset = ($page - 1) * $limit;
 
-        // A aplicação original carrega uma página de cada tipo e só depois combina os resultados.
         $despesasQuery = $user->despesas()
             ->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()]);
         $receitasQuery = $user->receitas()
@@ -70,40 +93,22 @@ class DashboardController extends Controller
         $totalDespesasFiltradas = (clone $despesasQuery)->count();
         $totalReceitasFiltradas = (clone $receitasQuery)->count();
 
-        $despesas = (clone $despesasQuery)
-            ->orderByDesc('expense_date')->orderBy('id')
-            ->offset($offset)->limit($limit)
-            ->get()
-            ->map(fn ($item) => (object) [
-                'id' => $item->id,
-                'tipo' => 'despesa',
-                'description' => $item->description,
-                'amount' => $item->amount,
-                'currency' => $item->currency,
-                'category' => $item->category,
-                'data_movimento' => $item->expense_date?->format('Y-m-d'),
-            ]);
+        $query = $this->movimentosQuery(
+            $user->id,
+            $inicio,
+            $fim,
+            'todos',
+            $categoria
+        );
 
-        $receitas = (clone $receitasQuery)
-            ->orderByDesc('income_date')->orderBy('id')
-            ->offset($offset)->limit($limit)
-            ->get()
-            ->map(fn ($item) => (object) [
-                'id' => $item->id,
-                'tipo' => 'receita',
-                'description' => $item->description,
-                'amount' => $item->amount,
-                'currency' => $item->currency,
-                'category' => $item->category,
-                'data_movimento' => $item->income_date?->format('Y-m-d'),
-            ]);
+        $items = (clone $query)
+            ->offset($offset)
+            ->limit($limit)
+            ->get();
 
-        $items = $despesas->concat($receitas)->sort(function ($a, $b) {
-            $dateOrder = strcmp((string) $b->data_movimento, (string) $a->data_movimento);
-            return $dateOrder !== 0 ? $dateOrder : strcmp((string) $a->id, (string) $b->id);
-        })->values();
+        $total = $totalDespesasFiltradas + $totalReceitasFiltradas;
 
-        // Os indicadores são do mês inteiro e não são afetados pelo filtro do histórico.
+        // Os indicadores financeiros não dependem dos filtros do histórico.
         $totalDespesas = (float) $user->despesas()
             ->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()])
             ->sum('amount');
@@ -115,10 +120,10 @@ class DashboardController extends Controller
             'data' => $items,
             'page' => $page,
             'per_page' => $limit,
-            'total' => $totalDespesasFiltradas + $totalReceitasFiltradas,
+            'total' => $total,
             'total_despesas_filtradas' => $totalDespesasFiltradas,
             'total_receitas_filtradas' => $totalReceitasFiltradas,
-            'has_more' => $page * $limit < ($totalDespesasFiltradas + $totalReceitasFiltradas),
+            'has_more' => ($page * $limit) < $total,
             'total_despesas' => $totalDespesas,
             'total_receitas' => $totalReceitas,
             'moeda' => $user->currency,
@@ -130,27 +135,40 @@ class DashboardController extends Controller
     {
         try {
             $inicio = Carbon::createFromFormat('!Y-m', (string) $mes)->startOfMonth();
+
             if ($inicio->format('Y-m') !== $mes) {
-                throw new \InvalidArgumentException();
+                throw new \\InvalidArgumentException();
             }
-        } catch (\Throwable) {
+        } catch (\\Throwable) {
             $inicio = now()->startOfMonth();
         }
 
         return [$inicio, $inicio->format('Y-m')];
     }
 
+    /**
+     * Limita o volume de dados devolvido numa única requisição.
+     */
     private function pageSize(Request $request): int
     {
         return min(50, max(1, (int) $request->query('limit', 10)));
     }
 
-    private function movimentosQuery(string $userId, Carbon $inicio, Carbon $fim, string $tipo, string $categoria): Builder
-    {
+    /**
+     * Monta uma consulta combinada, mantendo o filtro de proprietário no SQL.
+     */
+    private function movimentosQuery(
+        string $userId,
+        Carbon $inicio,
+        Carbon $fim,
+        string $tipo,
+        string $categoria
+    ): Builder {
         $despesas = DB::table('despesas')
             ->where('user_id', $userId)
             ->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()])
             ->selectRaw("id, 'despesa' AS tipo, description, amount, currency, category, expense_date AS data_movimento");
+
         $receitas = DB::table('receitas')
             ->where('user_id', $userId)
             ->whereBetween('income_date', [$inicio->toDateString(), $fim->toDateString()])
@@ -165,6 +183,7 @@ class DashboardController extends Controller
         }
 
         $wrapped = DB::query()->fromSub($query, 'movimentos');
+
         if ($categoria !== 'all') {
             $wrapped->where('category', $categoria);
         }
