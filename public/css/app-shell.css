@@ -646,6 +646,25 @@ body.sidebar-collapsed .account-avatar {
         font-size: .76rem;
     }
 
+    /* No mobile, o valor fica acima, mas os dois botões permanecem lado a lado. */
+    .history-card .expense-actions .btn-group {
+        display: inline-flex !important;
+        width: auto !important;
+        flex: 0 0 auto !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        align-items: center;
+        justify-content: flex-end;
+        gap: .35rem;
+    }
+
+    .history-card .expense-actions .btn-group > .btn,
+    .history-card .expense-actions .btn-group > form {
+        flex: 0 0 auto !important;
+        width: auto !important;
+        margin: 0 !important;
+    }
+
     .history-card .expense-actions .btn {
         width: 1.9rem;
         min-width: 1.9rem;
