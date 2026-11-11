@@ -24,9 +24,9 @@
     let page = 1;
     let visibleCount = pageSize();
     let hasMore = cfg.hasMore === true;
-    let loadedMovements = [];
-    let totalExpenseCount = 0;
-    let totalIncomeCount = 0;
+    let loadedMovements = Array.isArray(cfg.initialMovements) ? cfg.initialMovements : [];
+    let totalExpenseCount = Number(cfg.initialExpenseCount) || 0;
+    let totalIncomeCount = Number(cfg.initialIncomeCount) || 0;
     let offlineMode = false;
     let movementType = 'despesa';
     let typeBeforeEdit = 'despesa';
@@ -731,21 +731,20 @@
     setMovementType(movementType);
     if (cfg.initialCategory) category.value = cfg.initialCategory;
 
-    const initialRows = Array.from(list.querySelectorAll('[data-movement-id]'));
-    initialRows.forEach((row) => {
-        const value = row.querySelector('.movement-value');
-        if (value) {
-            const prefix = row.dataset.movementType === 'despesa' ? '−' : '+';
-            value.textContent = prefix + formatCurrency(row.dataset.amount, cfg.currency);
-        }
-    });
     updateSummary(totalExpenses, totalIncome);
     updatePeriodCaption();
-    // A lista inicial server-side é adaptada ao mesmo limite usado pela aplicação original.
+
+    // Os movimentos e totais iniciais já vêm na resposta Blade. Não repetir a consulta
+    // AJAX ao abrir o Dashboard; a API é chamada apenas quando o utilizador pede mais dados
+    // ou altera um filtro que exige nova consulta.
     if (navigator.onLine) {
-        refreshDashboard().catch(() => handleSyncFailure('Não foi possível sincronizar os movimentos com o servidor.'));
-    } else {
-        handleOffline();
+        offlineMode = false;
+        renderMovements();
+    } else if (!restoreCachedData()) {
+        offlineMode = true;
+        hasMore = false;
+        renderMovements();
+        showStatus('Sem ligação à internet. A mostrar apenas os movimentos recebidos nesta página.');
     }
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
