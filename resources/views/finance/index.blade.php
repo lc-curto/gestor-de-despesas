@@ -35,10 +35,10 @@
             </div>
             <div class="d-flex align-items-center gap-2">
                 <strong class="{{ $tipo === 'despesa' ? 'text-danger' : 'text-success' }}">{{ number_format((float) $item->amount, 2, ',', '.') }} {{ $item->currency }}</strong>
-                <a class="btn btn-sm btn-outline-secondary" href="{{ route($tipo === 'despesa' ? 'despesas.edit' : 'receitas.edit', $item->id) }}">Editar</a>
+                <a class="btn btn-sm btn-outline-secondary" href="{{ route($tipo === 'despesa' ? 'despesas.edit' : 'receitas.edit', $item->id) }}" aria-label="Editar {{ $item->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></a>
                 <form method="POST" action="{{ route($tipo === 'despesa' ? 'despesas.destroy' : 'receitas.destroy', $item->id) }}" onsubmit="return confirm('Eliminar este registo?')">
                     @csrf @method('DELETE')
-                    <button class="btn btn-sm btn-outline-danger">Eliminar</button>
+                    <button class="btn btn-sm btn-outline-danger" aria-label="Eliminar {{ $item->description }}" title="Eliminar"><i data-lucide="trash-2" aria-hidden="true"></i></button>
                 </form>
             </div>
         </article>
