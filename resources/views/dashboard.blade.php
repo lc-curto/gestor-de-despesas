@@ -12,7 +12,7 @@
         <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> Resumo financeiro</p>
         <h1 class="h2 fw-bold" id="greetingTitle">Olá, {{ auth()->user()->name }}!</h1>
     </div>
-    <div class="date-time-card" aria-label="Data e hora atuais em Lisboa">
+    <div class="date-time-card" aria-label="Data e hora locais do utilizador">
         <span class="date-time-label">Agora</span>
         <time id="currentDateTime" datetime="{{ now()->toIso8601String() }}">{{ now()->locale('pt_PT')->translatedFormat('l, d \\d\\e F \\d\\e Y') }} às {{ now()->format('H:i') }}</time>
     </div>
@@ -290,6 +290,46 @@ window.meuBolsoDashboard = {
     incomeCategories: @json($categoriasReceita),
     categories: @json($categorias)
 };
+</script>
+<script>
+/**
+ * Apresenta a data e hora no fuso horário configurado no dispositivo do utilizador.
+ * O navegador fornece o identificador IANA (ex.: Europe/Lisbon, America/Sao_Paulo).
+ * Não depende do fuso horário configurado no servidor.
+ */
+(() => {
+    const element = document.getElementById('currentDateTime');
+
+    if (!element) {
+        return;
+    }
+
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    const dateFormatter = new Intl.DateTimeFormat('pt-PT', {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+        timeZone
+    });
+    const timeFormatter = new Intl.DateTimeFormat('pt-PT', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+        timeZone
+    });
+
+    const updateLocalDateTime = () => {
+        const now = new Date();
+
+        element.textContent = `${dateFormatter.format(now)} às ${timeFormatter.format(now)}`;
+        element.dateTime = now.toISOString();
+        element.title = `Fuso horário: ${timeZone}`;
+    };
+
+    updateLocalDateTime();
+    window.setInterval(updateLocalDateTime, 30_000);
+})();
 </script>
 @if ($errors->any())
 <script>document.addEventListener('DOMContentLoaded', () => bootstrap.Modal.getOrCreateInstance(document.getElementById('movementEntryModal')).show());</script>
