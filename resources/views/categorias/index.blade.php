@@ -105,6 +105,7 @@
             <form method="POST" action="{{ route('categorias.store') }}" id="categoryForm">
                 @csrf
                 <input type="hidden" name="_method" id="categoryMethod" value="POST">
+                <input type="hidden" name="category_id" id="categoryId" value="">
                 <div class="modal-header">
                     <div><h2 class="modal-title h5 fw-bold" id="categoryModalTitle">Nova categoria</h2><p class="small text-secondary mb-0">Define como queres identificar esta categoria.</p></div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
@@ -158,6 +159,8 @@
     const form = document.getElementById('categoryForm');
     if (!modal || !form) return;
     const baseAction = @json(route('categorias.store'));
+    const updateBase = @json(url('/categorias'));
+    const categoryId = document.getElementById('categoryId');
     const title = document.getElementById('categoryModalTitle');
     const method = document.getElementById('categoryMethod');
     const submit = document.getElementById('categorySubmitButton');
@@ -168,6 +171,7 @@
         form.reset();
         form.action = edit ? trigger.dataset.updateUrl : baseAction;
         method.value = edit ? 'PUT' : 'POST';
+        categoryId.value = edit ? trigger.dataset.id : '';
         title.textContent = edit ? 'Editar categoria' : 'Nova categoria';
         submit.textContent = edit ? 'Guardar alterações' : 'Guardar categoria';
         document.getElementById('categoryName').value = edit ? trigger.dataset.name : '';
@@ -179,6 +183,28 @@
     });
 
     const search = document.getElementById('categorySearch');
+    document.querySelectorAll('[data-bs-toggle="pill"]').forEach((tab) => {
+        tab.addEventListener('shown.bs.tab', () => search?.dispatchEvent(new Event('input')));
+    });
+
+    const oldCategoryId = @json(old('category_id'));
+    @if ($errors->hasAny(['name', 'type', 'icon', 'color']))
+        document.addEventListener('DOMContentLoaded', () => {
+            const editId = oldCategoryId;
+            categoryId.value = editId || '';
+            method.value = editId ? 'PUT' : 'POST';
+            form.action = editId ? updateBase + '/' + encodeURIComponent(editId) : baseAction;
+            title.textContent = editId ? 'Editar categoria' : 'Nova categoria';
+            submit.textContent = editId ? 'Guardar alterações' : 'Guardar categoria';
+            document.getElementById('categoryName').value = @json(old('name', ''));
+            document.getElementById('categoryType').value = @json(old('type', 'despesa'));
+            document.getElementById('categoryIcon').value = @json(old('icon', 'bi-tag'));
+            const oldColor = @json(old('color', '#635BFF'));
+            const selectedColor = form.querySelector('input[name="color"][value="' + oldColor + '"]');
+            if (selectedColor) selectedColor.checked = true;
+            bootstrap.Modal.getOrCreateInstance(modal).show();
+        });
+    @endif
     search?.addEventListener('input', () => {
         const query = search.value.trim().toLocaleLowerCase('pt-PT');
         document.querySelectorAll('.tab-pane.active .category-item').forEach((item) => {
