@@ -37,6 +37,16 @@ class CategoriaController extends Controller
     {
         $categoria = $request->user()->categorias()->findOrFail($id);
         $data = $this->validated($request, $categoria);
+        $movementCount = $categoria->type === 'despesa'
+            ? $categoria->despesas()->count()
+            : $categoria->receitas()->count();
+
+        if ($movementCount > 0 && $data['type'] !== $categoria->type) {
+            return back()->withErrors([
+                'categoria' => 'Não é possível alterar o tipo de uma categoria que já tem movimentos associados.',
+            ])->withInput();
+        }
+
         $data['slug'] = $this->uniqueSlug($request->user()->id, $data['type'], $data['name'], $categoria->id);
         $categoria->update($data);
 
