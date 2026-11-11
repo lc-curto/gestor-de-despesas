@@ -112,7 +112,8 @@
         try { localStorage.setItem(SIDEBAR_KEY, String(hidden)); } catch (error) {}
     }
 
-    setDesktopSidebarHidden(sidebarHidden);
+    if (mobileNavigation.matches) setMobileSidebar(false);
+    else setDesktopSidebarHidden(sidebarHidden);
 
     sidebarToggle?.addEventListener('click', () => {
         if (mobileNavigation.matches) {
@@ -128,8 +129,11 @@
         });
     });
     mobileNavigation.addEventListener?.('change', (event) => {
-        if (!event.matches) setMobileSidebar(false);
-        else document.body.classList.remove('sidebar-open');
+        if (event.matches) setMobileSidebar(false);
+        else {
+            document.body.classList.remove('sidebar-open');
+            setDesktopSidebarHidden(sidebarHidden);
+        }
     });
 
     const logoutForm = document.querySelector('form[action$="/logout"]');
