@@ -185,6 +185,7 @@
         let countdown = null;
         let lastActivity = Date.now();
         let lastMouseMovement = 0;
+        let lastScrollActivity = 0;
         let monitoringActive = false;
 
         function hideWarning() {
@@ -230,6 +231,12 @@
             lastMouseMovement = now;
             registerActivity();
         }
+        function registerScrollActivity() {
+            const now = Date.now();
+            if (now - lastScrollActivity < 1000) return;
+            lastScrollActivity = now;
+            registerActivity();
+        }
         function checkWhenReturning() {
             if (document.visibilityState === 'visible') scheduleInactivity();
         }
@@ -239,7 +246,7 @@
             document.removeEventListener('click', registerActivity);
             document.removeEventListener('keydown', registerActivity);
             document.removeEventListener('mousemove', registerMouseMovement);
-            document.removeEventListener('scroll', registerActivity);
+            document.removeEventListener('scroll', registerScrollActivity);
             document.removeEventListener('touchstart', registerActivity);
             document.removeEventListener('visibilitychange', checkWhenReturning);
             window.removeEventListener('focus', checkWhenReturning);
@@ -253,10 +260,11 @@
             monitoringActive = true;
             lastActivity = Date.now();
             lastMouseMovement = 0;
+            lastScrollActivity = 0;
             document.addEventListener('click', registerActivity);
             document.addEventListener('keydown', registerActivity);
             document.addEventListener('mousemove', registerMouseMovement, { passive: true });
-            document.addEventListener('scroll', registerActivity, { passive: true });
+            document.addEventListener('scroll', registerScrollActivity, { passive: true });
             document.addEventListener('touchstart', registerActivity, { passive: true });
             document.addEventListener('visibilitychange', checkWhenReturning);
             window.addEventListener('focus', checkWhenReturning);
