@@ -86,6 +86,9 @@
                 @endif
 
                 <div id="recordEditorPanel" class="collapse show">
+                    <div class="d-flex justify-content-end d-lg-none mb-2">
+                        <button type="button" class="btn-close record-panel-close" id="recordPanelClose" aria-label="Fechar formulário"></button>
+                    </div>
                     <form id="dashboardMovementForm" method="POST" action="{{ route('despesas.store') }}">
                         @csrf
                         <input type="hidden" name="_method" id="movementMethod" value="POST">
