@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\\Http\\Controllers;
 
-use App\Support\Categorias;
-use Illuminate\Http\Request;
+use App\\Models\\Categoria;
+use Illuminate\\Http\\Request;
+use Illuminate\\Validation\\Rule;
 
 class FinanceController extends Controller
 {
@@ -16,7 +17,6 @@ class FinanceController extends Controller
             $tipo,
             $tipo === 'despesa' ? 'despesas' : 'receitas',
             $tipo === 'despesa' ? 'expense_date' : 'income_date',
-            $tipo === 'despesa' ? Categorias::DESPESAS : Categorias::RECEITAS,
         ];
     }
 
@@ -26,39 +26,74 @@ class FinanceController extends Controller
         return $request->user()->{$relation}();
     }
 
-    private function rules(Request $request): array
+    private function categoryOptions(Request $request, string $tipo, bool $includeInactive = false)
     {
-        [, , $dateField, $categories] = $this->config($request);
+        $query = $request->user()->categorias()->where('type', $tipo);
+        if (!$includeInactive) {
+            $query->where('is_active', true);
+        }
 
-        return [
-            'description' => 'required|string|max:255',
-            'amount' => 'required|numeric|gt:0|decimal:0,2|max:9999999999.99',
-            'category' => 'required|in:' . implode(',', array_keys($categories)),
-            $dateField => 'required|date',
-        ];
+        return $query->orderBy('name')->pluck('name', 'id');
     }
 
-    private function validatedData(Request $request): array
+    private function validatedData(Request $request, ?string $movementId = null): array
     {
-        $data = $request->validate($this->rules($request));
-        // A moeda é uma propriedade da conta, nunca um campo editável do movimento.
-        $data['currency'] = $request->user()->currency;
+        [$tipo, $relation, $dateField] = $this->config($request);
 
-        return $data;
+        $rules = [
+            'description' => 'required|string|max:255',
+            'amount' => 'required|numeric|gt:0|decimal:0,2|max:9999999999.99',
+            'category_id' => [
+                'required',
+                'uuid',
+                Rule::exists('categorias', 'id')
+                    ->where('user_id', $request->user()->id)
+                    ->where('type', $tipo),
+            ],
+            $dateField => 'required|date',
+        ];
+
+        $data = $request->validate($rules);
+        $category = $request->user()->categorias()->where('type', $tipo)
+            ->whereKey($data['category_id'])->firstOrFail();
+
+        if (!$category->is_active) {
+            $current = $movementId
+                ? $this->query($request)->whereKey($movementId)->value('category_id')
+                : null;
+
+            if ($current !== $category->id) {
+                abort(422, 'Esta categoria está inativa e não pode ser utilizada em novos movimentos.');
+            }
+        }
+
+        // Mantém a coluna textual antiga compatível com o CHECK legado.
+        // category_id passa a ser a referência canónica da categoria.
+        $legacyKeys = $tipo === 'despesa'
+            ? ['casa', 'alimentacao', 'transportes', 'saude', 'lazer', 'compras', 'educacao', 'outros']
+            : ['salario', 'vendas', 'trabalho_extra', 'investimentos', 'reembolsos', 'outros'];
+
+        return array_merge($data, [
+            'category' => in_array($category->slug, $legacyKeys, true) ? $category->slug : 'outros',
+            'currency' => $request->user()->currency,
+        ]);
     }
 
     public function index(Request $request)
     {
-        [$tipo, , $dateField, $categories] = $this->config($request);
+        [$tipo, , $dateField] = $this->config($request);
+        $cats = $this->categoryOptions($request, $tipo, true);
         $filters = $request->validate([
-            'categoria' => 'nullable|string',
+            'categoria' => ['nullable', 'uuid'],
             'inicio' => 'nullable|date',
             'fim' => 'nullable|date|after_or_equal:inicio',
         ]);
-        $query = $this->query($request)->orderByDesc($dateField)->orderBy('id');
 
-        if (!empty($filters['categoria']) && array_key_exists($filters['categoria'], $categories)) {
-            $query->where('category', $filters['categoria']);
+        $query = $this->query($request)->with('categoria')
+            ->orderByDesc($dateField)->orderBy('id');
+
+        if (!empty($filters['categoria']) && $cats->has($filters['categoria'])) {
+            $query->where('category_id', $filters['categoria']);
         }
         if (!empty($filters['inicio'])) {
             $query->whereDate($dateField, '>=', $filters['inicio']);
@@ -69,17 +104,16 @@ class FinanceController extends Controller
 
         $registos = $query->paginate(10)->withQueryString();
         $data = $dateField;
-        $cats = $categories;
 
         return view('finance.index', compact('tipo', 'data', 'cats', 'registos'));
     }
 
     public function create(Request $request)
     {
-        [$tipo, , $dateField, $categories] = $this->config($request);
+        [$tipo, , $dateField] = $this->config($request);
         $registo = null;
         $data = $dateField;
-        $cats = $categories;
+        $cats = $this->categoryOptions($request, $tipo);
 
         return view('finance.form', compact('tipo', 'data', 'cats', 'registo'));
     }
@@ -92,7 +126,6 @@ class FinanceController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['ok' => true, 'message' => 'Registo criado.']);
         }
-
         if ($request->boolean('return_to_dashboard')) {
             return redirect()->route('dashboard')->with('success', 'Registo criado.');
         }
@@ -103,10 +136,10 @@ class FinanceController extends Controller
 
     public function edit(Request $request, string $id)
     {
-        [$tipo, , $dateField, $categories] = $this->config($request);
+        [$tipo, , $dateField] = $this->config($request);
         $registo = $this->query($request)->findOrFail($id);
         $data = $dateField;
-        $cats = $categories;
+        $cats = $this->categoryOptions($request, $tipo, true);
 
         return view('finance.form', compact('tipo', 'data', 'cats', 'registo'));
     }
@@ -114,12 +147,12 @@ class FinanceController extends Controller
     public function update(Request $request, string $id)
     {
         [$tipo] = $this->config($request);
-        $this->query($request)->findOrFail($id)->update($this->validatedData($request));
+        $movement = $this->query($request)->findOrFail($id);
+        $movement->update($this->validatedData($request, $id));
 
         if ($request->expectsJson()) {
             return response()->json(['ok' => true, 'message' => 'Registo atualizado.']);
         }
-
         if ($request->boolean('return_to_dashboard')) {
             return redirect()->route('dashboard')->with('success', 'Registo atualizado.');
         }
