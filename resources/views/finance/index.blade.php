@@ -20,31 +20,41 @@
 
 <form method="GET" class="finance-filter-card">
     <div class="finance-filter-heading">
-        <div>
-            <h2 class="h6 fw-bold mb-0">Filtros</h2>
-        </div>
-        <button class="btn btn-outline-primary btn-sm" type="submit">
+        <h2 class="h6 fw-bold mb-0">Filtros</h2>
+        <button
+            class="btn btn-outline-primary btn-sm"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#financeFilterFields"
+            aria-expanded="{{ request()->hasAny(['categoria', 'inicio', 'fim']) ? 'true' : 'false' }}"
+            aria-controls="financeFilterFields">
             <i data-lucide="sliders-horizontal" aria-hidden="true"></i>
-            <span>Filtrar</span>
+            <span>Filtros</span>
+            <i data-lucide="chevron-down" class="finance-filter-chevron" aria-hidden="true"></i>
         </button>
     </div>
-    <div class="finance-filter-fields">
-        <div class="finance-filter-category">
-            <label for="categoryFilter" class="form-label">Categoria</label>
-            <select id="categoryFilter" name="categoria" class="form-select">
-                <option value="">Todas as categorias</option>
-                @foreach ($cats as $id => $label)
-                    <option value="{{ $id }}" @selected(request('categoria') === $id)>{{ $label }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div>
-            <label for="startDate" class="form-label">Data inicial</label>
-            <input id="startDate" type="date" name="inicio" class="form-control" value="{{ request('inicio') }}">
-        </div>
-        <div>
-            <label for="endDate" class="form-label">Data final</label>
-            <input id="endDate" type="date" name="fim" class="form-control" value="{{ request('fim') }}">
+    <div class="collapse {{ request()->hasAny(['categoria', 'inicio', 'fim']) ? 'show' : '' }}" id="financeFilterFields">
+        <div class="finance-filter-fields">
+            <div class="finance-filter-category">
+                <label for="categoryFilter" class="form-label">Categoria</label>
+                <select id="categoryFilter" name="categoria" class="form-select">
+                    <option value="">Todas as categorias</option>
+                    @foreach ($cats as $id => $label)
+                        <option value="{{ $id }}" @selected(request('categoria') === $id)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label for="startDate" class="form-label">Data inicial</label>
+                <input id="startDate" type="date" name="inicio" class="form-control" value="{{ request('inicio') }}">
+            </div>
+            <div>
+                <label for="endDate" class="form-label">Data final</label>
+                <input id="endDate" type="date" name="fim" class="form-control" value="{{ request('fim') }}">
+            </div>
+            <div class="finance-filter-submit">
+                <button class="btn btn-primary btn-sm" type="submit">Aplicar filtros</button>
+            </div>
         </div>
     </div>
 </form>
