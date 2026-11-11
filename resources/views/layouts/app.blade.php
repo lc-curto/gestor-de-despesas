@@ -47,7 +47,7 @@
                     </button>
                 </div>
 
-                <div class="dropdown account-dropdown">
+                <div class="dropdown account-dropdown dropup">
                     <button type="button" class="account-profile-button" id="accountMenuButton"
                         data-bs-toggle="dropdown" aria-expanded="false" aria-label="Abrir menu da conta">
                         <span class="account-avatar">{{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 1)) }}</span>
