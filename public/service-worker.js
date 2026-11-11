@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meu-bolso-static-v5';
+const CACHE_NAME = 'meu-bolso-static-v6';
 const STATIC_ASSETS = [
   '/offline.html',
   '/css/bootstrap.min.css',
@@ -13,7 +13,6 @@ const STATIC_ASSETS = [
   '/images/pwa-icon-192.png',
   '/images/pwa-icon-512.png',
 
-  'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css',
 
 ];
 
