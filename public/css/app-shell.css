@@ -1097,24 +1097,24 @@ body.sidebar-collapsed .account-avatar {
 }
 
 
-/* Dashboard mobile — cartões de resumo ligeiramente maiores, mantendo três colunas */
+/* Dashboard mobile — recuperar a presença visual da versão inicial */
 @media (max-width: 767.98px) {
     .dashboard-summary-column {
         padding-inline: .3rem;
     }
     .dashboard-summary-column .summary-card {
-        min-height: 5rem;
-        padding: .7rem .65rem;
-        border-radius: .9rem;
+        min-height: 5.4rem;
+        padding: .8rem .7rem;
+        border-radius: .95rem;
     }
     .dashboard-summary-column .summary-card p.small {
-        font-size: .72rem;
+        font-size: .75rem;
         line-height: 1.25;
-        margin-bottom: .25rem !important;
+        margin-bottom: .3rem !important;
     }
     .dashboard-summary-column .summary-value,
     .dashboard-summary-column .summary-value-text {
-        font-size: clamp(.76rem, 3vw, .92rem);
+        font-size: clamp(.84rem, 3.2vw, .96rem);
         line-height: 1.2;
         letter-spacing: -.025em;
     }
@@ -1122,10 +1122,10 @@ body.sidebar-collapsed .account-avatar {
 @media (max-width: 380px) {
     .dashboard-summary-column { padding-inline: .2rem; }
     .dashboard-summary-column .summary-card {
-        min-height: 4.8rem;
-        padding: .65rem .45rem;
+        min-height: 5.1rem;
+        padding: .7rem .48rem;
     }
-    .dashboard-summary-column .summary-card p.small { font-size: .67rem; }
+    .dashboard-summary-column .summary-card p.small { font-size: .7rem; }
     .dashboard-summary-column .summary-value,
-    .dashboard-summary-column .summary-value-text { font-size: .73rem; }
+    .dashboard-summary-column .summary-value-text { font-size: .79rem; }
 }
