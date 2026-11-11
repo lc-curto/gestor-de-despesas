@@ -38,24 +38,27 @@ class FinanceController extends Controller
 
     private function validatedData(Request $request, ?string $movementId = null): array
     {
-        [$tipo, $relation, $dateField] = $this->config($request);
+        [$tipo, , $dateField] = $this->config($request);
 
-        $rules = [
+        $data = $request->validate([
             'description' => 'required|string|max:255',
             'amount' => 'required|numeric|gt:0|decimal:0,2|max:9999999999.99',
             'category_id' => [
-                'required',
+                'required_without:category',
+                'nullable',
                 'uuid',
                 Rule::exists('categorias', 'id')
                     ->where('user_id', $request->user()->id)
                     ->where('type', $tipo),
             ],
+            'category' => ['required_without:category_id', 'nullable', 'string', 'max:120'],
             $dateField => 'required|date',
-        ];
+        ]);
 
-        $data = $request->validate($rules);
-        $category = $request->user()->categorias()->where('type', $tipo)
-            ->whereKey($data['category_id'])->firstOrFail();
+        $categoryQuery = $request->user()->categorias()->where('type', $tipo);
+        $category = !empty($data['category_id'])
+            ? $categoryQuery->whereKey($data['category_id'])->firstOrFail()
+            : $categoryQuery->where('slug', $data['category'])->firstOrFail();
 
         if (!$category->is_active) {
             $current = $movementId
@@ -67,13 +70,13 @@ class FinanceController extends Controller
             }
         }
 
-        // Mantém a coluna textual antiga compatível com o CHECK legado.
-        // category_id passa a ser a referência canónica da categoria.
+        // Mantém a coluna textual antiga compatível com o CHECK legado e clientes anteriores.
         $legacyKeys = $tipo === 'despesa'
             ? ['casa', 'alimentacao', 'transportes', 'saude', 'lazer', 'compras', 'educacao', 'outros']
             : ['salario', 'vendas', 'trabalho_extra', 'investimentos', 'reembolsos', 'outros'];
 
         return array_merge($data, [
+            'category_id' => $category->id,
             'category' => in_array($category->slug, $legacyKeys, true) ? $category->slug : 'outros',
             'currency' => $request->user()->currency,
         ]);
