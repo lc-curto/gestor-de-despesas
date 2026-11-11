@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meu-bolso-static-v19';
+const CACHE_NAME = 'meu-bolso-static-v20';
 const STATIC_ASSETS = [
   '/offline.html',
   '/css/bootstrap.min.css',
