@@ -98,10 +98,10 @@
                     </div>
                     <div class="mb-4">
                         <label for="movementCategory" class="form-label">Categoria</label>
-                        <select class="form-select" id="movementCategory" name="category" required>
+                        <select class="form-select" id="movementCategory" name="category_id" required>
                             <option value="" selected disabled>Seleciona uma categoria</option>
-                            @foreach ($categoriasDespesa as $key => $label)
-                                <option value="{{ $key }}" @selected(old('category') === $key)>{{ $label }}</option>
+                            @foreach ($categoriasDespesa as $id => $label)
+                                <option value="{{ $id }}" @selected(old('category_id') === $id)>{{ $label }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -159,7 +159,7 @@
                             $dataMovimento = \Illuminate\Support\Carbon::parse($movimento->data_movimento);
                             $categoriaLabel = $categorias[$movimento->category] ?? $movimento->category;
                         @endphp
-                        <article class="expense-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom" data-movement-id="{{ $movimento->id }}" data-movement-type="{{ $movimento->tipo }}" data-edit-url="{{ route($isExpense ? 'despesas.update' : 'receitas.update', $movimento->id) }}" data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}" data-amount="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}" data-category="{{ $movimento->category }}">
+                        <article class="expense-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom" data-movement-id="{{ $movimento->id }}" data-movement-type="{{ $movimento->tipo }}" data-edit-url="{{ route($isExpense ? 'despesas.update' : 'receitas.update', $movimento->id) }}" data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}" data-amount="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}" data-category-id="{{ $movimento->category }}">
                             <div class="d-flex align-items-center gap-3 min-w-0">
                                 <div class="{{ $isExpense ? 'expense-icon' : 'expense-icon income-icon' }} flex-shrink-0" aria-hidden="true">
                                     <i class="bi {{ $isExpense ? 'bi-arrow-up-right' : 'bi-arrow-down-left' }}"></i>
@@ -252,7 +252,7 @@ window.meuBolsoDashboard = {
     name: @json(auth()->user()->name),
     currency: @json($moeda),
     initialType: @json(old('income_date') ? 'receita' : 'despesa'),
-    initialCategory: @json(old('category')),
+    initialCategory: @json(old('category_id')),
     type: @json($filtroTipo),
     category: @json($filtroCategoria),
     hasMore: @json($totalMovimentos > $limit),
