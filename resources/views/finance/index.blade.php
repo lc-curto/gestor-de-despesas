@@ -26,9 +26,12 @@
 <section class="card border-0 p-3 p-lg-4">
     @forelse ($registos as $item)
         <article class="expense-item">
-            <div class="expense-info">
-                <strong>{{ $item->description }}</strong>
-                <div class="small text-secondary">{{ $item->{$data}->format('d/m/Y') }} · {{ $item->categoria?->name ?? 'Categoria indisponível' }}</div>
+            <div class="d-flex align-items-center gap-3 expense-info">
+                <span class="category-color-icon" style="--category-color: {{ $item->categoria?->color ?? '#64748B' }}" aria-hidden="true"><i data-lucide="{{ $item->categoria?->icon ?? 'tag' }}"></i></span>
+                <div class="min-w-0">
+                    <strong>{{ $item->description }}</strong>
+                    <div class="small text-secondary">{{ $item->{$data}->format('d/m/Y') }} · {{ $item->categoria?->name ?? 'Categoria indisponível' }}</div>
+                </div>
             </div>
             <div class="d-flex align-items-center gap-2">
                 <strong class="{{ $tipo === 'despesa' ? 'text-danger' : 'text-success' }}">{{ number_format((float) $item->amount, 2, ',', '.') }} {{ $item->currency }}</strong>
