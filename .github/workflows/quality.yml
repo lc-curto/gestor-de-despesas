@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - refactor/estrutura-e-css
+      - feature/categorias-crud
   pull_request:
     branches:
       - main

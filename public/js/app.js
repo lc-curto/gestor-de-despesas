@@ -8,11 +8,11 @@
         if (!themeButton) return;
         const icon = themeButton.querySelector('i');
         if (theme === 'dark') {
-            if (icon) icon.className = 'bi bi-sun-fill';
+            if (icon) icon.setAttribute('data-lucide', 'sun');
             themeButton.setAttribute('aria-label', 'Mudar para tema claro');
             themeButton.setAttribute('aria-pressed', 'true');
         } else {
-            if (icon) icon.className = 'bi bi-moon-stars-fill';
+            if (icon) icon.setAttribute('data-lucide', 'moon-star');
             themeButton.setAttribute('aria-label', 'Mudar para tema escuro');
             themeButton.setAttribute('aria-pressed', 'false');
         }
@@ -43,6 +43,35 @@
         applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
     });
     initializeTheme();
+
+    const legacyIcons={'bi-grid-1x2':'layout-dashboard','bi-arrow-down-circle':'arrow-down-circle','bi-arrow-up-circle':'arrow-up-circle','bi-tags':'tags','bi-plus-lg':'plus','bi-search':'search','bi-pencil':'pencil','bi-pause-circle':'pause-circle','bi-play-circle':'play-circle','bi-trash':'trash-2','bi-house':'house','bi-cup-hot':'coffee','bi-car-front':'car-front','bi-heart-pulse':'heart-pulse','bi-controller':'gamepad-2','bi-bag':'shopping-bag','bi-mortarboard':'graduation-cap','bi-wallet2':'wallet','bi-shop':'store','bi-briefcase':'briefcase-business','bi-graph-up-arrow':'chart-no-axes-combined','bi-arrow-counterclockwise':'undo-2','bi-three-dots':'ellipsis','bi-arrow-up-right':'arrow-up-right','bi-arrow-down-left':'arrow-down-left','bi-chevron-left':'chevron-left','bi-chevron-right':'chevron-right','bi-arrow-left':'arrow-left','bi-arrow-left-right':'arrow-left-right','bi-arrow-right':'arrow-right','bi-download':'download','bi-person':'user-round','bi-box-arrow-right':'log-out','bi-clock-history':'clock-3','bi-list':'menu','bi-moon-stars':'moon-star','bi-sun-fill':'sun','bi-x-lg':'x','bi-tag':'tag'};
+    document.querySelectorAll('i.bi').forEach((el)=>{const old=[...el.classList].find((name)=>name.startsWith('bi-')&&name!=='bi');if(!legacyIcons[old])return;el.classList.remove('bi',old);el.setAttribute('data-lucide',legacyIcons[old]);});
+    const SIDEBAR_KEY='meu-bolso:sidebar-collapsed',sidebarToggle=document.getElementById('sidebarToggle');
+    function applySidebarState(collapsed){document.body.classList.toggle('sidebar-collapsed',collapsed);if(!sidebarToggle)return;sidebarToggle.setAttribute('aria-expanded',String(!collapsed));sidebarToggle.setAttribute('aria-label',collapsed?'Expandir menu lateral':'Recolher menu lateral');sidebarToggle.title=collapsed?'Expandir menu lateral':'Recolher menu lateral';const icon=sidebarToggle.querySelector('[data-lucide]');if(icon)icon.setAttribute('data-lucide',collapsed?'panel-left-open':'panel-left-close');window.lucide?.createIcons();}
+    let sidebarCollapsed=false;try{sidebarCollapsed=localStorage.getItem(SIDEBAR_KEY)==='true';}catch(error){}
+    applySidebarState(sidebarCollapsed);
+    sidebarToggle?.addEventListener('click',()=>{sidebarCollapsed=!document.body.classList.contains('sidebar-collapsed');applySidebarState(sidebarCollapsed);try{localStorage.setItem(SIDEBAR_KEY,String(sidebarCollapsed));}catch(error){}});
+    window.lucide?.createIcons();
+    const iconObserver = new MutationObserver((records) => {
+        let changed = false;
+        records.forEach((record) => record.addedNodes.forEach((node) => {
+            if (node.nodeType !== 1) return;
+            const candidates = [];
+            if (node.matches?.('i.bi')) candidates.push(node);
+            candidates.push(...(node.querySelectorAll?.('i.bi') || []));
+            candidates.forEach((el) => {
+                const legacy = [...el.classList].find((name) => name.startsWith('bi-') && name !== 'bi');
+                if (!legacyIcons[legacy]) return;
+                el.classList.remove('bi', legacy);
+                el.setAttribute('data-lucide', legacyIcons[legacy]);
+                changed = true;
+            });
+            if (node.matches?.('[data-lucide]') || node.querySelector?.('[data-lucide]')) changed = true;
+        }));
+        if (changed) window.lucide?.createIcons();
+    });
+    iconObserver.observe(document.body, { childList: true, subtree: true });
+
 
     // A data/hora é atualizada no cabeçalho à semelhança do main.js original.
     const currentDateTime = document.getElementById('currentDateTime');

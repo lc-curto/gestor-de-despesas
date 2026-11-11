@@ -2,7 +2,7 @@ name: Laravel quality
 
 on:
   push:
-    branches: [feature/migracao-laravel]
+    branches: [feature/migracao-laravel, feature/categorias-crud]
   pull_request:
     branches: [main]
     paths:

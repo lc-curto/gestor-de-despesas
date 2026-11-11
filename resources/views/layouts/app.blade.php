@@ -9,24 +9,26 @@
     <link rel="icon" href="{{ asset('images/pwa-icon.svg') }}">
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
     <link rel="stylesheet" href="{{ asset('css/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/app-shell.css') }}">
     @stack('styles')
 </head>
 <body>
     <div id="offlineStatus" class="alert alert-warning rounded-0 mb-0 d-none" role="status" aria-live="polite"></div>
 
     <nav class="navbar navbar-expand-lg bg-body border-bottom sticky-top" aria-label="Navegação principal">
-        <div class="container py-2">
+        <div class="container-fluid d-flex align-items-center py-2 px-3 px-lg-4">
+            <button type="button" class="btn btn-outline-secondary navbar-icon-btn d-lg-none me-2" data-bs-toggle="offcanvas" data-bs-target="#mobileNavigation" aria-controls="mobileNavigation" aria-label="Abrir navegação"><i data-lucide="menu"></i></button>
+            <button type="button" class="btn btn-outline-secondary navbar-icon-btn d-none d-lg-inline-flex me-2" id="sidebarToggle" aria-label="Recolher menu lateral" aria-expanded="true" title="Recolher menu lateral"><i data-lucide="panel-left-close"></i></button>
             <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="{{ route('dashboard') }}">
-                <span class="brand-mark brand-mark-sm" aria-hidden="true"><i class="bi bi-wallet2"></i></span>
+                <span class="brand-mark brand-mark-sm" aria-hidden="true"><i data-lucide="wallet"></i></span>
                 <span>Meu Bolso</span>
             </a>
             <div class="navbar-actions d-flex align-items-center gap-2">
-                <button type="button" class="btn btn-primary navbar-icon-btn d-none" id="installAppButton" aria-label="Instalar aplicação Meu Bolso" title="Instalar aplicação"><i class="bi bi-download"></i></button>
-                <button type="button" class="btn btn-outline-secondary navbar-icon-btn" id="themeToggle" aria-label="Alternar entre tema claro e escuro" title="Alternar tema"><i class="bi bi-moon-stars"></i></button>
+                <button type="button" class="btn btn-primary navbar-icon-btn d-none" id="installAppButton" aria-label="Instalar aplicação Meu Bolso" title="Instalar aplicação"><i data-lucide="download"></i></button>
+                <button type="button" class="btn btn-outline-secondary navbar-icon-btn" id="themeToggle" aria-label="Alternar entre tema claro e escuro" title="Alternar tema"><i data-lucide="moon-star"></i></button>
                 <div class="dropdown">
-                    <button type="button" class="btn btn-outline-secondary navbar-icon-btn rounded-circle" id="accountMenuButton" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Abrir menu da conta"><i class="bi bi-person"></i></button>
+                    <button type="button" class="btn btn-outline-secondary navbar-icon-btn rounded-circle" id="accountMenuButton" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Abrir menu da conta"><i data-lucide="user-round"></i></button>
                     <div class="dropdown-menu dropdown-menu-end p-2 shadow" aria-labelledby="accountMenuButton">
                         <div class="px-3 py-2">
                             <p class="fw-semibold mb-1">{{ auth()->user()->name }}</p>
@@ -35,7 +37,7 @@
                         <hr class="dropdown-divider">
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
-                            <button type="submit" class="dropdown-item text-danger rounded-2"><i class="bi bi-box-arrow-right me-2"></i>Terminar sessão</button>
+                            <button type="submit" class="dropdown-item text-danger rounded-2"><i data-lucide="log-out" class="me-2"></i>Terminar sessão</button>
                         </form>
                     </div>
                 </div>
@@ -50,9 +52,24 @@
         <div class="container mt-3"><div class="alert alert-info" role="status">{{ session('status') }}</div></div>
     @endif
 
-    <main id="top" class="container py-2 py-lg-5">
-        @yield('content')
-    </main>
+    <div class="app-layout">
+        <aside class="app-sidebar d-none d-lg-flex" aria-label="Navegação lateral">
+            <x-navigation-links />
+        </aside>
+        <main id="top" class="app-main">
+            <div class="app-content">@yield('content')</div>
+        </main>
+    </div>
+
+    <div class="offcanvas offcanvas-start app-mobile-navigation" tabindex="-1" id="mobileNavigation" aria-labelledby="mobileNavigationTitle">
+        <div class="offcanvas-header">
+            <h2 class="offcanvas-title h5 fw-bold" id="mobileNavigationTitle">Meu Bolso</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar navegação"></button>
+        </div>
+        <div class="offcanvas-body">
+            <x-navigation-links />
+        </div>
+    </div>
 
     <footer class="site-footer container mt-5 pt-4 pb-4 border-top text-center">
         <div class="row gy-3 justify-content-center">
@@ -77,7 +94,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4">
                 <div class="modal-body text-center p-4 p-md-5">
-                    <i class="bi bi-clock-history text-warning fs-1 mb-3"></i>
+                    <i data-lucide="clock-3" class="text-warning fs-1 mb-3"></i>
                     <h2 class="h4 fw-bold mb-3" id="inactivityModalTitle">Ainda estás aí?</h2>
                     <p class="text-secondary mb-3" id="inactivityModalDescription">A tua sessão será encerrada por inatividade. Continua a utilizar a aplicação para manteres a sessão ativa.</p>
                     <div class="display-5 fw-bold text-warning mb-4"><span id="inactivityCountdown">01:00</span></div>
@@ -88,6 +105,7 @@
     </div>
 
     <script src="{{ asset('js/bootstrap.bundle.min.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script src="{{ asset('js/app.js') }}" defer></script>
     @stack('scripts')
 </body>
