@@ -17,7 +17,7 @@
     <div id="offlineStatus" class="alert alert-warning rounded-0 mb-0 d-none" role="status" aria-live="polite"></div>
 
     <nav class="navbar navbar-expand-lg bg-body border-bottom sticky-top" aria-label="Navegação principal">
-        <div class="container py-2">
+        <div class="container d-flex align-items-center py-2">\n            <button type="button" class="btn btn-outline-secondary navbar-icon-btn d-lg-none me-2" data-bs-toggle="offcanvas" data-bs-target="#mobileNavigation" aria-controls="mobileNavigation" aria-label="Abrir navegação"><i class="bi bi-list"></i></button>
             <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="{{ route('dashboard') }}">
                 <span class="brand-mark brand-mark-sm" aria-hidden="true"><i class="bi bi-wallet2"></i></span>
                 <span>Meu Bolso</span>
@@ -50,9 +50,24 @@
         <div class="container mt-3"><div class="alert alert-info" role="status">{{ session('status') }}</div></div>
     @endif
 
-    <main id="top" class="container py-2 py-lg-5">
-        @yield('content')
-    </main>
+    <div class="app-layout container-fluid">
+        <aside class="app-sidebar d-none d-lg-block" aria-label="Navegação lateral">
+            <x-navigation-links />
+        </aside>
+        <main id="top" class="app-main container py-2 py-lg-5">
+            @yield('content')
+        </main>
+    </div>
+
+    <div class="offcanvas offcanvas-start app-mobile-navigation" tabindex="-1" id="mobileNavigation" aria-labelledby="mobileNavigationTitle">
+        <div class="offcanvas-header">
+            <h2 class="offcanvas-title h5 fw-bold" id="mobileNavigationTitle">Meu Bolso</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar navegação"></button>
+        </div>
+        <div class="offcanvas-body">
+            <x-navigation-links />
+        </div>
+    </div>
 
     <footer class="site-footer container mt-5 pt-4 pb-4 border-top text-center">
         <div class="row gy-3 justify-content-center">
