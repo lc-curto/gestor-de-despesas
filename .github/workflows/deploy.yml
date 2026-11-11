@@ -104,14 +104,14 @@ jobs:
         run: |
           set -euo pipefail
           RELEASE="releases/release-${DEPLOY_SHA:0:7}"
-          ssh "${SSH_USER}@${SSH_HOST}" "mkdir -p '$HOME/$RELEASE'"
+          ssh "${SSH_USER}@${SSH_HOST}" "mkdir -p \"\$HOME/$RELEASE\""
           rsync -az --delete \
             --exclude='.env' \
             --exclude='.git' \
             --exclude='node_modules' \
             --exclude='tests' \
             -e "ssh -o StrictHostKeyChecking=yes" \
-            ./ "${SSH_USER}@${SSH_HOST}:$HOME/$RELEASE/"
+            ./ "${SSH_USER}@${SSH_HOST}:~/$RELEASE/"
 
           ssh "${SSH_USER}@${SSH_HOST}" "bash -s -- '$RELEASE'" <<'REMOTE'
           set -euo pipefail
@@ -128,7 +128,7 @@ jobs:
 
           cd "$RELEASE_PATH"
           php artisan optimize
-          php artisan check-platform-reqs --no-dev
+          composer check-platform-reqs --no-dev
           REMOTE
 
       - name: Guardar caminho atual e ativar release
@@ -138,8 +138,6 @@ jobs:
           API_TOKEN: ${{ secrets.ALWAYSDATA_API_TOKEN }}
           API_ACCOUNT: meu-bolso
           SITE_ID: '1102810'
-          SSH_HOST: ${{ secrets.ALWAYSDATA_HOST }}
-          SSH_USER: ${{ secrets.ALWAYSDATA_USER }}
           DEPLOY_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
@@ -150,7 +148,6 @@ jobs:
           NEW_PATH="releases/release-${DEPLOY_SHA:0:7}/public/"
 
           echo "old_path=$OLD_PATH" >> "$GITHUB_OUTPUT"
-          echo "new_path=$NEW_PATH" >> "$GITHUB_OUTPUT"
 
           curl --fail --silent --show-error \
             --user "$AUTH" \
@@ -158,8 +155,6 @@ jobs:
             --header 'Content-Type: application/json' \
             --data "$(jq -n --arg path "$NEW_PATH" '{path: $path}')" \
             "$API"
-
-          ssh "${SSH_USER}@${SSH_HOST}" "true"
 
       - name: Reiniciar site e validar produção
         if: github.event_name != 'pull_request'
