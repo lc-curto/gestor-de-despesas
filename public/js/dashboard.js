@@ -178,7 +178,8 @@
         const icon = document.createElement('div');
         icon.className = isExpense ? 'expense-icon flex-shrink-0' : 'expense-icon income-icon flex-shrink-0';
         icon.setAttribute('aria-hidden', 'true');
-        icon.innerHTML = '<i class="bi ' + (isExpense ? 'bi-arrow-up-right' : 'bi-arrow-down-left') + '"></i>';
+        icon.style.setProperty('--category-color', item.category_color || '#635BFF');
+        icon.innerHTML = '<i data-lucide="' + (item.category_icon || 'tag') + '"></i>';
 
         const details = document.createElement('div');
         details.className = 'min-w-0';
