@@ -519,3 +519,131 @@ body.sidebar-collapsed .account-avatar {
         transition: none !important;
     }
 }
+
+
+/* ======================================
+   LISTA DE MOVIMENTOS — LINHA COMPACTA
+   Mantém valor e ações alinhados sem
+   criar uma segunda linha nos telemóveis.
+====================================== */
+.history-card .expense-item {
+    display: flex;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: .75rem !important;
+    min-width: 0;
+    padding-top: .7rem !important;
+    padding-bottom: .7rem !important;
+}
+
+.history-card .expense-item > :first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.history-card .expense-item > :first-child > div:last-child {
+    min-width: 0;
+}
+
+.history-card .expense-item h3 {
+    overflow: hidden;
+    margin-bottom: .2rem !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.history-card .expense-item p {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.history-card .expense-icon {
+    display: inline-flex;
+    width: 2.45rem;
+    height: 2.45rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: .8rem;
+}
+
+.history-card .expense-actions {
+    display: flex;
+    width: auto !important;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center !important;
+    gap: .35rem;
+}
+
+.history-card .expense-actions .movement-value {
+    font-size: .82rem;
+    line-height: 1.1;
+}
+
+.history-card .expense-actions .btn-group {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    gap: .3rem;
+}
+
+.history-card .expense-actions form {
+    display: inline-flex;
+    margin: 0;
+}
+
+.history-card .expense-actions .btn {
+    display: inline-flex;
+    width: 2.1rem;
+    min-width: 2.1rem;
+    height: 2.1rem;
+    min-height: 2.1rem;
+    align-items: center;
+    justify-content: center;
+    padding: .25rem;
+}
+
+.history-card .expense-actions .btn svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+@media (max-width: 575.98px) {
+    .history-card .expense-item {
+        gap: .55rem !important;
+        padding-top: .65rem !important;
+        padding-bottom: .65rem !important;
+    }
+
+    .history-card .expense-icon {
+        width: 2.25rem;
+        height: 2.25rem;
+        flex-basis: 2.25rem;
+        border-radius: .7rem;
+    }
+
+    .history-card .expense-icon svg {
+        width: 1.05rem;
+        height: 1.05rem;
+    }
+
+    .history-card .expense-item h3 {
+        font-size: .82rem;
+    }
+
+    .history-card .expense-item p {
+        font-size: .7rem;
+    }
+
+    .history-card .expense-actions .movement-value {
+        font-size: .76rem;
+    }
+
+    .history-card .expense-actions .btn {
+        width: 1.9rem;
+        min-width: 1.9rem;
+        height: 1.9rem;
+        min-height: 1.9rem;
+    }
+}
