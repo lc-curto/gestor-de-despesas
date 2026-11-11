@@ -1047,27 +1047,51 @@ body.sidebar-collapsed .account-avatar {
 }
 
 
-/* Dashboard desktop — alinhar o cabeçalho e manter o editor exclusivamente em modal */
+/* Dashboard desktop — cabeçalho equilibrado em duas colunas */
 @media (min-width: 768px) {
     .dashboard-intro {
-        flex-direction: column;
-        align-items: flex-end;
-        text-align: right;
-        min-height: 10.4rem;
-        justify-content: center;
-        padding: 1.25rem 1.5rem;
+        min-height: 8.5rem;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 2rem;
+        padding: 1.35rem 1.6rem;
     }
     .dashboard-intro-copy {
-        width: 100%;
-        text-align: right;
+        flex: 1 1 auto;
+        min-width: 0;
+        text-align: left;
+    }
+    .dashboard-intro .eyebrow {
+        margin-bottom: .65rem;
+    }
+    .dashboard-intro h1 {
+        font-size: clamp(1.8rem, 2.2vw, 2.35rem);
+        letter-spacing: -.035em;
+        line-height: 1.12;
     }
     .dashboard-intro .date-time-card {
-        align-self: flex-end;
-        min-width: min(20rem, 100%);
+        flex: 0 1 23rem;
+        min-width: 19rem;
+        align-self: center;
+        padding: .9rem 1.1rem;
         text-align: right;
+        box-shadow: 0 5px 18px rgba(20, 30, 50, .035);
+    }
+    .dashboard-intro .date-time-label {
+        font-size: .7rem;
+        letter-spacing: .02em;
+    }
+    .dashboard-intro time {
+        font-size: .86rem;
+        line-height: 1.45;
     }
     #movementEntryModal .modal-dialog {
         width: min(100% - 2rem, 34rem);
         max-width: 34rem;
     }
+}
+@media (min-width: 768px) and (max-width: 1050px) {
+    .dashboard-intro { gap: 1rem; padding-inline: 1.2rem; }
+    .dashboard-intro .date-time-card { flex-basis: 20rem; min-width: 17rem; }
 }
