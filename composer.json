@@ -43,7 +43,7 @@
             "npm run build"
         ],
         "dev": [
-            "Composer\\\\Config::disableProcessTimeout",
+            "Composer\\Config::disableProcessTimeout",
             "@php artisan serve"
         ],
         "test": [
