@@ -62,8 +62,6 @@
     </div>
 </section>
 
-<section class="row g-3 g-xl-4 align-items-start" aria-label="Movimentos">
-    <div class="col-12">
         <div class="modal fade" id="movementEntryModal" tabindex="-1" aria-labelledby="recordTitle" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 bg-transparent">
         <article id="movementEntryCard" class="card border-0 shadow-sm rounded-4 movement-editor-card">
@@ -123,9 +121,9 @@
             </div>
         </article>
             </div></div>
-        </div>
-    </div>
+        </
 
+<section class="row g-3 g-xl-4 align-items-start" aria-label="Movimentos">
     <div class="col-12">
         <article class="card border-0 shadow-sm rounded-4 history-card">
             <div class="card-body p-0 history-card-body">
