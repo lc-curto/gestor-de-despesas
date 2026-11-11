@@ -18,7 +18,7 @@ Route::middleware('auth')->group(function(){
  Route::post('/logout',[AccountController::class,'logout'])->name('logout');
  Route::get('/dashboard',DashboardController::class)->name('dashboard');
  Route::get('/dashboard/movimentos',[DashboardController::class,'movimentos'])->middleware('throttle:60,1')->name('dashboard.movimentos');
- Route::post('/session/activity',fn()=>response()->noContent())->name('session.activity');
+ Route::post('/session/activity',fn()=>response()->noContent())->name('session.activity');\n Route::get('/categorias',[CategoriaController::class,'index'])->name('categorias.index');\n Route::post('/categorias',[CategoriaController::class,'store'])->name('categorias.store');\n Route::put('/categorias/{id}',[CategoriaController::class,'update'])->name('categorias.update');\n Route::patch('/categorias/{id}/estado',[CategoriaController::class,'toggle'])->name('categorias.toggle');\n Route::delete('/categorias/{id}',[CategoriaController::class,'destroy'])->name('categorias.destroy');
  foreach(['despesas'=>'despesa','receitas'=>'receita'] as $uri=>$tipo){
   Route::get("/$uri",[FinanceController::class,'index'])->defaults('tipo',$tipo)->name("$uri.index");
   Route::get("/$uri/criar",[FinanceController::class,'create'])->defaults('tipo',$tipo)->name("$uri.create");
