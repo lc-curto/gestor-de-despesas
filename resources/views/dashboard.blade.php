@@ -160,7 +160,7 @@
                 </div>
 
                 <div id="expensesList" class="expense-list history-list px-3 px-sm-4" aria-live="polite">
-                    @forelse ($movimentos as $movimento)
+                    @forelse ($movimentosVisiveis as $movimento)
                         @php
                             $isExpense = $movimento->tipo === 'despesa';
                             $dataMovimento = \Illuminate\Support\Carbon::parse($movimento->data_movimento);
@@ -200,6 +200,16 @@
                             <p class="small text-secondary mb-0">Adiciona uma despesa ou receita para começar.</p>
                         </div>
                     @endforelse
+                    @php
+                        $totalVisivel = $filtroTipo === 'despesa'
+                            ? $totalDespesasFiltradas
+                            : ($filtroTipo === 'receita' ? $totalReceitasFiltradas : $totalMovimentos);
+                    @endphp
+                    @if ($movimentosVisiveis->count() < $totalVisivel)
+                        <div class="d-flex justify-content-center py-3">
+                            <button type="button" id="loadMoreMovements" class="btn btn-outline-primary btn-sm px-4">Ver mais movimentos</button>
+                        </div>
+                    @endif
                 </div>
             </div>
         </article>
@@ -265,6 +275,20 @@ window.meuBolsoDashboard = {
     type: @json($filtroTipo),
     category: @json($filtroCategoria),
     hasMore: @json($totalMovimentos > $limit),
+    initialExpenseCount: @json($totalDespesasFiltradas),
+    initialIncomeCount: @json($totalReceitasFiltradas),
+    initialMovements: @json($movimentos->map(fn ($item) => [
+        'id' => $item->id,
+        'tipo' => $item->tipo,
+        'description' => $item->description,
+        'amount' => $item->amount,
+        'currency' => $item->currency,
+        'category' => $item->category,
+        'category_label' => $item->category_label,
+        'category_icon' => $item->category_icon,
+        'category_color' => $item->category_color,
+        'data_movimento' => $item->data_movimento,
+    ])->values()),
     movementsUrl: @json(route('dashboard.movimentos')),
     expenseStore: @json(route('despesas.store')),
     incomeStore: @json(route('receitas.store')),
