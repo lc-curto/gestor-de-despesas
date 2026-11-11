@@ -145,7 +145,6 @@
                             <h2 class="h5 fw-bold mb-0">Movimentos recentes</h2>
                             <p class="small text-secondary mb-0 mt-1" id="periodCaption">{{ $inicio->locale('pt_PT')->translatedFormat('F Y') }}</p>
                         </div>
-                        <a href="{{ route('despesas.index') }}" class="small fw-semibold text-decoration-none">Ver despesas</a>
                     </div>
                 </div>
 
