@@ -1328,3 +1328,16 @@ body:has(.category-grid) .category-empty-state {
         width: 100%;
     }
 }
+
+
+/* Categorias — cores semânticas iguais às restantes áreas financeiras */
+body:has(.category-grid) #expenses-tab.active {
+    color: #fff;
+    background: #dc3545;
+    box-shadow: 0 2px 7px rgba(220, 53, 69, .22);
+}
+body:has(.category-grid) #income-tab.active {
+    color: #fff;
+    background: #198754;
+    box-shadow: 0 2px 7px rgba(25, 135, 84, .22);
+}
