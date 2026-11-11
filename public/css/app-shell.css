@@ -1015,3 +1015,33 @@ body.sidebar-collapsed .account-avatar {
     .history-card .expense-item { flex-wrap: nowrap; align-items: center !important; }
     .history-card .expense-actions { width: auto; justify-content: flex-end !important; }
 }
+
+
+/* Ajuste fino do resumo: cartões horizontais e compactos em mobile */
+@media (max-width: 767.98px) {
+    .dashboard-summary-column .summary-card {
+        display: flex;
+        min-height: 4.4rem;
+        align-items: center;
+        padding: .55rem .6rem;
+    }
+    .dashboard-summary-column .summary-icon { display: none !important; }
+    .dashboard-summary-column .summary-card > .d-flex {
+        width: 100%;
+        height: auto;
+        align-items: flex-start !important;
+        flex-direction: column;
+        gap: .2rem !important;
+    }
+    .dashboard-summary-column .summary-card p.small {
+        margin: 0 0 .18rem !important;
+        font-size: .66rem;
+    }
+    .dashboard-summary-column .summary-value,
+    .dashboard-summary-column .summary-value-text {
+        font-size: clamp(.7rem, 2.8vw, .95rem);
+    }
+}
+@media (max-width: 380px) {
+    .dashboard-summary-column .summary-card { padding: .5rem .4rem; }
+}
