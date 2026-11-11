@@ -1,72 +1,205 @@
 (() => {
-    // Tema: utiliza a mesma chave e o mesmo comportamento do módulo tema.js original.
-    const THEME_KEY = 'temaAplicacao';
     const root = document.documentElement;
     const themeButton = document.getElementById('themeToggle');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const mobileSidebarOpen = document.getElementById('mobileSidebarOpen');
+    const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+    const sidebar = document.getElementById('appSidebar');
+    const SIDEBAR_KEY = 'meu-bolso:sidebar-hidden';
+    const THEME_KEY = 'temaAplicacao';
+    const mobileNavigation = window.matchMedia('(max-width: 991.98px)');
+
+    function renderIcons(scope = document) {
+        if (!window.lucide?.createIcons) return;
+        window.lucide.createIcons({ root: scope });
+    }
+
+    // Data e hora atuais de Lisboa, atualizadas automaticamente.
+    const currentDateTime = document.getElementById('currentDateTime');
+    if (currentDateTime) {
+        const dateFormatter = new Intl.DateTimeFormat('pt-PT', {
+            weekday: 'long',
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+            timeZone: 'Europe/Lisbon'
+        });
+        const timeFormatter = new Intl.DateTimeFormat('pt-PT', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hourCycle: 'h23',
+            timeZone: 'Europe/Lisbon'
+        });
+
+        const updateCurrentDateTime = () => {
+            const now = new Date();
+            currentDateTime.textContent = `${dateFormatter.format(now)} às ${timeFormatter.format(now)}`;
+            currentDateTime.dateTime = now.toISOString();
+        };
+
+        updateCurrentDateTime();
+        window.setInterval(updateCurrentDateTime, 30000);
+    }
 
     function updateThemeButton(theme) {
         if (!themeButton) return;
-        const icon = themeButton.querySelector('i');
-        if (theme === 'dark') {
-            if (icon) icon.className = 'bi bi-sun-fill';
-            themeButton.setAttribute('aria-label', 'Mudar para tema claro');
-            themeButton.setAttribute('aria-pressed', 'true');
-        } else {
-            if (icon) icon.className = 'bi bi-moon-stars-fill';
-            themeButton.setAttribute('aria-label', 'Mudar para tema escuro');
-            themeButton.setAttribute('aria-pressed', 'false');
-        }
+        const icon = themeButton.querySelector('i[data-lucide]');
+        if (icon) icon.setAttribute('data-lucide', theme === 'dark' ? 'sun' : 'moon-star');
+        const label = theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro';
+        themeButton.setAttribute('aria-label', label);
+        themeButton.title = label;
+        renderIcons(themeButton);
     }
 
     function applyTheme(theme) {
         root.setAttribute('data-bs-theme', theme);
-        try {
-            localStorage.setItem(THEME_KEY, theme);
-        } catch (error) {
-            console.warn('Não foi possível guardar a preferência de tema:', error);
-        }
+        try { localStorage.setItem(THEME_KEY, theme); }
+        catch (error) { console.warn('Não foi possível guardar a preferência de tema:', error); }
         updateThemeButton(theme);
     }
 
-    function initializeTheme() {
-        let storedTheme = null;
-        try {
-            storedTheme = localStorage.getItem(THEME_KEY);
-        } catch (error) {
-            console.warn('Não foi possível ler a preferência de tema:', error);
-        }
-        applyTheme(['light', 'dark'].includes(storedTheme) ? storedTheme : 'light');
-    }
+    let storedTheme = null;
+    try { storedTheme = localStorage.getItem(THEME_KEY); }
+    catch (error) { console.warn('Não foi possível ler a preferência de tema:', error); }
+    applyTheme(['light', 'dark'].includes(storedTheme) ? storedTheme : 'light');
 
     themeButton?.addEventListener('click', () => {
-        const currentTheme = root.getAttribute('data-bs-theme');
-        applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+        applyTheme(root.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark');
     });
-    initializeTheme();
 
-    // A data/hora é atualizada no cabeçalho à semelhança do main.js original.
-    const currentDateTime = document.getElementById('currentDateTime');
-    function updateDateTime() {
-        if (!currentDateTime) return;
-        currentDateTime.textContent = new Intl.DateTimeFormat('pt-PT', {
-            dateStyle: 'full',
-            timeStyle: 'short'
-        }).format(new Date());
+    const legacyIcons = {
+        'bi-grid-1x2':'layout-dashboard','bi-arrow-down-circle':'arrow-down-circle',
+        'bi-arrow-up-circle':'arrow-up-circle','bi-tags':'tags','bi-plus-lg':'plus',
+        'bi-search':'search','bi-pencil':'pencil','bi-pause-circle':'pause-circle',
+        'bi-play-circle':'play-circle','bi-trash':'trash-2','bi-house':'house',
+        'bi-cup-hot':'coffee','bi-car-front':'car-front','bi-heart-pulse':'heart-pulse',
+        'bi-controller':'gamepad-2','bi-bag':'shopping-bag','bi-mortarboard':'graduation-cap',
+        'bi-wallet2':'wallet','bi-shop':'store','bi-briefcase':'briefcase-business',
+        'bi-graph-up-arrow':'chart-no-axes-combined','bi-arrow-counterclockwise':'undo-2',
+        'bi-three-dots':'ellipsis','bi-arrow-up-right':'arrow-up-right',
+        'bi-arrow-down-left':'arrow-down-left','bi-chevron-left':'chevron-left',
+        'bi-chevron-right':'chevron-right','bi-arrow-left':'arrow-left',
+        'bi-arrow-left-right':'arrow-left-right','bi-arrow-right':'arrow-right',
+        'bi-download':'download','bi-person':'user-round','bi-box-arrow-right':'log-out',
+        'bi-clock-history':'clock-3','bi-list':'menu','bi-moon-stars':'moon-star',
+        'bi-sun-fill':'sun','bi-x-lg':'x','bi-tag':'tag'
+    };
+
+    function normalizeLegacyIcons(scope) {
+        const candidates = [];
+        if (scope.matches?.('i.bi')) candidates.push(scope);
+        scope.querySelectorAll?.('i.bi').forEach((element) => candidates.push(element));
+        candidates.forEach((element) => {
+            const legacy = [...element.classList].find((name) => name.startsWith('bi-') && name !== 'bi');
+            if (!legacyIcons[legacy]) return;
+            element.classList.remove('bi', legacy);
+            element.setAttribute('data-lucide', legacyIcons[legacy]);
+        });
     }
-    updateDateTime();
-    window.setInterval(updateDateTime, 60000);
+
+    normalizeLegacyIcons(document);
+    renderIcons(document);
+
+    // A biblioteca de ícones é assíncrona: a aplicação continua a inicializar
+    // mesmo quando a CDN está lenta ou indisponível.
+    const lucideScript = document.querySelector('script[data-lucide-library]');
+    if (!window.lucide?.createIcons && lucideScript) {
+        lucideScript.addEventListener('load', () => {
+            normalizeLegacyIcons(document);
+            renderIcons(document);
+        }, { once: true });
+    }
+
+    // Processa apenas o fragmento alterado; evita reprocessar todos os ícones da página.
+    const iconObserver = new MutationObserver((records) => {
+        records.forEach((record) => record.addedNodes.forEach((node) => {
+            if (node.nodeType !== Node.ELEMENT_NODE) return;
+            normalizeLegacyIcons(node);
+            const hasIcon = node.matches?.('i[data-lucide]') || node.querySelector?.('i[data-lucide]');
+            if (hasIcon) renderIcons(node.matches?.('i[data-lucide]') ? node.parentElement : node);
+        }));
+    });
+    iconObserver.observe(document.body, { childList: true, subtree: true });
+
+    let sidebarCollapsed = false;
+    try { sidebarCollapsed = localStorage.getItem(SIDEBAR_KEY) === 'true'; } catch (error) {}
+
+    function setMobileSidebar(open) {
+        document.body.classList.toggle('sidebar-open', open);
+        sidebarToggle?.setAttribute('aria-expanded', String(open));
+        sidebarToggle?.setAttribute('aria-label', 'Fechar menu lateral');
+        if (sidebarToggle) sidebarToggle.title = 'Fechar menu lateral';
+        mobileSidebarOpen?.setAttribute('aria-expanded', String(open));
+        if (open) {
+            const firstLink = sidebar?.querySelector('.app-navigation-link');
+            window.requestAnimationFrame(() => firstLink?.focus());
+        }
+    }
+
+    function closeMobileSidebar() {
+        setMobileSidebar(false);
+        mobileSidebarOpen?.focus();
+    }
+
+    function setDesktopSidebarCollapsed(collapsed) {
+        sidebarCollapsed = collapsed;
+        document.body.classList.toggle('sidebar-collapsed', collapsed);
+        sidebarToggle?.setAttribute('aria-expanded', String(!collapsed));
+        sidebarToggle?.setAttribute('aria-label', collapsed ? 'Expandir menu lateral' : 'Recolher menu lateral');
+        if (sidebarToggle) sidebarToggle.title = collapsed ? 'Expandir menu lateral' : 'Recolher menu lateral';
+        const icon = sidebarToggle?.querySelector('i[data-lucide]');
+        if (icon) {
+            icon.setAttribute('data-lucide', collapsed ? 'panel-left-open' : 'panel-left-close');
+            renderIcons(sidebarToggle);
+        }
+        try { localStorage.setItem(SIDEBAR_KEY, String(collapsed)); } catch (error) {}
+    }
+
+    if (mobileNavigation.matches) {
+        document.body.classList.remove('sidebar-collapsed');
+        setMobileSidebar(false);
+    } else {
+        setDesktopSidebarCollapsed(sidebarCollapsed);
+    }
+
+    sidebarToggle?.addEventListener('click', () => {
+        if (mobileNavigation.matches) {
+            closeMobileSidebar();
+            return;
+        }
+        setDesktopSidebarCollapsed(!sidebarCollapsed);
+    });
+
+    mobileSidebarOpen?.addEventListener('click', () => setMobileSidebar(true));
+    sidebarBackdrop?.addEventListener('click', closeMobileSidebar);
+
+    sidebar?.querySelectorAll('a').forEach((link) => {
+        link.addEventListener('click', () => {
+            if (mobileNavigation.matches) setMobileSidebar(false);
+        });
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && document.body.classList.contains('sidebar-open')) {
+            closeMobileSidebar();
+        }
+    });
+
+    mobileNavigation.addEventListener?.('change', (event) => {
+        if (event.matches) {
+            setMobileSidebar(false);
+        } else {
+            document.body.classList.remove('sidebar-open');
+            setDesktopSidebarCollapsed(sidebarCollapsed);
+        }
+    });
 
     const logoutForm = document.querySelector('form[action$="/logout"]');
     logoutForm?.addEventListener('submit', () => {
-        // A sessão local deixa de identificar o utilizador; os dados cacheados não são apagados.
-        try {
-            localStorage.removeItem('meu-bolso:active-user');
-        } catch (error) {
-            console.warn('Não foi possível atualizar a sessão local:', error);
-        }
+        try { localStorage.removeItem('meu-bolso:active-user'); }
+        catch (error) { console.warn('Não foi possível atualizar a sessão local:', error); }
     });
 
-    // Instalação PWA: mantém o evento pendente até o utilizador escolher instalar.
     let pendingInstallEvent = null;
     const installButton = document.getElementById('installAppButton');
     window.addEventListener('beforeinstallprompt', (event) => {
@@ -80,16 +213,14 @@
         const choice = await pendingInstallEvent.userChoice;
         pendingInstallEvent = null;
         installButton.classList.add('d-none');
-        if (choice.outcome === 'accepted') {
-            console.info('O utilizador aceitou instalar o Meu Bolso.');
-        }
+        if (choice.outcome === 'accepted') console.info('O utilizador aceitou instalar o Meu Bolso.');
     });
     window.addEventListener('appinstalled', () => {
         pendingInstallEvent = null;
         installButton?.classList.add('d-none');
     });
 
-    // Monitorização original: 15 minutos de inatividade e aviso no último minuto.
+    // Gestão de inatividade: evita executar hide() do modal em cada clique/scroll.
     const INACTIVITY_LIMIT = 15 * 60 * 1000;
     const WARNING_TIME = 60 * 1000;
     const modalElement = document.getElementById('inactivityModal');
@@ -98,124 +229,108 @@
         const countdownElement = document.getElementById('inactivityCountdown');
         const continueButton = document.getElementById('continueSessionButton');
         const logoutForm = document.querySelector('form[action$="/logout"]');
-
         let timeout = null;
         let countdown = null;
-        let lastActivity = null;
+        let lastActivity = Date.now();
         let lastMouseMovement = 0;
+        let lastScrollActivity = 0;
         let monitoringActive = false;
 
+        function hideWarning() {
+            if (modalElement.classList.contains('show')) modal.hide();
+        }
         function logoutAfterInactivity() {
             if (!monitoringActive) return;
             stopInactivityMonitoring();
-            modal.hide();
+            hideWarning();
             if (logoutForm) logoutForm.submit();
             else window.location.assign('/login');
         }
-
         function updateCountdown() {
-            const remaining = INACTIVITY_LIMIT - (Date.now() - lastActivity);
-            const seconds = Math.ceil(remaining / 1000);
-            if (seconds <= 0) {
-                logoutAfterInactivity();
-                return;
-            }
-
-            const minutes = Math.floor(seconds / 60);
-            const rest = seconds % 60;
+            const seconds = Math.ceil((INACTIVITY_LIMIT - (Date.now() - lastActivity)) / 1000);
+            if (seconds <= 0) return logoutAfterInactivity();
             if (countdownElement) {
-                countdownElement.textContent = String(minutes).padStart(2, '0') + ':' + String(rest).padStart(2, '0');
+                countdownElement.textContent = String(Math.floor(seconds / 60)).padStart(2, '0') + ':' + String(seconds % 60).padStart(2, '0');
             }
             modal.show();
         }
-
         function startCountdown() {
             clearInterval(countdown);
             updateCountdown();
             countdown = window.setInterval(updateCountdown, 1000);
         }
-
         function scheduleInactivity() {
             clearTimeout(timeout);
             clearInterval(countdown);
-
             const remaining = INACTIVITY_LIMIT - (Date.now() - lastActivity);
-            if (remaining <= 0) {
-                logoutAfterInactivity();
-                return;
-            }
-
-            if (remaining > WARNING_TIME) {
-                timeout = window.setTimeout(startCountdown, remaining - WARNING_TIME);
-            } else {
-                startCountdown();
-            }
+            if (remaining <= 0) return logoutAfterInactivity();
+            if (remaining > WARNING_TIME) timeout = window.setTimeout(startCountdown, remaining - WARNING_TIME);
+            else startCountdown();
         }
-
         function registerActivity() {
             if (!monitoringActive) return;
             lastActivity = Date.now();
-            modal.hide();
+            hideWarning();
             scheduleInactivity();
         }
-
         function registerMouseMovement() {
             const now = Date.now();
             if (now - lastMouseMovement < 1000) return;
             lastMouseMovement = now;
             registerActivity();
         }
-
+        function registerScrollActivity() {
+            const now = Date.now();
+            if (now - lastScrollActivity < 1000) return;
+            lastScrollActivity = now;
+            registerActivity();
+        }
         function checkWhenReturning() {
             if (document.visibilityState === 'visible') scheduleInactivity();
         }
-
         function stopInactivityMonitoring() {
             clearTimeout(timeout);
             clearInterval(countdown);
             document.removeEventListener('click', registerActivity);
             document.removeEventListener('keydown', registerActivity);
             document.removeEventListener('mousemove', registerMouseMovement);
-            document.removeEventListener('scroll', registerActivity);
+            document.removeEventListener('scroll', registerScrollActivity);
             document.removeEventListener('touchstart', registerActivity);
             document.removeEventListener('visibilitychange', checkWhenReturning);
             window.removeEventListener('focus', checkWhenReturning);
             timeout = null;
             countdown = null;
             monitoringActive = false;
-            modal.hide();
+            hideWarning();
         }
-
         function startInactivityMonitoring() {
             stopInactivityMonitoring();
             monitoringActive = true;
             lastActivity = Date.now();
             lastMouseMovement = 0;
+            lastScrollActivity = 0;
             document.addEventListener('click', registerActivity);
             document.addEventListener('keydown', registerActivity);
-            document.addEventListener('mousemove', registerMouseMovement);
-            document.addEventListener('scroll', registerActivity);
-            document.addEventListener('touchstart', registerActivity);
+            document.addEventListener('mousemove', registerMouseMovement, { passive: true });
+            document.addEventListener('scroll', registerScrollActivity, { passive: true });
+            document.addEventListener('touchstart', registerActivity, { passive: true });
             document.addEventListener('visibilitychange', checkWhenReturning);
             window.addEventListener('focus', checkWhenReturning);
             scheduleInactivity();
         }
-
-        continueButton?.addEventListener('click', () => modal.hide());
+        continueButton?.addEventListener('click', hideWarning);
         startInactivityMonitoring();
     }
 
-    // O dashboard gere a apresentação do cache e a atualização dos movimentos offline.
     const offlineStatus = document.getElementById('offlineStatus');
     if (offlineStatus && !navigator.onLine && !document.getElementById('dashboardMovementForm')) {
         offlineStatus.textContent = 'Sem ligação à internet.';
         offlineStatus.classList.remove('d-none');
     }
 
-    // Mantém o registo do Service Worker da aplicação Laravel.
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/service-worker.js').catch((error) => {
+            navigator.serviceWorker.register('/service-worker.js', { updateViaCache: 'none' }).then((registration) => registration.update()).catch((error) => {
                 console.warn('Não foi possível registar o Service Worker:', error);
             });
         });

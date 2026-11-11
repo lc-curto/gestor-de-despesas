@@ -2,7 +2,7 @@ name: Laravel quality
 
 on:
   push:
-    branches: [feature/migracao-laravel]
+    branches: [feature/migracao-laravel, feature/categorias-crud, feature/dashboard-sidebar-redesign]
   pull_request:
     branches: [main]
     paths:
@@ -60,6 +60,16 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Node dependencies and check JavaScript
+        run: |
+          npm ci
+          npm run check
 
       - name: Run migrations and tests
         env:

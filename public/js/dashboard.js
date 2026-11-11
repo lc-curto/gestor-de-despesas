@@ -15,7 +15,9 @@
     const method = document.getElementById('movementMethod');
     const cancelButton = document.getElementById('cancelMovementEdit');
     const editorPanel = document.getElementById('recordEditorPanel');
-    const closePanelButton = document.getElementById('recordPanelClose');
+    const editorCard = document.getElementById('movementEntryCard');
+    const editorModalElement = document.getElementById('movementEntryModal');
+    const editorModal = editorModalElement ? bootstrap.Modal.getOrCreateInstance(editorModalElement) : null;
     const monthInput = document.getElementById('periodMonth');
     const periodCaption = document.getElementById('periodCaption');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -24,9 +26,9 @@
     let page = 1;
     let visibleCount = pageSize();
     let hasMore = cfg.hasMore === true;
-    let loadedMovements = [];
-    let totalExpenseCount = 0;
-    let totalIncomeCount = 0;
+    let loadedMovements = Array.isArray(cfg.initialMovements) ? cfg.initialMovements : [];
+    let totalExpenseCount = Number(cfg.initialExpenseCount) || 0;
+    let totalIncomeCount = Number(cfg.initialIncomeCount) || 0;
     let offlineMode = false;
     let movementType = 'despesa';
     let typeBeforeEdit = 'despesa';
@@ -94,7 +96,7 @@
 
     function cacheKey() {
         const range = currentMonthRange();
-        return 'meu-bolso:' + cfg.userId + ':' + range.start + ':' + range.end + ':' + (cfg.category || 'all');
+        return 'meu-bolso:v2:' + cfg.userId + ':' + range.start + ':' + range.end + ':' + (cfg.category || 'all');
     }
 
     function saveCache() {
@@ -135,7 +137,7 @@
 
     function categoryName(item) {
         const map = item.tipo === 'receita' ? cfg.incomeCategories : cfg.expenseCategories;
-        return (map && map[item.category]) || 'Outros';
+        return item.category_label || (map && map[item.category]) || 'Outros';
     }
 
     function renderItem(item) {
@@ -171,14 +173,15 @@
         article.dataset.description = item.description;
         article.dataset.amount = item.amount;
         article.dataset.currency = item.currency || cfg.currency || 'EUR';
-        article.dataset.category = item.category;
+        article.dataset.categoryId = item.category;
 
         const info = document.createElement('div');
         info.className = 'd-flex align-items-center gap-3 min-w-0';
         const icon = document.createElement('div');
         icon.className = isExpense ? 'expense-icon flex-shrink-0' : 'expense-icon income-icon flex-shrink-0';
         icon.setAttribute('aria-hidden', 'true');
-        icon.innerHTML = '<i class="bi ' + (isExpense ? 'bi-arrow-up-right' : 'bi-arrow-down-left') + '"></i>';
+        icon.style.setProperty('--category-color', item.category_color || '#635BFF');
+        icon.innerHTML = '<i data-lucide="' + (item.category_icon || 'tag') + '"></i>';
 
         const details = document.createElement('div');
         details.className = 'min-w-0';
@@ -250,7 +253,7 @@
         if (visible.length === 0) {
             const empty = document.createElement('div');
             empty.className = 'empty-state text-center py-4';
-            empty.innerHTML = '<div class="empty-icon mb-3" aria-hidden="true">◎</div><h3 class="h6">Não existem movimentos para este filtro</h3><p class="small text-secondary mb-0">Adiciona um movimento ou altera os filtros.</p>';
+            empty.innerHTML = '<div class="empty-icon mb-3" aria-hidden="true">◎</div><h3 class="h6">Sem movimentos</h3><p class="small text-secondary mb-0"></p>';
             list.append(empty);
         } else {
             visible.forEach((item) => list.append(renderItem(item)));
@@ -311,17 +314,8 @@
         cancelButton?.classList.toggle('d-none', !isEditing);
     }
 
-    function openEditor() {
-        if (window.matchMedia('(max-width: 991.98px)').matches && editorPanel) {
-            bootstrap.Collapse.getOrCreateInstance(editorPanel, { toggle: false }).show();
-        }
-    }
-
-    function closeEditor() {
-        if (window.matchMedia('(max-width: 991.98px)').matches && editorPanel) {
-            bootstrap.Collapse.getOrCreateInstance(editorPanel, { toggle: false }).hide();
-        }
-    }
+    function openEditor() { editorModal?.show(); }
+    function closeEditor() { editorModal?.hide(); }
 
     function resetEditor(keepType = true) {
         const restoredType = keepType ? movementType : 'despesa';
@@ -464,7 +458,7 @@
         description.value = row.dataset.description;
         amount.value = row.dataset.amount;
         date.value = row.dataset.date;
-        category.value = row.dataset.category;
+        category.value = row.dataset.categoryId;
         cancelButton?.classList.remove('d-none');
         openEditor();
         form.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -517,6 +511,7 @@
                 form.reset();
                 date.value = localDate();
                 setMovementType(movementType);
+                closeEditor();
             }
             await refreshDashboard();
         } catch (error) {
@@ -661,6 +656,19 @@
         refreshDashboard().catch(() => handleSyncFailure('Não foi possível sincronizar os dados com o servidor.'));
     }
 
+    document.getElementById('quickExpenseButton')?.addEventListener('click', () => {
+        if (!editing) {
+            setMovementType('despesa');
+            openEditor();
+        }
+    });
+    document.getElementById('quickIncomeButton')?.addEventListener('click', () => {
+        if (!editing) {
+            setMovementType('receita');
+            openEditor();
+        }
+    });
+
     expenseButton?.addEventListener('click', () => {
         if (!editing) {
             setMovementType('despesa');
@@ -673,7 +681,7 @@
             openEditor();
         }
     });
-    closePanelButton?.addEventListener('click', closeEditor);
+
     cancelButton?.addEventListener('click', cancelEdit);
     form.addEventListener('submit', submitMovement);
     list.addEventListener('click', (event) => {
@@ -708,12 +716,11 @@
         if (event.key === 'Enter') convertCurrency();
     });
 
-    editorPanel?.addEventListener('shown.bs.collapse', () => {
+    editorModalElement?.addEventListener('shown.bs.modal', () => {
         expenseButton?.setAttribute('aria-expanded', 'true');
         incomeButton?.setAttribute('aria-expanded', 'true');
-        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
-    editorPanel?.addEventListener('hidden.bs.collapse', () => {
+    editorModalElement?.addEventListener('hidden.bs.modal', () => {
         expenseButton?.setAttribute('aria-expanded', 'false');
         incomeButton?.setAttribute('aria-expanded', 'false');
     });
@@ -730,21 +737,20 @@
     setMovementType(movementType);
     if (cfg.initialCategory) category.value = cfg.initialCategory;
 
-    const initialRows = Array.from(list.querySelectorAll('[data-movement-id]'));
-    initialRows.forEach((row) => {
-        const value = row.querySelector('.movement-value');
-        if (value) {
-            const prefix = row.dataset.movementType === 'despesa' ? '−' : '+';
-            value.textContent = prefix + formatCurrency(row.dataset.amount, cfg.currency);
-        }
-    });
     updateSummary(totalExpenses, totalIncome);
     updatePeriodCaption();
-    // A lista inicial server-side é adaptada ao mesmo limite usado pela aplicação original.
+
+    // Os movimentos e totais iniciais já vêm na resposta Blade. Não repetir a consulta
+    // AJAX ao abrir o Dashboard; a API é chamada apenas quando o utilizador pede mais dados
+    // ou altera um filtro que exige nova consulta.
     if (navigator.onLine) {
-        refreshDashboard().catch(() => handleSyncFailure('Não foi possível sincronizar os movimentos com o servidor.'));
-    } else {
-        handleOffline();
+        offlineMode = false;
+        renderMovements();
+    } else if (!restoreCachedData()) {
+        offlineMode = true;
+        hasMore = false;
+        renderMovements();
+        showStatus('Sem ligação à internet. A mostrar apenas os movimentos recebidos nesta página.');
     }
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
