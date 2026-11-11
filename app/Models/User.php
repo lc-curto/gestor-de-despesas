@@ -55,22 +55,22 @@ class User extends Authenticatable
         static::created(function (User $user): void {
             $defaults = [
                 'despesa' => [
-                    ['Casa', 'casa', 'bi-house', '#D97706'],
-                    ['Alimentação', 'alimentacao', 'bi-cup-hot', '#16A085'],
-                    ['Transporte', 'transportes', 'bi-car-front', '#2563EB'],
-                    ['Saúde', 'saude', 'bi-heart-pulse', '#DC2626'],
-                    ['Lazer', 'lazer', 'bi-controller', '#9333EA'],
-                    ['Compras', 'compras', 'bi-bag', '#D97706'],
-                    ['Educação', 'educacao', 'bi-mortarboard', '#0891B2'],
-                    ['Outros', 'outros', 'bi-three-dots', '#64748B'],
+                    ['Casa', 'casa', 'house', '#D97706'],
+                    ['Alimentação', 'alimentacao', 'utensils', '#16A085'],
+                    ['Transporte', 'transportes', 'car-front', '#2563EB'],
+                    ['Saúde', 'saude', 'heart-pulse', '#DC2626'],
+                    ['Lazer', 'lazer', 'gamepad-2', '#9333EA'],
+                    ['Compras', 'compras', 'shopping-bag', '#D97706'],
+                    ['Educação', 'educacao', 'graduation-cap', '#0891B2'],
+                    ['Outros', 'outros', 'ellipsis', '#64748B'],
                 ],
                 'receita' => [
-                    ['Salário', 'salario', 'bi-wallet2', '#16A34A'],
-                    ['Vendas', 'vendas', 'bi-shop', '#2563EB'],
-                    ['Trabalho extra', 'trabalho_extra', 'bi-briefcase', '#0891B2'],
-                    ['Investimentos', 'investimentos', 'bi-graph-up-arrow', '#9333EA'],
-                    ['Reembolsos', 'reembolsos', 'bi-arrow-counterclockwise', '#D97706'],
-                    ['Outros', 'outros', 'bi-three-dots', '#64748B'],
+                    ['Salário', 'salario', 'wallet', '#16A34A'],
+                    ['Vendas', 'vendas', 'store', '#2563EB'],
+                    ['Trabalho extra', 'trabalho_extra', 'briefcase-business', '#0891B2'],
+                    ['Investimentos', 'investimentos', 'chart-no-axes-combined', '#9333EA'],
+                    ['Reembolsos', 'reembolsos', 'undo-2', '#D97706'],
+                    ['Outros', 'outros', 'ellipsis', '#64748B'],
                 ],
             ];
 
