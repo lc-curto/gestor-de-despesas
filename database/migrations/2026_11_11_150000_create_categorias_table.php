@@ -79,7 +79,7 @@ return new class extends Migration
                 ->where('user_id', $movement->user_id)
                 ->where('type', 'despesa')
                 ->where('slug', $movement->category)
-                ->value('id');
+                ->value('id') ?? DB::table('categorias')->where('user_id', $movement->user_id)->where('type', 'despesa')->where('slug', 'outros')->value('id');
             if ($categoryId) {
                 DB::table('despesas')->where('id', $movement->id)->update(['category_id' => $categoryId]);
             }
@@ -90,7 +90,7 @@ return new class extends Migration
                 ->where('user_id', $movement->user_id)
                 ->where('type', 'receita')
                 ->where('slug', $movement->category)
-                ->value('id');
+                ->value('id') ?? DB::table('categorias')->where('user_id', $movement->user_id)->where('type', 'receita')->where('slug', 'outros')->value('id');
             if ($categoryId) {
                 DB::table('receitas')->where('id', $movement->id)->update(['category_id' => $categoryId]);
             }
