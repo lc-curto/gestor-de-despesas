@@ -4,7 +4,8 @@
 
 @section('content')
 @php
-    $simbolos = ['EUR' => '€', 'USD' => '
+    $simbolos = ['EUR' => '€', 'USD' => '$', 'GBP' => '£', 'BRL' => 'R$'];
+@endphp
 
 <header class="dashboard-intro">
     <p class="eyebrow">Resumo financeiro</p>
