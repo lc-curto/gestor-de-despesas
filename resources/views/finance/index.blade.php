@@ -6,32 +6,26 @@
 @php
     $isExpense = $tipo === 'despesa';
     $pageTitle = $isExpense ? 'Despesas' : 'Receitas';
-    $pageDescription = $isExpense
-        ? 'Acompanha e organiza os valores que saem da tua conta.'
-        : 'Acompanha e organiza os valores que entram na tua conta.';
 @endphp
 
 <header class="finance-page-heading">
     <div class="finance-page-copy">
-        <p class="eyebrow mb-1">Movimentos financeiros</p>
         <h1 class="h2 fw-bold mb-1">{{ $pageTitle }}</h1>
-        <p class="text-secondary mb-0">{{ $pageDescription }}</p>
     </div>
     <a class="btn btn-primary finance-create-button" href="{{ route($isExpense ? 'despesas.create' : 'receitas.create') }}">
         <i data-lucide="plus" aria-hidden="true"></i>
-        <span>Novo registo</span>
+        <span>Novo</span>
     </a>
 </header>
 
 <form method="GET" class="finance-filter-card">
     <div class="finance-filter-heading">
         <div>
-            <span class="finance-section-kicker">Pesquisa</span>
-            <h2 class="h6 fw-bold mb-0">Filtrar movimentos</h2>
+            <h2 class="h6 fw-bold mb-0">Filtros</h2>
         </div>
         <button class="btn btn-outline-primary btn-sm" type="submit">
             <i data-lucide="sliders-horizontal" aria-hidden="true"></i>
-            <span>Aplicar filtros</span>
+            <span>Filtrar</span>
         </button>
     </div>
     <div class="finance-filter-fields">
@@ -58,8 +52,7 @@
 <section class="finance-records-card" aria-label="Lista de {{ strtolower($pageTitle) }}">
     <div class="finance-records-heading">
         <div>
-            <span class="finance-section-kicker">Registos</span>
-            <h2 class="h5 fw-bold mb-0">Todos os movimentos</h2>
+            <h2 class="h5 fw-bold mb-0">{{ $pageTitle }}</h2>
         </div>
         <span class="finance-record-count">{{ $registos->total() }} {{ $registos->total() === 1 ? 'registo' : 'registos' }}</span>
     </div>
@@ -98,8 +91,7 @@
             <div class="finance-empty-state">
                 <span class="finance-empty-icon" aria-hidden="true"><i data-lucide="{{ $isExpense ? 'wallet' : 'trending-up' }}"></i></span>
                 <h3 class="h6 fw-bold">Ainda não existem {{ strtolower($pageTitle) }}</h3>
-                <p class="text-secondary mb-0">Quando adicionares um registo, ele ficará disponível aqui.</p>
-                <a class="btn btn-primary btn-sm mt-3" href="{{ route($isExpense ? 'despesas.create' : 'receitas.create') }}">Adicionar primeiro registo</a>
+                <a class="btn btn-primary btn-sm mt-3" href="{{ route($isExpense ? 'despesas.create' : 'receitas.create') }}">Novo</a>
             </div>
         @endforelse
     </div>
