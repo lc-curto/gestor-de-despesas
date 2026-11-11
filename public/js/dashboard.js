@@ -15,7 +15,7 @@
     const method = document.getElementById('movementMethod');
     const cancelButton = document.getElementById('cancelMovementEdit');
     const editorPanel = document.getElementById('recordEditorPanel');
-    const closePanelButton = document.getElementById('recordPanelClose');
+    const editorCard = document.getElementById('movementEntryCard');
     const monthInput = document.getElementById('periodMonth');
     const periodCaption = document.getElementById('periodCaption');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -322,6 +322,27 @@
             bootstrap.Collapse.getOrCreateInstance(editorPanel, { toggle: false }).hide();
         }
     }
+
+    // No mobile, fecha o formulário quando a interação passa para fora do cartão.
+    // Cliques nos seletores Despesa/Receita continuam dentro do cartão e não o fecham.
+    function handleOutsideEditorInteraction(event) {
+        if (!window.matchMedia('(max-width: 991.98px)').matches || !editorPanel || !editorPanel.classList.contains('show')) {
+            return;
+        }
+
+        if (editorCard && !editorCard.contains(event.target)) {
+            closeEditor();
+        }
+    }
+
+    document.addEventListener('pointerdown', handleOutsideEditorInteraction, true);
+
+    // Também fecha quando a navegação por teclado move o foco para fora do cartão.
+    editorCard?.addEventListener('focusout', (event) => {
+        if (event.relatedTarget && !editorCard.contains(event.relatedTarget)) {
+            closeEditor();
+        }
+    });
 
     function resetEditor(keepType = true) {
         const restoredType = keepType ? movementType : 'despesa';
@@ -673,7 +694,6 @@
             openEditor();
         }
     });
-    closePanelButton?.addEventListener('click', closeEditor);
     cancelButton?.addEventListener('click', cancelEdit);
     form.addEventListener('submit', submitMovement);
     list.addEventListener('click', (event) => {
