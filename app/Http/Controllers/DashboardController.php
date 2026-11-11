@@ -53,8 +53,23 @@ class DashboardController extends Controller
             fn ($movimento) => $filtroTipo === 'todos' || $movimento->tipo === $filtroTipo
         )->values();
 
+        $movimentosIniciais = $movimentos->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'tipo' => $item->tipo,
+                'description' => $item->description,
+                'amount' => $item->amount,
+                'currency' => $item->currency,
+                'category' => $item->category,
+                'category_label' => $item->category_label,
+                'category_icon' => $item->category_icon,
+                'category_color' => $item->category_color,
+                'data_movimento' => $item->data_movimento,
+            ];
+        })->values();
+
         return view('dashboard', compact(
-            'inicio', 'mes', 'movimentos', 'movimentosVisiveis', 'categorias', 'categoriasDespesa',
+            'inicio', 'mes', 'movimentos', 'movimentosVisiveis', 'movimentosIniciais', 'categorias', 'categoriasDespesa',
             'categoriasReceita', 'filtroTipo', 'filtroCategoria',
             'totalDespesas', 'totalReceitas', 'totalMovimentos', 'totalDespesasFiltradas', 'totalReceitasFiltradas', 'limit'
         ))->with('moeda', $user->currency);
