@@ -1,11 +1,11 @@
 <?php
 
-namespace App\\Http\\Controllers;
+namespace App\Http\Controllers;
 
-use Illuminate\\Database\\Query\\Builder;
-use Illuminate\\Http\\Request;
-use Illuminate\\Support\\Carbon;
-use Illuminate\\Support\\Facades\\DB;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -97,9 +97,9 @@ class DashboardController extends Controller
         try {
             $inicio = Carbon::createFromFormat('!Y-m', (string) $mes)->startOfMonth();
             if ($inicio->format('Y-m') !== $mes) {
-                throw new \\InvalidArgumentException();
+                throw new \InvalidArgumentException();
             }
-        } catch (\\Throwable) {
+        } catch (\Throwable) {
             $inicio = now()->startOfMonth();
         }
 
