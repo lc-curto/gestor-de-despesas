@@ -89,7 +89,7 @@ class CategoriaController extends Controller
                     ->ignore($categoria?->id),
             ],
             'type' => ['required', Rule::in(['despesa', 'receita'])],
-            'icon' => ['required', 'string', 'max:60', 'regex:/^bi-[a-z0-9-]+$/'],
+            'icon' => ['required', 'string', 'max:60', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/],
             'color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
         ], [
             'name.unique' => 'Já existe uma categoria com este nome e tipo.',
