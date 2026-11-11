@@ -1045,3 +1045,29 @@ body.sidebar-collapsed .account-avatar {
 @media (max-width: 380px) {
     .dashboard-summary-column .summary-card { padding: .5rem .4rem; }
 }
+
+
+/* Dashboard desktop — alinhar o cabeçalho e manter o editor exclusivamente em modal */
+@media (min-width: 768px) {
+    .dashboard-intro {
+        flex-direction: column;
+        align-items: flex-end;
+        text-align: right;
+        min-height: 10.4rem;
+        justify-content: center;
+        padding: 1.25rem 1.5rem;
+    }
+    .dashboard-intro-copy {
+        width: 100%;
+        text-align: right;
+    }
+    .dashboard-intro .date-time-card {
+        align-self: flex-end;
+        min-width: min(20rem, 100%);
+        text-align: right;
+    }
+    #movementEntryModal .modal-dialog {
+        width: min(100% - 2rem, 34rem);
+        max-width: 34rem;
+    }
+}
