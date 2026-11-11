@@ -135,7 +135,7 @@
 
     function categoryName(item) {
         const map = item.tipo === 'receita' ? cfg.incomeCategories : cfg.expenseCategories;
-        return (map && map[item.category]) || 'Outros';
+        return item.category_label || (map && map[item.category]) || 'Outros';
     }
 
     function renderItem(item) {
@@ -171,7 +171,7 @@
         article.dataset.description = item.description;
         article.dataset.amount = item.amount;
         article.dataset.currency = item.currency || cfg.currency || 'EUR';
-        article.dataset.category = item.category;
+        article.dataset.categoryId = item.category;
 
         const info = document.createElement('div');
         info.className = 'd-flex align-items-center gap-3 min-w-0';
@@ -464,7 +464,7 @@
         description.value = row.dataset.description;
         amount.value = row.dataset.amount;
         date.value = row.dataset.date;
-        category.value = row.dataset.category;
+        category.value = row.dataset.categoryId;
         cancelButton?.classList.remove('d-none');
         openEditor();
         form.scrollIntoView({ behavior: 'smooth', block: 'center' });
