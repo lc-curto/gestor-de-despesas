@@ -55,7 +55,7 @@
 
 <section class="row g-2 g-lg-4 mb-3 mb-lg-4 align-items-start" aria-label="Lançamentos e movimentos">
     <div class="col-12 col-lg-4">
-        <article class="card border-0 shadow-sm rounded-4">
+        <article id="movementEntryCard" class="card border-0 shadow-sm rounded-4">
             <div class="card-body p-2 p-md-4">
                 <div class="record-toolbar d-flex flex-row flex-lg-column align-items-center align-items-lg-stretch justify-content-between gap-2 mb-0 mb-lg-4">
                     <div>
@@ -73,9 +73,6 @@
                 @endif
 
                 <div id="recordEditorPanel" class="collapse d-lg-block @if($errors->any()) show @endif">
-                    <div class="d-flex justify-content-end d-lg-none mb-2">
-                        <button type="button" class="btn-close record-panel-close" id="recordPanelClose" aria-label="Fechar formulário"></button>
-                    </div>
                 <form id="dashboardMovementForm" method="POST" action="{{ route('despesas.store') }}">
                     @csrf
                     <input type="hidden" name="_method" id="movementMethod" value="POST">
