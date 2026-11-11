@@ -8,9 +8,15 @@
 @endphp
 
 <header class="dashboard-intro">
-    <p class="eyebrow">Resumo financeiro</p>
-    <h1 class="h2 fw-bold" id="greetingTitle">Olá, {{ auth()->user()->name }}!</h1>
-    <p>Aqui está o resumo das tuas finanças.</p>
+    <div class="dashboard-intro-copy">
+        <p class="eyebrow">Resumo financeiro</p>
+        <h1 class="h2 fw-bold" id="greetingTitle">Olá, {{ auth()->user()->name }}!</h1>
+        <p>Aqui está o resumo das tuas finanças.</p>
+    </div>
+    <div class="date-time-card" aria-label="Data e hora atuais em Lisboa">
+        <span class="date-time-label">Agora</span>
+        <time id="currentDateTime" datetime="{{ now()->toIso8601String() }}">{{ now()->locale('pt_PT')->translatedFormat('l, d \\d\\e F \\d\\e Y') }} às {{ now()->format('H:i') }}</time>
+    </div>
 </header>
 
 <section class="row g-3 mb-4" aria-label="Resumo financeiro">
