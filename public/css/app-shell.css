@@ -930,3 +930,15 @@ body.sidebar-collapsed .account-avatar {
     .dashboard-summary-column .summary-value,
     .dashboard-summary-column .summary-value-text { font-size: .68rem; }
 }
+
+
+/* Consistência visual das listagens financeiras */
+.finance-filter-card { padding: 1.1rem 1.25rem !important; }
+.finance-filter-heading { margin-bottom: 1rem !important; }
+.finance-filter-fields { display: grid !important; }
+.finance-records-card { padding: 1.25rem !important; }
+.finance-records-heading { padding-bottom: .9rem !important; }
+.finance-record-list { display: block !important; }
+.finance-record-item { display: flex !important; }
+.finance-empty-state { padding: 2rem 1rem !important; }
+@media (max-width: 767.98px) { .finance-filter-card, .finance-records-card { padding: .95rem !important; } }
