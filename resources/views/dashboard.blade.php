@@ -20,7 +20,7 @@
 </header>
 
 <section class="row g-3 mb-4" aria-label="Resumo financeiro">
-    <div class="col-6 col-xl-3">
+    <div class="col-4 col-xl-3 dashboard-summary-column">
         <article class="summary-card summary-card-primary h-100">
             <div class="d-flex align-items-center gap-3">
                 <span class="summary-icon" aria-hidden="true"><i data-lucide="wallet"></i></span>
@@ -32,7 +32,7 @@
             </div>
         </article>
     </div>
-    <div class="col-6 col-xl-3">
+    <div class="col-4 col-xl-3 dashboard-summary-column">
         <article class="summary-card summary-card-expense h-100">
             <div class="d-flex align-items-center gap-3">
                 <span class="summary-icon" aria-hidden="true"><i data-lucide="arrow-down-right"></i></span>
@@ -44,7 +44,7 @@
             </div>
         </article>
     </div>
-    <div class="col-6 col-xl-3">
+    <div class="col-4 col-xl-3 dashboard-summary-column">
         <article class="summary-card summary-card-income h-100">
             <div class="d-flex align-items-center gap-3">
                 <span class="summary-icon" aria-hidden="true"><i data-lucide="arrow-up-right"></i></span>
@@ -56,7 +56,7 @@
             </div>
         </article>
     </div>
-    <div class="col-6 col-xl-3">
+    <div class="col-12 col-xl-3 dashboard-period-column">
         <article class="period-summary-card h-100">
             <div class="period-heading"><i data-lucide="calendar-days" aria-hidden="true"></i><span>Período</span></div>
             <form method="GET" action="{{ route('dashboard') }}" id="periodForm" class="period-controls">
