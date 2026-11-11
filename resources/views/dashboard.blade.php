@@ -121,7 +121,7 @@
             </div>
         </article>
             </div></div>
-        </
+        </div>
 
 <section class="row g-3 g-xl-4 align-items-start" aria-label="Movimentos">
     <div class="col-12">
