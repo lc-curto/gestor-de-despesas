@@ -3,10 +3,12 @@
 @section('title', $registo ? 'Editar registo' : 'Novo registo')
 
 @section('content')
-<div class="mb-4">
-    <a href="{{ route($tipo === 'despesa' ? 'despesas.index' : 'receitas.index') }}"><i class="bi bi-arrow-left me-1"></i> Voltar</a>
-    <h1 class="h2 fw-bold mt-2">{{ $registo ? 'Editar' : 'Novo' }} {{ $tipo }}</h1>
-</div>
+<header class="page-heading mb-4">
+    <a class="small text-decoration-none" href="{{ route($tipo === 'despesa' ? 'despesas.index' : 'receitas.index') }}"><i data-lucide="arrow-left" class="me-1"></i> Voltar</a>
+    <p class="eyebrow mt-3 mb-1">Movimentos financeiros</p>
+    <h1 class="h2 fw-bold mb-1">{{ $registo ? 'Editar' : 'Novo' }} {{ $tipo }}</h1>
+    <p class="text-secondary mb-0">{{ $registo ? 'Atualiza os dados deste movimento.' : 'Regista um novo movimento financeiro.' }}</p>
+</header>
 @if ($errors->any())
     <div class="alert alert-danger" role="alert"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
 @endif
