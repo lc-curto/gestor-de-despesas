@@ -159,6 +159,11 @@
                     </form>
                 </div>
 
+                @php
+                    $totalVisivel = $filtroTipo === 'despesa'
+                        ? $totalDespesasFiltradas
+                        : ($filtroTipo === 'receita' ? $totalReceitasFiltradas : $totalMovimentos);
+                @endphp
                 <div id="expensesList" class="expense-list history-list px-3 px-sm-4" aria-live="polite">
                     @forelse ($movimentosVisiveis as $movimento)
                         @php
@@ -196,15 +201,15 @@
                     @empty
                         <div class="empty-state text-center py-4">
                             <div class="empty-icon mb-3" aria-hidden="true">◎</div>
-                            <h3 class="h6">Ainda não existem movimentos</h3>
-                            <p class="small text-secondary mb-0">Adiciona uma despesa ou receita para começar.</p>
+                            @if ($totalVisivel > 0)
+                                <h3 class="h6">Mais movimentos por carregar</h3>
+                                <p class="small text-secondary mb-0">Não há movimentos deste tipo nesta primeira página. Carrega mais para continuar.</p>
+                            @else
+                                <h3 class="h6">Ainda não existem movimentos</h3>
+                                <p class="small text-secondary mb-0">Adiciona uma despesa ou receita para começar.</p>
+                            @endif
                         </div>
                     @endforelse
-                    @php
-                        $totalVisivel = $filtroTipo === 'despesa'
-                            ? $totalDespesasFiltradas
-                            : ($filtroTipo === 'receita' ? $totalReceitasFiltradas : $totalMovimentos);
-                    @endphp
                     @if ($movimentosVisiveis->count() < $totalVisivel)
                         <div class="d-flex justify-content-center py-3">
                             <button type="button" id="loadMoreMovements" class="btn btn-outline-primary btn-sm px-4">Ver mais movimentos</button>
