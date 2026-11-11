@@ -17,7 +17,8 @@
     <div id="offlineStatus" class="alert alert-warning rounded-0 mb-0 d-none" role="status" aria-live="polite"></div>
 
     <nav class="navbar navbar-expand-lg bg-body border-bottom sticky-top" aria-label="Navegação principal">
-        <div class="container d-flex align-items-center py-2">\n            <button type="button" class="btn btn-outline-secondary navbar-icon-btn d-lg-none me-2" data-bs-toggle="offcanvas" data-bs-target="#mobileNavigation" aria-controls="mobileNavigation" aria-label="Abrir navegação"><i class="bi bi-list"></i></button>
+        <div class="container d-flex align-items-center py-2">
+            <button type="button" class="btn btn-outline-secondary navbar-icon-btn d-lg-none me-2" data-bs-toggle="offcanvas" data-bs-target="#mobileNavigation" aria-controls="mobileNavigation" aria-label="Abrir navegação"><i class="bi bi-list"></i></button>
             <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="{{ route('dashboard') }}">
                 <span class="brand-mark brand-mark-sm" aria-hidden="true"><i class="bi bi-wallet2"></i></span>
                 <span>Meu Bolso</span>
