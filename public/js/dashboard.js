@@ -656,6 +656,19 @@
         refreshDashboard().catch(() => handleSyncFailure('Não foi possível sincronizar os dados com o servidor.'));
     }
 
+    document.getElementById('quickExpenseButton')?.addEventListener('click', () => {
+        if (!editing) {
+            setMovementType('despesa');
+            openEditor();
+        }
+    });
+    document.getElementById('quickIncomeButton')?.addEventListener('click', () => {
+        if (!editing) {
+            setMovementType('receita');
+            openEditor();
+        }
+    });
+
     expenseButton?.addEventListener('click', () => {
         if (!editing) {
             setMovementType('despesa');
