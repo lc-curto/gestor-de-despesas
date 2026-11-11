@@ -30,15 +30,33 @@ class DashboardController extends Controller
         $totalReceitas = (float) $user->receitas()
             ->whereBetween('income_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
 
-        $query = $this->movimentosQuery($user->id, $inicio, $fim, $filtroTipo, $filtroCategoria);
+        // A primeira página carrega os dois tipos de movimento. O filtro de tipo é
+        // aplicado no cliente sem uma segunda requisição ao abrir o Dashboard.
+        $despesasFiltradas = $user->despesas()
+            ->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()]);
+        $receitasFiltradas = $user->receitas()
+            ->whereBetween('income_date', [$inicio->toDateString(), $fim->toDateString()]);
+
+        if ($filtroCategoria !== 'all') {
+            $despesasFiltradas->where('category_id', $filtroCategoria);
+            $receitasFiltradas->where('category_id', $filtroCategoria);
+        }
+
+        $totalDespesasFiltradas = (clone $despesasFiltradas)->count();
+        $totalReceitasFiltradas = (clone $receitasFiltradas)->count();
+        $totalMovimentos = $totalDespesasFiltradas + $totalReceitasFiltradas;
+
+        $query = $this->movimentosQuery($user->id, $inicio, $fim, 'todos', $filtroCategoria);
         $limit = $this->pageSize($request);
-        $totalMovimentos = (clone $query)->count();
         $movimentos = (clone $query)->limit($limit)->get();
+        $movimentosVisiveis = $movimentos->filter(
+            fn ($movimento) => $filtroTipo === 'todos' || $movimento->tipo === $filtroTipo
+        )->values();
 
         return view('dashboard', compact(
-            'inicio', 'mes', 'movimentos', 'categorias', 'categoriasDespesa',
+            'inicio', 'mes', 'movimentos', 'movimentosVisiveis', 'categorias', 'categoriasDespesa',
             'categoriasReceita', 'filtroTipo', 'filtroCategoria',
-            'totalDespesas', 'totalReceitas', 'totalMovimentos', 'limit'
+            'totalDespesas', 'totalReceitas', 'totalMovimentos', 'totalDespesasFiltradas', 'totalReceitasFiltradas', 'limit'
         ))->with('moeda', $user->currency);
     }
 
