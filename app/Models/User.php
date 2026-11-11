@@ -45,6 +45,13 @@ class User extends Authenticatable
 
     protected static function booted(): void
     {
+        static::deleting(function (User $user): void {
+            // Remove primeiro os movimentos para respeitar a FK restritiva da categoria.
+            $user->despesas()->delete();
+            $user->receitas()->delete();
+            $user->categorias()->delete();
+        });
+
         static::created(function (User $user): void {
             $defaults = [
                 'despesa' => [
