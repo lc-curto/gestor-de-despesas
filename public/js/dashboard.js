@@ -94,7 +94,7 @@
 
     function cacheKey() {
         const range = currentMonthRange();
-        return 'meu-bolso:' + cfg.userId + ':' + range.start + ':' + range.end + ':' + (cfg.category || 'all');
+        return 'meu-bolso:v2:' + cfg.userId + ':' + range.start + ':' + range.end + ':' + (cfg.category || 'all');
     }
 
     function saveCache() {
