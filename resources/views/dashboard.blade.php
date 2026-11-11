@@ -9,6 +9,7 @@
 
 <header class="dashboard-intro">
     <div class="dashboard-intro-copy">
+        <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> Resumo financeiro</p>
         <h1 class="h2 fw-bold" id="greetingTitle">Olá, {{ auth()->user()->name }}!</h1>
     </div>
     <div class="date-time-card" aria-label="Data e hora atuais em Lisboa">
@@ -18,7 +19,7 @@
 </header>
 
 <section class="row g-3 mb-4" aria-label="Resumo financeiro">
-    <div class="col-4 col-xl-3 dashboard-summary-column">
+    <div class="col-4 col-xl-4 dashboard-summary-column">
         <article class="summary-card summary-card-primary h-100">
             <div class="d-flex align-items-center gap-3">
                 <span class="summary-icon" aria-hidden="true"><i data-lucide="wallet"></i></span>
@@ -47,29 +48,22 @@
                 <div>
                     <p class="small text-secondary mb-1">Receitas</p>
                     <p class="summary-value mb-0 text-success" id="totalIncome" data-total="{{ $totalReceitas }}">{{ number_format($totalReceitas, 2, ',', '.') }} {{ $moeda }}</p>
-                    <p class="small text-secondary mb-0 mt-1">Total no período</p>
                 </div>
             </div>
         </article>
     </div>
-    <div class="col-12 col-xl-3 dashboard-period-column">
-        <article class="period-summary-card h-100">
-            <div class="period-heading"><i data-lucide="calendar-days" aria-hidden="true"></i><span>Mês</span></div>
-            <form method="GET" action="{{ route('dashboard') }}" id="periodForm" class="period-controls">
-                <button type="button" class="btn btn-sm btn-outline-secondary" id="periodPrevious" aria-label="Mês anterior"><i data-lucide="chevron-left"></i></button>
-                <label for="periodMonth" class="visually-hidden">Selecionar mês</label>
-                <input type="month" id="periodMonth" name="mes" class="form-control" value="{{ $mes }}">
-                <input type="hidden" name="tipo" value="{{ $filtroTipo }}">
-                <input type="hidden" name="categoria" value="{{ $filtroCategoria }}">
-                <button type="button" class="btn btn-sm btn-outline-secondary" id="periodNext" aria-label="Mês seguinte"><i data-lucide="chevron-right"></i></button>
-            </form>
-        </article>
+</section>
+
+<section class="dashboard-entry-bar" aria-label="Novo registo">
+    <strong>Novo registo</strong>
+    <div class="btn-group" role="group" aria-label="Tipo de registo">
+        <button type="button" class="btn btn-danger" id="quickExpenseButton"><i data-lucide="arrow-down-right" aria-hidden="true"></i> Despesa</button>
+        <button type="button" class="btn btn-outline-success" id="quickIncomeButton"><i data-lucide="arrow-up-right" aria-hidden="true"></i> Receita</button>
     </div>
 </section>
 
-<section class="row g-3 g-xl-4 align-items-start" aria-label="Lançamentos e movimentos">
-    <div class="col-12 d-flex justify-content-end">
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#movementEntryModal"><i data-lucide="plus" class="me-1" aria-hidden="true"></i>Novo</button>
+<section class="row g-3 g-xl-4 align-items-start" aria-label="Movimentos">
+    <div class="col-12">
         <div class="modal fade" id="movementEntryModal" tabindex="-1" aria-labelledby="recordTitle" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 bg-transparent">
         <article id="movementEntryCard" class="card border-0 shadow-sm rounded-4 movement-editor-card">
@@ -136,10 +130,16 @@
         <article class="card border-0 shadow-sm rounded-4 history-card">
             <div class="card-body p-0 history-card-body">
                 <div class="p-3 p-sm-4 pb-3">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                        <div>
-                            <h2 class="h5 fw-bold mb-0">Movimentos</h2>
-                        </div>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                        <h2 class="h5 fw-bold mb-0">Movimentos</h2>
+                        <form method="GET" action="{{ route('dashboard') }}" id="periodForm" class="period-controls dashboard-period-controls">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="periodPrevious" aria-label="Mês anterior"><i data-lucide="chevron-left"></i></button>
+                            <label for="periodMonth" class="visually-hidden">Selecionar mês</label>
+                            <input type="month" id="periodMonth" name="mes" class="form-control" value="{{ $mes }}">
+                            <input type="hidden" name="tipo" value="{{ $filtroTipo }}">
+                            <input type="hidden" name="categoria" value="{{ $filtroCategoria }}">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="periodNext" aria-label="Mês seguinte"><i data-lucide="chevron-right"></i></button>
+                        </form>
                     </div>
                 </div>
 
