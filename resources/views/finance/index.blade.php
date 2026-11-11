@@ -11,7 +11,7 @@
     </div>
     <a class="btn btn-primary" href="{{ route($tipo === 'despesa' ? 'despesas.create' : 'receitas.create') }}"><i data-lucide="plus" class="me-1"></i> Novo registo</a>
 </header>
-<form method="GET" class="card border-0 p-3 mb-3">
+<form method="GET" class="card finance-filter-card border-0 p-3 mb-3">
     <div class="row g-2">
         <div class="col-md-4">
             <label for="categoryFilter" class="form-label">Categoria</label>
@@ -27,7 +27,7 @@
         <div class="col-md-2 d-grid align-self-end"><button class="btn btn-outline-primary">Filtrar</button></div>
     </div>
 </form>
-<section class="card border-0 p-3 p-lg-4">
+<section class="card finance-records-card border-0 p-3 p-lg-4">
     @forelse ($registos as $item)
         <article class="expense-item">
             <div class="d-flex align-items-center gap-3 expense-info">
