@@ -9,9 +9,7 @@
 
 <header class="dashboard-intro">
     <div class="dashboard-intro-copy">
-        <p class="eyebrow">Resumo financeiro</p>
         <h1 class="h2 fw-bold" id="greetingTitle">Olá, {{ auth()->user()->name }}!</h1>
-        <p>Aqui está o resumo das tuas finanças.</p>
     </div>
     <div class="date-time-card" aria-label="Data e hora atuais em Lisboa">
         <span class="date-time-label">Agora</span>
@@ -27,7 +25,6 @@
                 <div class="min-w-0">
                     <p class="small mb-1 opacity-75">Saldo do período</p>
                     <p class="summary-value summary-value-text mb-0" id="balanceAmount" data-total="{{ $totalReceitas - $totalDespesas }}">{{ number_format($totalReceitas - $totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
-                    <p class="small mb-0 mt-1 opacity-75">Receitas menos despesas</p>
                 </div>
             </div>
         </article>
@@ -39,7 +36,6 @@
                 <div>
                     <p class="small text-secondary mb-1">Despesas</p>
                     <p class="summary-value mb-0 text-danger" id="totalAmount" data-total="{{ $totalDespesas }}">{{ number_format($totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
-                    <p class="small text-secondary mb-0 mt-1">Total no período</p>
                 </div>
             </div>
         </article>
@@ -58,7 +54,7 @@
     </div>
     <div class="col-12 col-xl-3 dashboard-period-column">
         <article class="period-summary-card h-100">
-            <div class="period-heading"><i data-lucide="calendar-days" aria-hidden="true"></i><span>Período</span></div>
+            <div class="period-heading"><i data-lucide="calendar-days" aria-hidden="true"></i><span>Mês</span></div>
             <form method="GET" action="{{ route('dashboard') }}" id="periodForm" class="period-controls">
                 <button type="button" class="btn btn-sm btn-outline-secondary" id="periodPrevious" aria-label="Mês anterior"><i data-lucide="chevron-left"></i></button>
                 <label for="periodMonth" class="visually-hidden">Selecionar mês</label>
@@ -72,13 +68,15 @@
 </section>
 
 <section class="row g-3 g-xl-4 align-items-start" aria-label="Lançamentos e movimentos">
-    <div class="col-12 col-xl-4">
+    <div class="col-12 d-flex justify-content-end">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#movementEntryModal"><i data-lucide="plus" class="me-1" aria-hidden="true"></i>Novo</button>
+        <div class="modal fade" id="movementEntryModal" tabindex="-1" aria-labelledby="recordTitle" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 bg-transparent">
         <article id="movementEntryCard" class="card border-0 shadow-sm rounded-4 movement-editor-card">
             <div class="card-body p-3 p-lg-4">
                 <div class="d-flex align-items-center gap-2 mb-3">
                     <i data-lucide="plus" class="text-primary" aria-hidden="true"></i>
                     <div>
-                        <p class="text-primary fw-semibold small mb-0">Novo registo</p>
                         <h2 id="recordTitle" class="h5 fw-bold mb-0">Adicionar despesa</h2>
                     </div>
                 </div>
@@ -92,7 +90,7 @@
                     <div class="alert alert-danger small"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
                 @endif
 
-                <div id="recordEditorPanel" class="collapse d-lg-block @if($errors->any()) show @endif">
+                <div id="recordEditorPanel">
                     <form id="dashboardMovementForm" method="POST" action="{{ route('despesas.store') }}">
                         @csrf
                         <input type="hidden" name="_method" id="movementMethod" value="POST">
@@ -130,17 +128,17 @@
                 </div>
             </div>
         </article>
+            </div></div>
+        </div>
     </div>
 
-    <div class="col-12 col-xl-8">
+    <div class="col-12">
         <article class="card border-0 shadow-sm rounded-4 history-card">
             <div class="card-body p-0 history-card-body">
                 <div class="p-3 p-sm-4 pb-3">
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
                         <div>
-                            <p class="text-primary fw-semibold small mb-1">Histórico</p>
-                            <h2 class="h5 fw-bold mb-0">Movimentos recentes</h2>
-                            <p class="small text-secondary mb-0 mt-1" id="periodCaption">{{ $inicio->locale('pt_PT')->translatedFormat('F Y') }}</p>
+                            <h2 class="h5 fw-bold mb-0">Movimentos</h2>
                         </div>
                     </div>
                 </div>
@@ -233,9 +231,7 @@
                 <div class="d-flex align-items-start gap-3">
                     <div class="currency-icon" aria-hidden="true"><i data-lucide="arrow-left-right"></i></div>
                     <div>
-                        <p class="small text-primary fw-semibold mb-1">Ferramenta financeira</p>
                         <h2 id="currencyTitle" class="h5 fw-bold mb-1">Conversor de moedas</h2>
-                        <p class="small text-secondary mb-0">Consulta a conversão sem sair da aplicação. O lançamento é feito manualmente.</p>
                     </div>
                 </div>
             </div>
@@ -264,9 +260,8 @@
             </div>
             <div class="col-12">
                 <div id="conversionResult" class="conversion-result" aria-live="polite">
-                    <span class="small text-secondary">Resultado da conversão</span>
                     <strong id="convertedValue">—</strong>
-                    <span id="conversionRate" class="small text-secondary">Consulta informativa; não altera as tuas despesas ou receitas.</span>
+                    <span id="conversionRate" class="small text-secondary"></span>
                 </div>
             </div>
         </div>
@@ -298,5 +293,8 @@ window.meuBolsoDashboard = {
     categories: @json($categorias)
 };
 </script>
+@if ($errors->any())
+<script>document.addEventListener('DOMContentLoaded', () => bootstrap.Modal.getOrCreateInstance(document.getElementById('movementEntryModal')).show());</script>
+@endif
 <script src="{{ asset('js/dashboard.js') }}?v={{ filemtime(public_path('js/dashboard.js')) }}" defer></script>
 @endpush
