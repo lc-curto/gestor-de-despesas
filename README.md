@@ -45,9 +45,17 @@ Configurar no `.env` uma base de dados dedicada. Não utilizar credenciais root 
 
 Executar `php artisan migrate` para criar as tabelas.
 
-Instalar as dependências JavaScript com `npm install` e compilar os recursos com `npm run build`.
+Para executar a aplicação localmente, iniciar apenas o servidor Laravel:
 
-Iniciar o servidor local com `php artisan serve` e abrir http://127.0.0.1:8000.
+`php artisan serve`
+
+Abrir http://127.0.0.1:8000.
+
+O layout atual carrega os ficheiros de CSS e JavaScript diretamente de `public/`; por isso, o Vite, o worker de filas e o monitor de logs não são necessários para navegar na aplicação. O comando `composer run dev` também inicia apenas o servidor Laravel.
+
+Instalar as dependências JavaScript com `npm install` e executar `npm run build` apenas quando forem alterados recursos que entram pelo Vite. Para validar a estrutura e a sintaxe dos ficheiros públicos, executar `npm run check`.
+
+Depois de atualizar a aplicação, se o navegador continuar a apresentar recursos antigos, atualizar a página e aguardar a atualização do Service Worker.
 
 ## Testes
 
