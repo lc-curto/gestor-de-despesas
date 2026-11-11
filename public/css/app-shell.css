@@ -672,3 +672,85 @@ body.sidebar-collapsed .account-avatar {
         min-height: 1.9rem;
     }
 }
+
+
+/* Correção final da listagem mobile: valor e ações na mesma linha. */
+@media (max-width: 575.98px) {
+    .history-card .expense-item {
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        gap: .45rem !important;
+    }
+
+    .history-card .expense-item > :first-child {
+        flex: 1 1 0 !important;
+        min-width: 0 !important;
+    }
+
+    .history-card .expense-actions {
+        width: auto !important;
+        flex: 0 0 auto !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        gap: .35rem !important;
+    }
+
+    .history-card .expense-actions .movement-value {
+        flex: 0 0 auto;
+        font-size: .73rem;
+        white-space: nowrap;
+    }
+
+    .history-card .expense-actions .btn-group {
+        display: inline-flex !important;
+        flex: 0 0 auto !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: .25rem !important;
+    }
+
+    .history-card .expense-actions .btn-group > form {
+        display: inline-flex !important;
+        flex: 0 0 auto !important;
+        width: auto !important;
+        margin: 0 !important;
+    }
+
+    .history-card .expense-actions .btn,
+    .history-card .expense-actions .btn-group > form .btn {
+        width: 1.85rem !important;
+        min-width: 1.85rem !important;
+        height: 1.85rem !important;
+        min-height: 1.85rem !important;
+        padding: .2rem !important;
+    }
+}
+
+@media (max-width: 380px) {
+    .history-card .expense-item {
+        gap: .3rem !important;
+    }
+
+    .history-card .expense-icon {
+        width: 2rem;
+        height: 2rem;
+        flex-basis: 2rem;
+    }
+
+    .history-card .expense-actions {
+        gap: .25rem !important;
+    }
+
+    .history-card .expense-actions .movement-value {
+        font-size: .68rem;
+    }
+
+    .history-card .expense-actions .btn,
+    .history-card .expense-actions .btn-group > form .btn {
+        width: 1.7rem !important;
+        min-width: 1.7rem !important;
+        height: 1.7rem !important;
+        min-height: 1.7rem !important;
+    }
+}
