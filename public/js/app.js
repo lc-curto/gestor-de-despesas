@@ -52,6 +52,25 @@
     applySidebarState(sidebarCollapsed);
     sidebarToggle?.addEventListener('click',()=>{sidebarCollapsed=!document.body.classList.contains('sidebar-collapsed');applySidebarState(sidebarCollapsed);try{localStorage.setItem(SIDEBAR_KEY,String(sidebarCollapsed));}catch(error){}});
     window.lucide?.createIcons();
+    const iconObserver = new MutationObserver((records) => {
+        let changed = false;
+        records.forEach((record) => record.addedNodes.forEach((node) => {
+            if (node.nodeType !== 1) return;
+            const candidates = [];
+            if (node.matches?.('i.bi')) candidates.push(node);
+            candidates.push(...(node.querySelectorAll?.('i.bi') || []));
+            candidates.forEach((el) => {
+                const legacy = [...el.classList].find((name) => name.startsWith('bi-') && name !== 'bi');
+                if (!legacyIcons[legacy]) return;
+                el.classList.remove('bi', legacy);
+                el.setAttribute('data-lucide', legacyIcons[legacy]);
+                changed = true;
+            });
+            if (node.matches?.('[data-lucide]') || node.querySelector?.('[data-lucide]')) changed = true;
+        }));
+        if (changed) window.lucide?.createIcons();
+    });
+    iconObserver.observe(document.body, { childList: true, subtree: true });
 
 
     // A data/hora é atualizada no cabeçalho à semelhança do main.js original.
