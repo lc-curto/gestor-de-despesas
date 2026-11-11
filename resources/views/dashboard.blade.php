@@ -160,8 +160,8 @@
                         @endphp
                         <article class="expense-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom" data-movement-id="{{ $movimento->id }}" data-movement-type="{{ $movimento->tipo }}" data-edit-url="{{ route($isExpense ? 'despesas.update' : 'receitas.update', $movimento->id) }}" data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}" data-amount="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}" data-category-id="{{ $movimento->category }}">
                             <div class="d-flex align-items-center gap-3 min-w-0">
-                                <div class="{{ $isExpense ? 'expense-icon' : 'expense-icon income-icon' }} flex-shrink-0" aria-hidden="true">
-                                    <i class="bi {{ $isExpense ? 'bi-arrow-up-right' : 'bi-arrow-down-left' }}"></i>
+                                <div class="expense-icon flex-shrink-0" style="--category-color: {{ $movimento->category_color ?? '#635BFF' }}" aria-hidden="true">
+                                    <i data-lucide="{{ $movimento->category_icon ?? 'tag' }}"></i>
                                 </div>
                                 <div class="min-w-0">
                                     <h3 class="h6 fw-semibold mb-1 text-break">{{ $movimento->description }}</h3>
