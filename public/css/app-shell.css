@@ -29,3 +29,6 @@ body.sidebar-collapsed .app-main{width:calc(100% - var(--sidebar-collapsed))}
 @media(max-width:991.98px){.app-layout{display:block;min-height:auto}.app-sidebar{display:none!important}.app-main{width:100%;padding:1.25rem 1rem 2.5rem}.site-footer,body.sidebar-collapsed .site-footer{margin-left:0!important}}
 @media(max-width:575.98px){.app-main{padding:.9rem .75rem 2rem}.category-icon-picker{grid-template-columns:repeat(6,minmax(0,1fr));gap:.4rem}.category-icon-option{min-height:2.8rem}}
 @media(prefers-reduced-motion:reduce){.app-sidebar,.app-navigation-link{transition:none!important}}
+
+.expense-icon[style*="--category-color"]{background:color-mix(in srgb,var(--category-color) 14%,transparent);color:var(--category-color)}
+.expense-icon[style*="--category-color"] svg{width:1.2rem;height:1.2rem}
