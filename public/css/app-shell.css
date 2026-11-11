@@ -160,3 +160,13 @@ body.sidebar-hidden .app-main { margin-left: 0; padding-top: 4.25rem; }
     .history-card .expense-item { align-items: flex-start !important; flex-wrap: wrap; }
     .history-card .expense-actions { width: 100%; justify-content: space-between !important; }
 }
+
+.page-heading { max-width: 100%; }
+.page-heading h1 { letter-spacing: -.035em; }
+.page-heading .eyebrow { margin-bottom: .35rem; }
+.finance-filter-card,
+.finance-records-card { border: 1px solid var(--app-border) !important; border-radius: 1rem; background: var(--bs-body-bg); box-shadow: var(--app-shadow); }
+.category-card { border-radius: 1rem; }
+@media (min-width: 1200px) {
+    .page-heading { margin-bottom: 1.5rem !important; }
+}
