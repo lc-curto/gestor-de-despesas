@@ -143,3 +143,20 @@ body.sidebar-hidden .app-main { margin-left: 0; padding-top: 4.25rem; }
 }
 .expense-icon[style*="--category-color"] { background: color-mix(in srgb, var(--category-color) 14%, transparent); color: var(--category-color); }
 .expense-icon[style*="--category-color"] svg { width: 1.2rem; height: 1.2rem; }
+
+.summary-card-expense .summary-icon { background: rgba(239, 68, 68, .10); color: #e33445; }
+.summary-card-income .summary-icon { background: rgba(22, 163, 74, .10); color: #15945a; }
+.summary-card-expense .summary-icon svg,
+.summary-card-income .summary-icon svg,
+.summary-card-primary .summary-icon svg { width: 1.35rem; height: 1.35rem; }
+.movement-editor-card .card-body { min-width: 0; }
+.movement-editor-card .record-type-buttons .btn { min-height: 2.7rem; font-weight: 650; }
+.history-card .expense-item { min-width: 0; }
+.history-card .expense-actions .btn { min-width: 2.35rem; min-height: 2.35rem; }
+@media (max-width: 575.98px) {
+    .summary-card { padding: .95rem; }
+    .summary-card .summary-value { font-size: 1.35rem; }
+    .summary-card .summary-value-text { font-size: 1.25rem; }
+    .history-card .expense-item { align-items: flex-start !important; flex-wrap: wrap; }
+    .history-card .expense-actions { width: 100%; justify-content: space-between !important; }
+}
