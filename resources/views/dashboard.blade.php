@@ -291,46 +291,7 @@ window.meuBolsoDashboard = {
     categories: @json($categorias)
 };
 </script>
-<script>
-/**
- * Apresenta a data e hora no fuso horário configurado no dispositivo do utilizador.
- * O navegador fornece o identificador IANA (ex.: Europe/Lisbon, America/Sao_Paulo).
- * Não depende do fuso horário configurado no servidor.
- */
-(() => {
-    const element = document.getElementById('currentDateTime');
 
-    if (!element) {
-        return;
-    }
-
-    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-    const dateFormatter = new Intl.DateTimeFormat('pt-PT', {
-        weekday: 'long',
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-        timeZone
-    });
-    const timeFormatter = new Intl.DateTimeFormat('pt-PT', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hourCycle: 'h23',
-        timeZone
-    });
-
-    const updateLocalDateTime = () => {
-        const now = new Date();
-
-        element.textContent = `${dateFormatter.format(now)} às ${timeFormatter.format(now)}`;
-        element.dateTime = now.toISOString();
-        element.title = `Fuso horário: ${timeZone}`;
-    };
-
-    updateLocalDateTime();
-    window.setInterval(updateLocalDateTime, 30_000);
-})();
-</script>
 @if ($errors->any())
 <script>document.addEventListener('DOMContentLoaded', () => bootstrap.Modal.getOrCreateInstance(document.getElementById('movementEntryModal')).show());</script>
 @endif
