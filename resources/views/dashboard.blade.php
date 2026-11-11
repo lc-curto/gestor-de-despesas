@@ -5,8 +5,7 @@
 @section('content')
 @php
     $simbolos = ['EUR' => '€', 'USD' => '$', 'GBP' => '£', 'BRL' => 'R$'];
-    $categoriasDespesa = \App\Support\Categorias::DESPESAS;
-    $categoriasReceita = \App\Support\Categorias::RECEITAS;
+    // Categorias dinâmicas carregadas pelo DashboardController.
 @endphp
 
 <header class="dashboard-hero mb-3 mb-lg-5">
