@@ -51,7 +51,7 @@ class FinanceController extends Controller
                     ->where('user_id', $request->user()->id)
                     ->where('type', $tipo),
             ],
-            'category' => ['required_without:category_id', 'nullable', 'string', 'max:120'],
+            'category' => [\n                'required_without:category_id', 'nullable', 'string', 'max:120',\n                Rule::exists('categorias', 'slug')\n                    ->where('user_id', $request->user()->id)\n                    ->where('type', $tipo),\n            ],
             $dateField => 'required|date',
         ]);
 
