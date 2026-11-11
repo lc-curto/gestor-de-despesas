@@ -696,13 +696,7 @@
             openEditor();
         }
     });
-    document.addEventListener('pointerdown', (event) => {
-        if (!window.matchMedia('(max-width: 991.98px)').matches) return;
-        if (!editorPanel || !editorCard || !editorPanel.classList.contains('show')) return;
-        if (editorCard.contains(event.target)) return;
 
-        closeEditor();
-    }, true);
     cancelButton?.addEventListener('click', cancelEdit);
     form.addEventListener('submit', submitMovement);
     list.addEventListener('click', (event) => {
