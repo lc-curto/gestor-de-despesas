@@ -5,16 +5,14 @@
 @section('content')
 <header class="page-heading d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
     <div>
-        <p class="eyebrow mb-2">Organização financeira</p>
         <h1 class="h2 fw-bold mb-1">Categorias</h1>
-        <p class="text-secondary mb-0">Organiza as tuas despesas e receitas.</p>
     </div>
     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#categoryModal" data-mode="create">
-        <i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Nova categoria
+        <i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Nova
     </button>
 </header>
 
-<section class="row g-3 mb-4" aria-label="Resumo de categorias">
+<section class="row g-3 mb-4" aria-label="Categorias">
     <div class="col-4"><article class="summary-card h-100"><p class="small text-secondary mb-1">Total</p><p class="summary-value mb-0">{{ $total }}</p></article></div>
     <div class="col-4"><article class="summary-card h-100"><p class="small text-secondary mb-1">Despesas</p><p class="summary-value mb-0">{{ $totalDespesas }}</p></article></div>
     <div class="col-4"><article class="summary-card h-100"><p class="small text-secondary mb-1">Receitas</p><p class="summary-value mb-0">{{ $totalReceitas }}</p></article></div>
@@ -30,10 +28,10 @@
         <li class="nav-item" role="presentation"><button class="nav-link" id="income-tab" data-bs-toggle="pill" data-bs-target="#incomeCategories" type="button" role="tab" aria-controls="incomeCategories" aria-selected="false">Receitas</button></li>
     </ul>
     <div class="category-search">
-        <label for="categorySearch" class="visually-hidden">Pesquisar categorias</label>
+        <label for="categorySearch" class="visually-hidden">Pesquisar</label>
         <div class="input-group">
             <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
-            <input type="search" id="categorySearch" class="form-control" placeholder="Pesquisar categoria..." autocomplete="off">
+            <input type="search" id="categorySearch" class="form-control" placeholder="Pesquisar..." autocomplete="off">
         </div>
     </div>
 </div>
