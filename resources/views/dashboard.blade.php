@@ -21,6 +21,7 @@
 <section class="row g-3 mb-4" aria-label="Resumo financeiro">
     <div class="col-4 col-xl-4 dashboard-summary-column">
         <article class="summary-card summary-card-primary h-100">
+            <span class="summary-icon" aria-hidden="true"><i data-lucide="wallet"></i></span>
             <div class="d-flex align-items-center gap-3">
                 <div class="min-w-0">
                     <p class="small mb-1 opacity-75">Saldo do período</p>
@@ -29,8 +30,9 @@
             </div>
         </article>
     </div>
-    <div class="col-4 col-xl-3 dashboard-summary-column">
+    <div class="col-4 col-xl-4 dashboard-summary-column">
         <article class="summary-card summary-card-expense h-100">
+            <span class="summary-icon" aria-hidden="true"><i data-lucide="arrow-down-right"></i></span>
             <div class="d-flex align-items-center gap-3">
                 <div>
                     <p class="small text-secondary mb-1">Despesas</p>
@@ -39,8 +41,9 @@
             </div>
         </article>
     </div>
-    <div class="col-4 col-xl-3 dashboard-summary-column">
+    <div class="col-4 col-xl-4 dashboard-summary-column">
         <article class="summary-card summary-card-income h-100">
+            <span class="summary-icon" aria-hidden="true"><i data-lucide="arrow-up-right"></i></span>
             <div class="d-flex align-items-center gap-3">
                 <div>
                     <p class="small text-secondary mb-1">Receitas</p>
