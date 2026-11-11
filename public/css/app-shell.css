@@ -170,3 +170,352 @@ body.sidebar-hidden .app-main { margin-left: 0; padding-top: 4.25rem; }
 @media (min-width: 1200px) {
     .page-heading { margin-bottom: 1.5rem !important; }
 }
+
+
+/* ======================================
+   SIDEBAR RESPONSIVA — ESTADO RECOLHIDO
+====================================== */
+:root {
+    --sidebar-collapsed-width: 4.75rem;
+}
+
+.app-sidebar {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+}
+
+.app-sidebar-brand {
+    display: flex;
+    min-height: 4.35rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    padding: .1rem 0 .9rem .35rem;
+    flex: 0 0 auto;
+}
+
+.app-brand {
+    flex: 1 1 auto;
+}
+
+.sidebar-toggle {
+    position: static;
+    z-index: auto;
+    display: inline-flex;
+    width: var(--sidebar-toggle-size);
+    height: var(--sidebar-toggle-size);
+    flex: 0 0 var(--sidebar-toggle-size);
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: .7rem;
+    background: var(--bs-body-bg);
+    transition: background-color .15s ease, border-color .15s ease;
+}
+
+.app-navigation {
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+
+.app-sidebar-footer {
+    flex: 0 0 auto;
+    padding-bottom: max(.1rem, env(safe-area-inset-bottom));
+}
+
+.mobile-sidebar-open {
+    display: none;
+}
+
+body.sidebar-collapsed .app-sidebar {
+    width: var(--sidebar-collapsed-width);
+    padding: .85rem .55rem .75rem;
+}
+
+body.sidebar-collapsed .app-main {
+    margin-left: var(--sidebar-collapsed-width);
+}
+
+body.sidebar-collapsed .app-sidebar-brand {
+    min-height: 0;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: .75rem;
+    padding: 0 0 .9rem;
+}
+
+body.sidebar-collapsed .sidebar-toggle {
+    order: -1;
+    width: 2.45rem;
+    height: 2.45rem;
+    flex-basis: 2.45rem;
+}
+
+body.sidebar-collapsed .app-brand {
+    width: 100%;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+body.sidebar-collapsed .app-brand .brand-mark {
+    width: 2.55rem;
+    height: 2.55rem;
+    flex-basis: 2.55rem;
+}
+
+body.sidebar-collapsed .app-brand-copy,
+body.sidebar-collapsed .app-navigation-label,
+body.sidebar-collapsed .app-navigation-link span,
+body.sidebar-collapsed .sidebar-utility-button span,
+body.sidebar-collapsed .account-profile-copy,
+body.sidebar-collapsed .account-chevron {
+    display: none;
+}
+
+body.sidebar-collapsed .app-navigation {
+    gap: .7rem;
+}
+
+body.sidebar-collapsed .app-navigation-group {
+    gap: .35rem;
+}
+
+body.sidebar-collapsed .app-navigation-link {
+    min-height: 2.75rem;
+    justify-content: center;
+    gap: 0;
+    padding: .65rem 0;
+}
+
+body.sidebar-collapsed .app-navigation-link svg {
+    width: 1.3rem;
+    height: 1.3rem;
+    flex-basis: 1.3rem;
+}
+
+body.sidebar-collapsed .sidebar-utility-actions {
+    flex-direction: column;
+    gap: .35rem;
+}
+
+body.sidebar-collapsed .sidebar-utility-button {
+    min-height: 2.65rem;
+    flex: 0 0 2.65rem;
+    justify-content: center;
+    padding: 0;
+}
+
+body.sidebar-collapsed .account-profile-button {
+    min-height: 2.85rem;
+    justify-content: center;
+    padding: .2rem;
+}
+
+body.sidebar-collapsed .account-avatar {
+    width: 2.35rem;
+    height: 2.35rem;
+    flex-basis: 2.35rem;
+}
+
+.dashboard-intro {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1.5rem;
+}
+
+.dashboard-intro-copy {
+    min-width: 0;
+}
+
+.date-time-card {
+    display: flex;
+    min-width: 19rem;
+    flex-direction: column;
+    gap: .2rem;
+    padding: .65rem .9rem;
+    text-align: right;
+}
+
+.date-time-label {
+    color: var(--bs-secondary-color);
+    font-size: .72rem;
+    line-height: 1.2;
+}
+
+.date-time-card time {
+    font-size: .86rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+@media (max-width: 991.98px) {
+    .app-sidebar,
+    body.sidebar-collapsed .app-sidebar {
+        width: min(20rem, 88vw);
+        padding: 1.1rem .9rem .9rem;
+        transform: translateX(-100%);
+        box-shadow: 1rem 0 3rem rgba(20,20,40,.12);
+    }
+
+    body.sidebar-open .app-sidebar {
+        transform: translateX(0);
+    }
+
+    body.sidebar-open .sidebar-backdrop {
+        position: fixed;
+        z-index: 1030;
+        inset: 0;
+        display: block;
+        border: 0;
+        background: rgba(15,18,30,.42);
+        backdrop-filter: blur(1px);
+    }
+
+    .app-sidebar-brand,
+    body.sidebar-collapsed .app-sidebar-brand {
+        min-height: 4.35rem;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: .5rem;
+        padding: .1rem 0 .9rem .35rem;
+    }
+
+    .app-brand,
+    body.sidebar-collapsed .app-brand {
+        width: auto;
+        justify-content: flex-start;
+        flex: 1 1 auto;
+    }
+
+    .app-brand-copy,
+    body.sidebar-collapsed .app-brand-copy {
+        display: flex;
+    }
+
+    .sidebar-toggle,
+    body.sidebar-collapsed .sidebar-toggle {
+        order: 0;
+        width: var(--sidebar-toggle-size);
+        height: var(--sidebar-toggle-size);
+        flex-basis: var(--sidebar-toggle-size);
+    }
+
+    .app-navigation-label,
+    body.sidebar-collapsed .app-navigation-label {
+        display: block;
+    }
+
+    .app-navigation-link,
+    body.sidebar-collapsed .app-navigation-link {
+        justify-content: flex-start;
+        gap: .85rem;
+        padding: .65rem .8rem;
+    }
+
+    .app-navigation-link span,
+    body.sidebar-collapsed .app-navigation-link span {
+        display: inline;
+    }
+
+    .sidebar-utility-actions,
+    body.sidebar-collapsed .sidebar-utility-actions {
+        flex-direction: row;
+    }
+
+    .sidebar-utility-button,
+    body.sidebar-collapsed .sidebar-utility-button {
+        justify-content: flex-start;
+        flex: 1 1 0;
+        padding: .55rem .75rem;
+    }
+
+    .sidebar-utility-button span,
+    body.sidebar-collapsed .sidebar-utility-button span,
+    .account-profile-copy,
+    body.sidebar-collapsed .account-profile-copy,
+    .account-chevron,
+    body.sidebar-collapsed .account-chevron {
+        display: flex;
+    }
+
+    .account-profile-button,
+    body.sidebar-collapsed .account-profile-button {
+        justify-content: flex-start;
+        padding: .55rem .65rem;
+    }
+
+    .app-main,
+    body.sidebar-collapsed .app-main {
+        margin-left: 0;
+        padding: 4.25rem 1rem 2.5rem;
+    }
+
+    .mobile-sidebar-open {
+        position: fixed;
+        z-index: 1025;
+        top: .75rem;
+        left: .75rem;
+        display: inline-flex;
+        width: 2.65rem;
+        height: 2.65rem;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--app-border);
+        border-radius: .75rem;
+        background: var(--bs-body-bg);
+        color: var(--bs-body-color);
+        box-shadow: var(--app-shadow);
+    }
+
+    .mobile-sidebar-open svg { width: 1.2rem; height: 1.2rem; }
+    body.sidebar-open .mobile-sidebar-open { visibility: hidden; }
+    body.sidebar-open { overflow: hidden; }
+
+    .dashboard-intro {
+        align-items: stretch;
+        flex-direction: column;
+        gap: .85rem;
+    }
+
+    .date-time-card {
+        width: 100%;
+        min-width: 0;
+        text-align: left;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .app-main,
+    body.sidebar-collapsed .app-main {
+        padding: 4rem .75rem 2rem;
+    }
+
+    .app-sidebar,
+    body.sidebar-collapsed .app-sidebar {
+        padding: 1rem .8rem .8rem;
+    }
+
+    .date-time-card {
+        padding: .6rem .75rem;
+    }
+
+    .date-time-card time {
+        font-size: .82rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-sidebar,
+    .app-main,
+    .sidebar-toggle,
+    .mobile-sidebar-open,
+    .app-navigation-link {
+        transition: none !important;
+    }
+}
