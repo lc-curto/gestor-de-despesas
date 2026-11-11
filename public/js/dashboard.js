@@ -324,6 +324,27 @@
         }
     }
 
+    // No mobile, fecha o formulário quando a interação passa para fora do cartão.
+    // Cliques nos seletores Despesa/Receita continuam dentro do cartão e não o fecham.
+    function handleOutsideEditorInteraction(event) {
+        if (!window.matchMedia('(max-width: 991.98px)').matches || !editorPanel || !editorPanel.classList.contains('show')) {
+            return;
+        }
+
+        if (editorCard && !editorCard.contains(event.target)) {
+            closeEditor();
+        }
+    }
+
+    document.addEventListener('pointerdown', handleOutsideEditorInteraction, true);
+
+    // Também fecha quando a navegação por teclado move o foco para fora do cartão.
+    editorCard?.addEventListener('focusout', (event) => {
+        if (event.relatedTarget && !editorCard.contains(event.relatedTarget)) {
+            closeEditor();
+        }
+    });
+
     function resetEditor(keepType = true) {
         const restoredType = keepType ? movementType : 'despesa';
         editing = false;
