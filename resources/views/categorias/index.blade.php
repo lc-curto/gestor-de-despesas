@@ -3,7 +3,7 @@
 @section('title', 'Categorias')
 
 @section('content')
-<header class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
+<header class="page-heading d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
     <div>
         <p class="eyebrow mb-2">Organização financeira</p>
         <h1 class="h2 fw-bold mb-1">Categorias</h1>
