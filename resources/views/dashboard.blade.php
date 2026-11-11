@@ -73,7 +73,7 @@
 
 <section class="row g-3 g-xl-4 align-items-start" aria-label="Lançamentos e movimentos">
     <div class="col-12 col-xl-4">
-        <article class="card border-0 shadow-sm rounded-4 movement-editor-card">
+        <article id="movementEntryCard" class="card border-0 shadow-sm rounded-4 movement-editor-card">
             <div class="card-body p-3 p-lg-4">
                 <div class="d-flex align-items-center gap-2 mb-3">
                     <i data-lucide="plus" class="text-primary" aria-hidden="true"></i>
@@ -92,10 +92,7 @@
                     <div class="alert alert-danger small"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
                 @endif
 
-                <div id="recordEditorPanel" class="collapse show">
-                    <div class="d-flex justify-content-end d-lg-none mb-2">
-                        <button type="button" class="btn-close record-panel-close" id="recordPanelClose" aria-label="Fechar formulário"></button>
-                    </div>
+                <div id="recordEditorPanel" class="collapse d-lg-block @if($errors->any()) show @endif">
                     <form id="dashboardMovementForm" method="POST" action="{{ route('despesas.store') }}">
                         @csrf
                         <input type="hidden" name="_method" id="movementMethod" value="POST">

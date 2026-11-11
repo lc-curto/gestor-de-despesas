@@ -15,7 +15,7 @@
     const method = document.getElementById('movementMethod');
     const cancelButton = document.getElementById('cancelMovementEdit');
     const editorPanel = document.getElementById('recordEditorPanel');
-    const closePanelButton = document.getElementById('recordPanelClose');
+    const editorCard = document.getElementById('movementEntryCard');
     const monthInput = document.getElementById('periodMonth');
     const periodCaption = document.getElementById('periodCaption');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -518,6 +518,7 @@
                 form.reset();
                 date.value = localDate();
                 setMovementType(movementType);
+                closeEditor();
             }
             await refreshDashboard();
         } catch (error) {
@@ -674,7 +675,13 @@
             openEditor();
         }
     });
-    closePanelButton?.addEventListener('click', closeEditor);
+    document.addEventListener('pointerdown', (event) => {
+        if (!window.matchMedia('(max-width: 991.98px)').matches) return;
+        if (!editorPanel || !editorCard || !editorPanel.classList.contains('show')) return;
+        if (editorCard.contains(event.target)) return;
+
+        closeEditor();
+    }, true);
     cancelButton?.addEventListener('click', cancelEdit);
     form.addEventListener('submit', submitMovement);
     list.addEventListener('click', (event) => {
