@@ -16,12 +16,12 @@
 <body>
     <div id="offlineStatus" class="alert alert-warning rounded-0 mb-0 d-none" role="status" aria-live="polite"></div>
 
-    <button type="button" class="btn btn-outline-secondary sidebar-toggle" id="sidebarToggle"
-        aria-label="Recolher menu lateral" aria-expanded="true" title="Recolher menu lateral">
-        <i data-lucide="panel-left-close" aria-hidden="true"></i>
-    </button>
-
     <div class="app-shell">
+        <button type="button" class="mobile-sidebar-open" id="mobileSidebarOpen"
+            aria-label="Abrir menu lateral" aria-controls="appSidebar" aria-expanded="false" title="Abrir menu">
+            <i data-lucide="menu" aria-hidden="true"></i>
+        </button>
+
         <aside class="app-sidebar" id="appSidebar" aria-label="Navegação lateral">
             <div class="app-sidebar-brand">
                 <a class="app-brand" href="{{ route('dashboard') }}">
@@ -31,6 +31,10 @@
                         <small>Gestão Financeira Pessoal</small>
                     </span>
                 </a>
+                <button type="button" class="btn btn-outline-secondary sidebar-toggle" id="sidebarToggle"
+                    aria-label="Recolher menu lateral" aria-controls="appSidebar" aria-expanded="true" title="Recolher menu lateral">
+                    <i data-lucide="panel-left-close" aria-hidden="true"></i>
+                </button>
             </div>
 
             <x-navigation-links />
