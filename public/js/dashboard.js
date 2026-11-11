@@ -16,6 +16,8 @@
     const cancelButton = document.getElementById('cancelMovementEdit');
     const editorPanel = document.getElementById('recordEditorPanel');
     const editorCard = document.getElementById('movementEntryCard');
+    const editorModalElement = document.getElementById('movementEntryModal');
+    const editorModal = editorModalElement ? bootstrap.Modal.getOrCreateInstance(editorModalElement) : null;
     const monthInput = document.getElementById('periodMonth');
     const periodCaption = document.getElementById('periodCaption');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -251,7 +253,7 @@
         if (visible.length === 0) {
             const empty = document.createElement('div');
             empty.className = 'empty-state text-center py-4';
-            empty.innerHTML = '<div class="empty-icon mb-3" aria-hidden="true">◎</div><h3 class="h6">Não existem movimentos para este filtro</h3><p class="small text-secondary mb-0">Adiciona um movimento ou altera os filtros.</p>';
+            empty.innerHTML = '<div class="empty-icon mb-3" aria-hidden="true">◎</div><h3 class="h6">Sem movimentos</h3><p class="small text-secondary mb-0"></p>';
             list.append(empty);
         } else {
             visible.forEach((item) => list.append(renderItem(item)));
@@ -312,38 +314,8 @@
         cancelButton?.classList.toggle('d-none', !isEditing);
     }
 
-    function openEditor() {
-        if (window.matchMedia('(max-width: 991.98px)').matches && editorPanel) {
-            bootstrap.Collapse.getOrCreateInstance(editorPanel, { toggle: false }).show();
-        }
-    }
-
-    function closeEditor() {
-        if (window.matchMedia('(max-width: 991.98px)').matches && editorPanel) {
-            bootstrap.Collapse.getOrCreateInstance(editorPanel, { toggle: false }).hide();
-        }
-    }
-
-    // No mobile, fecha o formulário quando a interação passa para fora do cartão.
-    // Cliques nos seletores Despesa/Receita continuam dentro do cartão e não o fecham.
-    function handleOutsideEditorInteraction(event) {
-        if (!window.matchMedia('(max-width: 991.98px)').matches || !editorPanel || !editorPanel.classList.contains('show')) {
-            return;
-        }
-
-        if (editorCard && !editorCard.contains(event.target)) {
-            closeEditor();
-        }
-    }
-
-    document.addEventListener('pointerdown', handleOutsideEditorInteraction, true);
-
-    // Também fecha quando a navegação por teclado move o foco para fora do cartão.
-    editorCard?.addEventListener('focusout', (event) => {
-        if (event.relatedTarget && !editorCard.contains(event.relatedTarget)) {
-            closeEditor();
-        }
-    });
+    function openEditor() { editorModal?.show(); }
+    function closeEditor() { editorModal?.hide(); }
 
     function resetEditor(keepType = true) {
         const restoredType = keepType ? movementType : 'despesa';
@@ -731,12 +703,11 @@
         if (event.key === 'Enter') convertCurrency();
     });
 
-    editorPanel?.addEventListener('shown.bs.collapse', () => {
+    editorModalElement?.addEventListener('shown.bs.modal', () => {
         expenseButton?.setAttribute('aria-expanded', 'true');
         incomeButton?.setAttribute('aria-expanded', 'true');
-        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
-    editorPanel?.addEventListener('hidden.bs.collapse', () => {
+    editorModalElement?.addEventListener('hidden.bs.modal', () => {
         expenseButton?.setAttribute('aria-expanded', 'false');
         incomeButton?.setAttribute('aria-expanded', 'false');
     });
