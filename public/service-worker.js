@@ -1,10 +1,12 @@
-const CACHE_NAME = 'meu-bolso-static-v4';
+const CACHE_NAME = 'meu-bolso-static-v5';
 const STATIC_ASSETS = [
   '/offline.html',
   '/css/bootstrap.min.css',
   '/css/styles.css',
+  '/css/app-shell.css',
   '/js/bootstrap.bundle.min.js',
   '/js/app.js',
+  'https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js',
   '/js/dashboard.js',
   '/manifest.webmanifest',
   '/images/pwa-icon.svg',
