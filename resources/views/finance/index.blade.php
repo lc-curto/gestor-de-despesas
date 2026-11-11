@@ -3,10 +3,14 @@
 @section('title', $tipo === 'despesa' ? 'Despesas' : 'Receitas')
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-    <h1 class="h2 fw-bold mb-0">{{ $tipo === 'despesa' ? 'Despesas' : 'Receitas' }}</h1>
-    <a class="btn btn-primary" href="{{ route($tipo === 'despesa' ? 'despesas.create' : 'receitas.create') }}"><i class="bi bi-plus-lg me-1"></i> Novo registo</a>
-</div>
+<header class="page-heading d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Movimentos financeiros</p>
+        <h1 class="h2 fw-bold mb-1">{{ $tipo === 'despesa' ? 'Despesas' : 'Receitas' }}</h1>
+        <p class="text-secondary mb-0">{{ $tipo === 'despesa' ? 'Consulta e organiza as tuas despesas.' : 'Consulta e organiza as tuas receitas.' }}</p>
+    </div>
+    <a class="btn btn-primary" href="{{ route($tipo === 'despesa' ? 'despesas.create' : 'receitas.create') }}"><i data-lucide="plus" class="me-1"></i> Novo registo</a>
+</header>
 <form method="GET" class="card border-0 p-3 mb-3">
     <div class="row g-2">
         <div class="col-md-4">
