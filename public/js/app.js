@@ -2,6 +2,7 @@
     const root = document.documentElement;
     const themeButton = document.getElementById('themeToggle');
     const sidebarToggle = document.getElementById('sidebarToggle');
+    const mobileSidebarOpen = document.getElementById('mobileSidebarOpen');
     const sidebarBackdrop = document.getElementById('sidebarBackdrop');
     const sidebar = document.getElementById('appSidebar');
     const SIDEBAR_KEY = 'meu-bolso:sidebar-hidden';
@@ -11,6 +12,33 @@
     function renderIcons(scope = document) {
         if (!window.lucide?.createIcons) return;
         window.lucide.createIcons({ root: scope });
+    }
+
+    // Data e hora atuais de Lisboa, atualizadas automaticamente.
+    const currentDateTime = document.getElementById('currentDateTime');
+    if (currentDateTime) {
+        const dateFormatter = new Intl.DateTimeFormat('pt-PT', {
+            weekday: 'long',
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+            timeZone: 'Europe/Lisbon'
+        });
+        const timeFormatter = new Intl.DateTimeFormat('pt-PT', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hourCycle: 'h23',
+            timeZone: 'Europe/Lisbon'
+        });
+
+        const updateCurrentDateTime = () => {
+            const now = new Date();
+            currentDateTime.textContent = `${dateFormatter.format(now)} às ${timeFormatter.format(now)}`;
+            currentDateTime.dateTime = now.toISOString();
+        };
+
+        updateCurrentDateTime();
+        window.setInterval(updateCurrentDateTime, 30000);
     }
 
     function updateThemeButton(theme) {
@@ -93,56 +121,76 @@
     });
     iconObserver.observe(document.body, { childList: true, subtree: true });
 
-    let sidebarHidden = false;
-    try { sidebarHidden = localStorage.getItem(SIDEBAR_KEY) === 'true'; } catch (error) {}
+    let sidebarCollapsed = false;
+    try { sidebarCollapsed = localStorage.getItem(SIDEBAR_KEY) === 'true'; } catch (error) {}
 
     function setMobileSidebar(open) {
         document.body.classList.toggle('sidebar-open', open);
         sidebarToggle?.setAttribute('aria-expanded', String(open));
-        sidebarToggle?.setAttribute('aria-label', open ? 'Fechar menu lateral' : 'Abrir menu lateral');
-        if (sidebarToggle) sidebarToggle.title = open ? 'Fechar menu lateral' : 'Abrir menu lateral';
-        const icon = sidebarToggle?.querySelector('i[data-lucide]');
-        if (icon) {
-            icon.setAttribute('data-lucide', open ? 'panel-left-close' : 'panel-left-open');
-            renderIcons(sidebarToggle);
+        sidebarToggle?.setAttribute('aria-label', 'Fechar menu lateral');
+        if (sidebarToggle) sidebarToggle.title = 'Fechar menu lateral';
+        mobileSidebarOpen?.setAttribute('aria-expanded', String(open));
+        if (open) {
+            const firstLink = sidebar?.querySelector('.app-navigation-link');
+            window.requestAnimationFrame(() => firstLink?.focus());
         }
     }
 
-    function setDesktopSidebarHidden(hidden) {
-        sidebarHidden = hidden;
-        document.body.classList.toggle('sidebar-hidden', hidden);
-        sidebarToggle?.setAttribute('aria-expanded', String(!hidden));
-        sidebarToggle?.setAttribute('aria-label', hidden ? 'Abrir menu lateral' : 'Recolher menu lateral');
-        if (sidebarToggle) sidebarToggle.title = hidden ? 'Abrir menu lateral' : 'Recolher menu lateral';
-        const icon = sidebarToggle?.querySelector('i[data-lucide]');
-        if (icon) {
-            icon.setAttribute('data-lucide', hidden ? 'panel-left-open' : 'panel-left-close');
-            renderIcons(sidebarToggle);
-        }
-        try { localStorage.setItem(SIDEBAR_KEY, String(hidden)); } catch (error) {}
+    function closeMobileSidebar() {
+        setMobileSidebar(false);
+        mobileSidebarOpen?.focus();
     }
 
-    if (mobileNavigation.matches) setMobileSidebar(false);
-    else setDesktopSidebarHidden(sidebarHidden);
+    function setDesktopSidebarCollapsed(collapsed) {
+        sidebarCollapsed = collapsed;
+        document.body.classList.toggle('sidebar-collapsed', collapsed);
+        sidebarToggle?.setAttribute('aria-expanded', String(!collapsed));
+        sidebarToggle?.setAttribute('aria-label', collapsed ? 'Expandir menu lateral' : 'Recolher menu lateral');
+        if (sidebarToggle) sidebarToggle.title = collapsed ? 'Expandir menu lateral' : 'Recolher menu lateral';
+        const icon = sidebarToggle?.querySelector('i[data-lucide]');
+        if (icon) {
+            icon.setAttribute('data-lucide', collapsed ? 'panel-left-open' : 'panel-left-close');
+            renderIcons(sidebarToggle);
+        }
+        try { localStorage.setItem(SIDEBAR_KEY, String(collapsed)); } catch (error) {}
+    }
+
+    if (mobileNavigation.matches) {
+        document.body.classList.remove('sidebar-collapsed');
+        setMobileSidebar(false);
+    } else {
+        setDesktopSidebarCollapsed(sidebarCollapsed);
+    }
 
     sidebarToggle?.addEventListener('click', () => {
         if (mobileNavigation.matches) {
-            setMobileSidebar(!document.body.classList.contains('sidebar-open'));
+            closeMobileSidebar();
             return;
         }
-        setDesktopSidebarHidden(!sidebarHidden);
+        setDesktopSidebarCollapsed(!sidebarCollapsed);
     });
-    sidebarBackdrop?.addEventListener('click', () => setMobileSidebar(false));
+
+    mobileSidebarOpen?.addEventListener('click', () => setMobileSidebar(true));
+    sidebarBackdrop?.addEventListener('click', closeMobileSidebar);
+
     sidebar?.querySelectorAll('a').forEach((link) => {
         link.addEventListener('click', () => {
             if (mobileNavigation.matches) setMobileSidebar(false);
         });
     });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && document.body.classList.contains('sidebar-open')) {
+            closeMobileSidebar();
+        }
+    });
+
     mobileNavigation.addEventListener?.('change', (event) => {
-        if (event.matches) setMobileSidebar(false);
-        else {
+        if (event.matches) {
+            setMobileSidebar(false);
+        } else {
             document.body.classList.remove('sidebar-open');
-            setDesktopSidebarHidden(sidebarHidden);
+            setDesktopSidebarCollapsed(sidebarCollapsed);
         }
     });
 
