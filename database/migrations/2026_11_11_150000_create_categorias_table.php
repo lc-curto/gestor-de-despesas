@@ -101,9 +101,6 @@ return new class extends Migration
             throw new RuntimeException('Existem movimentos sem categoria correspondente; a migração foi interrompida para preservar os dados.');
         }
 
-        Schema::table('despesas', function (Blueprint $table) {
-            $table->foreignId('category_id')->change();
-        });
     }
 
     public function down(): void
