@@ -105,7 +105,7 @@
     </div>
 
     <script src="{{ asset('js/bootstrap.bundle.min.js') }}"></script>
-    <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js" async data-lucide-library></script>
     <script src="{{ asset('js/app.js') }}" defer></script>
     @stack('scripts')
 </body>
