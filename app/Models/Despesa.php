@@ -1,11 +1,11 @@
 <?php
 
-namespace App\\Models;
+namespace App\Models;
 
-use Illuminate\\Database\\Eloquent\\Attributes\\Fillable;
-use Illuminate\\Database\\Eloquent\\Concerns\\HasUuids;
-use Illuminate\\Database\\Eloquent\\Model;
-use Illuminate\\Database\\Eloquent\\Relations\\BelongsTo;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable(['user_id', 'description', 'amount', 'currency', 'category', 'category_id', 'expense_date'])]
 class Despesa extends Model
