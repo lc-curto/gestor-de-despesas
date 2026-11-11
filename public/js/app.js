@@ -72,6 +72,16 @@
     normalizeLegacyIcons(document);
     renderIcons(document);
 
+    // A biblioteca de ícones é assíncrona: a aplicação continua a inicializar
+    // mesmo quando a CDN está lenta ou indisponível.
+    const lucideScript = document.querySelector('script[data-lucide-library]');
+    if (!window.lucide?.createIcons && lucideScript) {
+        lucideScript.addEventListener('load', () => {
+            normalizeLegacyIcons(document);
+            renderIcons(document);
+        }, { once: true });
+    }
+
     // Processa apenas o fragmento alterado; evita reprocessar todos os ícones da página.
     const iconObserver = new MutationObserver((records) => {
         records.forEach((record) => record.addedNodes.forEach((node) => {
