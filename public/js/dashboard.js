@@ -538,6 +538,7 @@
                 form.reset();
                 date.value = localDate();
                 setMovementType(movementType);
+                closeEditor();
             }
             await refreshDashboard();
         } catch (error) {
