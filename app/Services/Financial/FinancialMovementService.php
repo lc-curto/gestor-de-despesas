@@ -123,13 +123,24 @@ class FinancialMovementService
     {
         return DB::transaction(function () use ($user, $movement, $data) {
             $locked = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
-            if ($locked->status !== 'pending') {
-                throw ValidationException::withMessages(['movement' => 'Movimentos liquidados exigem ajuste/estorno; não podem ser editados financeiramente.']);
-            }
             $before = $locked->getAttributes();
-            $locked->fill(array_intersect_key($data, array_flip(['description', 'amount', 'movement_date', 'category_id'])));
+
+            if ($locked->status === 'settled') {
+                if (array_intersect(['amount', 'movement_date', 'type', 'source_account_id', 'destination_account_id'], array_keys($data))) {
+                    throw ValidationException::withMessages(['movement' => 'Alterações financeiras em movimentos liquidados exigem um ajuste ou estorno.']);
+                }
+                $allowed = ['description', 'category_id'];
+                $action = 'description_corrected';
+            } elseif ($locked->status === 'pending') {
+                $allowed = ['description', 'amount', 'movement_date', 'category_id'];
+                $action = 'updated';
+            } else {
+                throw ValidationException::withMessages(['movement' => 'Movimentos anulados não podem ser editados.']);
+            }
+
+            $locked->fill(array_intersect_key($data, array_flip($allowed)));
             $locked->save();
-            $this->audit($user, $locked, 'updated', $before, $locked->getAttributes());
+            $this->audit($user, $locked, $action, $before, $locked->getAttributes());
             return $locked->refresh();
         });
     }
