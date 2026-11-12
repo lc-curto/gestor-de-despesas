@@ -107,16 +107,16 @@ jobs:
         run: |
           set -euo pipefail
           RELEASE="releases/release-${DEPLOY_SHA:0:7}"
-          ssh -o StrictHostKeyChecking=yes "${SSH_USER}@${SSH_HOST}" "mkdir -p \"\$HOME/$RELEASE\""
+          ssh -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-rsa "${SSH_USER}@${SSH_HOST}" "mkdir -p \"\$HOME/$RELEASE\""
           rsync -az --delete \
             --exclude='.env' \
             --exclude='.git' \
             --exclude='node_modules' \
             --exclude='tests' \
-            -e "ssh -o StrictHostKeyChecking=yes" \
+            -e "ssh -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-rsa" \
             ./ "${SSH_USER}@${SSH_HOST}:~/$RELEASE/"
 
-          ssh -o StrictHostKeyChecking=yes "${SSH_USER}@${SSH_HOST}" "bash -s -- '$RELEASE'" <<'REMOTE'
+          ssh -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-rsa "${SSH_USER}@${SSH_HOST}" "bash -s -- '$RELEASE'" <<'REMOTE'
           set -euo pipefail
           RELEASE_PATH="$HOME/$1"
 
