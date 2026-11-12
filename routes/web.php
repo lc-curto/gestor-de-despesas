@@ -2,7 +2,8 @@
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CategoriaController;
-use App\Http\Controllers\FinanceController;\nuse App\Http\Controllers\FinancialCoreController;
+use App\Http\Controllers\FinanceController;
+use App\Http\Controllers\FinancialCoreController;
 use Illuminate\Support\Facades\Route;
 Route::get('/',fn()=>auth()->check()?redirect()->route('dashboard'):redirect()->route('login'));
 Route::middleware('guest')->group(function(){
@@ -19,7 +20,20 @@ Route::middleware('auth')->group(function(){
  Route::post('/logout',[AccountController::class,'logout'])->name('logout');
  Route::get('/dashboard',DashboardController::class)->name('dashboard');
  Route::get('/dashboard/movimentos',[DashboardController::class,'movimentos'])->middleware('throttle:60,1')->name('dashboard.movimentos');
- Route::post('/session/activity',fn()=>response()->noContent())->name('session.activity');\n\n // Núcleo financeiro: endpoints JSON, sem alterar a interface existente.\n Route::prefix('api/financial')->name('financial.')->group(function () {\n  Route::get('/accounts', [FinancialCoreController::class, 'accounts'])->name('accounts.index');\n  Route::post('/accounts', [FinancialCoreController::class, 'storeAccount'])->name('accounts.store');\n  Route::put('/accounts/{id}/opening-balance', [FinancialCoreController::class, 'setOpeningBalance'])->name('accounts.opening-balance');\n  Route::post('/accounts/{id}/close', [FinancialCoreController::class, 'closeAccount'])->name('accounts.close');\n  Route::get('/movements', [FinancialCoreController::class, 'movements'])->name('movements.index');\n  Route::post('/movements', [FinancialCoreController::class, 'storeMovement'])->name('movements.store');\n  Route::put('/movements/{id}/settle', [FinancialCoreController::class, 'settleMovement'])->name('movements.settle');\n  Route::put('/movements/{id}', [FinancialCoreController::class, 'updatePendingMovement'])->name('movements.update');\n  Route::put('/movements/{id}/void', [FinancialCoreController::class, 'voidMovement'])->name('movements.void');\n });
+ Route::post('/session/activity',fn()=>response()->noContent())->name('session.activity');
+
+ // Núcleo financeiro: endpoints JSON, sem alterar a interface existente.
+ Route::prefix('api/financial')->name('financial.')->group(function () {
+  Route::get('/accounts', [FinancialCoreController::class, 'accounts'])->name('accounts.index');
+  Route::post('/accounts', [FinancialCoreController::class, 'storeAccount'])->name('accounts.store');
+  Route::put('/accounts/{id}/opening-balance', [FinancialCoreController::class, 'setOpeningBalance'])->name('accounts.opening-balance');
+  Route::post('/accounts/{id}/close', [FinancialCoreController::class, 'closeAccount'])->name('accounts.close');
+  Route::get('/movements', [FinancialCoreController::class, 'movements'])->name('movements.index');
+  Route::post('/movements', [FinancialCoreController::class, 'storeMovement'])->name('movements.store');
+  Route::put('/movements/{id}/settle', [FinancialCoreController::class, 'settleMovement'])->name('movements.settle');
+  Route::put('/movements/{id}', [FinancialCoreController::class, 'updatePendingMovement'])->name('movements.update');
+  Route::put('/movements/{id}/void', [FinancialCoreController::class, 'voidMovement'])->name('movements.void');
+ });
  Route::get('/categorias',[CategoriaController::class,'index'])->name('categorias.index');
  Route::post('/categorias',[CategoriaController::class,'store'])->name('categorias.store');
  Route::put('/categorias/{id}',[CategoriaController::class,'update'])->name('categorias.update');
