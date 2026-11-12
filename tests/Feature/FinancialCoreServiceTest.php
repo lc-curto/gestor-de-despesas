@@ -116,4 +116,25 @@ class FinancialCoreServiceTest extends TestCase
         $this->expectException(ValidationException::class);
         app(FinancialMovementService::class)->updatePending($user, $movement, ['amount' => '9.00']);
     }
+    public function test_settled_movement_allows_descriptive_correction_with_audit(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->account($user, 'Conta');
+        $movement = app(FinancialMovementService::class)->create($user, [
+            'type' => 'expense', 'description' => 'Descrição inicial', 'amount' => '5.00',
+            'movement_date' => '2026-11-12', 'source_account_id' => $account->id,
+        ]);
+
+        $updated = app(FinancialMovementService::class)->updatePending($user, $movement, [
+            'description' => 'Descrição corrigida',
+        ]);
+
+        $this->assertSame('Descrição corrigida', $updated->description);
+        $this->assertDatabaseHas('historico_movimentos', [
+            'movement_id' => $movement->id,
+            'action' => 'description_corrected',
+        ]);
+        $this->assertSame('95.00', app(AccountBalanceService::class)->balance($account));
+    }
+
 }
