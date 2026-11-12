@@ -9,6 +9,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Permite FKs compostas (user_id, id) para garantir isolamento entre utilizadores.
+        Schema::table('categorias', function (Blueprint $table) {
+            $table->unique(['user_id', 'id'], 'categorias_user_id_id_unique');
+        });
+
         Schema::create('contas_financeiras', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('user_id');
@@ -161,14 +166,21 @@ return new class extends Migration
 
             $table->foreign(['user_id', 'movement_id'], 'historico_user_movement_fk')
                 ->references(['user_id', 'id'])->on('movimentos')->restrictOnDelete();
-            $table->foreign(['user_id', 'changed_by'], 'historico_user_actor_fk')
-                ->references(['user_id', 'id'])->on('users')->nullOnDelete();
             $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
             $table->index(['user_id', 'movement_id', 'created_at'], 'historico_user_movement_date_index');
         });
 
-        DB::statement("ALTER TABLE contas_financeiras ADD CONSTRAINT contas_opening_balance_nonnegative CHECK (opening_balance IS NULL OR opening_balance >= 0)");
         DB::statement("ALTER TABLE movimentos ADD CONSTRAINT movimentos_amount_positive CHECK (amount > 0)");
+        DB::statement("ALTER TABLE movimentos ADD CONSTRAINT movimentos_account_shape CHECK (
+            (requires_account_assignment = 1 AND source_account_id IS NULL AND destination_account_id IS NULL)
+            OR (type = 'income' AND source_account_id IS NULL AND destination_account_id IS NOT NULL)
+            OR (type = 'expense' AND source_account_id IS NOT NULL AND destination_account_id IS NULL)
+            OR (type = 'transfer' AND source_account_id IS NOT NULL AND destination_account_id IS NOT NULL AND source_account_id <> destination_account_id)
+            OR (type = 'adjustment' AND (
+                (adjustment_direction = 'increase' AND source_account_id IS NULL AND destination_account_id IS NOT NULL)
+                OR (adjustment_direction = 'decrease' AND source_account_id IS NOT NULL AND destination_account_id IS NULL)
+            ))
+        )");
         DB::statement("ALTER TABLE dividas ADD CONSTRAINT dividas_total_positive CHECK (total_amount > 0)");
         DB::statement("ALTER TABLE parcelas_divida ADD CONSTRAINT parcelas_amount_positive CHECK (amount > 0)");
         DB::statement("ALTER TABLE parcelas_divida ADD CONSTRAINT parcelas_paid_valid CHECK (paid_amount >= 0 AND paid_amount <= amount)");
@@ -184,5 +196,9 @@ return new class extends Migration
         Schema::dropIfExists('recorrencias');
         Schema::dropIfExists('faturas');
         Schema::dropIfExists('contas_financeiras');
+
+        Schema::table('categorias', function (Blueprint $table) {
+            $table->dropUnique('categorias_user_id_id_unique');
+        });
     }
 };
