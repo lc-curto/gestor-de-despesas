@@ -19,7 +19,7 @@ class FinancialAccountService
             $openingBalance = $data['opening_balance'] ?? null;
             $allowNegative = (bool) ($data['allow_negative_balance'] ?? false);
 
-            if ($openingBalance !== null && (float) $openingBalance < 0 && !$allowNegative) {
+            if ($openingBalance !== null && $this->balances->toCents((string) $openingBalance) < 0 && !$allowNegative) {
                 throw ValidationException::withMessages(['opening_balance' => 'Saldo inicial negativo exige autorização explícita.']);
             }
 
@@ -45,7 +45,7 @@ class FinancialAccountService
             if (!$locked->is_operational || $locked->type === 'legacy') {
                 throw ValidationException::withMessages(['account' => 'Esta conta não aceita saldo inicial operacional.']);
             }
-            if ((float) $amount < 0 && !$allowNegative) {
+            if ($this->balances->toCents($amount) < 0 && !$allowNegative) {
                 throw ValidationException::withMessages(['opening_balance' => 'Saldo inicial negativo exige autorização explícita.']);
             }
             if (DB::table('movimentos')->where('user_id', $user->id)->where(function ($q) use ($locked) {
@@ -73,7 +73,7 @@ class FinancialAccountService
                 throw ValidationException::withMessages(['account' => 'A conta já está encerrada ou é histórica.']);
             }
             $balance = $this->balances->balance($locked);
-            $cents = (int) round((float) $balance * 100);
+            $cents = $this->balances->toCents($balance);
 
             if ($cents > 0) {
                 if (!$transferToAccountId || $transferToAccountId === $locked->id) {
