@@ -2,7 +2,7 @@
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CategoriaController;
-use App\Http\Controllers\FinanceController;
+use App\Http\Controllers\FinanceController;\nuse App\Http\Controllers\FinancialCoreController;
 use Illuminate\Support\Facades\Route;
 Route::get('/',fn()=>auth()->check()?redirect()->route('dashboard'):redirect()->route('login'));
 Route::middleware('guest')->group(function(){
