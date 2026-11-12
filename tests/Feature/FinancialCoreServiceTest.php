@@ -163,6 +163,28 @@ class FinancialCoreServiceTest extends TestCase
             ->assertJsonPath('data.0.current_balance', '67.50');
     }
 
+    public function test_user_can_transfer_between_bank_and_cash_without_creating_income_or_expense(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->account($user, 'Banco', '100.00');
+        $cash = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Carteira', 'type' => 'cash', 'opening_balance' => '5.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+
+        $this->actingAs($user)->postJson('/api/financial/movements', [
+            'type' => 'transfer', 'description' => 'Levantamento', 'amount' => '30.00',
+            'movement_date' => '2026-11-15', 'source_account_id' => $bank->id,
+            'destination_account_id' => $cash->id,
+        ])->assertCreated()->assertJsonPath('data.type', 'transfer');
+
+        $balances = app(AccountBalanceService::class);
+        $this->assertSame('70.00', $balances->balance($bank));
+        $this->assertSame('35.00', $balances->balance($cash));
+        $this->assertDatabaseCount('despesas', 0);
+        $this->assertDatabaseCount('receitas', 0);
+    }
+
     public function test_pending_commitment_does_not_change_account_balance_until_settled(): void
     {
         $user = User::factory()->create();

@@ -45,6 +45,13 @@ class FinancialCoreController extends Controller
         return response()->json(['data' => $account], 201);
     }
 
+    public function updateAccount(Request $request, string $id, FinancialAccountService $service): JsonResponse
+    {
+        $data = $request->validate(['name' => 'required|string|max:120']);
+        $account = $request->user()->contasFinanceiras()->whereKey($id)->firstOrFail();
+        return response()->json(['data' => $service->rename($request->user(), $account, $data['name'])]);
+    }
+
     public function setOpeningBalance(Request $request, string $id, FinancialAccountService $service): JsonResponse
     {
         $data = $request->validate([

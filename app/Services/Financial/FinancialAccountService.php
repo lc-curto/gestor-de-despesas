@@ -65,6 +65,19 @@ class FinancialAccountService
         });
     }
 
+    public function rename(User $user, ContaFinanceira $account, string $name): ContaFinanceira
+    {
+        return DB::transaction(function () use ($user, $account, $name) {
+            $locked = ContaFinanceira::query()->where('user_id', $user->id)->whereKey($account->id)->lockForUpdate()->firstOrFail();
+            if (!$locked->is_operational || $locked->type === 'legacy' || $locked->status === 'closed') {
+                throw ValidationException::withMessages(['account' => 'Esta conta não pode ser editada.']);
+            }
+
+            $locked->update(['name' => $name]);
+            return $locked->refresh();
+        });
+    }
+
     public function close(User $user, ContaFinanceira $account, ?string $transferToAccountId = null): void
     {
         DB::transaction(function () use ($user, $account, $transferToAccountId) {
@@ -74,6 +87,10 @@ class FinancialAccountService
             }
             $balance = $this->balances->balance($locked);
             $cents = $this->balances->toCents($balance);
+
+            if ($cents < 0) {
+                throw ValidationException::withMessages(['account' => 'Reconcilia o saldo negativo antes de encerrar esta conta.']);
+            }
 
             if ($cents > 0) {
                 if (!$transferToAccountId || $transferToAccountId === $locked->id) {

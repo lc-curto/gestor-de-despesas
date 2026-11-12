@@ -3,6 +3,12 @@
 @section('title', $registo ? 'Editar registo' : 'Novo registo')
 
 @section('content')
+@php
+    $lockedFinancial = $financialMovement?->status === 'settled';
+    $selectedAccountId = $financialMovement
+        ? ($financialMovement->source_account_id ?: $financialMovement->destination_account_id)
+        : null;
+@endphp
 <header class="page-heading mb-4">
     <a class="small text-decoration-none" href="{{ route($tipo === 'despesa' ? 'despesas.index' : 'receitas.index') }}"><i data-lucide="arrow-left" class="me-1"></i> Voltar</a>
     <p class="eyebrow mt-3 mb-1">Movimentos financeiros</p>
@@ -22,12 +28,24 @@
     <div class="row g-3">
         <div class="col-md-6">
             <label for="amount" class="form-label">Valor</label>
-            <input id="amount" name="amount" type="number" min="0.01" step="0.01" class="form-control" value="{{ old('amount', $registo?->amount) }}" required>
+        <input id="amount" name="amount" type="number" min="0.01" step="0.01" class="form-control" value="{{ old('amount', $registo?->amount) }}" required @readonly($lockedFinancial)>
         </div>
         <div class="col-md-6">
             <label class="form-label">Moeda da conta</label>
             <input class="form-control" value="{{ auth()->user()->currency }}" readonly>
             <div class="form-text">Todos os movimentos utilizam a moeda definida na conta.</div>
+        </div>
+        <div class="col-md-6">
+            <label for="account_id" class="form-label">Conta</label>
+            <select id="account_id" name="account_id" class="form-select" required>
+                <option value="">Selecionar conta</option>
+                @foreach ($accounts as $account)
+                    <option value="{{ $account->id }}" @selected(old('account_id', $selectedAccountId) === $account->id)>{{ $account->name }} · {{ $account->currency }}</option>
+                @endforeach
+            </select>
+            @if ($accounts->isEmpty())
+                <div class="form-text text-warning">Cria uma conta ativa e configura o saldo inicial em <a href="{{ route('financial.accounts.page') }}">Contas</a> antes de registar movimentos.</div>
+            @endif
         </div>
         <div class="col-md-6">
             <label for="category_id" class="form-label">Categoria</label>
@@ -41,11 +59,11 @@
         </div>
         <div class="col-md-6">
             <label for="{{ $data }}" class="form-label">Data</label>
-            <input id="{{ $data }}" name="{{ $data }}" type="date" class="form-control" value="{{ old($data, $registo?->{$data}?->format('Y-m-d') ?? now()->format('Y-m-d')) }}" required>
+            <input id="{{ $data }}" name="{{ $data }}" type="date" class="form-control" value="{{ old($data, $registo?->{$data}?->format('Y-m-d') ?? now()->format('Y-m-d')) }}" required @readonly($lockedFinancial)>
         </div>
     </div>
     <div class="d-flex gap-2 mt-4">
-        <button class="btn btn-primary">Guardar</button>
+        <button class="btn btn-primary" @disabled($accounts->isEmpty())>Guardar</button>
         <a class="btn btn-outline-secondary" href="{{ route($tipo === 'despesa' ? 'despesas.index' : 'receitas.index') }}">Cancelar</a>
     </div>
 </form>

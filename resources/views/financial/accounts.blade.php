@@ -53,6 +53,50 @@
                 </form>
             </div>
         </article>
+        <article class="card border-0 shadow-sm rounded-4 mt-4">
+            <div class="card-body p-4">
+                <h2 class="h5 fw-bold mb-1">Transferir entre contas</h2>
+                <p class="small text-secondary">Transferências entre banco e dinheiro não são registadas como receita ou despesa.</p>
+                @if ($transferTargets->count() >= 2)
+                    <form id="accountTransferForm" data-endpoint="{{ route('financial.movements.store') }}">
+                        <input type="hidden" name="type" value="transfer">
+                        <div class="mb-3">
+                            <label for="transferDescription" class="form-label">Descrição</label>
+                            <input id="transferDescription" name="description" class="form-control" maxlength="255" required value="Transferência entre contas">
+                        </div>
+                        <div class="mb-3">
+                            <label for="transferAmount" class="form-label">Valor</label>
+                            <input id="transferAmount" name="amount" type="number" class="form-control" min="0.01" max="9999999999.99" step="0.01" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="transferDate" class="form-label">Data</label>
+                            <input id="transferDate" name="movement_date" type="date" class="form-control" value="{{ now()->toDateString() }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="transferSource" class="form-label">De</label>
+                            <select id="transferSource" name="source_account_id" class="form-select" required>
+                                <option value="">Conta de origem</option>
+                                @foreach ($transferTargets as $target)
+                                    <option value="{{ $target->id }}">{{ $target->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="transferDestination" class="form-label">Para</label>
+                            <select id="transferDestination" name="destination_account_id" class="form-select" required>
+                                <option value="">Conta de destino</option>
+                                @foreach ($transferTargets as $target)
+                                    <option value="{{ $target->id }}">{{ $target->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-outline-primary w-100">Registar transferência</button>
+                    </form>
+                @else
+                    <p class="small text-secondary mb-0">Configura pelo menos duas contas bancárias ou de dinheiro para transferir.</p>
+                @endif
+            </div>
+        </article>
     </div>
 
     <div class="col-12 col-xl-8">
@@ -85,6 +129,34 @@
                         </div>
                     </div>
 
+                    @if ($account->is_operational && $account->status !== 'closed' && $account->type !== 'credit_card')
+                        <hr>
+                        <div class="row g-3 align-items-end">
+                            <form class="accountNameForm col-12 col-md-5" data-endpoint="{{ route('financial.accounts.update', $account->id) }}">
+                                <label for="account-name-{{ $account->id }}" class="form-label small">Nome da conta</label>
+                                <div class="input-group input-group-sm">
+                                    <input id="account-name-{{ $account->id }}" name="name" class="form-control" maxlength="120" value="{{ $account->name }}" required>
+                                    <button class="btn btn-outline-secondary" type="submit">Renomear</button>
+                                </div>
+                            </form>
+                            @if ($account->status === 'active' && $account->opening_balance !== null)
+                                <form class="closeAccountForm col-12 col-md-7" data-endpoint="{{ route('financial.accounts.close', $account->id) }}">
+                                    <label for="transfer-target-{{ $account->id }}" class="form-label small">Transferir saldo ao encerrar <span class="text-secondary">(se aplicável)</span></label>
+                                    <div class="input-group input-group-sm">
+                                        <select id="transfer-target-{{ $account->id }}" name="transfer_to_account_id" class="form-select">
+                                            <option value="">Não transferir</option>
+                                            @foreach ($transferTargets->where('id', '!=', $account->id) as $target)
+                                                <option value="{{ $target->id }}">{{ $target->name }}</option>
+                                            @endforeach
+                                        </select>
+                                        <button class="btn btn-outline-danger" type="submit">Encerrar</button>
+                                    </div>
+                                    <div class="form-text">A conta fica preservada para consulta; contas com saldo negativo exigem reconciliação.</div>
+                                </form>
+                            @endif
+                        </div>
+                    @endif
+
                     @if ($account->opening_balance === null && $account->is_operational)
                         <hr>
                         <form class="openingBalanceForm row g-2 align-items-end" data-endpoint="{{ route('financial.accounts.opening-balance', $account->id) }}">
@@ -113,6 +185,23 @@
                 <div class="card-body p-4 text-center text-secondary">Ainda não existem contas. Adiciona uma para começar.</div>
             </div>
         @endforelse
+
+        <article class="card border-0 shadow-sm rounded-4 mt-4">
+            <div class="card-body p-4">
+                <h2 class="h5 fw-bold mb-3">Transferências recentes</h2>
+                @forelse ($transfers as $transfer)
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 py-2 border-bottom">
+                        <div>
+                            <div class="fw-semibold">{{ $transfer->description }}</div>
+                            <div class="small text-secondary">{{ $transfer->movement_date->format('d/m/Y') }} · {{ $transfer->contaOrigem?->name ?? 'Conta encerrada' }} → {{ $transfer->contaDestino?->name ?? 'Conta encerrada' }}</div>
+                        </div>
+                        <strong>{{ number_format((float) $transfer->amount, 2, ',', '.') }} {{ auth()->user()->currency }}</strong>
+                    </div>
+                @empty
+                    <p class="small text-secondary mb-0">Ainda não há transferências entre contas.</p>
+                @endforelse
+            </div>
+        </article>
     </div>
 </div>
 @endsection
@@ -173,6 +262,43 @@
                 showFeedback(error.message, true);
             }
         });
+    });
+
+    document.querySelectorAll('.accountNameForm').forEach((form) => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            try {
+                await submitJsonForm(event.currentTarget, 'PUT');
+            } catch (error) {
+                showFeedback(error.message, true);
+            }
+        });
+    });
+
+    document.querySelectorAll('.closeAccountForm').forEach((form) => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!window.confirm('Encerrar esta conta? O histórico será preservado.')) return;
+            try {
+                await submitJsonForm(event.currentTarget);
+            } catch (error) {
+                showFeedback(error.message, true);
+            }
+        });
+    });
+
+    document.getElementById('accountTransferForm')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        if (form.elements.source_account_id.value === form.elements.destination_account_id.value) {
+            showFeedback('Seleciona duas contas diferentes.', true);
+            return;
+        }
+        try {
+            await submitJsonForm(form);
+        } catch (error) {
+            showFeedback(error.message, true);
+        }
     });
 })();
 </script>

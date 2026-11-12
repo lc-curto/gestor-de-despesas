@@ -104,6 +104,18 @@
                             </div>
                         </div>
                         <div class="mb-3">
+                            <label for="movementAccount" class="form-label">Conta</label>
+                            <select class="form-select" id="movementAccount" name="account_id" required>
+                                <option value="">Selecionar conta</option>
+                                @foreach ($accounts as $account)
+                                    <option value="{{ $account->id }}" @selected($accounts->count() === 1)>{{ $account->name }} · {{ $account->currency }}</option>
+                                @endforeach
+                            </select>
+                            @if ($accounts->isEmpty())
+                                <div class="form-text text-warning">Cria uma conta e configura o saldo inicial em <a href="{{ route('financial.accounts.page') }}">Contas</a> antes de registar.</div>
+                            @endif
+                        </div>
+                        <div class="mb-3">
                             <label for="movementCategory" class="form-label">Categoria</label>
                             <select class="form-select" id="movementCategory" name="category_id" required>
                                 <option value="" selected disabled>Seleciona uma categoria</option>
@@ -113,7 +125,7 @@
                             </select>
                         </div>
                         <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-danger w-100" id="saveMovementButton">Guardar despesa</button>
+                            <button type="submit" class="btn btn-danger w-100" id="saveMovementButton" @disabled($accounts->isEmpty())>Guardar despesa</button>
                             <button type="button" class="btn btn-outline-secondary d-none" id="cancelMovementEdit">Cancelar edição</button>
                         </div>
                     </form>
@@ -177,7 +189,8 @@
                             data-edit-url="{{ route($isExpense ? 'despesas.update' : 'receitas.update', $movimento->id) }}"
                             data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}"
                             data-amount="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}"
-                            data-category-id="{{ $movimento->category }}">
+                            data-category-id="{{ $movimento->category }}" data-account-id="{{ $movimento->account_id }}"
+                            data-movement-status="{{ $movimento->movement_status }}">
                             <div class="d-flex align-items-center gap-3 min-w-0">
                                 <div class="expense-icon flex-shrink-0" style="--category-color: {{ $movimento->category_color ?? '#635BFF' }}" aria-hidden="true">
                                     <i data-lucide="{{ $movimento->category_icon ?? 'tag' }}"></i>
@@ -192,10 +205,12 @@
                                     data-value="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}">{{ $isExpense ? '−' : '+' }}{{ number_format((float) $movimento->amount, 2, ',', '.') }}</strong>
                                 <div class="btn-group btn-group-sm" role="group" aria-label="Ações de {{ $movimento->description }}">
                                     <button type="button" class="btn btn-outline-secondary edit-movement" data-acao="editar" aria-label="Editar {{ $movimento->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></button>
-                                    <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $movimento->id) }}" data-delete-type="{{ $movimento->tipo }}">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="btn btn-outline-danger" aria-label="Eliminar {{ $movimento->description }}" title="Eliminar"><i data-lucide="trash-2" aria-hidden="true"></i></button>
-                                    </form>
+                                    @if ($movimento->movement_status !== 'settled')
+                                        <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $movimento->id) }}" data-delete-type="{{ $movimento->tipo }}">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="btn btn-outline-danger" aria-label="Eliminar {{ $movimento->description }}" title="Eliminar"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                                        </form>
+                                    @endif
                                 </div>
                             </div>
                         </article>

@@ -21,8 +21,14 @@ class FinancialMovementService
             $source = $this->account($user, $data['source_account_id'] ?? null);
             $destination = $this->account($user, $data['destination_account_id'] ?? null);
             $this->assertShape($type, $source, $destination, $data['adjustment_direction'] ?? null);
+            $isHistorical = (bool) ($data['is_historical'] ?? false);
 
-            if ($source) {
+            if (!$isHistorical) {
+                foreach ([$source, $destination] as $account) {
+                    if ($account) $this->assertMovementDateCompatible($account, (string) $data['movement_date']);
+                }
+            }
+            if ($source && !$isHistorical) {
                 $this->balances->assertCanDebit($source, (string) $data['amount']);
             }
 
@@ -38,6 +44,9 @@ class FinancialMovementService
                 'destination_account_id' => $destination?->id,
                 'category_id' => $data['category_id'] ?? null,
                 'adjustment_direction' => $data['adjustment_direction'] ?? null,
+                'is_historical' => $isHistorical,
+                'legacy_type' => $data['legacy_type'] ?? null,
+                'legacy_id' => $data['legacy_id'] ?? null,
                 'settled_at' => now(),
             ]);
 
@@ -61,6 +70,8 @@ class FinancialMovementService
                 'amount' => $data['amount'],
                 'movement_date' => $data['movement_date'],
                 'category_id' => $data['category_id'] ?? null,
+                'legacy_type' => $data['legacy_type'] ?? null,
+                'legacy_id' => $data['legacy_id'] ?? null,
                 'is_historical' => false,
                 'requires_account_assignment' => true,
             ]);
@@ -88,6 +99,9 @@ class FinancialMovementService
             $destination = $this->account($user, $accounts['destination_account_id'] ?? null);
             $this->assertShape($locked->type, $source, $destination, $locked->adjustment_direction);
 
+            foreach ([$source, $destination] as $account) {
+                if ($account) $this->assertMovementDateCompatible($account, $locked->movement_date->toDateString());
+            }
             if ($source) {
                 $this->balances->assertCanDebit($source, (string) $locked->amount);
             }
@@ -101,6 +115,44 @@ class FinancialMovementService
                 'settled_at' => now(),
             ]);
             $this->audit($user, $locked, 'settled', $before, $locked->getAttributes());
+            return $locked->refresh();
+        });
+    }
+
+    public function assignLegacyAccount(User $user, Movimento $movement, string $accountId): Movimento
+    {
+        return DB::transaction(function () use ($user, $movement, $accountId) {
+            $locked = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== 'settled' || !$locked->legacy_type || !$locked->legacy_id) {
+                throw ValidationException::withMessages(['account_id' => 'Só é possível associar movimentos existentes importados.']);
+            }
+            if (!in_array($locked->type, ['expense', 'income'], true)) {
+                throw ValidationException::withMessages(['account_id' => 'Este tipo de movimento não pode ser associado por este formulário.']);
+            }
+
+            $account = $this->account($user, $accountId);
+            $currentId = $locked->type === 'expense' ? $locked->source_account_id : $locked->destination_account_id;
+            if ($currentId === $account->id) return $locked;
+
+            if (!$locked->is_historical) {
+                $this->assertMovementDateCompatible($account, $locked->movement_date->toDateString());
+                if ($locked->type === 'expense') {
+                    $this->balances->assertCanDebit($account, (string) $locked->amount);
+                }
+            }
+
+            $before = $locked->getAttributes();
+            $locked->update($locked->type === 'expense'
+                ? ['source_account_id' => $account->id, 'destination_account_id' => null, 'requires_account_assignment' => false]
+                : ['source_account_id' => null, 'destination_account_id' => $account->id, 'requires_account_assignment' => false]);
+            $this->audit(
+                $user,
+                $locked,
+                $locked->is_historical ? 'historical_account_assigned' : 'account_reassigned',
+                $before,
+                $locked->getAttributes()
+            );
+
             return $locked->refresh();
         });
     }
@@ -126,7 +178,17 @@ class FinancialMovementService
             $before = $locked->getAttributes();
 
             if ($locked->status === 'settled') {
-                if (array_intersect(['amount', 'movement_date', 'type', 'source_account_id', 'destination_account_id'], array_keys($data))) {
+                $financialChange = false;
+                if (array_key_exists('amount', $data)) {
+                    $financialChange = $this->balances->toCents((string) $data['amount']) !== $this->balances->toCents((string) $locked->amount);
+                }
+                if (array_key_exists('movement_date', $data)) {
+                    $financialChange = $financialChange || substr((string) $data['movement_date'], 0, 10) !== $locked->movement_date->toDateString();
+                }
+                foreach (['type', 'source_account_id', 'destination_account_id'] as $field) {
+                    if (array_key_exists($field, $data) && $data[$field] !== $locked->{$field}) $financialChange = true;
+                }
+                if ($financialChange) {
                     throw ValidationException::withMessages(['movement' => 'Alterações financeiras em movimentos liquidados exigem um ajuste ou estorno.']);
                 }
                 $allowed = ['description', 'category_id'];
@@ -156,6 +218,13 @@ class FinancialMovementService
             throw ValidationException::withMessages(['account' => 'A moeda da conta não corresponde à moeda do utilizador.']);
         }
         return $account;
+    }
+
+    private function assertMovementDateCompatible(ContaFinanceira $account, string $movementDate): void
+    {
+        if ($account->opening_balance_date && substr($movementDate, 0, 10) < $account->opening_balance_date->toDateString()) {
+            throw ValidationException::withMessages(['movement_date' => 'A data do movimento é anterior à data do saldo inicial desta conta.']);
+        }
     }
 
     private function assertShape(string $type, ?ContaFinanceira $source, ?ContaFinanceira $destination, ?string $direction): void

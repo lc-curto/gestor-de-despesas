@@ -31,6 +31,7 @@
     const description = document.getElementById('movementDescription');
     const amount = document.getElementById('movementAmount');
     const date = document.getElementById('movementDate');
+    const account = document.getElementById('movementAccount');
     const category = document.getElementById('movementCategory');
     const saveButton = document.getElementById('saveMovementButton');
     const method = document.getElementById('movementMethod');
@@ -195,6 +196,8 @@
         article.dataset.amount = item.amount;
         article.dataset.currency = item.currency || cfg.currency || 'EUR';
         article.dataset.categoryId = item.category;
+        article.dataset.accountId = item.account_id || '';
+        article.dataset.movementStatus = item.movement_status || '';
 
         const info = document.createElement('div');
         info.className = 'd-flex align-items-center gap-3 min-w-0';
@@ -231,26 +234,29 @@
         edit.title = 'Editar';
         edit.innerHTML = '<i class="bi bi-pencil" aria-hidden="true"></i>';
 
-        const deleteForm = document.createElement('form');
-        deleteForm.method = 'POST';
-        deleteForm.action = article.dataset.editUrl;
-        deleteForm.dataset.deleteType = item.tipo;
-        const token = document.createElement('input');
-        token.type = 'hidden';
-        token.name = '_token';
-        token.value = csrf || '';
-        const verb = document.createElement('input');
-        verb.type = 'hidden';
-        verb.name = '_method';
-        verb.value = 'DELETE';
-        const remove = document.createElement('button');
-        remove.type = 'submit';
-        remove.className = 'btn btn-outline-danger';
-        remove.setAttribute('aria-label', 'Eliminar ' + item.description);
-        remove.title = 'Eliminar';
-        remove.innerHTML = '<i class="bi bi-trash" aria-hidden="true"></i>';
-        deleteForm.append(token, verb, remove);
-        actions.append(value, edit, deleteForm);
+        actions.append(value, edit);
+        if (item.movement_status !== 'settled') {
+            const deleteForm = document.createElement('form');
+            deleteForm.method = 'POST';
+            deleteForm.action = article.dataset.editUrl;
+            deleteForm.dataset.deleteType = item.tipo;
+            const token = document.createElement('input');
+            token.type = 'hidden';
+            token.name = '_token';
+            token.value = csrf || '';
+            const verb = document.createElement('input');
+            verb.type = 'hidden';
+            verb.name = '_method';
+            verb.value = 'DELETE';
+            const remove = document.createElement('button');
+            remove.type = 'submit';
+            remove.className = 'btn btn-outline-danger';
+            remove.setAttribute('aria-label', 'Eliminar ' + item.description);
+            remove.title = 'Eliminar';
+            remove.innerHTML = '<i class="bi bi-trash" aria-hidden="true"></i>';
+            deleteForm.append(token, verb, remove);
+            actions.append(deleteForm);
+        }
         article.append(info, actions);
         return article;
     }
@@ -332,6 +338,7 @@
         const options = income ? cfg.incomeCategories : cfg.expenseCategories;
         Object.entries(options || {}).forEach(([key, label]) => category.add(new Option(label, key)));
         category.disabled = false;
+        if (account) account.disabled = false;
         cancelButton?.classList.toggle('d-none', !isEditing);
     }
 
@@ -344,6 +351,8 @@
         method.value = 'POST';
         form.reset();
         date.value = localDate();
+        amount.readOnly = false;
+        date.readOnly = false;
         form.action = restoredType === 'receita' ? cfg.incomeStore : cfg.expenseStore;
         setMovementType(restoredType);
         cancelButton?.classList.add('d-none');
@@ -480,6 +489,10 @@
         amount.value = row.dataset.amount;
         date.value = row.dataset.date;
         category.value = row.dataset.categoryId;
+        if (account) account.value = row.dataset.accountId || '';
+        const settled = row.dataset.movementStatus === 'settled';
+        amount.readOnly = settled;
+        date.readOnly = settled;
         cancelButton?.classList.remove('d-none');
         openEditor();
         form.scrollIntoView({ behavior: 'smooth', block: 'center' });

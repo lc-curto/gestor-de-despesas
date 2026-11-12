@@ -17,7 +17,7 @@ class Movimento extends Model
         'type', 'status', 'description', 'amount', 'movement_date',
         'source_account_id', 'destination_account_id', 'category_id',
         'invoice_id', 'recurrence_id', 'debt_id', 'installment_id',
-        'adjustment_direction', 'is_historical', 'requires_account_assignment', 'settled_at',
+        'adjustment_direction', 'is_historical', 'requires_account_assignment', 'legacy_type', 'legacy_id', 'settled_at',
     ];
 
     protected function casts(): array

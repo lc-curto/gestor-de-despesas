@@ -28,6 +28,7 @@ Route::middleware('auth')->group(function(){
  Route::prefix('api/financial')->name('financial.')->group(function () {
   Route::get('/accounts', [FinancialCoreController::class, 'accounts'])->name('accounts.index');
   Route::post('/accounts', [FinancialCoreController::class, 'storeAccount'])->name('accounts.store');
+  Route::put('/accounts/{id}', [FinancialCoreController::class, 'updateAccount'])->name('accounts.update');
   Route::put('/accounts/{id}/opening-balance', [FinancialCoreController::class, 'setOpeningBalance'])->name('accounts.opening-balance');
   Route::post('/accounts/{id}/close', [FinancialCoreController::class, 'closeAccount'])->name('accounts.close');
   Route::get('/movements', [FinancialCoreController::class, 'movements'])->name('movements.index');
