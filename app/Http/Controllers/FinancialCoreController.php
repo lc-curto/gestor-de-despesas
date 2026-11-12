@@ -52,6 +52,15 @@ class FinancialCoreController extends Controller
         return response()->json(['data' => $service->rename($request->user(), $account, $data['name'])]);
     }
 
+    public function updateAccountSettings(Request $request, string $id, FinancialAccountService $service): JsonResponse
+    {
+        $data = $request->validate(['allow_negative_balance' => 'required|boolean']);
+        $account = $request->user()->contasFinanceiras()->whereKey($id)->firstOrFail();
+        $updated = $service->setNegativeBalancePermission($request->user(), $account, (bool) $data['allow_negative_balance']);
+
+        return response()->json(['data' => $updated]);
+    }
+
     public function setOpeningBalance(Request $request, string $id, FinancialAccountService $service): JsonResponse
     {
         $data = $request->validate([

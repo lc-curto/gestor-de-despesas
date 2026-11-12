@@ -78,6 +78,22 @@ class FinancialAccountService
         });
     }
 
+    public function setNegativeBalancePermission(User $user, ContaFinanceira $account, bool $allowed): ContaFinanceira
+    {
+        return DB::transaction(function () use ($user, $account, $allowed) {
+            $locked = ContaFinanceira::query()->where('user_id', $user->id)->whereKey($account->id)->lockForUpdate()->firstOrFail();
+            if (!$locked->is_operational || $locked->status === 'closed' || !in_array($locked->type, ['bank', 'cash'], true)) {
+                throw ValidationException::withMessages(['account' => 'Esta configuração só se aplica a contas bancárias e de dinheiro ativas.']);
+            }
+            if (!$allowed && $locked->opening_balance !== null && $this->balances->toCents((string) $locked->opening_balance) < 0) {
+                throw ValidationException::withMessages(['allow_negative_balance' => 'Regulariza o saldo inicial negativo antes de desativar esta opção.']);
+            }
+
+            $locked->update(['allow_negative_balance' => $allowed]);
+            return $locked->refresh();
+        });
+    }
+
     public function close(User $user, ContaFinanceira $account, ?string $transferToAccountId = null): void
     {
         DB::transaction(function () use ($user, $account, $transferToAccountId) {

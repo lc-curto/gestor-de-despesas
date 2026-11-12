@@ -70,6 +70,9 @@
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-sm">
                                 <li><button class="dropdown-item js-rename-account" type="button" data-bs-toggle="modal" data-bs-target="#renameAccountModal" data-endpoint="{{ route('financial.accounts.update', $account->id) }}" data-name="{{ $account->name }}">Renomear</button></li>
+                                @if (in_array($account->type, ['bank', 'cash'], true))
+                                    <li><button class="dropdown-item js-negative-balance" type="button" data-bs-toggle="modal" data-bs-target="#negativeBalanceModal" data-endpoint="{{ route('financial.accounts.settings', $account->id) }}" data-name="{{ $account->name }}" data-allowed="{{ $account->allow_negative_balance ? '1' : '0' }}">Saldo negativo</button></li>
+                                @endif
                                 @if ($account->opening_balance === null && $account->type !== 'credit_card')
                                     <li><button class="dropdown-item js-opening-balance" type="button" data-bs-toggle="modal" data-bs-target="#openingBalanceModal" data-endpoint="{{ route('financial.accounts.opening-balance', $account->id) }}" data-name="{{ $account->name }}">Configurar saldo</button></li>
                                 @endif
@@ -164,6 +167,31 @@
                 <div class="modal-body">
                     <label for="renameAccountName" class="form-label">Nome</label>
                     <input id="renameAccountName" name="name" class="form-control" maxlength="120" required>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Saldo negativo --}}
+<div class="modal fade" id="negativeBalanceModal" tabindex="-1" aria-labelledby="negativeBalanceTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow rounded-4">
+            <form id="negativeBalanceForm" data-endpoint="">
+                <div class="modal-header border-0 pb-0">
+                    <h2 class="modal-title h5 fw-bold" id="negativeBalanceTitle">Saldo negativo</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-secondary mb-3" id="negativeBalanceAccountName"></p>
+                    <div class="form-check">
+                        <input id="negativeBalanceAllowed" name="allow_negative_balance" type="checkbox" value="1" class="form-check-input">
+                        <label for="negativeBalanceAllowed" class="form-check-label">Permitir saldo negativo</label>
+                    </div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -405,6 +433,20 @@
         });
     });
     document.getElementById('accountNameForm')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try { await submitJsonForm(event.currentTarget, 'PUT'); }
+        catch (error) { showFeedback(error.message, true, event.currentTarget); }
+    });
+
+    document.querySelectorAll('.js-negative-balance').forEach((button) => {
+        button.addEventListener('click', () => {
+            const form = document.getElementById('negativeBalanceForm');
+            form.dataset.endpoint = button.dataset.endpoint;
+            form.querySelector('[name="allow_negative_balance"]').checked = button.dataset.allowed === '1';
+            document.getElementById('negativeBalanceAccountName').textContent = button.dataset.name;
+        });
+    });
+    document.getElementById('negativeBalanceForm')?.addEventListener('submit', async (event) => {
         event.preventDefault();
         try { await submitJsonForm(event.currentTarget, 'PUT'); }
         catch (error) { showFeedback(error.message, true, event.currentTarget); }
