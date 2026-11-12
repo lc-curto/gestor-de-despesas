@@ -124,9 +124,7 @@ jobs:
           test -f "$RELEASE_PATH/public/build/manifest.json"
           test -d "$HOME/laravel/storage"
           test -f "$HOME/laravel/.env"
-          test ! -e "$RELEASE_PATH/.env"
-          test ! -e "$RELEASE_PATH/storage"
-
+          rm -f "$RELEASE_PATH/.env" "$RELEASE_PATH/storage"
           ln -s "$HOME/laravel/.env" "$RELEASE_PATH/.env"
           ln -s "$HOME/laravel/storage" "$RELEASE_PATH/storage"
           mkdir -p "$RELEASE_PATH/bootstrap/cache"
