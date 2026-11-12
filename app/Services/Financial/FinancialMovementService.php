@@ -295,8 +295,8 @@ class FinancialMovementService
 
     private function assertMovementDateCompatible(ContaFinanceira $account, string $movementDate): void
     {
-        if ($account->opening_balance_date && substr($movementDate, 0, 10) <= $account->opening_balance_date->toDateString()) {
-            throw ValidationException::withMessages(['movement_date' => 'A data do movimento deve ser posterior à data do saldo inicial desta conta.']);
+        if ($account->opening_balance_date && substr($movementDate, 0, 10) < $account->opening_balance_date->toDateString()) {
+            throw ValidationException::withMessages(['movement_date' => 'A data do movimento não pode ser anterior à data do saldo inicial desta conta.']);
         }
     }
 

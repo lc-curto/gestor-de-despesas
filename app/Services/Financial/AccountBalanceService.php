@@ -22,8 +22,8 @@ class AccountBalanceService
             ->where('user_id', $account->user_id)
             ->where('status', 'settled')
             ->where('is_historical', false)
-            // O saldo inicial é a fotografia do corte; movimentos contam a partir do dia seguinte.
-            ->whereDate('movement_date', '>', $account->opening_balance_date->toDateString())
+            // O saldo inicial é a fotografia do corte; lançamentos posteriores no mesmo dia também contam.
+            ->whereDate('movement_date', '>=', $account->opening_balance_date->toDateString())
             ->where(function ($query) use ($account) {
                 $query->where('source_account_id', $account->id)
                     ->orWhere('destination_account_id', $account->id);
