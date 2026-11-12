@@ -490,9 +490,10 @@
         date.value = row.dataset.date;
         category.value = row.dataset.categoryId;
         if (account) account.value = row.dataset.accountId || '';
-        const settled = row.dataset.movementStatus === 'settled';
-        amount.readOnly = settled;
-        date.readOnly = settled;
+        // A edição substitui o movimento canónico no backend; todos os campos
+        // permanecem editáveis, inclusive em movimentos liquidados.
+        amount.readOnly = false;
+        date.readOnly = false;
         cancelButton?.classList.remove('d-none');
         openEditor();
         form.scrollIntoView({ behavior: 'smooth', block: 'center' });
