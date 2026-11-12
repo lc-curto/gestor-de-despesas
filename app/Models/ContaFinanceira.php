@@ -13,7 +13,7 @@ class ContaFinanceira extends Model
 
     protected $table = 'contas_financeiras';
 
-    protected $fillable = [
+    protected $fillable = ['user_id',
         'name', 'type', 'currency', 'opening_balance', 'opening_balance_date',
         'is_operational', 'allow_negative_balance', 'status',
     ];
