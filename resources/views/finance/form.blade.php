@@ -28,7 +28,7 @@
     <div class="row g-3">
         <div class="col-md-6">
             <label for="amount" class="form-label">Valor</label>
-        <input id="amount" name="amount" type="number" min="0.01" step="0.01" class="form-control" value="{{ old('amount', $registo?->amount) }}" required @readonly($lockedFinancial)>
+        <input id="amount" name="amount" type="number" min="0.01" step="0.01" class="form-control" value="{{ old('amount', $registo?->amount) }}" required>
         </div>
         <div class="col-md-6">
             <label class="form-label">Moeda da conta</label>
@@ -59,7 +59,7 @@
         </div>
         <div class="col-md-6">
             <label for="{{ $data }}" class="form-label">Data</label>
-            <input id="{{ $data }}" name="{{ $data }}" type="date" class="form-control" value="{{ old($data, $registo?->{$data}?->format('Y-m-d') ?? now()->format('Y-m-d')) }}" required @readonly($lockedFinancial)>
+            <input id="{{ $data }}" name="{{ $data }}" type="date" class="form-control" value="{{ old($data, $registo?->{$data}?->format('Y-m-d') ?? now()->format('Y-m-d')) }}" required>
         </div>
     </div>
     <div class="d-flex gap-2 mt-4">

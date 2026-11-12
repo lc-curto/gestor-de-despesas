@@ -263,13 +263,13 @@ class FinanceController extends Controller
                     ($tipo === 'despesa' ? 'source_account_id' : 'destination_account_id') => $accountId,
                 ]);
             } else {
-                $service->updatePending($request->user(), $movement, [
-                    'description' => $payload['description'],
-                    'amount' => $payload['amount'],
-                    'movement_date' => $payload['movement_date'],
-                    'category_id' => $payload['category_id'],
-                ]);
-                $service->assignLegacyAccount($request->user(), $movement, $accountId);
+                // Sem estorno: a edição substitui o movimento canónico numa só transação.
+                // Assim valor, data, conta e categoria ficam sempre sincronizados.
+                $cutoff = $request->user()->financial_cutoff_date?->toDateString();
+                $payload['is_historical'] = (bool) $movement->is_historical || ($cutoff !== null && $date <= $cutoff);
+                $movement->historico()->delete();
+                $movement->delete();
+                $service->create($request->user(), $payload);
             }
 
             $legacy->update($data);
