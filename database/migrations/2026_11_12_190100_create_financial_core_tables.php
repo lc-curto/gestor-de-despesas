@@ -171,6 +171,7 @@ return new class extends Migration
         });
 
         DB::statement("ALTER TABLE movimentos ADD CONSTRAINT movimentos_amount_positive CHECK (amount > 0)");
+        DB::statement("ALTER TABLE historico_movimentos ADD CONSTRAINT historico_actor_owner CHECK (changed_by IS NULL OR changed_by = user_id)");
         DB::statement("ALTER TABLE movimentos ADD CONSTRAINT movimentos_account_shape CHECK (
             (requires_account_assignment = 1 AND source_account_id IS NULL AND destination_account_id IS NULL)
             OR (type = 'income' AND source_account_id IS NULL AND destination_account_id IS NOT NULL)
