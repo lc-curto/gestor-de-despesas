@@ -29,4 +29,4 @@ As relações financeiras usam FKs compostas por `user_id` e pelo identificador 
 
 ## Limites desta etapa
 
-Esta branch implementa a estrutura e a importação inicial do legado. Não altera controllers, interface, cálculos do dashboard nem produção. A lógica transacional de criação/liquidação de movimentos e a reconciliação de saldos serão implementadas em etapas próprias, com testes antes de ativar a utilização.
+A estrutura e a importação do legado são complementadas pela camada de domínio e pelos serviços descritos em `financial-core-services.md`. A interface e o dashboard legado permanecem inalterados nesta fase; a nova API é autenticada e ainda não está ligada aos ecrãs.
