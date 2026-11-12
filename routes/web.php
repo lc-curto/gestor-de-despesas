@@ -5,8 +5,13 @@ use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\FinancialCoreController;
 use App\Http\Controllers\FinancialAccountsPageController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-Route::get('/',fn()=>auth()->check()?redirect()->route('dashboard'):redirect()->route('login'));
+Route::get('/', function (Request $request) {
+    return $request->user()
+        ? redirect()->route('dashboard')
+        : redirect()->route('login');
+});
 Route::middleware('guest')->group(function(){
  Route::view('/login','auth.login')->name('login');
  Route::post('/login',[AccountController::class,'login'])->middleware('throttle:6,1')->name('login.store');
