@@ -11,7 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'email', 'password', 'currency'])]
+#[Fillable(['name', 'email', 'password', 'currency', 'financial_cutoff_date'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -24,6 +24,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'financial_cutoff_date' => 'date',
             'password' => 'hashed',
         ];
     }
@@ -41,6 +42,26 @@ class User extends Authenticatable
     public function categorias(): HasMany
     {
         return $this->hasMany(Categoria::class);
+    }
+
+    public function contasFinanceiras(): HasMany
+    {
+        return $this->hasMany(ContaFinanceira::class, 'user_id');
+    }
+
+    public function movimentos(): HasMany
+    {
+        return $this->hasMany(Movimento::class, 'user_id');
+    }
+
+    public function dividas(): HasMany
+    {
+        return $this->hasMany(Divida::class, 'user_id');
+    }
+
+    public function recorrencias(): HasMany
+    {
+        return $this->hasMany(Recorrencia::class, 'user_id');
     }
 
     protected static function booted(): void
