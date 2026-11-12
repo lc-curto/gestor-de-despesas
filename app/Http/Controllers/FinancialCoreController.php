@@ -86,7 +86,7 @@ class FinancialCoreController extends Controller
         if (!empty($data['month'])) {
             $query->whereBetween('movement_date', [
                 $data['month'] . '-01',
-                now()->parse($data['month'] . '-01')->endOfMonth()->toDateString(),
+                Carbon::createFromFormat('!Y-m', $data['month'])->endOfMonth()->toDateString(),
             ]);
         }
         if (!empty($data['status'])) $query->where('status', $data['status']);
