@@ -69,16 +69,12 @@
                                 <span>Ações</span><i data-lucide="chevron-down" aria-hidden="true"></i>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                @if ($account->opening_balance === null && $account->type !== 'credit_card')
-                                    <li><button class="dropdown-item js-opening-balance" type="button" data-bs-toggle="modal" data-bs-target="#openingBalanceModal" data-endpoint="{{ route('financial.accounts.opening-balance', $account->id) }}" data-name="{{ $account->name }}">Definir saldo inicial</button></li>
-                                @endif
-                                <li><button class="dropdown-item js-rename-account" type="button" data-bs-toggle="modal" data-bs-target="#renameAccountModal" data-endpoint="{{ route('financial.accounts.update', $account->id) }}" data-name="{{ $account->name }}">Mudar nome</button></li>
-                                @if (in_array($account->type, ['bank', 'cash'], true))
-                                    <li><button class="dropdown-item js-negative-balance" type="button" data-bs-toggle="modal" data-bs-target="#negativeBalanceModal" data-endpoint="{{ route('financial.accounts.settings', $account->id) }}" data-name="{{ $account->name }}" data-allowed="{{ $account->allow_negative_balance ? '1' : '0' }}">Permitir saldo negativo</button></li>
-                                @endif
-                                @if (in_array($account->type, ['bank', 'cash'], true) && $account->status === 'active' && $account->opening_balance !== null && $transferTargets->count() >= 2)
-                                    <li><button class="dropdown-item js-account-transfer" type="button" data-bs-toggle="modal" data-bs-target="#accountTransferModal" data-source="{{ $account->id }}">Transferir saldo</button></li>
-                                @endif
+                                <li><button class="dropdown-item js-edit-account" type="button" data-bs-toggle="modal" data-bs-target="#renameAccountModal"
+                                    data-endpoint="{{ route('financial.accounts.update', $account->id) }}"
+                                    data-settings-endpoint="{{ route('financial.accounts.settings', $account->id) }}"
+                                    data-opening-endpoint="{{ route('financial.accounts.opening-balance', $account->id) }}"
+                                    data-name="{{ $account->name }}" data-allowed="{{ $account->allow_negative_balance ? '1' : '0' }}"
+                                    data-opening="{{ $account->opening_balance !== null ? '1' : '0' }}" data-type="{{ $account->type }}">Editar conta</button></li>
                                 @if (in_array($account->type, ['bank', 'cash'], true) && $account->status === 'active' && $account->opening_balance !== null)
                                     <li><hr class="dropdown-divider"></li>
                                     <li><button class="dropdown-item text-danger js-close-account" type="button" data-bs-toggle="modal" data-bs-target="#closeAccountModal" data-endpoint="{{ route('financial.accounts.close', $account->id) }}" data-id="{{ $account->id }}" data-name="{{ $account->name }}">Encerrar conta</button></li>
@@ -155,18 +151,27 @@
     </div>
 </div>
 
-{{-- Renomear --}}
+{{-- Editar conta --}}
 <div class="modal fade" id="renameAccountModal" tabindex="-1" aria-labelledby="renameAccountTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-sm">
         <div class="modal-content border-0 shadow rounded-4">
             <form id="accountNameForm" data-endpoint="">
                 <div class="modal-header border-0 pb-0">
-                    <h2 class="modal-title h5 fw-bold" id="renameAccountTitle">Renomear conta</h2>
+                    <h2 class="modal-title h5 fw-bold" id="renameAccountTitle">Editar conta</h2>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
                 <div class="modal-body">
                     <label for="renameAccountName" class="form-label">Nome</label>
                     <input id="renameAccountName" name="name" class="form-control" maxlength="120" required>
+                    <div id="editOpeningBalanceFields" class="mt-3">
+                        <label for="editOpeningBalance" class="form-label">Saldo inicial atual</label>
+                        <input id="editOpeningBalance" name="opening_balance" type="number" class="form-control" min="-9999999999.99" max="9999999999.99" step="0.01" inputmode="decimal" placeholder="Ex.: 1500,00">
+                        <div class="form-text">Usa o saldo real da conta hoje. A data é definida automaticamente.</div>
+                    </div>
+                    <div id="editNegativeBalanceField" class="form-check mt-3">
+                        <input id="editAllowNegative" name="allow_negative_balance" type="checkbox" value="1" class="form-check-input">
+                        <label for="editAllowNegative" class="form-check-label">Permitir saldo negativo</label>
+                    </div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -387,7 +392,7 @@
         feedback.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    async function submitJsonForm(form, method = 'POST') {
+    async function submitJsonForm(form, method = 'POST', reload = true) {
         form.querySelector('.account-form-feedback')?.remove();
         const data = Object.fromEntries(new FormData(form).entries());
         if (!data.opening_balance) {
@@ -412,7 +417,7 @@
                 const validationMessage = Object.values(result.errors || {}).flat().join(' ');
                 throw new Error(validationMessage || result.message || 'Não foi possível guardar.');
             }
-            window.location.reload();
+            if (reload) window.location.reload();
         } catch (error) {
             if (submit) submit.disabled = false;
             throw error;
@@ -425,16 +430,44 @@
         catch (error) { showFeedback(error.message, true, event.currentTarget); }
     });
 
-    document.querySelectorAll('.js-rename-account').forEach((button) => {
+    document.querySelectorAll('.js-edit-account').forEach((button) => {
         button.addEventListener('click', () => {
             const form = document.getElementById('accountNameForm');
             form.dataset.endpoint = button.dataset.endpoint;
+            form.dataset.settingsEndpoint = button.dataset.settingsEndpoint;
+            form.dataset.openingEndpoint = button.dataset.openingEndpoint;
+            form.dataset.openingConfigured = button.dataset.opening === '1' ? '1' : '0';
             form.elements.name.value = button.dataset.name;
+            form.querySelector('[name="allow_negative_balance"]').checked = button.dataset.allowed === '1';
+            const openingFields = document.getElementById('editOpeningBalanceFields');
+            const negativeField = document.getElementById('editNegativeBalanceField');
+            openingFields.classList.toggle('d-none', button.dataset.opening === '1' || button.dataset.type === 'credit_card');
+            negativeField.classList.toggle('d-none', !['bank', 'cash'].includes(button.dataset.type));
         });
     });
     document.getElementById('accountNameForm')?.addEventListener('submit', async (event) => {
         event.preventDefault();
-        try { await submitJsonForm(event.currentTarget, 'PUT'); }
+        const form = event.currentTarget;
+        try {
+            await submitJsonForm(form, 'PUT', false);
+            if (form.dataset.openingConfigured === '0' && form.elements.opening_balance.value) {
+                const opening = new FormData();
+                opening.set('opening_balance', form.elements.opening_balance.value);
+                opening.set('opening_balance_date', '{{ now()->toDateString() }}');
+                opening.set('allow_negative_balance', form.elements.allow_negative_balance.checked ? '1' : '0');
+                await fetch(form.dataset.openingEndpoint, {
+                    method: 'PUT', headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                    body: JSON.stringify(Object.fromEntries(opening.entries())), credentials: 'same-origin'
+                }).then(async (response) => { if (!response.ok) throw new Error((await response.json()).message || 'Não foi possível guardar o saldo inicial.'); });
+            }
+            if (!document.getElementById('editNegativeBalanceField').classList.contains('d-none')) {
+                await fetch(form.dataset.settingsEndpoint, {
+                    method: 'PUT', headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                    body: JSON.stringify({ allow_negative_balance: form.elements.allow_negative_balance.checked }), credentials: 'same-origin'
+                });
+            }
+            window.location.reload();
+        }
         catch (error) { showFeedback(error.message, true, event.currentTarget); }
     });
 
