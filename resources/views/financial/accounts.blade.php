@@ -65,23 +65,23 @@
                     </div>
                     @if ($account->is_operational && $account->status !== 'closed')
                         <div class="dropdown account-menu">
-                            <button class="account-menu-button" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Opções de {{ $account->name }}" title="Opções">
-                                <i data-lucide="ellipsis-vertical" aria-hidden="true"></i>
+                            <button class="account-menu-button" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações para {{ $account->name }}">
+                                <span>Ações</span><i data-lucide="chevron-down" aria-hidden="true"></i>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                <li><button class="dropdown-item js-rename-account" type="button" data-bs-toggle="modal" data-bs-target="#renameAccountModal" data-endpoint="{{ route('financial.accounts.update', $account->id) }}" data-name="{{ $account->name }}">Renomear</button></li>
-                                @if (in_array($account->type, ['bank', 'cash'], true))
-                                    <li><button class="dropdown-item js-negative-balance" type="button" data-bs-toggle="modal" data-bs-target="#negativeBalanceModal" data-endpoint="{{ route('financial.accounts.settings', $account->id) }}" data-name="{{ $account->name }}" data-allowed="{{ $account->allow_negative_balance ? '1' : '0' }}">Saldo negativo</button></li>
-                                @endif
                                 @if ($account->opening_balance === null && $account->type !== 'credit_card')
-                                    <li><button class="dropdown-item js-opening-balance" type="button" data-bs-toggle="modal" data-bs-target="#openingBalanceModal" data-endpoint="{{ route('financial.accounts.opening-balance', $account->id) }}" data-name="{{ $account->name }}">Configurar saldo</button></li>
+                                    <li><button class="dropdown-item js-opening-balance" type="button" data-bs-toggle="modal" data-bs-target="#openingBalanceModal" data-endpoint="{{ route('financial.accounts.opening-balance', $account->id) }}" data-name="{{ $account->name }}">Definir saldo inicial</button></li>
+                                @endif
+                                <li><button class="dropdown-item js-rename-account" type="button" data-bs-toggle="modal" data-bs-target="#renameAccountModal" data-endpoint="{{ route('financial.accounts.update', $account->id) }}" data-name="{{ $account->name }}">Mudar nome</button></li>
+                                @if (in_array($account->type, ['bank', 'cash'], true))
+                                    <li><button class="dropdown-item js-negative-balance" type="button" data-bs-toggle="modal" data-bs-target="#negativeBalanceModal" data-endpoint="{{ route('financial.accounts.settings', $account->id) }}" data-name="{{ $account->name }}" data-allowed="{{ $account->allow_negative_balance ? '1' : '0' }}">Permitir saldo negativo</button></li>
                                 @endif
                                 @if (in_array($account->type, ['bank', 'cash'], true) && $account->status === 'active' && $account->opening_balance !== null && $transferTargets->count() >= 2)
-                                    <li><button class="dropdown-item js-account-transfer" type="button" data-bs-toggle="modal" data-bs-target="#accountTransferModal" data-source="{{ $account->id }}">Transferir</button></li>
+                                    <li><button class="dropdown-item js-account-transfer" type="button" data-bs-toggle="modal" data-bs-target="#accountTransferModal" data-source="{{ $account->id }}">Transferir saldo</button></li>
                                 @endif
                                 @if (in_array($account->type, ['bank', 'cash'], true) && $account->status === 'active' && $account->opening_balance !== null)
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><button class="dropdown-item text-danger js-close-account" type="button" data-bs-toggle="modal" data-bs-target="#closeAccountModal" data-endpoint="{{ route('financial.accounts.close', $account->id) }}" data-id="{{ $account->id }}" data-name="{{ $account->name }}">Encerrar</button></li>
+                                    <li><button class="dropdown-item text-danger js-close-account" type="button" data-bs-toggle="modal" data-bs-target="#closeAccountModal" data-endpoint="{{ route('financial.accounts.close', $account->id) }}" data-id="{{ $account->id }}" data-name="{{ $account->name }}">Encerrar conta</button></li>
                                 @endif
                             </ul>
                         </div>
@@ -137,8 +137,8 @@
                             <input id="openingBalance" name="opening_balance" type="number" class="form-control" min="-9999999999.99" max="9999999999.99" step="0.01" inputmode="decimal" placeholder="Opcional">
                         </div>
                         <div class="col-5">
-                            <label for="openingBalanceDate" class="form-label">Data</label>
-                            <input id="openingBalanceDate" name="opening_balance_date" type="date" class="form-control" value="{{ now()->toDateString() }}">
+                            <label for="openingBalanceDate" class="form-label">Data do saldo</label>
+                            <input id="openingBalanceDate" name="opening_balance_date" type="date" class="form-control" value="{{ now()->toDateString() }}" readonly>
                         </div>
                     </div>
                     <div class="form-check mt-3">
@@ -208,19 +208,19 @@
         <div class="modal-content border-0 shadow rounded-4">
             <form id="openingBalanceForm" data-endpoint="">
                 <div class="modal-header border-0 pb-0">
-                    <h2 class="modal-title h5 fw-bold" id="openingBalanceTitle">Configurar saldo</h2>
+                    <h2 class="modal-title h5 fw-bold" id="openingBalanceTitle">Definir saldo inicial</h2>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="small text-secondary mb-3" id="openingBalanceAccountName"></p>
+                    <p class="small text-secondary mb-3" id="openingBalanceAccountName">Indica o saldo atual desta conta. A data é definida automaticamente como hoje.</p>
                     <div class="row g-3">
                         <div class="col-7">
                             <label for="openingBalanceValue" class="form-label">Saldo</label>
                             <input id="openingBalanceValue" name="opening_balance" type="number" class="form-control" min="-9999999999.99" max="9999999999.99" step="0.01" required>
                         </div>
                         <div class="col-5">
-                            <label for="openingBalanceReference" class="form-label">Data</label>
-                            <input id="openingBalanceReference" name="opening_balance_date" type="date" class="form-control" value="{{ now()->toDateString() }}" required>
+                            <label for="openingBalanceReference" class="form-label">Data do saldo</label>
+                            <input id="openingBalanceReference" name="opening_balance_date" type="date" class="form-control" value="{{ now()->toDateString() }}" readonly required>
                         </div>
                     </div>
                     <div class="form-check mt-3">
@@ -323,7 +323,7 @@
 .accounts-page { max-width: 1180px; margin: 0 auto; }
 .accounts-toolbar { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.5rem; }
 .accounts-list { display:grid; gap:.75rem; }
-.account-card { display:grid; grid-template-columns:48px minmax(0,1fr) minmax(160px,auto) 36px; align-items:center; gap:1rem; padding:1rem 1.1rem; border:1px solid #e7e9f1; border-radius:18px; background:var(--bs-body-bg); box-shadow:0 5px 18px rgba(24,32,56,.045); }
+.account-card { display:grid; grid-template-columns:48px minmax(0,1fr) minmax(160px,auto) 92px; align-items:center; gap:1rem; padding:1rem 1.1rem; border:1px solid #e7e9f1; border-radius:18px; background:var(--bs-body-bg); box-shadow:0 5px 18px rgba(24,32,56,.045); }
 .account-icon { display:grid; place-items:center; width:46px; height:46px; border-radius:14px; background:#efedff; color:#6258e8; }
 .account-icon svg { width:21px; height:21px; }
 .account-main { min-width:0; }
@@ -339,9 +339,9 @@
 .account-balance strong small { font-size:.8rem; font-weight:600; }
 .account-balance span { display:block; color:var(--bs-secondary-color); font-size:.75rem; }
 .account-menu { justify-self:end; }
-.account-menu-button { display:grid; place-items:center; width:36px; height:36px; border:0; border-radius:10px; color:#5c6472; background:transparent; }
+.account-menu-button { display:inline-flex; align-items:center; justify-content:center; gap:.35rem; min-width:5.5rem; height:36px; padding:0 .65rem; border:1px solid var(--app-border); border-radius:10px; color:#5c6472; background:var(--bs-body-bg); font-size:.78rem; font-weight:650; }
 .account-menu-button:hover, .account-menu-button:focus-visible { background:#f0efff; color:#5147d8; }
-.account-menu-button svg { width:19px; height:19px; }
+.account-menu-button svg { width:15px; height:15px; }
 .account-menu .dropdown-menu { min-width:180px; padding:.4rem; border:1px solid #e7e9f1; border-radius:12px; }
 .account-menu .dropdown-item { border-radius:8px; padding:.55rem .7rem; font-size:.9rem; }
 .accounts-empty { border:1px dashed #d8dbe6 !important; }
@@ -354,7 +354,7 @@
 #accountFeedback:not(.d-none) { margin-bottom:1rem; }
 @media (max-width:640px) {
     .accounts-toolbar { align-items:flex-start; flex-direction:column; }
-    .account-card { grid-template-columns:42px minmax(0,1fr) 34px; gap:.7rem; padding:.85rem; }
+    .account-card { grid-template-columns:42px minmax(0,1fr) 5.5rem; gap:.7rem; padding:.85rem; }
     .account-icon { width:40px; height:40px; }
     .account-balance { grid-column:2; grid-row:2; text-align:left; }
     .account-menu { grid-column:3; grid-row:1; }
