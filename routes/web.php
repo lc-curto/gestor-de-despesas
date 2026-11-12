@@ -42,7 +42,7 @@ Route::middleware('auth')->group(function(){
   Route::put('/movements/{id}/settle', [FinancialCoreController::class, 'settleMovement'])->name('movements.settle');
   Route::put('/movements/{id}', [FinancialCoreController::class, 'updatePendingMovement'])->name('movements.update');
   Route::put('/movements/{id}/void', [FinancialCoreController::class, 'voidMovement'])->name('movements.void');
-  Route::post('/movements/{id}/reverse', [FinancialCoreController::class, 'reverseMovement'])->name('movements.reverse');
+  Route::delete('/movements/{id}', [FinancialCoreController::class, 'destroyMovement'])->name('movements.destroy');
  });
  Route::get('/categorias',[CategoriaController::class,'index'])->name('categorias.index');
  Route::post('/categorias',[CategoriaController::class,'store'])->name('categorias.store');
@@ -55,7 +55,6 @@ Route::middleware('auth')->group(function(){
   Route::post("/$uri",[FinanceController::class,'store'])->defaults('tipo',$tipo)->name("$uri.store");
   Route::get("/$uri/{id}/editar",[FinanceController::class,'edit'])->defaults('tipo',$tipo)->name("$uri.edit");
   Route::put("/$uri/{id}",[FinanceController::class,'update'])->defaults('tipo',$tipo)->name("$uri.update");
-  Route::post("/$uri/{id}/estornar",[FinanceController::class,'reverse'])->defaults('tipo',$tipo)->name("$uri.reverse");
   Route::delete("/$uri/{id}",[FinanceController::class,'destroy'])->defaults('tipo',$tipo)->name("$uri.destroy");
  }
 });

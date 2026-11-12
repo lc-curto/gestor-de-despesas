@@ -31,7 +31,7 @@ class FinancialAccountsPageController extends Controller
         $accounts->each(function (ContaFinanceira $account) use ($balances): void {
             $account->current_balance = null;
 
-            if ($account->is_operational && $account->opening_balance !== null && $account->type !== 'credit_card') {
+            if ($account->is_operational && $account->opening_balance !== null ) {
                 $account->current_balance = $balances->balance($account);
             }
         });

@@ -232,10 +232,10 @@
         edit.dataset.acao = 'editar';
         edit.setAttribute('aria-label', 'Editar ' + item.description);
         edit.title = 'Editar';
-        edit.innerHTML = '<i class="bi bi-pencil" aria-hidden="true"></i>';
+        edit.innerHTML = '<i data-lucide="pencil" aria-hidden="true"></i>';
 
         actions.append(value, edit);
-        if (item.movement_status !== 'settled') {
+        if (item.id) {
             const deleteForm = document.createElement('form');
             deleteForm.method = 'POST';
             deleteForm.action = article.dataset.editUrl;
@@ -253,7 +253,7 @@
             remove.className = 'btn btn-outline-danger';
             remove.setAttribute('aria-label', 'Eliminar ' + item.description);
             remove.title = 'Eliminar';
-            remove.innerHTML = '<i class="bi bi-trash" aria-hidden="true"></i>';
+            remove.innerHTML = '<i data-lucide="trash-2" aria-hidden="true"></i>';
             deleteForm.append(token, verb, remove);
             actions.append(deleteForm);
         }

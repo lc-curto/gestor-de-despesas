@@ -17,6 +17,9 @@ class FinancialAccountService
     {
         return DB::transaction(function () use ($user, $data) {
             $openingBalance = $data['opening_balance'] ?? null;
+            if (($data['type'] ?? null) === 'credit_card' && $openingBalance === null) {
+                $openingBalance = '0.00';
+            }
             $allowNegative = (bool) ($data['allow_negative_balance'] ?? false);
 
             if ($openingBalance !== null && $this->balances->toCents((string) $openingBalance) < 0 && !$allowNegative) {

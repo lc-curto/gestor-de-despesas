@@ -85,9 +85,7 @@
                             @elseif ($financialMovement?->contaOrigem || $financialMovement?->contaDestino)
                                 <span>· {{ $financialMovement->contaOrigem?->name ?? $financialMovement->contaDestino?->name }}</span>
                             @endif
-                            @if ($financialMovement?->estornadoPor?->isNotEmpty())
-                                <span class="text-secondary">· Estornado</span>
-                            @elseif ($financialMovement?->status === 'settled')
+                            @if ($financialMovement?->status === 'settled')
                                 <span class="text-success">· Liquidado</span>
                             @endif
                         </span>
@@ -101,22 +99,13 @@
                         <a class="btn btn-sm btn-outline-secondary" href="{{ route($isExpense ? 'despesas.edit' : 'receitas.edit', $item->id) }}" aria-label="Editar {{ $item->description }}" title="Editar">
                             <i data-lucide="pencil" aria-hidden="true"></i>
                         </a>
-                        @if ($financialMovement?->status !== 'settled')
-                            <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $item->id) }}" onsubmit="return confirm('Eliminar este registo?')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Eliminar {{ $item->description }}" title="Eliminar">
-                                    <i data-lucide="trash-2" aria-hidden="true"></i>
-                                </button>
-                                </form>
-                        @elseif ($financialMovement?->estornadoPor?->isEmpty())
-                            <form method="POST" action="{{ route($isExpense ? 'despesas.reverse' : 'receitas.reverse', $item->id) }}" onsubmit="return confirm('Criar um estorno deste movimento? A operação será auditada e não poderá ser repetida.')">
-                                @csrf
-                                <button type="submit" class="btn btn-sm btn-outline-warning" aria-label="Estornar {{ $item->description }}" title="Estornar">
-                                    <i data-lucide="undo-2" aria-hidden="true"></i>
-                                </button>
-                            </form>
-                        @endif
+                        <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $item->id) }}" onsubmit="return confirm('Eliminar definitivamente este registo?')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Eliminar {{ $item->description }}" title="Eliminar">
+                                <i data-lucide="trash-2" aria-hidden="true"></i>
+                            </button>
+                        </form>
                     </div>
                 </div>
             </article>

@@ -28,10 +28,12 @@ class FinanceController extends Controller
         return $request->user()->{$relation}();
     }
 
-    private function availableAccounts(Request $request)
+    private function availableAccounts(Request $request, string $tipo)
     {
+        $types = $tipo === 'despesa' ? ['bank', 'cash', 'credit_card'] : ['bank', 'cash'];
+
         return $request->user()->contasFinanceiras()
-            ->whereIn('type', ['bank', 'cash'])
+            ->whereIn('type', $types)
             ->where('is_operational', true)
             ->where('status', 'active')
             ->whereNotNull('opening_balance')
@@ -88,13 +90,15 @@ class FinanceController extends Controller
 
         $account = $request->user()->contasFinanceiras()
             ->whereKey($data['account_id'])
-            ->whereIn('type', ['bank', 'cash'])
+            ->whereIn('type', $tipo === 'despesa' ? ['bank', 'cash', 'credit_card'] : ['bank', 'cash'])
             ->where('is_operational', true)
             ->where('status', 'active')
             ->whereNotNull('opening_balance')
             ->first();
         if (!$account || $account->currency !== $request->user()->currency) {
-            throw ValidationException::withMessages(['account_id' => 'Escolhe uma conta bancária ou de dinheiro ativa, configurada e na moeda da tua conta.']);
+            throw ValidationException::withMessages(['account_id' => $tipo === 'despesa'
+                ? 'Escolhe uma conta bancária, de dinheiro ou cartão ativa, configurada e na moeda da tua conta.'
+                : 'Escolhe uma conta bancária ou de dinheiro ativa, configurada e na moeda da tua conta.']);
         }
 
         $categoryQuery = $request->user()->categorias()->where('type', $tipo);
@@ -172,7 +176,7 @@ class FinanceController extends Controller
         $linkedMovements = $request->user()->movimentos()
             ->where('legacy_type', $legacyType)
             ->whereIn('legacy_id', $registos->getCollection()->pluck('id'))
-            ->with(['contaOrigem', 'contaDestino', 'estornadoPor'])
+            ->with(['contaOrigem', 'contaDestino'])
             ->get()
             ->keyBy('legacy_id');
         $data = $dateField;
@@ -187,7 +191,7 @@ class FinanceController extends Controller
         $financialMovement = null;
         $data = $dateField;
         $cats = $this->categoryOptions($request, $tipo);
-        $accounts = $this->availableAccounts($request);
+        $accounts = $this->availableAccounts($request, $tipo);
 
         return view('finance.form', compact('tipo', 'data', 'cats', 'registo', 'accounts', 'financialMovement'));
     }
@@ -225,7 +229,7 @@ class FinanceController extends Controller
         $financialMovement = $this->linkedMovement($request, $tipo, $registo->id);
         $data = $dateField;
         $cats = $this->categoryOptions($request, $tipo, true);
-        $accounts = $this->availableAccounts($request);
+        $accounts = $this->availableAccounts($request, $tipo);
 
         return view('finance.form', compact('tipo', 'data', 'cats', 'registo', 'accounts', 'financialMovement'));
     }
@@ -282,17 +286,16 @@ class FinanceController extends Controller
             ->with('success', 'Registo atualizado.');
     }
 
-    public function destroy(Request $request, string $id, FinancialMovementService $service)
+    public function destroy(Request $request, string $id)
     {
         [$tipo] = $this->config($request);
-        DB::transaction(function () use ($request, $service, $tipo, $id): void {
+        DB::transaction(function () use ($request, $tipo, $id): void {
             $legacy = $this->query($request)->whereKey($id)->lockForUpdate()->firstOrFail();
             $movement = $this->linkedMovement($request, $tipo, $legacy->id);
-            if ($movement?->status === 'settled') {
-                throw ValidationException::withMessages(['movement' => 'Movimentos liquidados não podem ser eliminados; usa a ação de estorno.']);
-            }
-            if ($movement?->status === 'pending') {
-                $service->voidPending($request->user(), $movement, 'Registo legado removido pelo utilizador.');
+            if ($movement) {
+                // Exclusão direta: remove o histórico técnico antes da FK restritiva.
+                $movement->historico()->delete();
+                $movement->delete();
             }
             $legacy->delete();
         });
@@ -304,22 +307,4 @@ class FinanceController extends Controller
         return back()->with('success', 'Registo eliminado.');
     }
 
-    public function reverse(Request $request, string $id, FinancialMovementService $service)
-    {
-        [$tipo] = $this->config($request);
-        $data = $request->validate(['reason' => 'nullable|string|max:1000']);
-        $movement = $this->linkedMovement($request, $tipo, $id);
-
-        if (!$movement) {
-            throw ValidationException::withMessages(['movement' => 'Este registo ainda não tem movimento financeiro associado.']);
-        }
-
-        $service->reverse($request->user(), $movement, $data['reason'] ?? 'Estorno solicitado na lista de movimentos.');
-
-        if ($request->expectsJson()) {
-            return response()->json(['ok' => true, 'message' => 'Estorno criado.'], 201);
-        }
-
-        return back()->with('success', 'Estorno criado.');
-    }
 }

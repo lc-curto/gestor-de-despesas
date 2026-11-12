@@ -56,7 +56,7 @@
                     <div class="account-balance">
                         @if ($account->current_balance !== null)
                             <strong>{{ number_format((float) $account->current_balance, 2, ',', '.') }} <small>{{ $account->currency }}</small></strong>
-                            <span>Saldo atual</span>
+                            <span>{{ $account->type === 'credit_card' ? 'Utilização atual' : 'Saldo atual' }}</span>
                         @elseif ($account->type === 'credit_card')
                             <strong>—</strong><span>Cartão</span>
                         @else
@@ -136,7 +136,7 @@
                         </div>
                         <div class="col-5">
                             <label for="openingBalanceDate" class="form-label">Data do saldo</label>
-                            <input id="openingBalanceDate" name="opening_balance_date" type="date" class="form-control" value="{{ now()->toDateString() }}" readonly>
+                            <input id="openingBalanceDate" name="opening_balance_date" type="date" class="form-control" value="{{ now()->toDateString() }}" max="{{ now()->toDateString() }}">
                         </div>
                     </div>
                     <div class="form-check mt-3">
@@ -172,8 +172,10 @@
                     </div>
                     <div id="editOpeningBalanceFields" class="mt-3">
                         <label for="editOpeningBalance" class="form-label">Definir saldo inicial</label>
-                        <input id="editOpeningBalance" name="opening_balance" type="number" class="form-control" min="-9999999999.99" max="9999999999.99" step="0.01" inputmode="decimal" placeholder="Ex.: 1500,00">
-                        <div class="form-text">Indica o saldo real da conta hoje. A data é definida automaticamente.</div>
+                        <input id="editOpeningBalance" name="opening_balance" type="number" class="form-control" min="-999999999.99" max="9999999999.99" step="0.01" inputmode="decimal" placeholder="Ex.: 1500,00">
+                        <label for="editOpeningDate" class="form-label mt-3">Data do saldo inicial</label>
+                        <input id="editOpeningDate" name="opening_balance_date" type="date" class="form-control" value="{{ now()->toDateString() }}" max="{{ now()->toDateString() }}">
+                        <div class="form-text">Usa a data em que o saldo real foi apurado.</div>
                     </div>
                     <div id="editNegativeBalanceField" class="form-check mt-3">
                         <input id="editAllowNegative" name="allow_negative_balance" type="checkbox" value="1" class="form-check-input">
@@ -232,7 +234,7 @@
                         </div>
                         <div class="col-5">
                             <label for="openingBalanceReference" class="form-label">Data do saldo</label>
-                            <input id="openingBalanceReference" name="opening_balance_date" type="date" class="form-control" value="{{ now()->toDateString() }}" readonly required>
+                            <input id="openingBalanceReference" name="opening_balance_date" type="date" class="form-control" value="{{ now()->toDateString() }}" max="{{ now()->toDateString() }}" required>
                         </div>
                     </div>
                     <div class="form-check mt-3">
@@ -332,42 +334,42 @@
 
 @push('styles')
 <style>
-.accounts-page { max-width: 1180px; margin: 0 auto; }
-.accounts-toolbar { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.5rem; }
+.accounts-page { width:100%; max-width:none; margin:0; }
+.accounts-toolbar { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.25rem; }
 .accounts-list { display:grid; gap:.75rem; }
-.account-card { display:grid; grid-template-columns:48px minmax(0,1fr) minmax(160px,auto) 92px; align-items:center; gap:1rem; padding:1rem 1.1rem; border:1px solid #e7e9f1; border-radius:18px; background:var(--bs-body-bg); box-shadow:0 5px 18px rgba(24,32,56,.045); }
-.account-icon { display:grid; place-items:center; width:46px; height:46px; border-radius:14px; background:#efedff; color:#6258e8; }
+.account-card { display:grid; grid-template-columns:48px minmax(0,1fr) minmax(180px,auto) 100px; align-items:center; gap:1rem; padding:1.15rem 1.25rem; border:1px solid var(--app-border); border-radius:1rem; background:var(--bs-body-bg); box-shadow:var(--app-shadow); }
+.account-icon { display:grid; place-items:center; width:46px; height:46px; border-radius:.85rem; background:rgba(99,91,255,.1); color:var(--app-primary); }
 .account-icon svg { width:21px; height:21px; }
 .account-main { min-width:0; }
 .account-title-row { display:flex; align-items:center; flex-wrap:wrap; gap:.55rem; }
 .account-name { margin:0; font-size:1rem; font-weight:700; overflow-wrap:anywhere; }
 .account-subtitle { margin-top:.2rem; color:var(--bs-secondary-color); font-size:.85rem; }
 .account-status { padding:.2rem .55rem; border-radius:999px; font-size:.7rem; font-weight:600; }
-.account-status.is-active { background:#e8f7ef; color:#18734a; }
-.account-status.is-pending { background:#fff5db; color:#896000; }
-.account-status.is-closed { background:#eff0f4; color:#687080; }
+.account-status.is-active { background:rgba(22,163,74,.1); color:#18734a; }
+.account-status.is-pending { background:rgba(245,158,11,.14); color:#896000; }
+.account-status.is-closed { background:var(--bs-tertiary-bg); color:var(--bs-secondary-color); }
 .account-balance { text-align:right; }
 .account-balance strong { display:block; font-size:1.1rem; white-space:nowrap; }
 .account-balance strong small { font-size:.8rem; font-weight:600; }
 .account-balance span { display:block; color:var(--bs-secondary-color); font-size:.75rem; }
 .account-menu { justify-self:end; }
-.account-menu-button { display:inline-flex; align-items:center; justify-content:center; gap:.35rem; min-width:5.5rem; height:36px; padding:0 .65rem; border:1px solid var(--app-border); border-radius:10px; color:#5c6472; background:var(--bs-body-bg); font-size:.78rem; font-weight:650; }
-.account-menu-button:hover, .account-menu-button:focus-visible { background:#f0efff; color:#5147d8; }
+.account-menu-button { display:inline-flex; align-items:center; justify-content:center; gap:.35rem; min-width:5.5rem; height:36px; padding:0 .65rem; border:1px solid var(--app-border); border-radius:.7rem; color:var(--bs-secondary-color); background:var(--bs-body-bg); font-size:.78rem; font-weight:650; }
+.account-menu-button:hover, .account-menu-button:focus-visible { background:rgba(99,91,255,.08); color:var(--app-primary); }
 .account-menu-button svg { width:15px; height:15px; }
-.account-menu .dropdown-menu { min-width:180px; padding:.4rem; border:1px solid #e7e9f1; border-radius:12px; }
-.account-menu .dropdown-item { border-radius:8px; padding:.55rem .7rem; font-size:.9rem; }
-.account-edit-modal { min-width: min(100%, 32rem); }
-.account-edit-modal .modal-header { padding: 1.35rem 1.5rem .25rem; }
-.account-edit-modal .modal-footer { padding: 1rem 1.5rem 1.35rem; }
-.account-opening-summary { display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; padding:1rem; border:1px solid #e6e3ff; border-radius:14px; background:#f7f6ff; color:#4439b9; }
+.account-menu .dropdown-menu { min-width:180px; padding:.4rem; border:1px solid var(--app-border); border-radius:.8rem; box-shadow:var(--app-shadow); }
+.account-menu .dropdown-item { border-radius:.55rem; padding:.55rem .7rem; font-size:.9rem; }
+.account-edit-modal { min-width:min(100%,32rem); }
+.account-edit-modal .modal-header { padding:1.35rem 1.5rem .25rem; }
+.account-edit-modal .modal-footer { padding:1rem 1.5rem 1.35rem; }
+.account-opening-summary { display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; padding:1rem; border:1px solid color-mix(in srgb,var(--app-primary) 18%,var(--app-border)); border-radius:.85rem; background:rgba(99,91,255,.07); color:var(--app-primary); }
 .account-opening-summary > div { display:grid; gap:.25rem; }
 .account-opening-summary-label { color:var(--bs-secondary-color); font-size:.78rem; }
 .account-opening-summary strong { font-size:1.35rem; letter-spacing:-.02em; }
 .account-opening-summary > span { color:var(--bs-secondary-color); font-size:.78rem; white-space:nowrap; }
-.accounts-empty { border:1px dashed #d8dbe6 !important; }
-.accounts-empty-icon { display:inline-grid; place-items:center; width:54px; height:54px; border-radius:17px; background:#efedff; color:#6258e8; }
+.accounts-empty { border:1px dashed var(--app-border) !important; box-shadow:var(--app-shadow) !important; }
+.accounts-empty-icon { display:inline-grid; place-items:center; width:54px; height:54px; border-radius:1rem; background:rgba(99,91,255,.1); color:var(--app-primary); }
 .accounts-empty-icon svg { width:25px; height:25px; }
-.transfer-row { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.7rem 0; border-top:1px solid #eceef3; }
+.transfer-row { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.7rem 0; border-top:1px solid var(--app-border); }
 .transfer-row > div { display:grid; gap:.2rem; }
 .transfer-row span { color:var(--bs-secondary-color); font-size:.82rem; }
 .transfer-amount { white-space:nowrap; }
@@ -476,7 +478,7 @@
             if (form.dataset.openingConfigured === '0' && form.elements.opening_balance.value) {
                 const opening = new FormData();
                 opening.set('opening_balance', form.elements.opening_balance.value);
-                opening.set('opening_balance_date', '{{ now()->toDateString() }}');
+                opening.set('opening_balance_date', document.getElementById('editOpeningDate').value);
                 opening.set('allow_negative_balance', form.elements.allow_negative_balance.checked ? '1' : '0');
                 await fetch(form.dataset.openingEndpoint, {
                     method: 'PUT', headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
@@ -513,7 +515,7 @@
             const form = document.getElementById('openingBalanceForm');
             form.dataset.endpoint = button.dataset.endpoint;
             form.elements.opening_balance.value = '';
-            form.elements.opening_balance_date.value = '{{ now()->toDateString() }}';
+            document.getElementById('editOpeningDate').value = '{{ now()->toDateString() }}';
             form.querySelector('[name="allow_negative_balance"]').checked = false;
             document.getElementById('openingBalanceAccountName').textContent = button.dataset.name;
         });

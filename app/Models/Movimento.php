@@ -36,6 +36,4 @@ class Movimento extends Model
     public function contaDestino(): BelongsTo { return $this->belongsTo(ContaFinanceira::class, 'destination_account_id'); }
     public function categoria(): BelongsTo { return $this->belongsTo(Categoria::class, 'category_id'); }
     public function historico(): HasMany { return $this->hasMany(HistoricoMovimento::class, 'movement_id'); }
-    public function estorno(): BelongsTo { return $this->belongsTo(self::class, 'reversal_of_id'); }
-    public function estornadoPor(): HasMany { return $this->hasMany(self::class, 'reversal_of_id'); }
 }
