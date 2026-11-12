@@ -46,6 +46,30 @@ class FinancialMovementService
         });
     }
 
+    public function createPending(User $user, array $data): Movimento
+    {
+        if (!in_array($data['type'], ['income', 'expense'], true)) {
+            throw ValidationException::withMessages(['type' => 'Só receitas e despesas podem ser criadas como compromisso pendente.']);
+        }
+
+        return DB::transaction(function () use ($user, $data) {
+            $movement = Movimento::query()->create([
+                'user_id' => $user->id,
+                'type' => $data['type'],
+                'status' => 'pending',
+                'description' => $data['description'],
+                'amount' => $data['amount'],
+                'movement_date' => $data['movement_date'],
+                'category_id' => $data['category_id'] ?? null,
+                'is_historical' => false,
+                'requires_account_assignment' => true,
+            ]);
+
+            $this->audit($user, $movement, 'created_pending', null, $movement->getAttributes());
+            return $movement;
+        });
+    }
+
     public function transfer(User $user, array $data): Movimento
     {
         $data['type'] = 'transfer';
