@@ -74,7 +74,9 @@
                                     data-settings-endpoint="{{ route('financial.accounts.settings', $account->id) }}"
                                     data-opening-endpoint="{{ route('financial.accounts.opening-balance', $account->id) }}"
                                     data-name="{{ $account->name }}" data-allowed="{{ $account->allow_negative_balance ? '1' : '0' }}"
-                                    data-opening="{{ $account->opening_balance !== null ? '1' : '0' }}" data-type="{{ $account->type }}">Editar conta</button></li>
+                                    data-opening="{{ $account->opening_balance !== null ? '1' : '0' }}"
+                                    data-opening-value="{{ $account->opening_balance }}" data-opening-date="{{ $account->opening_balance_date?->format('d/m/Y') }}"
+                                    data-type="{{ $account->type }}" data-currency="{{ $account->currency }}">Editar conta</button></li>
                                 @if (in_array($account->type, ['bank', 'cash'], true) && $account->status === 'active' && $account->opening_balance !== null)
                                     <li><hr class="dropdown-divider"></li>
                                     <li><button class="dropdown-item text-danger js-close-account" type="button" data-bs-toggle="modal" data-bs-target="#closeAccountModal" data-endpoint="{{ route('financial.accounts.close', $account->id) }}" data-id="{{ $account->id }}" data-name="{{ $account->name }}">Encerrar conta</button></li>
@@ -153,20 +155,25 @@
 
 {{-- Editar conta --}}
 <div class="modal fade" id="renameAccountModal" tabindex="-1" aria-labelledby="renameAccountTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-sm">
-        <div class="modal-content border-0 shadow rounded-4">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content border-0 shadow rounded-4 account-edit-modal">
             <form id="accountNameForm" data-endpoint="">
                 <div class="modal-header border-0 pb-0">
                     <h2 class="modal-title h5 fw-bold" id="renameAccountTitle">Editar conta</h2>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     <label for="renameAccountName" class="form-label">Nome</label>
                     <input id="renameAccountName" name="name" class="form-control" maxlength="120" required>
+                    <p class="small text-secondary mt-2 mb-0">Este nome aparece nas despesas, receitas e transferências.</p>
+                    <div id="editOpeningSummary" class="account-opening-summary mt-4 d-none">
+                        <div><span class="account-opening-summary-label">Saldo inicial</span><strong id="editOpeningSummaryValue"></strong></div>
+                        <span id="editOpeningSummaryDate"></span>
+                    </div>
                     <div id="editOpeningBalanceFields" class="mt-3">
-                        <label for="editOpeningBalance" class="form-label">Saldo inicial atual</label>
+                        <label for="editOpeningBalance" class="form-label">Definir saldo inicial</label>
                         <input id="editOpeningBalance" name="opening_balance" type="number" class="form-control" min="-9999999999.99" max="9999999999.99" step="0.01" inputmode="decimal" placeholder="Ex.: 1500,00">
-                        <div class="form-text">Usa o saldo real da conta hoje. A data é definida automaticamente.</div>
+                        <div class="form-text">Indica o saldo real da conta hoje. A data é definida automaticamente.</div>
                     </div>
                     <div id="editNegativeBalanceField" class="form-check mt-3">
                         <input id="editAllowNegative" name="allow_negative_balance" type="checkbox" value="1" class="form-check-input">
@@ -349,6 +356,14 @@
 .account-menu-button svg { width:15px; height:15px; }
 .account-menu .dropdown-menu { min-width:180px; padding:.4rem; border:1px solid #e7e9f1; border-radius:12px; }
 .account-menu .dropdown-item { border-radius:8px; padding:.55rem .7rem; font-size:.9rem; }
+.account-edit-modal { min-width: min(100%, 32rem); }
+.account-edit-modal .modal-header { padding: 1.35rem 1.5rem .25rem; }
+.account-edit-modal .modal-footer { padding: 1rem 1.5rem 1.35rem; }
+.account-opening-summary { display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; padding:1rem; border:1px solid #e6e3ff; border-radius:14px; background:#f7f6ff; color:#4439b9; }
+.account-opening-summary > div { display:grid; gap:.25rem; }
+.account-opening-summary-label { color:var(--bs-secondary-color); font-size:.78rem; }
+.account-opening-summary strong { font-size:1.35rem; letter-spacing:-.02em; }
+.account-opening-summary > span { color:var(--bs-secondary-color); font-size:.78rem; white-space:nowrap; }
 .accounts-empty { border:1px dashed #d8dbe6 !important; }
 .accounts-empty-icon { display:inline-grid; place-items:center; width:54px; height:54px; border-radius:17px; background:#efedff; color:#6258e8; }
 .accounts-empty-icon svg { width:25px; height:25px; }
@@ -440,8 +455,16 @@
             form.elements.name.value = button.dataset.name;
             form.querySelector('[name="allow_negative_balance"]').checked = button.dataset.allowed === '1';
             const openingFields = document.getElementById('editOpeningBalanceFields');
+            const openingSummary = document.getElementById('editOpeningSummary');
             const negativeField = document.getElementById('editNegativeBalanceField');
             openingFields.classList.toggle('d-none', button.dataset.opening === '1' || button.dataset.type === 'credit_card');
+            openingSummary.classList.toggle('d-none', button.dataset.opening !== '1');
+            document.getElementById('editOpeningSummaryValue').textContent = button.dataset.opening === '1'
+                ? Number(button.dataset.openingValue || 0).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + button.dataset.currency
+                : '';
+            document.getElementById('editOpeningSummaryDate').textContent = button.dataset.opening === '1'
+                ? 'Definido em ' + (button.dataset.openingDate || '—')
+                : '';
             negativeField.classList.toggle('d-none', !['bank', 'cash'].includes(button.dataset.type));
         });
     });
