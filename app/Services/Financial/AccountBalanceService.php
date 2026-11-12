@@ -34,7 +34,7 @@ class AccountBalanceService
                     WHEN source_account_id = ? AND type = 'adjustment' AND adjustment_direction = 'decrease' THEN -amount
                     ELSE 0 END), 0) AS delta",
                 [$account->id, $account->id, $account->id, $account->id]
-            )->value('delta');
+            )->first()->delta;
 
         $cents = $this->toCents($account->opening_balance) + $this->toCents((string) $movementDelta);
 
@@ -55,7 +55,7 @@ class AccountBalanceService
         }
     }
 
-    private function toCents(string $amount): int
+    public function toCents(string $amount): int
     {
         if (!preg_match('/^-?\d+(?:\.\d{1,2})?$/', $amount)) {
             throw new RuntimeException('Valor monetário inválido.');
