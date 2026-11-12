@@ -23,6 +23,7 @@ return new class extends Migration
             $table->decimal('opening_balance', 12, 2)->nullable();
             $table->date('opening_balance_date')->nullable();
             $table->boolean('is_operational')->default(true);
+            $table->boolean('allow_negative_balance')->default(false);
             $table->string('status', 20)->default('setup_pending');
             $table->timestamps();
 
@@ -170,6 +171,7 @@ return new class extends Migration
             $table->index(['user_id', 'movement_id', 'created_at'], 'historico_user_movement_date_index');
         });
 
+        DB::statement("ALTER TABLE contas_financeiras ADD CONSTRAINT contas_opening_balance_valid CHECK (opening_balance IS NULL OR opening_balance >= 0 OR allow_negative_balance = 1)");
         DB::statement("ALTER TABLE movimentos ADD CONSTRAINT movimentos_amount_positive CHECK (amount > 0)");
         DB::statement("ALTER TABLE historico_movimentos ADD CONSTRAINT historico_actor_owner CHECK (changed_by IS NULL OR changed_by = user_id)");
         DB::statement("ALTER TABLE movimentos ADD CONSTRAINT movimentos_account_shape CHECK (
