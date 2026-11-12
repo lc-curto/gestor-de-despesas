@@ -64,6 +64,16 @@ class User extends Authenticatable
         return $this->hasMany(Recorrencia::class, 'user_id');
     }
 
+    public function faturas(): HasMany
+    {
+        return $this->hasMany(Fatura::class, 'user_id');
+    }
+
+    public function parcelasDivida(): HasMany
+    {
+        return $this->hasMany(ParcelaDivida::class, 'user_id');
+    }
+
     protected static function booted(): void
     {
         static::deleting(function (User $user): void {
