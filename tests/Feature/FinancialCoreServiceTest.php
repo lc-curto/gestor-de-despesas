@@ -137,4 +137,51 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('95.00', app(AccountBalanceService::class)->balance($account));
     }
 
+    public function test_authenticated_api_can_create_account_and_record_a_settled_expense(): void
+    {
+        $user = User::factory()->create();
+
+        $accountResponse = $this->actingAs($user)->postJson('/api/financial/accounts', [
+            'name' => 'Conta API',
+            'type' => 'bank',
+            'opening_balance' => '80.00',
+            'opening_balance_date' => '2026-11-01',
+        ])->assertCreated();
+
+        $accountId = $accountResponse->json('data.id');
+
+        $this->postJson('/api/financial/movements', [
+            'type' => 'expense',
+            'description' => 'Despesa via API',
+            'amount' => '12.50',
+            'movement_date' => '2026-11-12',
+            'source_account_id' => $accountId,
+        ])->assertCreated()->assertJsonPath('data.status', 'settled');
+
+        $this->getJson('/api/financial/accounts')
+            ->assertOk()
+            ->assertJsonPath('data.0.current_balance', '67.50');
+    }
+
+    public function test_pending_commitment_does_not_change_account_balance_until_settled(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->account($user, 'Conta');
+
+        $pending = app(FinancialMovementService::class)->createPending($user, [
+            'type' => 'expense',
+            'description' => 'Conta de água',
+            'amount' => '15.00',
+            'movement_date' => '2026-11-20',
+        ]);
+
+        $this->assertSame('100.00', app(AccountBalanceService::class)->balance($account));
+
+        app(FinancialMovementService::class)->settle($user, $pending, [
+            'source_account_id' => $account->id,
+        ]);
+
+        $this->assertSame('85.00', app(AccountBalanceService::class)->balance($account));
+    }
+
 }
