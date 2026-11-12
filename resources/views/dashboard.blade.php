@@ -12,7 +12,7 @@
         <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> Resumo financeiro</p>
         <h1 class="h2 fw-bold" id="greetingTitle">Olá, {{ auth()->user()->name }}!</h1>
     </div>
-    <div class="date-time-card" aria-label="Data e hora atuais em Lisboa">
+    <div class="date-time-card" aria-label="Data e hora locais do utilizador">
         <span class="date-time-label">Agora</span>
         <time id="currentDateTime" datetime="{{ now()->toIso8601String() }}">{{ now()->locale('pt_PT')->translatedFormat('l, d \\d\\e F \\d\\e Y') }} às {{ now()->format('H:i') }}</time>
     </div>
@@ -291,6 +291,7 @@ window.meuBolsoDashboard = {
     categories: @json($categorias)
 };
 </script>
+
 @if ($errors->any())
 <script>document.addEventListener('DOMContentLoaded', () => bootstrap.Modal.getOrCreateInstance(document.getElementById('movementEntryModal')).show());</script>
 @endif

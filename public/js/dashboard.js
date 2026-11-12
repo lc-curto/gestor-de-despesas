@@ -1,4 +1,25 @@
 (() => {
+    // Usa o fuso horário local do navegador, sem depender do fuso do servidor.
+    const element = document.getElementById('currentDateTime');
+    if (!element) return;
+
+    const formatter = new Intl.DateTimeFormat('pt-PT', {
+        dateStyle: 'full',
+        timeStyle: 'short'
+    });
+
+    const updateClock = () => {
+        const now = new Date();
+        element.textContent = formatter.format(now);
+        element.dateTime = now.toISOString();
+        element.title = 'Fuso horário: ' + (Intl.DateTimeFormat().resolvedOptions().timeZone || 'local');
+    };
+
+    updateClock();
+    window.setInterval(updateClock, 30_000);
+})();
+
+(() => {
     const form = document.getElementById('dashboardMovementForm');
     const list = document.getElementById('expensesList');
     if (!form || !list) return;
