@@ -105,7 +105,7 @@ class FinancialAccountsPageTest extends TestCase
 
         $this->actingAs($user)->get('/contas')
             ->assertOk()
-            ->assertSee('Registar transferência')
+            ->assertSee('Transferir')
             ->assertSee('Banco')
             ->assertSee('Carteira');
     }

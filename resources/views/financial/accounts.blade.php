@@ -4,26 +4,118 @@
 
 @section('content')
 @php
-    $typeLabels = ['bank' => 'Conta bancária', 'cash' => 'Dinheiro', 'credit_card' => 'Cartão de crédito'];
-    $statusLabels = ['active' => 'Ativa', 'setup_pending' => 'Saldo por configurar', 'closed' => 'Encerrada'];
+    $typeLabels = ['bank' => 'Banco', 'cash' => 'Dinheiro', 'credit_card' => 'Cartão'];
+    $statusLabels = ['active' => 'Ativa', 'setup_pending' => 'Por configurar', 'closed' => 'Encerrada'];
 @endphp
 
-<header class="dashboard-intro mb-4">
-    <div class="dashboard-intro-copy">
-        <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> Organização financeira</p>
-        <h1 class="h2 fw-bold">Contas</h1>
-        <p class="text-secondary mb-0">Cria contas e define o saldo real de referência. Os movimentos existentes não são alterados.</p>
-    </div>
-</header>
+<div class="accounts-page">
+    <header class="accounts-toolbar">
+        <div>
+            <h1 class="h2 fw-bold mb-0">Contas</h1>
+            <span class="small text-secondary">{{ $accounts->count() }} {{ $accounts->count() === 1 ? 'conta' : 'contas' }}</span>
+        </div>
+        <div class="d-flex gap-2">
+            @if ($transferTargets->count() >= 2)
+                <button class="btn btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#accountTransferModal">
+                    <i data-lucide="arrow-left-right" aria-hidden="true"></i><span class="ms-1">Transferir</span>
+                </button>
+            @endif
+            <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#newAccountModal">
+                <i data-lucide="plus" aria-hidden="true"></i><span class="ms-1">Nova conta</span>
+            </button>
+        </div>
+    </header>
 
-<div id="accountFeedback" class="d-none" role="status" aria-live="polite"></div>
+    <div id="accountFeedback" class="d-none" role="status" aria-live="polite"></div>
 
-<div class="row g-4 align-items-start">
-    <div class="col-12 col-xl-4">
-        <article class="card border-0 shadow-sm rounded-4">
-            <div class="card-body p-4">
-                <h2 class="h5 fw-bold mb-3">Adicionar conta</h2>
-                <form id="accountCreateForm" data-endpoint="{{ route('financial.accounts.store') }}">
+    @if ($accounts->isEmpty())
+        <section class="accounts-empty card border-0 shadow-sm rounded-4">
+            <div class="card-body text-center py-5">
+                <span class="accounts-empty-icon"><i data-lucide="wallet-cards" aria-hidden="true"></i></span>
+                <h2 class="h5 fw-bold mt-3">Ainda não tens contas</h2>
+                <button class="btn btn-primary mt-2" type="button" data-bs-toggle="modal" data-bs-target="#newAccountModal">Adicionar conta</button>
+            </div>
+        </section>
+    @else
+        <section class="accounts-list" aria-label="As minhas contas">
+            @foreach ($accounts as $account)
+                @php
+                    $icon = $account->type === 'cash' ? 'wallet' : ($account->type === 'credit_card' ? 'credit-card' : 'landmark');
+                @endphp
+                <article class="account-card">
+                    <span class="account-icon"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></span>
+                    <div class="account-main">
+                        <div class="account-title-row">
+                            <h2 class="account-name">{{ $account->name }}</h2>
+                            <span class="account-status {{ $account->status === 'active' ? 'is-active' : ($account->status === 'closed' ? 'is-closed' : 'is-pending') }}">
+                                {{ $statusLabels[$account->status] ?? $account->status }}
+                            </span>
+                        </div>
+                        <div class="account-subtitle">{{ $typeLabels[$account->type] ?? $account->type }} <span aria-hidden="true">·</span> {{ $account->currency }}</div>
+                    </div>
+                    <div class="account-balance">
+                        @if ($account->current_balance !== null)
+                            <strong>{{ number_format((float) $account->current_balance, 2, ',', '.') }} <small>{{ $account->currency }}</small></strong>
+                            <span>Saldo atual</span>
+                        @elseif ($account->type === 'credit_card')
+                            <strong>—</strong><span>Cartão</span>
+                        @else
+                            <strong>—</strong><span>Saldo por configurar</span>
+                        @endif
+                    </div>
+                    @if ($account->is_operational && $account->status !== 'closed')
+                        <div class="dropdown account-menu">
+                            <button class="account-menu-button" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Opções de {{ $account->name }}" title="Opções">
+                                <i data-lucide="ellipsis-vertical" aria-hidden="true"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                <li><button class="dropdown-item js-rename-account" type="button" data-bs-toggle="modal" data-bs-target="#renameAccountModal" data-endpoint="{{ route('financial.accounts.update', $account->id) }}" data-name="{{ $account->name }}">Renomear</button></li>
+                                @if ($account->opening_balance === null && $account->type !== 'credit_card')
+                                    <li><button class="dropdown-item js-opening-balance" type="button" data-bs-toggle="modal" data-bs-target="#openingBalanceModal" data-endpoint="{{ route('financial.accounts.opening-balance', $account->id) }}" data-name="{{ $account->name }}">Configurar saldo</button></li>
+                                @endif
+                                @if (in_array($account->type, ['bank', 'cash'], true) && $account->status === 'active' && $account->opening_balance !== null && $transferTargets->count() >= 2)
+                                    <li><button class="dropdown-item js-account-transfer" type="button" data-bs-toggle="modal" data-bs-target="#accountTransferModal" data-source="{{ $account->id }}">Transferir</button></li>
+                                @endif
+                                @if (in_array($account->type, ['bank', 'cash'], true) && $account->status === 'active' && $account->opening_balance !== null)
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><button class="dropdown-item text-danger js-close-account" type="button" data-bs-toggle="modal" data-bs-target="#closeAccountModal" data-endpoint="{{ route('financial.accounts.close', $account->id) }}" data-id="{{ $account->id }}" data-name="{{ $account->name }}">Encerrar</button></li>
+                                @endif
+                            </ul>
+                        </div>
+                    @endif
+                </article>
+            @endforeach
+        </section>
+    @endif
+
+    @if ($transfers->isNotEmpty())
+        <section class="recent-transfers card border-0 shadow-sm rounded-4 mt-4">
+            <div class="card-body p-3 p-md-4">
+                <h2 class="h6 fw-bold mb-2">Transferências recentes</h2>
+                @foreach ($transfers as $transfer)
+                    <div class="transfer-row">
+                        <div>
+                            <strong>{{ $transfer->description }}</strong>
+                            <span>{{ $transfer->movement_date->format('d/m/Y') }} · {{ $transfer->contaOrigem?->name ?? 'Conta encerrada' }} → {{ $transfer->contaDestino?->name ?? 'Conta encerrada' }}</span>
+                        </div>
+                        <strong class="transfer-amount">{{ number_format((float) $transfer->amount, 2, ',', '.') }} {{ auth()->user()->currency }}</strong>
+                    </div>
+                @endforeach
+            </div>
+        </section>
+    @endif
+</div>
+
+{{-- Nova conta --}}
+<div class="modal fade" id="newAccountModal" tabindex="-1" aria-labelledby="newAccountTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <form id="accountCreateForm" data-endpoint="{{ route('financial.accounts.store') }}">
+                <div class="modal-header border-0 pb-0">
+                    <h2 class="modal-title h5 fw-bold" id="newAccountTitle">Nova conta</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
                     <div class="mb-3">
                         <label for="accountName" class="form-label">Nome</label>
                         <input id="accountName" name="name" class="form-control" maxlength="120" required placeholder="Ex.: Conta principal">
@@ -31,180 +123,217 @@
                     <div class="mb-3">
                         <label for="accountType" class="form-label">Tipo</label>
                         <select id="accountType" name="type" class="form-select" required>
-                            <option value="bank">Conta bancária</option>
+                            <option value="bank">Banco</option>
                             <option value="cash">Dinheiro</option>
                             <option value="credit_card">Cartão de crédito</option>
                         </select>
                     </div>
-                    <div class="mb-3">
-                        <label for="openingBalance" class="form-label">Saldo inicial <span class="text-secondary fw-normal">(opcional)</span></label>
-                        <input id="openingBalance" name="opening_balance" type="number" class="form-control" min="-9999999999.99" max="9999999999.99" step="0.01" inputmode="decimal" placeholder="0,00">
-                        <div class="form-text">Usa o saldo real na data indicada. Não introduzas novamente os movimentos históricos.</div>
+                    <div class="row g-3">
+                        <div class="col-7">
+                            <label for="openingBalance" class="form-label">Saldo inicial</label>
+                            <input id="openingBalance" name="opening_balance" type="number" class="form-control" min="-9999999999.99" max="9999999999.99" step="0.01" inputmode="decimal" placeholder="Opcional">
+                        </div>
+                        <div class="col-5">
+                            <label for="openingBalanceDate" class="form-label">Data</label>
+                            <input id="openingBalanceDate" name="opening_balance_date" type="date" class="form-control" value="{{ now()->toDateString() }}">
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="openingBalanceDate" class="form-label">Data do saldo</label>
-                        <input id="openingBalanceDate" name="opening_balance_date" type="date" class="form-control" value="{{ now()->toDateString() }}">
-                    </div>
-                    <div class="form-check mb-3">
+                    <div class="form-check mt-3">
                         <input id="allowNegativeBalance" name="allow_negative_balance" type="checkbox" value="1" class="form-check-input">
                         <label for="allowNegativeBalance" class="form-check-label">Permitir saldo negativo</label>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">Guardar conta</button>
-                </form>
-            </div>
-        </article>
-        <article class="card border-0 shadow-sm rounded-4 mt-4">
-            <div class="card-body p-4">
-                <h2 class="h5 fw-bold mb-1">Transferir entre contas</h2>
-                <p class="small text-secondary">Transferências entre banco e dinheiro não são registadas como receita ou despesa.</p>
-                @if ($transferTargets->count() >= 2)
-                    <form id="accountTransferForm" data-endpoint="{{ route('financial.movements.store') }}">
-                        <input type="hidden" name="type" value="transfer">
-                        <div class="mb-3">
-                            <label for="transferDescription" class="form-label">Descrição</label>
-                            <input id="transferDescription" name="description" class="form-control" maxlength="255" required value="Transferência entre contas">
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Renomear --}}
+<div class="modal fade" id="renameAccountModal" tabindex="-1" aria-labelledby="renameAccountTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow rounded-4">
+            <form id="accountNameForm" data-endpoint="">
+                <div class="modal-header border-0 pb-0">
+                    <h2 class="modal-title h5 fw-bold" id="renameAccountTitle">Renomear conta</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <label for="renameAccountName" class="form-label">Nome</label>
+                    <input id="renameAccountName" name="name" class="form-control" maxlength="120" required>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Configurar saldo --}}
+<div class="modal fade" id="openingBalanceModal" tabindex="-1" aria-labelledby="openingBalanceTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <form id="openingBalanceForm" data-endpoint="">
+                <div class="modal-header border-0 pb-0">
+                    <h2 class="modal-title h5 fw-bold" id="openingBalanceTitle">Configurar saldo</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-secondary mb-3" id="openingBalanceAccountName"></p>
+                    <div class="row g-3">
+                        <div class="col-7">
+                            <label for="openingBalanceValue" class="form-label">Saldo</label>
+                            <input id="openingBalanceValue" name="opening_balance" type="number" class="form-control" min="-9999999999.99" max="9999999999.99" step="0.01" required>
                         </div>
+                        <div class="col-5">
+                            <label for="openingBalanceReference" class="form-label">Data</label>
+                            <input id="openingBalanceReference" name="opening_balance_date" type="date" class="form-control" value="{{ now()->toDateString() }}" required>
+                        </div>
+                    </div>
+                    <div class="form-check mt-3">
+                        <input id="allowNegativeOpening" name="allow_negative_balance" type="checkbox" value="1" class="form-check-input">
+                        <label for="allowNegativeOpening" class="form-check-label">Permitir saldo negativo</label>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Encerrar --}}
+<div class="modal fade" id="closeAccountModal" tabindex="-1" aria-labelledby="closeAccountTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow rounded-4">
+            <form id="closeAccountForm" data-endpoint="">
+                <div class="modal-header border-0 pb-0">
+                    <h2 class="modal-title h5 fw-bold" id="closeAccountTitle">Encerrar conta</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3" id="closeAccountName"></p>
+                    <label for="closeTransferTarget" class="form-label">Transferir saldo para</label>
+                    <select id="closeTransferTarget" name="transfer_to_account_id" class="form-select">
+                        <option value="">Não transferir</option>
+                        @foreach ($transferTargets as $target)
+                            <option value="{{ $target->id }}">{{ $target->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Encerrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Transferência --}}
+@if ($transferTargets->count() >= 2)
+    <div class="modal fade" id="accountTransferModal" tabindex="-1" aria-labelledby="accountTransferTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow rounded-4">
+                <form id="accountTransferForm" data-endpoint="{{ route('financial.movements.store') }}">
+                    <input type="hidden" name="type" value="transfer">
+                    <div class="modal-header border-0 pb-0">
+                        <h2 class="modal-title h5 fw-bold" id="accountTransferTitle">Transferir</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body">
                         <div class="mb-3">
                             <label for="transferAmount" class="form-label">Valor</label>
                             <input id="transferAmount" name="amount" type="number" class="form-control" min="0.01" max="9999999999.99" step="0.01" required>
                         </div>
-                        <div class="mb-3">
+                        <div class="row g-3 mb-3">
+                            <div class="col-6">
+                                <label for="transferSource" class="form-label">De</label>
+                                <select id="transferSource" name="source_account_id" class="form-select" required>
+                                    <option value="">Origem</option>
+                                    @foreach ($transferTargets as $target)
+                                        <option value="{{ $target->id }}">{{ $target->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label for="transferDestination" class="form-label">Para</label>
+                                <select id="transferDestination" name="destination_account_id" class="form-select" required>
+                                    <option value="">Destino</option>
+                                    @foreach ($transferTargets as $target)
+                                        <option value="{{ $target->id }}">{{ $target->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-1">
                             <label for="transferDate" class="form-label">Data</label>
                             <input id="transferDate" name="movement_date" type="date" class="form-control" value="{{ now()->toDateString() }}" required>
                         </div>
-                        <div class="mb-3">
-                            <label for="transferSource" class="form-label">De</label>
-                            <select id="transferSource" name="source_account_id" class="form-select" required>
-                                <option value="">Conta de origem</option>
-                                @foreach ($transferTargets as $target)
-                                    <option value="{{ $target->id }}">{{ $target->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="transferDestination" class="form-label">Para</label>
-                            <select id="transferDestination" name="destination_account_id" class="form-select" required>
-                                <option value="">Conta de destino</option>
-                                @foreach ($transferTargets as $target)
-                                    <option value="{{ $target->id }}">{{ $target->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-outline-primary w-100">Registar transferência</button>
-                    </form>
-                @else
-                    <p class="small text-secondary mb-0">Configura pelo menos duas contas bancárias ou de dinheiro para transferir.</p>
-                @endif
+                        <input type="hidden" name="description" value="Transferência entre contas">
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Transferir</button>
+                    </div>
+                </form>
             </div>
-        </article>
-    </div>
-
-    <div class="col-12 col-xl-8">
-        <div class="d-flex align-items-center justify-content-between mb-3">
-            <h2 class="h5 fw-bold mb-0">As minhas contas</h2>
-            <span class="badge text-bg-light">{{ $accounts->count() }}</span>
         </div>
-
-        @forelse ($accounts as $account)
-            <article class="card border-0 shadow-sm rounded-4 mb-3">
-                <div class="card-body p-4">
-                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
-                        <div>
-                            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                                <h3 class="h6 fw-bold mb-0">{{ $account->name }}</h3>
-                                <span class="badge rounded-pill text-bg-light">{{ $typeLabels[$account->type] ?? $account->type }}</span>
-                                <span class="badge rounded-pill {{ $account->status === 'active' ? 'text-bg-success' : 'text-bg-secondary' }}">{{ $statusLabels[$account->status] ?? $account->status }}</span>
-                            </div>
-                            <p class="small text-secondary mb-0">Moeda: {{ $account->currency }}</p>
-                        </div>
-                        <div class="text-xl-end">
-                            @if ($account->current_balance !== null)
-                                <div class="small text-secondary">Saldo calculado</div>
-                                <strong class="fs-5">{{ number_format((float) $account->current_balance, 2, ',', '.') }} {{ $account->currency }}</strong>
-                            @elseif ($account->type === 'credit_card')
-                                <span class="small text-secondary">Cálculo de cartões será disponibilizado na fase de faturas.</span>
-                            @else
-                                <span class="small text-warning-emphasis">Saldo inicial por configurar</span>
-                            @endif
-                        </div>
-                    </div>
-
-                    @if ($account->is_operational && $account->status !== 'closed' && $account->type !== 'credit_card')
-                        <hr>
-                        <div class="row g-3 align-items-end">
-                            <form class="accountNameForm col-12 col-md-5" data-endpoint="{{ route('financial.accounts.update', $account->id) }}">
-                                <label for="account-name-{{ $account->id }}" class="form-label small">Nome da conta</label>
-                                <div class="input-group input-group-sm">
-                                    <input id="account-name-{{ $account->id }}" name="name" class="form-control" maxlength="120" value="{{ $account->name }}" required>
-                                    <button class="btn btn-outline-secondary" type="submit">Renomear</button>
-                                </div>
-                            </form>
-                            @if ($account->status === 'active' && $account->opening_balance !== null)
-                                <form class="closeAccountForm col-12 col-md-7" data-endpoint="{{ route('financial.accounts.close', $account->id) }}">
-                                    <label for="transfer-target-{{ $account->id }}" class="form-label small">Transferir saldo ao encerrar <span class="text-secondary">(se aplicável)</span></label>
-                                    <div class="input-group input-group-sm">
-                                        <select id="transfer-target-{{ $account->id }}" name="transfer_to_account_id" class="form-select">
-                                            <option value="">Não transferir</option>
-                                            @foreach ($transferTargets->where('id', '!=', $account->id) as $target)
-                                                <option value="{{ $target->id }}">{{ $target->name }}</option>
-                                            @endforeach
-                                        </select>
-                                        <button class="btn btn-outline-danger" type="submit">Encerrar</button>
-                                    </div>
-                                    <div class="form-text">A conta fica preservada para consulta; contas com saldo negativo exigem reconciliação.</div>
-                                </form>
-                            @endif
-                        </div>
-                    @endif
-
-                    @if ($account->opening_balance === null && $account->is_operational)
-                        <hr>
-                        <form class="openingBalanceForm row g-2 align-items-end" data-endpoint="{{ route('financial.accounts.opening-balance', $account->id) }}">
-                            <div class="col-12"><span class="small fw-semibold">Configurar saldo inicial</span></div>
-                            <div class="col-12 col-md-4">
-                                <label for="balance-{{ $account->id }}" class="form-label small">Saldo real</label>
-                                <input id="balance-{{ $account->id }}" name="opening_balance" type="number" class="form-control form-control-sm" min="-9999999999.99" max="9999999999.99" step="0.01" required>
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <label for="balance-date-{{ $account->id }}" class="form-label small">Data de referência</label>
-                                <input id="balance-date-{{ $account->id }}" name="opening_balance_date" type="date" class="form-control form-control-sm" value="{{ now()->toDateString() }}" required>
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <div class="form-check mb-2">
-                                    <input id="allow-negative-{{ $account->id }}" name="allow_negative_balance" type="checkbox" value="1" class="form-check-input">
-                                    <label for="allow-negative-{{ $account->id }}" class="form-check-label small">Permitir saldo negativo</label>
-                                </div>
-                                <button type="submit" class="btn btn-outline-primary btn-sm w-100">Guardar saldo</button>
-                            </div>
-                        </form>
-                    @endif
-                </div>
-            </article>
-        @empty
-            <div class="card border-0 shadow-sm rounded-4">
-                <div class="card-body p-4 text-center text-secondary">Ainda não existem contas. Adiciona uma para começar.</div>
-            </div>
-        @endforelse
-
-        <article class="card border-0 shadow-sm rounded-4 mt-4">
-            <div class="card-body p-4">
-                <h2 class="h5 fw-bold mb-3">Transferências recentes</h2>
-                @forelse ($transfers as $transfer)
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 py-2 border-bottom">
-                        <div>
-                            <div class="fw-semibold">{{ $transfer->description }}</div>
-                            <div class="small text-secondary">{{ $transfer->movement_date->format('d/m/Y') }} · {{ $transfer->contaOrigem?->name ?? 'Conta encerrada' }} → {{ $transfer->contaDestino?->name ?? 'Conta encerrada' }}</div>
-                        </div>
-                        <strong>{{ number_format((float) $transfer->amount, 2, ',', '.') }} {{ auth()->user()->currency }}</strong>
-                    </div>
-                @empty
-                    <p class="small text-secondary mb-0">Ainda não há transferências entre contas.</p>
-                @endforelse
-            </div>
-        </article>
     </div>
-</div>
+@endif
 @endsection
+
+@push('styles')
+<style>
+.accounts-page { max-width: 1180px; margin: 0 auto; }
+.accounts-toolbar { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.5rem; }
+.accounts-list { display:grid; gap:.75rem; }
+.account-card { display:grid; grid-template-columns:48px minmax(0,1fr) minmax(160px,auto) 36px; align-items:center; gap:1rem; padding:1rem 1.1rem; border:1px solid #e7e9f1; border-radius:18px; background:var(--bs-body-bg); box-shadow:0 5px 18px rgba(24,32,56,.045); }
+.account-icon { display:grid; place-items:center; width:46px; height:46px; border-radius:14px; background:#efedff; color:#6258e8; }
+.account-icon svg { width:21px; height:21px; }
+.account-main { min-width:0; }
+.account-title-row { display:flex; align-items:center; flex-wrap:wrap; gap:.55rem; }
+.account-name { margin:0; font-size:1rem; font-weight:700; overflow-wrap:anywhere; }
+.account-subtitle { margin-top:.2rem; color:var(--bs-secondary-color); font-size:.85rem; }
+.account-status { padding:.2rem .55rem; border-radius:999px; font-size:.7rem; font-weight:600; }
+.account-status.is-active { background:#e8f7ef; color:#18734a; }
+.account-status.is-pending { background:#fff5db; color:#896000; }
+.account-status.is-closed { background:#eff0f4; color:#687080; }
+.account-balance { text-align:right; }
+.account-balance strong { display:block; font-size:1.1rem; white-space:nowrap; }
+.account-balance strong small { font-size:.8rem; font-weight:600; }
+.account-balance span { display:block; color:var(--bs-secondary-color); font-size:.75rem; }
+.account-menu { justify-self:end; }
+.account-menu-button { display:grid; place-items:center; width:36px; height:36px; border:0; border-radius:10px; color:#5c6472; background:transparent; }
+.account-menu-button:hover, .account-menu-button:focus-visible { background:#f0efff; color:#5147d8; }
+.account-menu-button svg { width:19px; height:19px; }
+.account-menu .dropdown-menu { min-width:180px; padding:.4rem; border:1px solid #e7e9f1; border-radius:12px; }
+.account-menu .dropdown-item { border-radius:8px; padding:.55rem .7rem; font-size:.9rem; }
+.accounts-empty { border:1px dashed #d8dbe6 !important; }
+.accounts-empty-icon { display:inline-grid; place-items:center; width:54px; height:54px; border-radius:17px; background:#efedff; color:#6258e8; }
+.accounts-empty-icon svg { width:25px; height:25px; }
+.transfer-row { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.7rem 0; border-top:1px solid #eceef3; }
+.transfer-row > div { display:grid; gap:.2rem; }
+.transfer-row span { color:var(--bs-secondary-color); font-size:.82rem; }
+.transfer-amount { white-space:nowrap; }
+#accountFeedback:not(.d-none) { margin-bottom:1rem; }
+@media (max-width:640px) {
+    .accounts-toolbar { align-items:flex-start; flex-direction:column; }
+    .account-card { grid-template-columns:42px minmax(0,1fr) 34px; gap:.7rem; padding:.85rem; }
+    .account-icon { width:40px; height:40px; }
+    .account-balance { grid-column:2; grid-row:2; text-align:left; }
+    .account-menu { grid-column:3; grid-row:1; }
+    .transfer-row { align-items:flex-start; }
+}
+</style>
+@endpush
 
 @push('scripts')
 <script>
@@ -212,93 +341,122 @@
     const feedback = document.getElementById('accountFeedback');
     const token = document.querySelector('meta[name="csrf-token"]')?.content;
 
-    function showFeedback(message, isError = false) {
+    function showFeedback(message, isError = false, form = null) {
+        const modalBody = form?.querySelector('.modal-body');
+        if (modalBody) {
+            let inline = modalBody.querySelector('.account-form-feedback');
+            if (!inline) {
+                inline = document.createElement('div');
+                inline.className = 'account-form-feedback small text-danger mt-3';
+                inline.setAttribute('role', 'alert');
+                modalBody.append(inline);
+            }
+            inline.textContent = message;
+            return;
+        }
         feedback.className = `alert ${isError ? 'alert-danger' : 'alert-success'}`;
         feedback.textContent = message;
+        feedback.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     async function submitJsonForm(form, method = 'POST') {
+        form.querySelector('.account-form-feedback')?.remove();
         const data = Object.fromEntries(new FormData(form).entries());
         if (!data.opening_balance) {
             delete data.opening_balance;
             delete data.opening_balance_date;
         }
-        data.allow_negative_balance = data.allow_negative_balance === '1';
+        if (!data.transfer_to_account_id) delete data.transfer_to_account_id;
+        const negative = form.querySelector('[name="allow_negative_balance"]');
+        if (negative) data.allow_negative_balance = negative.checked;
 
-        const response = await fetch(form.dataset.endpoint, {
-            method,
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': token,
-            },
-            body: JSON.stringify(data),
-            credentials: 'same-origin',
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok) {
-            const validationMessage = Object.values(result.errors || {}).flat().join(' ');
-            throw new Error(validationMessage || result.message || 'Não foi possível guardar os dados.');
+        const submit = form.querySelector('[type="submit"]');
+        if (submit) submit.disabled = true;
+        try {
+            const response = await fetch(form.dataset.endpoint, {
+                method,
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                body: JSON.stringify(data),
+                credentials: 'same-origin',
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const validationMessage = Object.values(result.errors || {}).flat().join(' ');
+                throw new Error(validationMessage || result.message || 'Não foi possível guardar.');
+            }
+            window.location.reload();
+        } catch (error) {
+            if (submit) submit.disabled = false;
+            throw error;
         }
-        window.location.reload();
     }
 
     document.getElementById('accountCreateForm')?.addEventListener('submit', async (event) => {
         event.preventDefault();
-        const form = event.currentTarget;
-        try {
-            await submitJsonForm(form);
-        } catch (error) {
-            showFeedback(error.message, true);
-        }
+        try { await submitJsonForm(event.currentTarget); }
+        catch (error) { showFeedback(error.message, true, event.currentTarget); }
     });
 
-    document.querySelectorAll('.openingBalanceForm').forEach((form) => {
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            try {
-                await submitJsonForm(event.currentTarget, 'PUT');
-            } catch (error) {
-                showFeedback(error.message, true);
-            }
+    document.querySelectorAll('.js-rename-account').forEach((button) => {
+        button.addEventListener('click', () => {
+            const form = document.getElementById('accountNameForm');
+            form.dataset.endpoint = button.dataset.endpoint;
+            form.elements.name.value = button.dataset.name;
         });
     });
-
-    document.querySelectorAll('.accountNameForm').forEach((form) => {
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            try {
-                await submitJsonForm(event.currentTarget, 'PUT');
-            } catch (error) {
-                showFeedback(error.message, true);
-            }
-        });
+    document.getElementById('accountNameForm')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try { await submitJsonForm(event.currentTarget, 'PUT'); }
+        catch (error) { showFeedback(error.message, true, event.currentTarget); }
     });
 
-    document.querySelectorAll('.closeAccountForm').forEach((form) => {
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            if (!window.confirm('Encerrar esta conta? O histórico será preservado.')) return;
-            try {
-                await submitJsonForm(event.currentTarget);
-            } catch (error) {
-                showFeedback(error.message, true);
-            }
+    document.querySelectorAll('.js-opening-balance').forEach((button) => {
+        button.addEventListener('click', () => {
+            const form = document.getElementById('openingBalanceForm');
+            form.dataset.endpoint = button.dataset.endpoint;
+            form.elements.opening_balance.value = '';
+            form.elements.opening_balance_date.value = '{{ now()->toDateString() }}';
+            form.querySelector('[name="allow_negative_balance"]').checked = false;
+            document.getElementById('openingBalanceAccountName').textContent = button.dataset.name;
         });
     });
+    document.getElementById('openingBalanceForm')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try { await submitJsonForm(event.currentTarget, 'PUT'); }
+        catch (error) { showFeedback(error.message, true, event.currentTarget); }
+    });
 
+    document.querySelectorAll('.js-close-account').forEach((button) => {
+        button.addEventListener('click', () => {
+            const form = document.getElementById('closeAccountForm');
+            const target = document.getElementById('closeTransferTarget');
+            form.dataset.endpoint = button.dataset.endpoint;
+            document.getElementById('closeAccountName').textContent = button.dataset.name;
+            target.value = '';
+            [...target.options].forEach((option) => { option.disabled = option.value === button.dataset.id; });
+        });
+    });
+    document.getElementById('closeAccountForm')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try { await submitJsonForm(event.currentTarget); }
+        catch (error) { showFeedback(error.message, true, event.currentTarget); }
+    });
+
+    document.querySelectorAll('.js-account-transfer').forEach((button) => {
+        button.addEventListener('click', () => {
+            document.getElementById('transferSource').value = button.dataset.source;
+            document.getElementById('transferDestination').value = '';
+        });
+    });
     document.getElementById('accountTransferForm')?.addEventListener('submit', async (event) => {
         event.preventDefault();
         const form = event.currentTarget;
         if (form.elements.source_account_id.value === form.elements.destination_account_id.value) {
-            showFeedback('Seleciona duas contas diferentes.', true);
+            showFeedback('Escolhe duas contas diferentes.', true, form);
             return;
         }
-        try {
-            await submitJsonForm(form);
-        } catch (error) {
-            showFeedback(error.message, true);
-        }
+        try { await submitJsonForm(form); }
+        catch (error) { showFeedback(error.message, true, form); }
     });
 })();
 </script>
