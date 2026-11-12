@@ -13,7 +13,7 @@ class Movimento extends Model
 
     protected $table = 'movimentos';
 
-    protected $fillable = [
+    protected $fillable = ['user_id',
         'type', 'status', 'description', 'amount', 'movement_date',
         'source_account_id', 'destination_account_id', 'category_id',
         'invoice_id', 'recurrence_id', 'debt_id', 'installment_id',
