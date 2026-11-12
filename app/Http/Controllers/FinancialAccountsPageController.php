@@ -12,6 +12,7 @@ class FinancialAccountsPageController extends Controller
     {
         $accounts = $request->user()->contasFinanceiras()
             ->where('type', '!=', 'legacy')
+            ->withCount(['movimentosOrigem', 'movimentosDestino'])
             ->orderBy('created_at')
             ->get();
         $transferTargets = $request->user()->contasFinanceiras()

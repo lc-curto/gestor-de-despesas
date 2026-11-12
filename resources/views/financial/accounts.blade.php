@@ -75,7 +75,7 @@
                                     data-opening-endpoint="{{ route('financial.accounts.opening-balance', $account->id) }}"
                                     data-name="{{ $account->name }}" data-allowed="{{ $account->allow_negative_balance ? '1' : '0' }}"
                                     data-opening="{{ $account->opening_balance !== null ? '1' : '0' }}"
-                                    data-opening-value="{{ $account->opening_balance }}" data-opening-date="{{ $account->opening_balance_date?->format('d/m/Y') }}"
+                                    data-opening-value="{{ $account->opening_balance }}" data-opening-date="{{ $account->opening_balance_date?->format('d/m/Y') }}" data-opening-iso="{{ $account->opening_balance_date?->toDateString() }}" data-movements="{{ $account->movimentos_origem_count + $account->movimentos_destino_count }}"
                                     data-type="{{ $account->type }}" data-currency="{{ $account->currency }}">Editar conta</button></li>
                                 @if (in_array($account->type, ['bank', 'cash'], true) && $account->status === 'active' && $account->opening_balance !== null)
                                     <li><hr class="dropdown-divider"></li>
@@ -171,7 +171,7 @@
                         <span id="editOpeningSummaryDate"></span>
                     </div>
                     <div id="editOpeningBalanceFields" class="mt-3">
-                        <label for="editOpeningBalance" class="form-label">Definir saldo inicial</label>
+<label for="editOpeningBalance" class="form-label">Saldo inicial</label>
                         <input id="editOpeningBalance" name="opening_balance" type="number" class="form-control" min="-999999999.99" max="9999999999.99" step="0.01" inputmode="decimal" placeholder="Ex.: 1500,00">
                         <label for="editOpeningDate" class="form-label mt-3">Data do saldo inicial</label>
                         <input id="editOpeningDate" name="opening_balance_date" type="date" class="form-control" value="{{ now()->toDateString() }}" max="{{ now()->toDateString() }}">
@@ -454,12 +454,16 @@
             form.dataset.settingsEndpoint = button.dataset.settingsEndpoint;
             form.dataset.openingEndpoint = button.dataset.openingEndpoint;
             form.dataset.openingConfigured = button.dataset.opening === '1' ? '1' : '0';
+            form.dataset.hasMovements = button.dataset.movements === '0' ? '0' : '1';
             form.elements.name.value = button.dataset.name;
             form.querySelector('[name="allow_negative_balance"]').checked = button.dataset.allowed === '1';
             const openingFields = document.getElementById('editOpeningBalanceFields');
             const openingSummary = document.getElementById('editOpeningSummary');
             const negativeField = document.getElementById('editNegativeBalanceField');
-            openingFields.classList.toggle('d-none', button.dataset.opening === '1' || button.dataset.type === 'credit_card');
+            const canEditOpening = button.dataset.type !== 'credit_card' && (button.dataset.opening !== '1' || button.dataset.movements === '0');
+            openingFields.classList.toggle('d-none', !canEditOpening);
+            document.getElementById('editOpeningBalance').value = button.dataset.openingValue || '';
+            document.getElementById('editOpeningDate').value = button.dataset.openingIso || '{{ now()->toDateString() }}';
             openingSummary.classList.toggle('d-none', button.dataset.opening !== '1');
             document.getElementById('editOpeningSummaryValue').textContent = button.dataset.opening === '1'
                 ? Number(button.dataset.openingValue || 0).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + button.dataset.currency
@@ -475,7 +479,7 @@
         const form = event.currentTarget;
         try {
             await submitJsonForm(form, 'PUT', false);
-            if (form.dataset.openingConfigured === '0' && form.elements.opening_balance.value) {
+            if (form.elements.opening_balance.value && (form.dataset.openingConfigured === '0' || form.dataset.hasMovements === '0')) {
                 const opening = new FormData();
                 opening.set('opening_balance', form.elements.opening_balance.value);
                 opening.set('opening_balance_date', document.getElementById('editOpeningDate').value);

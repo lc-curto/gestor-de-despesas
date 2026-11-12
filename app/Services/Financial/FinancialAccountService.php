@@ -22,6 +22,10 @@ class FinancialAccountService
             }
             $allowNegative = (bool) ($data['allow_negative_balance'] ?? false);
 
+            if ($openingBalance !== null && ($data['opening_balance_date'] ?? now()->toDateString()) > now()->toDateString()) {
+                throw ValidationException::withMessages(['opening_balance_date' => 'A data do saldo inicial não pode ser futura.']);
+            }
+
             if ($openingBalance !== null && $this->balances->toCents((string) $openingBalance) < 0 && !$allowNegative) {
                 throw ValidationException::withMessages(['opening_balance' => 'Saldo inicial negativo exige autorização explícita.']);
             }
@@ -47,6 +51,9 @@ class FinancialAccountService
             $locked = ContaFinanceira::query()->where('user_id', $user->id)->whereKey($account->id)->lockForUpdate()->firstOrFail();
             if (!$locked->is_operational || $locked->type === 'legacy') {
                 throw ValidationException::withMessages(['account' => 'Esta conta não aceita saldo inicial operacional.']);
+            }
+            if ($date > now()->toDateString()) {
+                throw ValidationException::withMessages(['opening_balance_date' => 'A data do saldo inicial não pode ser futura.']);
             }
             if ($this->balances->toCents($amount) < 0 && !$allowNegative) {
                 throw ValidationException::withMessages(['opening_balance' => 'Saldo inicial negativo exige autorização explícita.']);
