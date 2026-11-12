@@ -172,7 +172,7 @@ class FinanceController extends Controller
         $linkedMovements = $request->user()->movimentos()
             ->where('legacy_type', $legacyType)
             ->whereIn('legacy_id', $registos->getCollection()->pluck('id'))
-            ->with(['contaOrigem', 'contaDestino'])
+            ->with(['contaOrigem', 'contaDestino', 'estornadoPor'])
             ->get()
             ->keyBy('legacy_id');
         $data = $dateField;
@@ -289,7 +289,7 @@ class FinanceController extends Controller
             $legacy = $this->query($request)->whereKey($id)->lockForUpdate()->firstOrFail();
             $movement = $this->linkedMovement($request, $tipo, $legacy->id);
             if ($movement?->status === 'settled') {
-                throw ValidationException::withMessages(['movement' => 'Movimentos liquidados não podem ser eliminados. Os estornos serão disponibilizados numa fase seguinte.']);
+                throw ValidationException::withMessages(['movement' => 'Movimentos liquidados não podem ser eliminados; usa a ação de estorno.']);
             }
             if ($movement?->status === 'pending') {
                 $service->voidPending($request->user(), $movement, 'Registo legado removido pelo utilizador.');
@@ -302,5 +302,24 @@ class FinanceController extends Controller
         }
 
         return back()->with('success', 'Registo eliminado.');
+    }
+
+    public function reverse(Request $request, string $id, FinancialMovementService $service)
+    {
+        [$tipo] = $this->config($request);
+        $data = $request->validate(['reason' => 'nullable|string|max:1000']);
+        $movement = $this->linkedMovement($request, $tipo, $id);
+
+        if (!$movement) {
+            throw ValidationException::withMessages(['movement' => 'Este registo ainda não tem movimento financeiro associado.']);
+        }
+
+        $service->reverse($request->user(), $movement, $data['reason'] ?? 'Estorno solicitado na lista de movimentos.');
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true, 'message' => 'Estorno criado.'], 201);
+        }
+
+        return back()->with('success', 'Estorno criado.');
     }
 }

@@ -37,7 +37,9 @@ class FinancialCoreController extends Controller
             'name' => 'required|string|max:120',
             'type' => ['required', Rule::in(['bank', 'cash', 'credit_card'])],
             'opening_balance' => 'nullable|numeric|decimal:0,2|between:-9999999999.99,9999999999.99',
-            'opening_balance_date' => 'required_with:opening_balance|date',
+            'opening_balance_date' => ['required_with:opening_balance', 'date', function (string $attribute, mixed $value, \Closure $fail): void {
+                if ((string) $value !== now()->toDateString()) $fail('O saldo inicial só pode ser registado com a data atual.');
+            }],
             'allow_negative_balance' => 'sometimes|boolean',
         ]);
 
@@ -65,7 +67,9 @@ class FinancialCoreController extends Controller
     {
         $data = $request->validate([
             'opening_balance' => 'required|numeric|decimal:0,2|between:-9999999999.99,9999999999.99',
-            'opening_balance_date' => 'required|date',
+            'opening_balance_date' => ['required', 'date', function (string $attribute, mixed $value, \Closure $fail): void {
+                if ((string) $value !== now()->toDateString()) $fail('O saldo inicial só pode ser registado com a data atual.');
+            }],
             'allow_negative_balance' => 'sometimes|boolean',
         ]);
 
@@ -151,6 +155,16 @@ class FinancialCoreController extends Controller
         $data = $request->validate(['reason' => 'nullable|string|max:1000']);
         $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
         return response()->json(['data' => $service->voidPending($request->user(), $movement, $data['reason'] ?? null)]);
+    }
+
+    public function reverseMovement(Request $request, string $id, FinancialMovementService $service): JsonResponse
+    {
+        $data = $request->validate(['reason' => 'nullable|string|max:1000']);
+        $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
+
+        return response()->json([
+            'data' => $service->reverse($request->user(), $movement, $data['reason'] ?? null),
+        ], 201);
     }
 
     public function updatePendingMovement(Request $request, string $id, FinancialMovementService $service): JsonResponse

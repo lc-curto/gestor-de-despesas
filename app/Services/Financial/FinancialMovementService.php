@@ -157,6 +157,79 @@ class FinancialMovementService
         });
     }
 
+    public function reverse(User $user, Movimento $movement, ?string $reason = null): Movimento
+    {
+        return DB::transaction(function () use ($user, $movement, $reason) {
+            $locked = Movimento::query()
+                ->where('user_id', $user->id)
+                ->whereKey($movement->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($locked->status !== 'settled') {
+                throw ValidationException::withMessages(['movement' => 'Só é possível estornar movimentos liquidados.']);
+            }
+            if ($locked->is_historical) {
+                throw ValidationException::withMessages(['movement' => 'Movimentos históricos não podem ser estornados; corrigem-se apenas por associação.']);
+            }
+            if ($locked->reversal_of_id || Movimento::query()->where('user_id', $user->id)->where('reversal_of_id', $locked->id)->exists()) {
+                throw ValidationException::withMessages(['movement' => 'Este movimento já tem um estorno.']);
+            }
+
+            $sourceId = $locked->destination_account_id;
+            $destinationId = $locked->source_account_id;
+            $type = $locked->type;
+            $direction = $locked->adjustment_direction;
+
+            if ($type === 'adjustment') {
+                $direction = $direction === 'increase' ? 'decrease' : 'increase';
+            }
+
+            $source = $this->account($user, $sourceId);
+            $destination = $this->account($user, $destinationId);
+            $reversalType = match ($type) {
+                'income' => 'expense',
+                'expense' => 'income',
+                'transfer' => 'transfer',
+                'adjustment' => 'adjustment',
+                default => throw ValidationException::withMessages(['movement' => 'Tipo de movimento não pode ser estornado.']),
+            };
+
+            $this->assertShape($reversalType, $source, $destination, $direction);
+            if ($source) {
+                $this->assertMovementDateCompatible($source, $locked->movement_date->toDateString());
+                $this->balances->assertCanDebit($source, (string) $locked->amount);
+            }
+            if ($destination) {
+                $this->assertMovementDateCompatible($destination, $locked->movement_date->toDateString());
+            }
+
+            $reversal = Movimento::query()->create([
+                'id' => (string) Str::uuid(),
+                'user_id' => $user->id,
+                'type' => $reversalType,
+                'status' => 'settled',
+                'description' => 'Estorno: ' . $locked->description,
+                'amount' => $locked->amount,
+                'movement_date' => $locked->movement_date,
+                'source_account_id' => $source?->id,
+                'destination_account_id' => $destination?->id,
+                'category_id' => $locked->category_id,
+                'adjustment_direction' => $direction,
+                'reversal_of_id' => $locked->id,
+                'is_historical' => false,
+                'settled_at' => now(),
+            ]);
+
+            $this->audit($user, $locked, 'reversed', $locked->getAttributes(), array_merge($locked->getAttributes(), [
+                'reversal_id' => $reversal->id,
+            ]), $reason);
+            $this->audit($user, $reversal, 'reversal_created', null, $reversal->getAttributes(), $reason);
+
+            return $reversal->refresh();
+        });
+    }
+
     public function voidPending(User $user, Movimento $movement, ?string $reason = null): Movimento
     {
         return DB::transaction(function () use ($user, $movement, $reason) {
@@ -222,8 +295,8 @@ class FinancialMovementService
 
     private function assertMovementDateCompatible(ContaFinanceira $account, string $movementDate): void
     {
-        if ($account->opening_balance_date && substr($movementDate, 0, 10) < $account->opening_balance_date->toDateString()) {
-            throw ValidationException::withMessages(['movement_date' => 'A data do movimento é anterior à data do saldo inicial desta conta.']);
+        if ($account->opening_balance_date && substr($movementDate, 0, 10) <= $account->opening_balance_date->toDateString()) {
+            throw ValidationException::withMessages(['movement_date' => 'A data do movimento deve ser posterior à data do saldo inicial desta conta.']);
         }
     }
 
