@@ -24,6 +24,11 @@
 
     <div class="app-navigation-group">
         <p class="app-navigation-label">Organização</p>
+        <a class="app-navigation-link {{ request()->routeIs('financial.accounts.*') ? 'active' : '' }}"
+            href="{{ route('financial.accounts.page') }}" title="Contas" aria-label="Contas"
+            @if(request()->routeIs('financial.accounts.*')) aria-current="page" @endif>
+            <i data-lucide="wallet-cards" aria-hidden="true"></i><span>Contas</span>
+        </a>
         <a class="app-navigation-link {{ request()->routeIs('categorias.*') ? 'active' : '' }}"
             href="{{ route('categorias.index') }}" title="Categorias" aria-label="Categorias"
             @if(request()->routeIs('categorias.*')) aria-current="page" @endif>

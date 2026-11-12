@@ -4,6 +4,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\FinancialCoreController;
+use App\Http\Controllers\FinancialAccountsPageController;
 use Illuminate\Support\Facades\Route;
 Route::get('/',fn()=>auth()->check()?redirect()->route('dashboard'):redirect()->route('login'));
 Route::middleware('guest')->group(function(){
@@ -19,6 +20,7 @@ Route::middleware('guest')->group(function(){
 Route::middleware('auth')->group(function(){
  Route::post('/logout',[AccountController::class,'logout'])->name('logout');
  Route::get('/dashboard',DashboardController::class)->name('dashboard');
+ Route::get('/contas', FinancialAccountsPageController::class)->name('financial.accounts.page');
  Route::get('/dashboard/movimentos',[DashboardController::class,'movimentos'])->middleware('throttle:60,1')->name('dashboard.movimentos');
  Route::post('/session/activity',fn()=>response()->noContent())->name('session.activity');
 
