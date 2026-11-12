@@ -103,6 +103,7 @@ class FinancialCoreController extends Controller
     {
         $data = $request->validate([
             'type' => ['required', Rule::in(['income', 'expense', 'transfer', 'adjustment'])],
+            'status' => ['sometimes', Rule::in(['pending', 'settled'])],
             'description' => 'required|string|max:255',
             'amount' => 'required|numeric|gt:0|decimal:0,2|max:9999999999.99',
             'movement_date' => 'required|date',
@@ -112,7 +113,9 @@ class FinancialCoreController extends Controller
             'adjustment_direction' => ['nullable', Rule::in(['increase', 'decrease'])],
         ]);
 
-        $movement = $service->create($request->user(), $data);
+        $movement = ($data['status'] ?? 'settled') === 'pending'
+            ? $service->createPending($request->user(), $data)
+            : $service->create($request->user(), $data);
         return response()->json(['data' => $movement], 201);
     }
 
