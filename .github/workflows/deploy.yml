@@ -196,3 +196,61 @@ jobs:
           fi
 
           echo 'Deploy validado: /login respondeu HTTP 200.'
+
+      - name: Limpar releases antigas (reter ativa + 2 anteriores)
+        if: success() && github.event_name != 'pull_request'
+        continue-on-error: true
+        env:
+          SSH_HOST: ${{ secrets.ALWAYSDATA_HOST }}
+          SSH_USER: ${{ secrets.ALWAYSDATA_USER }}
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          ssh -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ecdsa-sha2-nistp256 "${SSH_USER}@${SSH_HOST}" "bash -s -- '${DEPLOY_SHA:0:7}'" <<'REMOTE'
+          set -euo pipefail
+          RELEASES_DIR="$HOME/releases"
+          ACTIVE_NAME="release-$1"
+          ACTIVE_PATH="$RELEASES_DIR/$ACTIVE_NAME"
+
+          # Proteção: nunca executar a limpeza se a release ativa não for válida.
+          test -d "$ACTIVE_PATH"
+          test -f "$ACTIVE_PATH/artisan"
+          test -f "$ACTIVE_PATH/public/build/manifest.json"
+          test -L "$ACTIVE_PATH/.env"
+          test -L "$ACTIVE_PATH/storage"
+
+          previous_kept=0
+          while IFS= read -r candidate; do
+            [ -n "$candidate" ] || continue
+            name="${candidate##*/}"
+
+            # Preserva sempre a release que acabou de ser ativada.
+            if [ "$name" = "$ACTIVE_NAME" ]; then
+              continue
+            fi
+
+            # Considera completa apenas uma release com código, build e symlinks.
+            if [ -f "$candidate/artisan" ] &&
+               [ -f "$candidate/public/build/manifest.json" ] &&
+               [ -L "$candidate/.env" ] &&
+               [ -L "$candidate/storage" ]; then
+              if [ "$previous_kept" -lt 2 ]; then
+                previous_kept=$((previous_kept + 1))
+                echo "Preservando release anterior: $name"
+                continue
+              fi
+            fi
+
+            # Só remove diretórios com o padrão exato release-<7 caracteres hex>.
+            case "$name" in
+              release-???????)
+                if [[ "$name" =~ ^release-[0-9a-f]{7}$ ]]; then
+                  echo "Removendo release antiga/incompleta: $name"
+                  rm -rf -- "$candidate"
+                fi
+                ;;
+            esac
+          done < <(find "$RELEASES_DIR" -mindepth 1 -maxdepth 1 -type d -regextype posix-extended -regex '.*/release-[0-9a-f]{7}' -printf '%T@ %p\\n' | sort -rn | cut -d' ' -f2-)
+
+          echo "Limpeza concluída. Retenção: release ativa + até 2 releases anteriores."
+          REMOTE
