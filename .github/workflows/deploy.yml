@@ -42,6 +42,7 @@ jobs:
           php-version: '8.4'
           extensions: mbstring, pdo_mysql, xml, ctype, fileinfo, openssl, tokenizer
           coverage: none
+          tools: composer:v2
 
       - name: Instalar dependências PHP
         run: composer install --no-interaction --prefer-dist
@@ -75,9 +76,8 @@ jobs:
           DB_DATABASE: meu_bolso_test
           DB_USERNAME: root
           DB_PASSWORD: root
-        run: php artisan test
+        run: composer test
 
-      # Pull requests executam apenas validação. Deploy ocorre após push/merge em main.
       - name: Preparar dependências de produção
         if: github.event_name != 'pull_request'
         run: composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
@@ -88,6 +88,9 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.ALWAYSDATA_SSH_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.ALWAYSDATA_KNOWN_HOSTS }}
         run: |
+          set -euo pipefail
+          test -n "$SSH_PRIVATE_KEY"
+          test -n "$SSH_KNOWN_HOSTS"
           install -m 700 -d ~/.ssh
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
@@ -104,7 +107,7 @@ jobs:
         run: |
           set -euo pipefail
           RELEASE="releases/release-${DEPLOY_SHA:0:7}"
-          ssh "${SSH_USER}@${SSH_HOST}" "mkdir -p \"\$HOME/$RELEASE\""
+          ssh -o StrictHostKeyChecking=yes "${SSH_USER}@${SSH_HOST}" "mkdir -p \"\$HOME/$RELEASE\""
           rsync -az --delete \
             --exclude='.env' \
             --exclude='.git' \
@@ -113,7 +116,7 @@ jobs:
             -e "ssh -o StrictHostKeyChecking=yes" \
             ./ "${SSH_USER}@${SSH_HOST}:~/$RELEASE/"
 
-          ssh "${SSH_USER}@${SSH_HOST}" "bash -s -- '$RELEASE'" <<'REMOTE'
+          ssh -o StrictHostKeyChecking=yes "${SSH_USER}@${SSH_HOST}" "bash -s -- '$RELEASE'" <<'REMOTE'
           set -euo pipefail
           RELEASE_PATH="$HOME/$1"
 
@@ -121,17 +124,19 @@ jobs:
           test -f "$RELEASE_PATH/public/build/manifest.json"
           test -d "$HOME/laravel/storage"
           test -f "$HOME/laravel/.env"
+          test ! -e "$RELEASE_PATH/.env"
+          test ! -e "$RELEASE_PATH/storage"
 
           ln -s "$HOME/laravel/.env" "$RELEASE_PATH/.env"
           ln -s "$HOME/laravel/storage" "$RELEASE_PATH/storage"
           mkdir -p "$RELEASE_PATH/bootstrap/cache"
 
           cd "$RELEASE_PATH"
-          php artisan optimize
           composer check-platform-reqs --no-dev
+          php artisan optimize
           REMOTE
 
-      - name: Guardar caminho atual e ativar release
+      - name: Ativar release e guardar rollback
         if: github.event_name != 'pull_request'
         id: activate
         env:
@@ -141,22 +146,22 @@ jobs:
           DEPLOY_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
+          test -n "$API_TOKEN"
           API="https://api.alwaysdata.com/v1/site/${SITE_ID}/"
-          AUTH="${API_TOKEN} account=${API_ACCOUNT}"
+          AUTH="${API_TOKEN} account=${API_ACCOUNT}:"
 
-          OLD_PATH=$(curl --fail --silent --show-error --user "$AUTH" "$API" | jq -er '.path')
+          OLD_PATH=$(curl --fail --silent --show-error --basic --user "$AUTH" "$API" | jq -er '.path')
           NEW_PATH="releases/release-${DEPLOY_SHA:0:7}/public/"
+          test "$OLD_PATH" != "$NEW_PATH"
+          printf 'old_path=%s\n' "$OLD_PATH" >> "$GITHUB_OUTPUT"
 
-          echo "old_path=$OLD_PATH" >> "$GITHUB_OUTPUT"
-
-          curl --fail --silent --show-error \
-            --user "$AUTH" \
+          curl --fail --silent --show-error --basic --user "$AUTH" \
             --request PATCH \
             --header 'Content-Type: application/json' \
             --data "$(jq -n --arg path "$NEW_PATH" '{path: $path}')" \
             "$API"
 
-      - name: Reiniciar site e validar produção
+      - name: Reiniciar, smoke test e rollback automático
         if: github.event_name != 'pull_request'
         env:
           API_TOKEN: ${{ secrets.ALWAYSDATA_API_TOKEN }}
@@ -164,28 +169,32 @@ jobs:
           SITE_ID: '1102810'
           OLD_PATH: ${{ steps.activate.outputs.old_path }}
         run: |
-          set -euo pipefail
+          set -u
           API="https://api.alwaysdata.com/v1/site/${SITE_ID}/"
-          AUTH="${API_TOKEN} account=${API_ACCOUNT}"
+          AUTH="${API_TOKEN} account=${API_ACCOUNT}:"
 
-          curl --fail --silent --show-error \
-            --user "$AUTH" \
-            --request POST \
-            "${API}restart/"
-
-          if ! curl --fail --silent --show-error --location \
-              --retry 5 --retry-delay 5 --retry-connrefused \
-              https://meu-bolso.alwaysdata.net/login >/dev/null; then
-            echo "Smoke test falhou. A restaurar o caminho anterior."
-            curl --fail --silent --show-error \
-              --user "$AUTH" \
+          rollback() {
+            echo 'Falha após ativação; a restaurar a release anterior.'
+            curl --fail --silent --show-error --basic --user "$AUTH" \
               --request PATCH \
               --header 'Content-Type: application/json' \
               --data "$(jq -n --arg path "$OLD_PATH" '{path: $path}')" \
-              "$API"
-            curl --fail --silent --show-error \
-              --user "$AUTH" --request POST "${API}restart/"
+              "$API" || true
+            curl --fail --silent --show-error --basic --user "$AUTH" \
+              --request POST "${API}restart/" || true
+          }
+
+          if ! curl --fail --silent --show-error --basic --user "$AUTH" \
+              --request POST "${API}restart/"; then
+            rollback
             exit 1
           fi
 
-          echo "Deploy validado: /login respondeu HTTP 200."
+          if ! curl --fail --silent --show-error --location \
+              --retry 5 --retry-delay 5 --retry-connrefused \
+              --max-time 30 https://meu-bolso.alwaysdata.net/login >/dev/null; then
+            rollback
+            exit 1
+          fi
+
+          echo 'Deploy validado: /login respondeu HTTP 200.'
