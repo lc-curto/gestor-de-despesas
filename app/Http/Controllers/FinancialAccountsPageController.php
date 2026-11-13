@@ -39,4 +39,29 @@ class FinancialAccountsPageController extends Controller
 
         return view('financial.accounts', compact('accounts', 'transferTargets', 'transfers'));
     }
+
+    public function show(Request $request, string $id, AccountBalanceService $balances)
+    {
+        $account = $request->user()->contasFinanceiras()
+            ->where('type', '!=', 'legacy')
+            ->whereKey($id)
+            ->firstOrFail();
+
+        $account->current_balance = $account->is_operational && $account->opening_balance !== null
+            ? $balances->balance($account)
+            : null;
+
+        $movements = $request->user()->movimentos()
+            ->with(['contaOrigem:id,name', 'contaDestino:id,name', 'categoria:id,name,icon,color'])
+            ->where(function ($query) use ($account): void {
+                $query->where('source_account_id', $account->id)
+                    ->orWhere('destination_account_id', $account->id);
+            })
+            ->orderByDesc('movement_date')
+            ->orderByDesc('created_at')
+            ->paginate(30)
+            ->withQueryString();
+
+        return view('financial.account-show', compact('account', 'movements'));
+    }
 }

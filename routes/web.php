@@ -26,6 +26,7 @@ Route::middleware('auth')->group(function(){
  Route::post('/logout',[AccountController::class,'logout'])->name('logout');
  Route::get('/dashboard',DashboardController::class)->name('dashboard');
  Route::get('/contas', FinancialAccountsPageController::class)->name('financial.accounts.page');
+ Route::get('/contas/{id}', [FinancialAccountsPageController::class, 'show'])->name('financial.accounts.show');
  Route::get('/dashboard/movimentos',[DashboardController::class,'movimentos'])->middleware('throttle:60,1')->name('dashboard.movimentos');
  Route::post('/session/activity',fn()=>response()->noContent())->name('session.activity');
 

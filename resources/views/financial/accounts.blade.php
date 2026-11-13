@@ -43,6 +43,7 @@
                     $icon = $account->type === 'cash' ? 'wallet' : ($account->type === 'credit_card' ? 'credit-card' : 'landmark');
                 @endphp
                 <article class="account-card">
+                    <a class="account-card-link" href="{{ route('financial.accounts.show', $account->id) }}" aria-label="Ver histórico de {{ $account->name }}">
                     <span class="account-icon"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></span>
                     <div class="account-main">
                         <div class="account-title-row">
@@ -63,6 +64,7 @@
                             <strong>—</strong><span>Saldo por configurar</span>
                         @endif
                     </div>
+                    </a>
                     @if ($account->is_operational && $account->status !== 'closed')
                         <div class="dropdown account-menu">
                             <button class="account-menu-button" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações para {{ $account->name }}">
@@ -338,6 +340,8 @@
 .accounts-toolbar { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.25rem; }
 .accounts-list { display:grid; gap:.75rem; }
 .account-card { display:grid; grid-template-columns:48px minmax(0,1fr) minmax(180px,auto) 100px; align-items:center; gap:1rem; padding:1.15rem 1.25rem; border:1px solid var(--app-border); border-radius:1rem; background:var(--bs-body-bg); box-shadow:var(--app-shadow); }
+.account-card-link { display:contents; color:inherit; text-decoration:none; }
+.account-card-link:hover .account-name { color:var(--app-primary); }
 .account-icon { display:grid; place-items:center; width:46px; height:46px; border-radius:.85rem; background:rgba(99,91,255,.1); color:var(--app-primary); }
 .account-icon svg { width:21px; height:21px; }
 .account-main { min-width:0; }
