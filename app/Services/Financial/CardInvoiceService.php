@@ -47,7 +47,7 @@ class CardInvoiceService
                 ['closing_date' => $closing->toDateString(), 'due_date' => $due->toDateString(), 'status' => 'open']
             );
             $invoice = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
-            if ($invoice->status === 'paid' || $invoice->closing_date?->isPast()) {
+            if ($invoice->status === 'paid' || ($invoice->closing_date && $invoice->closing_date->lt(today()))) {
                 throw ValidationException::withMessages(['invoice' => 'A fatura deste ciclo já foi fechada. A compra deve entrar no ciclo seguinte.']);
             }
 
@@ -84,9 +84,9 @@ class CardInvoiceService
                 $remaining = max(0, round($total - $paid, 2));
                 $invoice->setAttribute('remaining_amount', number_format($remaining, 2, '.', ''));
                 $invoice->setAttribute('display_status', $remaining <= 0 ? 'paid'
-                    : ($paid > 0 ? 'partial'
-                        : ($invoice->due_date->isPast() ? 'overdue'
-                            : ($invoice->closing_date && $invoice->closing_date->isPast() ? 'closed' : 'open'))));
+                    : ($invoice->due_date->lt(today()) ? 'overdue'
+                        : ($paid > 0 ? 'partial'
+                            : ($invoice->closing_date && $invoice->closing_date->lt(today()) ? 'closed' : 'open'))));
                 return $invoice;
             });
     }
