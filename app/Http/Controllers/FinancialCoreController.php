@@ -10,6 +10,7 @@ use App\Services\Financial\AccountBalanceService;
 use App\Services\Financial\FinancialAccountService;
 use App\Services\Financial\FinancialMovementService;
 use App\Services\Financial\FinancialCommitmentService;
+use App\Services\Financial\CardInvoiceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -48,6 +49,45 @@ class FinancialCoreController extends Controller
         ]);
         return response()->json(['data' => $service->create($request->user(), $data)], 201);
     }
+
+    public function storeCardPurchase(Request $request, CardInvoiceService $service): JsonResponse
+    {
+        $data = $request->validate([
+            'account_id' => ['required', 'uuid', Rule::exists('contas_financeiras', 'id')->where('user_id', $request->user()->id)],
+            'description' => 'required|string|max:255',
+            'amount' => 'required|numeric|gt:0|decimal:0,2|max:9999999999.99',
+            'movement_date' => 'required|date|before_or_equal:today',
+            'category_id' => ['nullable', 'uuid', Rule::exists('categorias', 'id')->where('user_id', $request->user()->id)],
+        ]);
+        return response()->json(['data' => $service->purchase($request->user(), $data)], 201);
+    }
+
+    public function invoices(Request $request, CardInvoiceService $service): JsonResponse
+    {
+        return response()->json(['data' => $service->listInvoices($request->user())]);
+    }
+
+    public function payInvoice(Request $request, string $id, CardInvoiceService $service): JsonResponse
+    {
+        $data = $request->validate([
+            'account_id' => ['required', 'uuid', Rule::exists('contas_financeiras', 'id')->where('user_id', $request->user()->id)],
+            'payment_date' => 'required|date',
+        ]);
+        $invoice = $request->user()->faturas()->whereKey($id)->firstOrFail();
+        return response()->json(['data' => $service->pay($request->user(), $invoice, $data['account_id'], $data['payment_date'])]);
+    }
+
+    public function updateCardSettings(Request $request, string $id): JsonResponse
+    {
+        $data = $request->validate([
+            'closing_day' => 'required|integer|between:1,28',
+            'due_day' => 'required|integer|between:1,28',
+            'credit_limit' => 'nullable|numeric|gt:0|decimal:0,2|max:9999999999.99',
+        ]);
+        $card = $request->user()->contasFinanceiras()->whereKey($id)->where('type', 'credit_card')->where('is_operational', true)->where('status', 'active')->firstOrFail();
+        $card->update($data);
+        return response()->json(['data' => $card->refresh()]);
+    }
     public function accounts(Request $request, AccountBalanceService $balances): JsonResponse
     {
         $accounts = $request->user()->contasFinanceiras()
@@ -73,6 +113,9 @@ class FinancialCoreController extends Controller
             'opening_balance' => 'nullable|numeric|decimal:0,2|between:-9999999999.99,9999999999.99',
             'opening_balance_date' => 'required_with:opening_balance|date|before_or_equal:today',
             'allow_negative_balance' => 'sometimes|boolean',
+            'closing_day' => 'required_if:type,credit_card|nullable|integer|between:1,28',
+            'due_day' => 'required_if:type,credit_card|nullable|integer|between:1,28',
+            'credit_limit' => 'nullable|numeric|gt:0|decimal:0,2|max:9999999999.99',
         ]);
 
         $account = $service->create($request->user(), $data);

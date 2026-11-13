@@ -2,6 +2,8 @@
 
 Esta etapa acrescenta a camada de domínio sobre as tabelas introduzidas em `feature/financial-core-schema`. Não altera os ecrãs existentes nem substitui ainda o dashboard legado.
 
+Os fluxos de cartões de crédito, faturas e compromissos da Fase 2 estão implementados em `docs/financial-phase-2.md` e disponíveis na página autenticada `/compromissos`.
+
 ## Modelos
 
 - `ContaFinanceira`: conta bancária, dinheiro, cartão ou histórico.

@@ -25,6 +25,11 @@
             @if(request()->routeIs('financial.accounts.*')) aria-current="page" @endif>
             <i data-lucide="wallet-cards" aria-hidden="true"></i><span>Contas</span>
         </a>
+        <a class="app-navigation-link {{ request()->routeIs('financial.commitments.*') ? 'active' : '' }}"
+            href="{{ route('financial.commitments.page') }}" title="Cartões e compromissos" aria-label="Cartões e compromissos"
+            @if(request()->routeIs('financial.commitments.*')) aria-current="page" @endif>
+            <i data-lucide="credit-card" aria-hidden="true"></i><span>Cartões e compromissos</span>
+        </a>
     </div>
 
     <div class="app-navigation-group">

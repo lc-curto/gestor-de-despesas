@@ -35,7 +35,7 @@ class FinancialCommitmentService
                 $amountCents = $base + ($i <= $remainder ? 1 : 0);
                 ParcelaDivida::query()->create([
                     'user_id' => $user->id, 'debt_id' => $debt->id, 'installment_number' => $i,
-                    'due_date' => Carbon::parse($data['due_date'] ?? $start)->addMonths($i - 1)->toDateString(),
+                    'due_date' => Carbon::parse($data['due_date'] ?? $start)->addMonthsNoOverflow($i - 1)->toDateString(),
                     'amount' => number_format($amountCents / 100, 2, '.', ''),
                     'principal_amount' => number_format($amountCents / 100, 2, '.', ''),
                     'interest_amount' => '0.00', 'paid_amount' => '0.00', 'status' => 'pending',
@@ -49,14 +49,28 @@ class FinancialCommitmentService
     {
         return DB::transaction(function () use ($user, $debt, $installment, $data): ParcelaDivida {
             $locked = ParcelaDivida::query()->where('user_id', $user->id)->where('debt_id', $debt->id)->whereKey($installment->id)->lockForUpdate()->firstOrFail();
+            $paymentAccount = $user->contasFinanceiras()->whereKey($data['account_id'])->firstOrFail();
+            if (!in_array($paymentAccount->type, ['bank', 'cash', 'credit_card'], true) || !$paymentAccount->is_operational || $paymentAccount->status !== 'active') {
+                throw ValidationException::withMessages(['account_id' => 'Seleciona uma conta ativa para liquidar a parcela.']);
+            }
             $remaining = round((float) $locked->amount - (float) $locked->paid_amount, 2);
             $amount = round((float) ($data['amount'] ?? $remaining), 2);
             if ($remaining <= 0 || $amount <= 0 || $amount > $remaining) throw ValidationException::withMessages(['amount' => 'O valor do pagamento excede o saldo da parcela.']);
-            $movement = $this->movements->create($user, [
-                'type' => 'expense', 'description' => 'Pagamento: ' . $debt->name,
-                'amount' => number_format($amount, 2, '.', ''), 'movement_date' => $data['payment_date'] ?? now()->toDateString(),
-                'source_account_id' => $data['account_id'], 'debt_id' => $debt->id, 'installment_id' => $locked->id,
-            ]);
+            $movementData = [
+                'description' => 'Pagamento: ' . $debt->name,
+                'amount' => number_format($amount, 2, '.', ''),
+                'movement_date' => $data['payment_date'] ?? now()->toDateString(),
+            ];
+            if ($paymentAccount->type === 'credit_card') {
+                app(CardInvoiceService::class)->purchase($user, $movementData + [
+                    'account_id' => $paymentAccount->id, 'debt_id' => $debt->id, 'installment_id' => $locked->id,
+                ]);
+            } else {
+                $this->movements->create($user, $movementData + [
+                    'type' => 'expense', 'source_account_id' => $paymentAccount->id,
+                    'debt_id' => $debt->id, 'installment_id' => $locked->id,
+                ]);
+            }
             $paid = round((float) $locked->paid_amount + $amount, 2);
             $locked->update(['paid_amount' => number_format($paid, 2, '.', ''), 'status' => $paid >= (float) $locked->amount ? 'paid' : 'partial']);
             if (!$debt->parcelas()->where('status', '!=', 'paid')->exists()) $debt->update(['status' => 'paid']);

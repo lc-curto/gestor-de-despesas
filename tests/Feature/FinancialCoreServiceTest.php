@@ -26,6 +26,88 @@ class FinancialCoreServiceTest extends TestCase
         ]);
     }
 
+    public function test_card_purchase_creates_invoice_and_invoice_payment_is_a_transfer(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->account($user, 'Conta principal', '100.00');
+        $card = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Visa', 'type' => 'credit_card', 'opening_balance' => '0.00',
+            'opening_balance_date' => '2026-11-01', 'closing_day' => 25, 'due_day' => 5,
+            'credit_limit' => '500.00',
+        ]);
+
+        $this->actingAs($user)->postJson('/api/financial/cards/purchases', [
+            'account_id' => $card->id, 'description' => 'Supermercado', 'amount' => '47.25',
+            'movement_date' => '2026-11-12',
+        ])->assertCreated()->assertJsonPath('data.source_account_id', $card->id);
+        $this->postJson('/api/financial/cards/purchases', [
+            'account_id' => $card->id, 'description' => 'Compra acima do limite', 'amount' => '500.00',
+            'movement_date' => '2026-11-12',
+        ])->assertUnprocessable();
+
+        $invoice = $user->faturas()->firstOrFail();
+        $this->assertSame('2026-11-01', $invoice->reference_month->toDateString());
+        $this->assertSame('2026-12-05', $invoice->due_date->toDateString());
+        $this->assertSame('-47.25', app(AccountBalanceService::class)->balance($card));
+        $invoiceResponse = $this->getJson('/api/financial/invoices')->assertOk();
+        $this->assertEquals(47.25, (float) $invoiceResponse->json('data.data.0.total_amount'));
+
+        $this->postJson('/api/financial/invoices/'.$invoice->id.'/pay', [
+            'account_id' => $bank->id, 'payment_date' => '2026-12-01',
+        ])->assertOk()->assertJsonPath('data.type', 'transfer');
+
+        $this->assertSame('paid', $invoice->fresh()->status);
+        $this->assertSame('0.00', app(AccountBalanceService::class)->balance($card));
+        $this->assertSame('52.75', app(AccountBalanceService::class)->balance($bank));
+        $this->assertDatabaseCount('despesas', 0);
+    }
+
+    public function test_installment_commitment_splits_cents_and_supports_partial_payment(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->account($user, 'Conta principal', '100.00');
+        $response = $this->actingAs($user)->postJson('/api/financial/commitments', [
+            'name' => 'Computador', 'total_amount' => '100.00', 'start_date' => '2026-11-01',
+            'due_date' => '2026-11-15', 'payment_condition' => 'installments', 'installments_count' => 3,
+        ])->assertCreated();
+        $debtId = $response->json('data.id');
+        $installments = $response->json('data.parcelas');
+        $this->assertSame(['33.34', '33.33', '33.33'], array_column($installments, 'amount'));
+
+        $this->postJson('/api/financial/commitments/'.$debtId.'/installments/'.$installments[0]['id'].'/pay', [
+            'account_id' => $bank->id, 'amount' => '10.00', 'payment_date' => '2026-11-10',
+        ])->assertOk()->assertJsonPath('data.status', 'partial')->assertJsonPath('data.paid_amount', '10.00');
+        $this->postJson('/api/financial/commitments/'.$debtId.'/installments/'.$installments[0]['id'].'/pay', [
+            'account_id' => $bank->id, 'payment_date' => '2026-11-11',
+        ])->assertOk()->assertJsonPath('data.status', 'paid');
+        $this->assertSame('66.66', app(AccountBalanceService::class)->balance($bank));
+    }
+
+    public function test_installment_paid_with_card_is_added_to_card_invoice(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->account($user, 'Conta principal', '100.00');
+        $card = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Visa', 'type' => 'credit_card', 'opening_balance' => '0.00',
+            'opening_balance_date' => '2026-11-01', 'closing_day' => 25, 'due_day' => 5,
+            'credit_limit' => '500.00',
+        ]);
+        $debt = $this->actingAs($user)->postJson('/api/financial/commitments', [
+            'name' => 'Móvel', 'total_amount' => '100.00', 'start_date' => '2026-11-01',
+            'due_date' => '2026-11-15', 'payment_condition' => 'installments', 'installments_count' => 2,
+        ])->assertCreated()->json('data');
+
+        $this->postJson('/api/financial/commitments/'.$debt['id'].'/installments/'.$debt['parcelas'][0]['id'].'/pay', [
+            'account_id' => $card->id, 'payment_date' => '2026-11-12',
+        ])->assertOk()->assertJsonPath('data.status', 'paid');
+
+        $movement = $user->movimentos()->where('invoice_id', $user->faturas()->value('id'))->firstOrFail();
+        $this->assertSame($debt['id'], $movement->debt_id);
+        $this->assertSame($debt['parcelas'][0]['id'], $movement->installment_id);
+        $this->assertSame('100.00', app(AccountBalanceService::class)->balance($bank));
+        $this->assertSame('-50.00', app(AccountBalanceService::class)->balance($card));
+    }
+
     public function test_account_balance_reflects_settled_income_expense_and_transfers_without_double_counting(): void
     {
         $user = User::factory()->create();

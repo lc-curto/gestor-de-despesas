@@ -115,6 +115,12 @@
                             <option value="credit_card">Cartão de crédito</option>
                         </select>
                     </div>
+                    <div id="cardBillingFields" class="row g-3 d-none">
+                        <div class="col-4"><label for="cardClosingDay" class="form-label">Dia de fecho</label><input id="cardClosingDay" name="closing_day" type="number" class="form-control" min="1" max="28" value="25" disabled></div>
+                        <div class="col-4"><label for="cardDueDay" class="form-label">Dia de vencimento</label><input id="cardDueDay" name="due_day" type="number" class="form-control" min="1" max="28" value="5" disabled></div>
+                        <div class="col-4"><label for="cardCreditLimit" class="form-label">Limite (€)</label><input id="cardCreditLimit" name="credit_limit" type="number" class="form-control" min="0.01" step="0.01" placeholder="Opcional" disabled></div>
+                        <div class="col-12 form-text">Os dias 1–28 evitam datas inexistentes em meses curtos.</div>
+                    </div>
                     <div class="row g-3">
                         <div class="col-7">
                             <label for="openingBalance" class="form-label">Saldo inicial</label>
@@ -429,6 +435,15 @@
         }
     }
 
+    const accountType = document.getElementById('accountType');
+    const cardBillingFields = document.getElementById('cardBillingFields');
+    const refreshCardFields = () => {
+        const enabled = accountType?.value === 'credit_card';
+        cardBillingFields?.classList.toggle('d-none', !enabled);
+        cardBillingFields?.querySelectorAll('input').forEach((input) => { input.disabled = !enabled; });
+    };
+    accountType?.addEventListener('change', refreshCardFields);
+    refreshCardFields();
     document.getElementById('accountCreateForm')?.addEventListener('submit', async (event) => {
         event.preventDefault();
         try { await submitJsonForm(event.currentTarget); }

@@ -34,6 +34,9 @@ class FinancialAccountService
                 'opening_balance_date' => $data['opening_balance_date'] ?? now()->toDateString(),
                 'is_operational' => true,
                 'allow_negative_balance' => $allowNegative,
+                'closing_day' => $data['type'] === 'credit_card' ? ($data['closing_day'] ?? null) : null,
+                'due_day' => $data['type'] === 'credit_card' ? ($data['due_day'] ?? null) : null,
+                'credit_limit' => $data['type'] === 'credit_card' ? ($data['credit_limit'] ?? null) : null,
                 'status' => 'active',
             ]);
         });

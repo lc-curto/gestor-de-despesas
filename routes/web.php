@@ -5,6 +5,7 @@ use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\FinancialCoreController;
 use App\Http\Controllers\FinancialAccountsPageController;
+use App\Http\Controllers\FinancialCommitmentsPageController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 Route::get('/', function (Request $request) {
@@ -26,6 +27,7 @@ Route::middleware('auth')->group(function(){
  Route::post('/logout',[AccountController::class,'logout'])->name('logout');
  Route::get('/dashboard',DashboardController::class)->name('dashboard');
  Route::get('/contas', FinancialAccountsPageController::class)->name('financial.accounts.page');
+ Route::get('/compromissos', FinancialCommitmentsPageController::class)->name('financial.commitments.page');
  Route::delete('/contas/movimentos/{id}', [FinancialAccountsPageController::class, 'destroyMovement'])->name('financial.accounts.movement.destroy');
  Route::post('/contas/movimentos/{id}/estornar', [FinancialAccountsPageController::class, 'reverseMovement'])->name('financial.accounts.movement.reverse');
  Route::get('/contas/{id}', [FinancialAccountsPageController::class, 'show'])->name('financial.accounts.show');
@@ -40,9 +42,13 @@ Route::middleware('auth')->group(function(){
   Route::put('/accounts/{id}/settings', [FinancialCoreController::class, 'updateAccountSettings'])->name('accounts.settings');
   Route::put('/accounts/{id}/opening-balance', [FinancialCoreController::class, 'setOpeningBalance'])->name('accounts.opening-balance');
   Route::post('/accounts/{id}/close', [FinancialCoreController::class, 'closeAccount'])->name('accounts.close');
+  Route::put('/accounts/{id}/card-settings', [FinancialCoreController::class, 'updateCardSettings'])->name('cards.settings');
   Route::get('/movements', [FinancialCoreController::class, 'movements'])->name('movements.index');
   Route::post('/movements', [FinancialCoreController::class, 'storeMovement'])->name('movements.store');
   Route::post('/commitments', [FinancialCoreController::class, 'storeCommitment'])->name('commitments.store');
+  Route::post('/cards/purchases', [FinancialCoreController::class, 'storeCardPurchase'])->name('cards.purchase');
+  Route::get('/invoices', [FinancialCoreController::class, 'invoices'])->name('invoices.index');
+  Route::post('/invoices/{id}/pay', [FinancialCoreController::class, 'payInvoice'])->name('invoices.pay');
   Route::get('/commitments', [FinancialCoreController::class, 'commitments'])->name('commitments.index');
   Route::post('/commitments/{id}/installments/{installmentId}/pay', [FinancialCoreController::class, 'payCommitmentInstallment'])->name('commitments.installments.pay');
   Route::put('/movements/{id}/settle', [FinancialCoreController::class, 'settleMovement'])->name('movements.settle');

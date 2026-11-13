@@ -38,6 +38,7 @@ class FinancialMovementService
                 'source_account_id' => $source?->id,
                 'destination_account_id' => $destination?->id,
                 'category_id' => $data['category_id'] ?? null,
+                'invoice_id' => $data['invoice_id'] ?? null,
                 'adjustment_direction' => $data['adjustment_direction'] ?? null,
                 'is_historical' => $isHistorical,
                 'legacy_type' => $data['legacy_type'] ?? null,
