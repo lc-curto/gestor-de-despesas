@@ -10,7 +10,7 @@
         : null;
 @endphp
 <header class="page-heading mb-4">
-    <a class="small text-decoration-none" href="{{ route($tipo === 'despesa' ? 'despesas.index' : 'receitas.index') }}"><i data-lucide="arrow-left" class="me-1"></i> Voltar</a>
+    <a class="small text-decoration-none" href="{{ $returnUrl }}"><i data-lucide="arrow-left" class="me-1"></i> Voltar</a>
     <p class="eyebrow mt-3 mb-1">Movimentos financeiros</p>
     <h1 class="h2 fw-bold mb-1">{{ $registo ? 'Editar' : 'Novo' }} {{ $tipo }}</h1>
     <p class="text-secondary mb-0">{{ $registo ? 'Atualiza os dados deste movimento.' : 'Regista um novo movimento financeiro.' }}</p>
@@ -21,6 +21,7 @@
 <form method="POST" action="{{ $registo ? route($tipo === 'despesa' ? 'despesas.update' : 'receitas.update', $registo->id) : route($tipo === 'despesa' ? 'despesas.store' : 'receitas.store') }}" class="card border-0 p-3 p-lg-4">
     @csrf
     @if ($registo) @method('PUT') @endif
+    @if (request('return_to')) <input type="hidden" name="return_to" value="{{ request('return_to') }}"> @endif
     <div class="mb-3">
         <label for="description" class="form-label">Descrição</label>
         <input id="description" name="description" class="form-control" maxlength="255" value="{{ old('description', $registo?->description) }}" required>
@@ -64,7 +65,7 @@
     </div>
     <div class="d-flex gap-2 mt-4">
         <button class="btn btn-primary" @disabled($accounts->isEmpty())>Guardar</button>
-        <a class="btn btn-outline-secondary" href="{{ route($tipo === 'despesa' ? 'despesas.index' : 'receitas.index') }}">Cancelar</a>
+        <a class="btn btn-outline-secondary" href="{{ $returnUrl }}">Cancelar</a>
     </div>
 </form>
 @endsection

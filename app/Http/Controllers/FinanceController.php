@@ -192,8 +192,9 @@ class FinanceController extends Controller
         $data = $dateField;
         $cats = $this->categoryOptions($request, $tipo);
         $accounts = $this->availableAccounts($request, $tipo);
+        $returnUrl = route($tipo === 'despesa' ? 'despesas.index' : 'receitas.index');
 
-        return view('finance.form', compact('tipo', 'data', 'cats', 'registo', 'accounts', 'financialMovement'));
+        return view('finance.form', compact('tipo', 'data', 'cats', 'registo', 'accounts', 'financialMovement', 'returnUrl'));
     }
 
     public function store(Request $request, FinancialMovementService $service)
@@ -230,8 +231,9 @@ class FinanceController extends Controller
         $data = $dateField;
         $cats = $this->categoryOptions($request, $tipo, true);
         $accounts = $this->availableAccounts($request, $tipo);
+        $returnUrl = $this->accountReturnUrl($request, $tipo === 'despesa' ? 'despesas.index' : 'receitas.index');
 
-        return view('finance.form', compact('tipo', 'data', 'cats', 'registo', 'accounts', 'financialMovement'));
+        return view('finance.form', compact('tipo', 'data', 'cats', 'registo', 'accounts', 'financialMovement', 'returnUrl'));
     }
 
     public function update(Request $request, string $id, FinancialMovementService $service)
@@ -281,6 +283,10 @@ class FinanceController extends Controller
         if ($request->boolean('return_to_dashboard')) {
             return redirect()->route('dashboard')->with('success', 'Registo atualizado.');
         }
+        if ($request->filled('return_to')) {
+            return redirect($this->accountReturnUrl($request, $tipo === 'despesa' ? 'despesas.index' : 'receitas.index'))
+                ->with('success', 'Registo atualizado.');
+        }
 
         return redirect()->route($tipo === 'despesa' ? 'despesas.index' : 'receitas.index')
             ->with('success', 'Registo atualizado.');
@@ -303,8 +309,22 @@ class FinanceController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['ok' => true, 'message' => 'Registo eliminado.']);
         }
+        if ($request->filled('return_to')) {
+            return redirect($this->accountReturnUrl($request, $tipo === 'despesa' ? 'despesas.index' : 'receitas.index'))
+                ->with('success', 'Registo eliminado.');
+        }
 
         return back()->with('success', 'Registo eliminado.');
+    }
+
+    private function accountReturnUrl(Request $request, string $fallbackRoute): string
+    {
+        $accountId = (string) $request->input('return_to', '');
+        if ($accountId !== '' && $request->user()->contasFinanceiras()->whereKey($accountId)->exists()) {
+            return route('financial.accounts.show', $accountId);
+        }
+
+        return route($fallbackRoute);
     }
 
 }

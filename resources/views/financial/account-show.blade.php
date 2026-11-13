@@ -54,8 +54,13 @@
                         $category = $isTransfer ? 'Transferência' : ($movement->categoria?->name ?? ucfirst($movement->type));
                         $sign = $isOutgoing ? '−' : '+';
                         $editRoute = $movement->legacy_type === 'despesa'
-                            ? route('despesas.edit', $movement->legacy_id)
-                            : ($movement->legacy_type === 'receita' ? route('receitas.edit', $movement->legacy_id) : null);
+                            ? route('despesas.edit', $movement->legacy_id) . '?return_to=' . $account->id
+                            : ($movement->legacy_type === 'receita' ? route('receitas.edit', $movement->legacy_id) . '?return_to=' . $account->id : null);
+                        $deleteRoute = $movement->legacy_type === 'despesa'
+                            ? route('despesas.destroy', $movement->legacy_id) . '?return_to=' . $account->id
+                            : ($movement->legacy_type === 'receita'
+                                ? route('receitas.destroy', $movement->legacy_id) . '?return_to=' . $account->id
+                                : route('financial.accounts.movement.destroy', $movement->id));
                     @endphp
                     <article class="expense-item account-movement-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom">
                         <div class="d-flex align-items-center gap-3 min-w-0">
@@ -83,13 +88,11 @@
                             @if ($editRoute)
                                 <a class="btn btn-outline-secondary btn-sm" href="{{ $editRoute }}" aria-label="Editar {{ $movement->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></a>
                             @endif
-                            @if ($isTransfer)
-                                <form method="POST" action="{{ route('financial.accounts.movement.destroy', $movement->id) }}" onsubmit="return confirm('Eliminar esta transferência? O saldo das duas contas será recalculado.')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-outline-danger btn-sm" type="submit" aria-label="Eliminar transferência" title="Eliminar transferência"><i data-lucide="trash-2" aria-hidden="true"></i></button>
-                                </form>
-                            @endif
+                            <form method="POST" action="{{ $deleteRoute }}" onsubmit="return confirm('Eliminar este movimento? O saldo será recalculado.')">
+                                @csrf
+                                @method('DELETE')
+                                <button class="btn btn-outline-danger btn-sm" type="submit" aria-label="Eliminar movimento" title="Eliminar movimento"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                            </form>
                         </div>
                     </article>
                 @empty
