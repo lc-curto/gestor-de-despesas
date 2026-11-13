@@ -7,6 +7,7 @@ use App\Models\Movimento;
 use App\Services\Financial\AccountBalanceService;
 use App\Services\Financial\FinancialAccountService;
 use App\Services\Financial\FinancialMovementService;
+use App\Services\Financial\FinancialCommitmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,20 @@ use Illuminate\Support\Carbon;
 
 class FinancialCoreController extends Controller
 {
+    public function storeCommitment(Request $request, FinancialCommitmentService $service): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:160',
+            'total_amount' => 'required|numeric|gt:0|decimal:0,2|max:9999999999.99',
+            'start_date' => 'required|date',
+            'due_date' => 'nullable|date|after_or_equal:start_date',
+            'payment_condition' => ['required', Rule::in(['cash', 'deferred', 'installments'])],
+            'payment_method' => 'nullable|string|max:30',
+            'installments_count' => 'nullable|integer|min:1|max:120',
+            'account_id' => ['nullable', 'uuid', Rule::exists('contas_financeiras', 'id')->where('user_id', $request->user()->id)],
+        ]);
+        return response()->json(['data' => $service->create($request->user(), $data)], 201);
+    }
     public function accounts(Request $request, AccountBalanceService $balances): JsonResponse
     {
         $accounts = $request->user()->contasFinanceiras()

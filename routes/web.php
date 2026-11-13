@@ -42,6 +42,7 @@ Route::middleware('auth')->group(function(){
   Route::post('/accounts/{id}/close', [FinancialCoreController::class, 'closeAccount'])->name('accounts.close');
   Route::get('/movements', [FinancialCoreController::class, 'movements'])->name('movements.index');
   Route::post('/movements', [FinancialCoreController::class, 'storeMovement'])->name('movements.store');
+  Route::post('/commitments', [FinancialCoreController::class, 'storeCommitment'])->name('commitments.store');
   Route::put('/movements/{id}/settle', [FinancialCoreController::class, 'settleMovement'])->name('movements.settle');
   Route::put('/movements/{id}', [FinancialCoreController::class, 'updatePendingMovement'])->name('movements.update');
   Route::put('/movements/{id}/void', [FinancialCoreController::class, 'voidMovement'])->name('movements.void');
