@@ -27,6 +27,7 @@ Route::middleware('auth')->group(function(){
  Route::get('/dashboard',DashboardController::class)->name('dashboard');
  Route::get('/contas', FinancialAccountsPageController::class)->name('financial.accounts.page');
  Route::delete('/contas/movimentos/{id}', [FinancialAccountsPageController::class, 'destroyMovement'])->name('financial.accounts.movement.destroy');
+ Route::post('/contas/movimentos/{id}/estornar', [FinancialAccountsPageController::class, 'reverseMovement'])->name('financial.accounts.movement.reverse');
  Route::get('/contas/{id}', [FinancialAccountsPageController::class, 'show'])->name('financial.accounts.show');
  Route::get('/dashboard/movimentos',[DashboardController::class,'movimentos'])->middleware('throttle:60,1')->name('dashboard.movimentos');
  Route::post('/session/activity',fn()=>response()->noContent())->name('session.activity');
@@ -44,6 +45,7 @@ Route::middleware('auth')->group(function(){
   Route::put('/movements/{id}/settle', [FinancialCoreController::class, 'settleMovement'])->name('movements.settle');
   Route::put('/movements/{id}', [FinancialCoreController::class, 'updatePendingMovement'])->name('movements.update');
   Route::put('/movements/{id}/void', [FinancialCoreController::class, 'voidMovement'])->name('movements.void');
+  Route::post('/movements/{id}/reverse', [FinancialCoreController::class, 'reverseMovement'])->name('movements.reverse');
   Route::delete('/movements/{id}', [FinancialCoreController::class, 'destroyMovement'])->name('movements.destroy');
  });
  Route::get('/categorias',[CategoriaController::class,'index'])->name('categorias.index');

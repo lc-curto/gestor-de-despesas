@@ -42,6 +42,7 @@ class FinancialMovementService
                 'is_historical' => $isHistorical,
                 'legacy_type' => $data['legacy_type'] ?? null,
                 'legacy_id' => $data['legacy_id'] ?? null,
+                'reversal_of_id' => $data['reversal_of_id'] ?? null,
                 'settled_at' => now(),
             ]);
 
@@ -180,6 +181,39 @@ class FinancialMovementService
             $locked->save();
             $this->audit($user, $locked, $action, $before, $locked->getAttributes());
             return $locked->refresh();
+        });
+    }
+
+    public function reverse(User $user, Movimento $movement, ?string $reason = null): Movimento
+    {
+        return DB::transaction(function () use ($user, $movement, $reason) {
+            $original = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
+            if ($original->status !== 'settled') {
+                throw ValidationException::withMessages(['movement' => 'Só é possível estornar movimentos liquidados.']);
+            }
+            if ($original->reversal_of_id || Movimento::query()->where('reversal_of_id', $original->id)->exists()) {
+                throw ValidationException::withMessages(['movement' => 'Este movimento já foi estornado.']);
+            }
+            $payload = match ($original->type) {
+                'expense' => ['type' => 'income', 'source_account_id' => null, 'destination_account_id' => $original->source_account_id],
+                'income' => ['type' => 'expense', 'source_account_id' => $original->destination_account_id, 'destination_account_id' => null],
+                'transfer' => ['type' => 'transfer', 'source_account_id' => $original->destination_account_id, 'destination_account_id' => $original->source_account_id],
+                'adjustment' => $original->adjustment_direction === 'increase'
+                    ? ['type' => 'adjustment', 'source_account_id' => $original->destination_account_id, 'destination_account_id' => null, 'adjustment_direction' => 'decrease']
+                    : ['type' => 'adjustment', 'source_account_id' => null, 'destination_account_id' => $original->source_account_id, 'adjustment_direction' => 'increase'],
+                default => throw ValidationException::withMessages(['movement' => 'Este tipo de movimento não pode ser estornado.']),
+            };
+            $reversal = $this->create($user, array_merge($payload, [
+                'description' => 'Estorno: ' . $original->description,
+                'amount' => $original->amount,
+                'movement_date' => now()->toDateString(),
+                'reversal_of_id' => $original->id,
+                'is_historical' => (bool) $original->is_historical,
+            ]));
+            $before = $original->getAttributes();
+            $original->update(['status' => 'void']);
+            $this->audit($user, $original->refresh(), 'reversed', $before, $original->getAttributes(), $reason);
+            return $reversal->refresh();
         });
     }
 

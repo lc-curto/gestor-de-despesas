@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\ContaFinanceira;
 use App\Services\Financial\AccountBalanceService;
+use App\Services\Financial\FinancialMovementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class FinancialAccountsPageController extends Controller
 {
@@ -62,6 +64,9 @@ class FinancialAccountsPageController extends Controller
     public function destroyMovement(Request $request, string $id)
     {
         $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
+        if ($movement->status === 'settled') {
+            throw ValidationException::withMessages(['movement' => 'Movimentos liquidados devem ser estornados, não eliminados.']);
+        }
 
         DB::transaction(function () use ($movement): void {
             $movement->historico()->delete();
@@ -69,5 +74,12 @@ class FinancialAccountsPageController extends Controller
         });
 
         return back()->with('success', 'Transferência eliminada. Os saldos foram recalculados.');
+    }
+
+    public function reverseMovement(Request $request, string $id, FinancialMovementService $service)
+    {
+        $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
+        $service->reverse($request->user(), $movement, $request->input('reason'));
+        return back()->with('success', 'Movimento estornado. O saldo foi recalculado.');
     }
 }

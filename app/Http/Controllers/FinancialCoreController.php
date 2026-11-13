@@ -154,9 +154,19 @@ class FinancialCoreController extends Controller
         return response()->json(['data' => $service->voidPending($request->user(), $movement, $data['reason'] ?? null)]);
     }
 
+    public function reverseMovement(Request $request, string $id, FinancialMovementService $service): JsonResponse
+    {
+        $data = $request->validate(['reason' => 'nullable|string|max:1000']);
+        $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
+        return response()->json(['data' => $service->reverse($request->user(), $movement, $data['reason'] ?? null)]);
+    }
+
     public function destroyMovement(Request $request, string $id): JsonResponse
     {
         $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
+        if ($movement->status === 'settled') {
+            return response()->json(['message' => 'Movimentos liquidados devem ser estornados, não eliminados.'], 422);
+        }
 
         DB::transaction(function () use ($movement): void {
             $movement->historico()->delete();

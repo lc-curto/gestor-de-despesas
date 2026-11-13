@@ -299,6 +299,9 @@ class FinanceController extends Controller
             $legacy = $this->query($request)->whereKey($id)->lockForUpdate()->firstOrFail();
             $movement = $this->linkedMovement($request, $tipo, $legacy->id);
             if ($movement) {
+                if ($movement->status === 'settled') {
+                    throw ValidationException::withMessages(['movement' => 'Movimentos liquidados devem ser estornados, não eliminados.']);
+                }
                 // Exclusão direta: remove o histórico técnico antes da FK restritiva.
                 $movement->historico()->delete();
                 $movement->delete();
