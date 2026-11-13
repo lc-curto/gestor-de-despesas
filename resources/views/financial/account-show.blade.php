@@ -46,7 +46,8 @@
                             || ($movement->type === 'adjustment' && $movement->adjustment_direction === 'decrease');
                         $isTransfer = $movement->type === 'transfer';
                         $isIncome = $movement->type === 'income' || ($movement->type === 'adjustment' && !$isOutgoing);
-                        $category = $movement->categoria?->name ?? ucfirst($movement->type);
+                        $isCurrentAccountSource = $isTransfer && $movement->source_account_id === $account->id;
+                        $category = $isTransfer ? 'Transferência' : ($movement->categoria?->name ?? ucfirst($movement->type));
                         $sign = $isOutgoing ? '−' : '+';
                         $editRoute = $movement->legacy_type === 'despesa'
                             ? route('despesas.edit', $movement->legacy_id)
@@ -59,12 +60,15 @@
                             </div>
                             <div class="min-w-0">
                                 <h3 class="h6 fw-semibold mb-1 text-break">{{ $movement->description }}</h3>
-                                <p class="small text-secondary mb-0">
-                                    {{ $category }} · {{ $movement->movement_date->format('d/m/Y') }}
-                                    @if ($isTransfer)
-                                        · {{ $movement->contaOrigem?->name ?? 'Conta encerrada' }} → {{ $movement->contaDestino?->name ?? 'Conta encerrada' }}
-                                    @endif
-                                </p>
+                                <p class="small text-secondary mb-1">{{ $category }} · {{ $movement->movement_date->format('d/m/Y') }}</p>
+                                @if ($isTransfer)
+                                    <div class="movement-transfer-route {{ $isCurrentAccountSource ? 'is-outgoing' : 'is-incoming' }}">
+                                        <span class="movement-transfer-direction">{{ $isCurrentAccountSource ? 'Saída' : 'Entrada' }}</span>
+                                        <span>{{ $movement->contaOrigem?->name ?? 'Conta encerrada' }}</span>
+                                        <i data-lucide="arrow-right" aria-hidden="true"></i>
+                                        <span>{{ $movement->contaDestino?->name ?? 'Conta encerrada' }}</span>
+                                    </div>
+                                @endif
                             </div>
                         </div>
                         <div class="d-flex align-items-center justify-content-end gap-3">
@@ -108,6 +112,11 @@
 .account-movement-item .expense-icon { background:rgba(220,53,69,.1); color:var(--bs-danger); }
 .account-movement-item .income-icon { background:rgba(25,135,84,.1); color:var(--bs-success); }
 .account-movement-item .movement-value { font-size:1rem; }
+.movement-transfer-route { display:flex; align-items:center; flex-wrap:wrap; gap:.35rem; color:var(--bs-secondary-color); font-size:.75rem; }
+.movement-transfer-route svg { width:13px; height:13px; }
+.movement-transfer-direction { padding:.12rem .42rem; border-radius:999px; font-size:.68rem; font-weight:700; }
+.movement-transfer-route.is-outgoing .movement-transfer-direction { background:rgba(220,53,69,.1); color:var(--bs-danger); }
+.movement-transfer-route.is-incoming .movement-transfer-direction { background:rgba(25,135,84,.1); color:var(--bs-success); }
 @media (max-width:640px) {
     .account-history-balance { text-align:left; }
     .account-movement-item { align-items:flex-start !important; flex-wrap:wrap; }

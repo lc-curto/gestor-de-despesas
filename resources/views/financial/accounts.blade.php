@@ -91,22 +91,6 @@
         </section>
     @endif
 
-    @if ($transfers->isNotEmpty())
-        <section class="recent-transfers card border-0 shadow-sm rounded-4 mt-4">
-            <div class="card-body p-3 p-md-4">
-                <h2 class="h6 fw-bold mb-2">Transferências recentes</h2>
-                @foreach ($transfers as $transfer)
-                    <div class="transfer-row">
-                        <div>
-                            <strong>{{ $transfer->description }}</strong>
-                            <span>{{ $transfer->movement_date->format('d/m/Y') }} · {{ $transfer->contaOrigem?->name ?? 'Conta encerrada' }} → {{ $transfer->contaDestino?->name ?? 'Conta encerrada' }}</span>
-                        </div>
-                        <strong class="transfer-amount">{{ number_format((float) $transfer->amount, 2, ',', '.') }} {{ auth()->user()->currency }}</strong>
-                    </div>
-                @endforeach
-            </div>
-        </section>
-    @endif
 </div>
 
 {{-- Nova conta --}}

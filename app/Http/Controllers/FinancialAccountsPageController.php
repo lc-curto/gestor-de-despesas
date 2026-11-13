@@ -22,13 +22,6 @@ class FinancialAccountsPageController extends Controller
             ->whereNotNull('opening_balance')
             ->orderBy('name')
             ->get();
-        $transfers = $request->user()->movimentos()
-            ->where('type', 'transfer')
-            ->with(['contaOrigem:id,name', 'contaDestino:id,name'])
-            ->orderByDesc('movement_date')
-            ->limit(10)
-            ->get();
-
         $accounts->each(function (ContaFinanceira $account) use ($balances): void {
             $account->current_balance = null;
 
@@ -37,7 +30,7 @@ class FinancialAccountsPageController extends Controller
             }
         });
 
-        return view('financial.accounts', compact('accounts', 'transferTargets', 'transfers'));
+        return view('financial.accounts', compact('accounts', 'transferTargets'));
     }
 
     public function show(Request $request, string $id, AccountBalanceService $balances)
