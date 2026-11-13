@@ -26,10 +26,6 @@
         </div>
     </header>
 
-    @if (session('success'))
-        <div class="alert alert-success" role="status">{{ session('success') }}</div>
-    @endif
-
     <section class="card border-0 shadow-sm rounded-4 history-card account-history-card" aria-labelledby="accountMovementsTitle">
         <div class="card-body p-0 history-card-body">
             <div class="p-3 p-sm-4 pb-3 border-bottom">
