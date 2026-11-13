@@ -555,7 +555,6 @@
                 response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
                 payload = await response.json().catch(() => ({}));
             }
-            const payload = await response.json().catch(() => ({}));
             if (response.status === 422) {
                 const errors = payload.errors || {};
                 const firstError = Object.values(errors).flat()[0] || payload.message || 'Não foi possível guardar as alterações.';
