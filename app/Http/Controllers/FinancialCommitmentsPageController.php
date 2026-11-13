@@ -1,11 +1,11 @@
 <?php
 
-namespace App\\Http\\Controllers;
+namespace App\Http\Controllers;
 
-use App\\Models\\ContaFinanceira;
-use App\\Services\\Financial\\AccountBalanceService;
-use App\\Services\\Financial\\CardInvoiceService;
-use Illuminate\\Http\\Request;
+use App\Models\ContaFinanceira;
+use App\Services\Financial\AccountBalanceService;
+use App\Services\Financial\CardInvoiceService;
+use Illuminate\Http\Request;
 
 class FinancialCommitmentsPageController extends Controller
 {
