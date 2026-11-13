@@ -97,3 +97,14 @@
 </script>
 @endpush
 @endif
+@if (request()->boolean('modal'))
+@push('styles')
+<style>
+    .app-sidebar,.sidebar-toggle,.app-sidebar-footer,.site-footer{display:none!important}
+    .app-main{margin-left:0!important;padding:1rem!important;min-height:0!important}
+    .app-content{max-width:none!important}
+    .page-heading{display:none}
+    .app-shell{min-height:0}
+</style>
+@endpush
+@endif
