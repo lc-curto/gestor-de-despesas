@@ -40,6 +40,10 @@
     const editorCard = document.getElementById('movementEntryCard');
     const editorModalElement = document.getElementById('movementEntryModal');
     const editorModal = editorModalElement ? bootstrap.Modal.getOrCreateInstance(editorModalElement) : null;
+    const paymentFields = document.getElementById('dashboardPaymentFields');
+    const commitmentOptions = document.getElementById('dashboardCommitmentOptions');
+    const paidFields = document.getElementById('dashboardPaidFields');
+    const paymentDetails = document.getElementById('dashboardPaymentDetails');
     const monthInput = document.getElementById('periodMonth');
     const periodCaption = document.getElementById('periodCaption');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -59,6 +63,18 @@
     let cachedMovements = [];
     let totalExpenses = Number(document.getElementById('totalAmount')?.dataset.total || 0);
     let totalIncome = Number(document.getElementById('totalIncome')?.dataset.total || 0);
+
+    function refreshPaymentFields() {
+        const isExpense = movementType === 'despesa';
+        const condition = form.querySelector('[name="payment_condition"]:checked')?.value || 'cash';
+        if (paymentFields) paymentFields.hidden = !isExpense;
+        if (commitmentOptions) commitmentOptions.hidden = !isExpense || condition === 'cash';
+        if (paidFields) paidFields.hidden = !isExpense || condition === 'cash';
+        const count = document.getElementById('dashboardInstallmentsField');
+        if (count) count.hidden = condition !== 'installments';
+        const paid = form.querySelector('[name="paid_now"]:checked')?.value === '1';
+        if (paymentDetails) paymentDetails.hidden = !paid || !isExpense || condition === 'cash';
+    }
 
     try {
         if (cfg.userId) localStorage.setItem('meu-bolso:active-user', String(cfg.userId));
@@ -340,6 +356,7 @@
         category.disabled = false;
         if (account) account.disabled = false;
         cancelButton?.classList.toggle('d-none', !isEditing);
+        refreshPaymentFields();
     }
 
     function openEditor() { editorModal?.show(); }
@@ -355,6 +372,7 @@
         date.readOnly = false;
         form.action = restoredType === 'receita' ? cfg.incomeStore : cfg.expenseStore;
         setMovementType(restoredType);
+        refreshPaymentFields();
         cancelButton?.classList.add('d-none');
         closeEditor();
     }
@@ -520,12 +538,23 @@
         saveButton.disabled = true;
         saveButton.textContent = 'A guardar...';
         try {
-            const response = await fetch(form.action, {
-                method: 'POST',
-                body: new FormData(form),
-                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                credentials: 'same-origin'
-            });
+            const values = Object.fromEntries(new FormData(form).entries());
+            let response;
+            let payload;
+            const commitment = !editing && movementType === 'despesa' && values.payment_condition && values.payment_condition !== 'cash';
+            if (commitment) {
+                response = await fetch(cfg.commitmentStore, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf }, body: JSON.stringify({ name: values.description, total_amount: values.amount, start_date: values.expense_date, due_date: values.due_date, payment_condition: values.payment_condition, payment_method: values.payment_method, installments_count: values.installments_count }) });
+                payload = await response.json().catch(() => ({}));
+                if (response.ok && values.paid_now === '1') {
+                    const installment = payload.data?.parcelas?.[0];
+                    const paid = await fetch(cfg.commitmentBase + '/' + payload.data.id + '/installments/' + installment.id + '/pay', { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf }, body: JSON.stringify({ account_id: values.payment_account_id, amount: values.payment_amount || values.amount, payment_date: values.payment_date }) });
+                    if (!paid.ok) { payload = await paid.json().catch(() => ({})); response = paid; }
+                }
+                if (response.ok) payload.ok = true;
+            } else {
+                response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+                payload = await response.json().catch(() => ({}));
+            }
             const payload = await response.json().catch(() => ({}));
             if (response.status === 422) {
                 const errors = payload.errors || {};
@@ -759,6 +788,7 @@
         expenseButton?.setAttribute('aria-expanded', 'false');
         incomeButton?.setAttribute('aria-expanded', 'false');
     });
+    form.querySelectorAll('[name="payment_condition"], [name="paid_now"]').forEach((input) => input.addEventListener('change', refreshPaymentFields));
 
     const currencyFrom = document.getElementById('conversionFrom');
     const currencyTo = document.getElementById('conversionTo');
