@@ -38,7 +38,7 @@ class FinancialCoreController extends Controller
             'name' => 'required|string|max:120',
             'type' => ['required', Rule::in(['bank', 'cash', 'credit_card'])],
             'opening_balance' => 'nullable|numeric|decimal:0,2|between:-9999999999.99,9999999999.99',
-            'opening_balance_date' => 'required_with:opening_balance|date|before_or_equal:today'
+            'opening_balance_date' => 'required_with:opening_balance|date|before_or_equal:today',
             'allow_negative_balance' => 'sometimes|boolean',
         ]);
 
@@ -66,7 +66,7 @@ class FinancialCoreController extends Controller
     {
         $data = $request->validate([
             'opening_balance' => 'required|numeric|decimal:0,2|between:-9999999999.99,9999999999.99',
-            'opening_balance_date' => 'required|date|before_or_equal:today'
+            'opening_balance_date' => 'required|date|before_or_equal:today',
             'allow_negative_balance' => 'sometimes|boolean',
         ]);
 
