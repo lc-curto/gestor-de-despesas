@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Categoria;
+use App\Services\Financial\CardInvoiceService;
+use App\Services\Financial\FinancialMovementService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class FinanceController extends Controller
 {
@@ -26,6 +29,28 @@ class FinanceController extends Controller
         return $request->user()->{$relation}();
     }
 
+    private function availableAccounts(Request $request, string $tipo)
+    {
+        $types = $tipo === 'despesa' ? ['bank', 'cash', 'credit_card'] : ['bank', 'cash'];
+
+        return $request->user()->contasFinanceiras()
+            ->whereIn('type', $types)
+            ->where('is_operational', true)
+            ->where('status', 'active')
+            ->whereNotNull('opening_balance')
+            ->orderBy('name')
+            ->get();
+    }
+
+    private function linkedMovement(Request $request, string $tipo, string $legacyId)
+    {
+        $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
+        return $request->user()->movimentos()
+            ->where('legacy_type', $legacyType)
+            ->where('legacy_id', $legacyId)
+            ->first();
+    }
+
     private function categoryOptions(Request $request, string $tipo, bool $includeInactive = false)
     {
         $query = $request->user()->categorias()->where('type', $tipo);
@@ -43,6 +68,10 @@ class FinanceController extends Controller
         $data = $request->validate([
             'description' => 'required|string|max:255',
             'amount' => 'required|numeric|gt:0|decimal:0,2|max:9999999999.99',
+            'account_id' => [
+                'required', 'uuid',
+                Rule::exists('contas_financeiras', 'id')->where('user_id', $request->user()->id),
+            ],
             'category_id' => [
                 'required_without:category',
                 'nullable',
@@ -59,6 +88,19 @@ class FinanceController extends Controller
             ],
             $dateField => 'required|date',
         ]);
+
+        $account = $request->user()->contasFinanceiras()
+            ->whereKey($data['account_id'])
+            ->whereIn('type', $tipo === 'despesa' ? ['bank', 'cash', 'credit_card'] : ['bank', 'cash'])
+            ->where('is_operational', true)
+            ->where('status', 'active')
+            ->whereNotNull('opening_balance')
+            ->first();
+        if (!$account || $account->currency !== $request->user()->currency) {
+            throw ValidationException::withMessages(['account_id' => $tipo === 'despesa'
+                ? 'Escolhe uma conta bancária, de dinheiro ou cartão ativa, configurada e na moeda da tua conta.'
+                : 'Escolhe uma conta bancária ou de dinheiro ativa, configurada e na moeda da tua conta.']);
+        }
 
         $categoryQuery = $request->user()->categorias()->where('type', $tipo);
         $category = !empty($data['category_id'])
@@ -87,6 +129,47 @@ class FinanceController extends Controller
         ]);
     }
 
+    private function canonicalPayload(string $tipo, array $data, string $legacyType, string $legacyId, bool $historical = false): array
+    {
+        [$source, $destination] = $tipo === 'despesa'
+            ? [$data['account_id'], null]
+            : [null, $data['account_id']];
+
+        return [
+            'type' => $tipo === 'despesa' ? 'expense' : 'income',
+            'description' => $data['description'],
+            'amount' => $data['amount'],
+            'movement_date' => $data[$tipo === 'despesa' ? 'expense_date' : 'income_date'],
+            'source_account_id' => $source,
+            'destination_account_id' => $destination,
+            'category_id' => $data['category_id'],
+            'legacy_type' => $legacyType,
+            'legacy_id' => $legacyId,
+            'is_historical' => $historical,
+        ];
+    }
+
+    private function createLinkedMovement(Request $request, array $payload, FinancialMovementService $movements, CardInvoiceService $invoices): void
+    {
+        $accountId = $payload['source_account_id'] ?? null;
+        $account = $accountId ? $request->user()->contasFinanceiras()->whereKey($accountId)->first() : null;
+        if ($payload['type'] === 'expense' && $account?->type === 'credit_card') {
+            $invoices->purchase($request->user(), [
+                'account_id' => $account->id,
+                'description' => $payload['description'],
+                'amount' => $payload['amount'],
+                'movement_date' => $payload['movement_date'],
+                'category_id' => $payload['category_id'] ?? null,
+                'legacy_type' => $payload['legacy_type'] ?? null,
+                'legacy_id' => $payload['legacy_id'] ?? null,
+                'is_historical' => $payload['is_historical'] ?? false,
+            ]);
+            return;
+        }
+
+        $movements->create($request->user(), $payload);
+    }
+
     public function index(Request $request)
     {
         [$tipo, , $dateField] = $this->config($request);
@@ -111,25 +194,45 @@ class FinanceController extends Controller
         }
 
         $registos = $query->paginate(10)->withQueryString();
+        $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
+        $linkedMovements = $request->user()->movimentos()
+            ->where('legacy_type', $legacyType)
+            ->whereIn('legacy_id', $registos->getCollection()->pluck('id'))
+            ->with(['contaOrigem', 'contaDestino'])
+            ->get()
+            ->keyBy('legacy_id');
         $data = $dateField;
 
-        return view('finance.index', compact('tipo', 'data', 'cats', 'registos'));
+        return view('finance.index', compact('tipo', 'data', 'cats', 'registos', 'linkedMovements'));
     }
 
     public function create(Request $request)
     {
         [$tipo, , $dateField] = $this->config($request);
         $registo = null;
+        $financialMovement = null;
         $data = $dateField;
         $cats = $this->categoryOptions($request, $tipo);
+        $accounts = $this->availableAccounts($request, $tipo);
+        $returnUrl = route($tipo === 'despesa' ? 'despesas.index' : 'receitas.index');
 
-        return view('finance.form', compact('tipo', 'data', 'cats', 'registo'));
+        return view('finance.form', compact('tipo', 'data', 'cats', 'registo', 'accounts', 'financialMovement', 'returnUrl'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, FinancialMovementService $service, CardInvoiceService $invoices)
     {
         [$tipo] = $this->config($request);
-        $this->query($request)->create($this->validatedData($request));
+        $data = $this->validatedData($request);
+        $accountId = $data['account_id'];
+        unset($data['account_id']);
+        $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
+        $dateField = $tipo === 'despesa' ? 'expense_date' : 'income_date';
+
+        DB::transaction(function () use ($request, $service, $invoices, $tipo, $data, $accountId, $legacyType, $dateField): void {
+            $legacy = $this->query($request)->create($data);
+            $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId]), $legacyType, $legacy->id);
+            $this->createLinkedMovement($request, $payload, $service, $invoices);
+        });
 
         if ($request->expectsJson()) {
             return response()->json(['ok' => true, 'message' => 'Registo criado.']);
@@ -146,23 +249,71 @@ class FinanceController extends Controller
     {
         [$tipo, , $dateField] = $this->config($request);
         $registo = $this->query($request)->findOrFail($id);
+        $financialMovement = $this->linkedMovement($request, $tipo, $registo->id);
         $data = $dateField;
         $cats = $this->categoryOptions($request, $tipo, true);
+        $accounts = $this->availableAccounts($request, $tipo);
+        $returnUrl = $this->accountReturnUrl($request, $tipo === 'despesa' ? 'despesas.index' : 'receitas.index');
 
-        return view('finance.form', compact('tipo', 'data', 'cats', 'registo'));
+        return view('finance.form', compact('tipo', 'data', 'cats', 'registo', 'accounts', 'financialMovement', 'returnUrl'));
     }
 
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $id, FinancialMovementService $service, CardInvoiceService $invoices)
     {
-        [$tipo] = $this->config($request);
-        $movement = $this->query($request)->findOrFail($id);
-        $movement->update($this->validatedData($request, $id));
+        [$tipo, , $dateField] = $this->config($request);
+        $data = $this->validatedData($request, $id);
+        $accountId = $data['account_id'];
+        unset($data['account_id']);
+        $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
+        $date = $data[$dateField];
+
+        DB::transaction(function () use ($request, $service, $invoices, $tipo, $id, $data, $accountId, $legacyType, $dateField, $date): void {
+            $legacy = $this->query($request)->whereKey($id)->lockForUpdate()->firstOrFail();
+            $movement = $this->linkedMovement($request, $tipo, $legacy->id);
+            if ($movement?->invoice_id) {
+                $invoice = $request->user()->faturas()->whereKey($movement->invoice_id)->firstOrFail();
+                if ($invoice->status !== 'open') {
+                    throw ValidationException::withMessages(['expense' => 'Não é possível editar uma compra de fatura já liquidada. Estorna o movimento e regista a correção.']);
+                }
+            }
+            $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId]), $legacyType, $legacy->id);
+
+            if (!$movement) {
+                $cutoff = $request->user()->financial_cutoff_date?->toDateString();
+                $payload['is_historical'] = $cutoff !== null && $date <= $cutoff;
+                $this->createLinkedMovement($request, $payload, $service, $invoices);
+            } elseif ($movement->status === 'pending') {
+                $movement = $service->updatePending($request->user(), $movement, [
+                    'description' => $payload['description'],
+                    'amount' => $payload['amount'],
+                    'movement_date' => $payload['movement_date'],
+                    'category_id' => $payload['category_id'],
+                ]);
+                $service->settle($request->user(), $movement, [
+                    ($tipo === 'despesa' ? 'source_account_id' : 'destination_account_id') => $accountId,
+                ]);
+            } else {
+                // Sem estorno: a edição substitui o movimento canónico numa só transação.
+                // Assim valor, data, conta e categoria ficam sempre sincronizados.
+                $cutoff = $request->user()->financial_cutoff_date?->toDateString();
+                $payload['is_historical'] = (bool) $movement->is_historical || ($cutoff !== null && $date <= $cutoff);
+                $movement->historico()->delete();
+                $movement->delete();
+                $this->createLinkedMovement($request, $payload, $service, $invoices);
+            }
+
+            $legacy->update($data);
+        });
 
         if ($request->expectsJson()) {
             return response()->json(['ok' => true, 'message' => 'Registo atualizado.']);
         }
         if ($request->boolean('return_to_dashboard')) {
             return redirect()->route('dashboard')->with('success', 'Registo atualizado.');
+        }
+        if ($request->filled('return_to')) {
+            return redirect($this->accountReturnUrl($request, $tipo === 'despesa' ? 'despesas.index' : 'receitas.index'))
+                ->with('success', 'Registo atualizado.');
         }
 
         return redirect()->route($tipo === 'despesa' ? 'despesas.index' : 'receitas.index')
@@ -171,12 +322,40 @@ class FinanceController extends Controller
 
     public function destroy(Request $request, string $id)
     {
-        $this->query($request)->findOrFail($id)->delete();
+        [$tipo] = $this->config($request);
+        DB::transaction(function () use ($request, $tipo, $id): void {
+            $legacy = $this->query($request)->whereKey($id)->lockForUpdate()->firstOrFail();
+            $movement = $this->linkedMovement($request, $tipo, $legacy->id);
+            if ($movement) {
+                if ($movement->status === 'settled') {
+                    throw ValidationException::withMessages(['movement' => 'Movimentos liquidados devem ser estornados, não eliminados.']);
+                }
+                // Exclusão direta: remove o histórico técnico antes da FK restritiva.
+                $movement->historico()->delete();
+                $movement->delete();
+            }
+            $legacy->delete();
+        });
 
         if ($request->expectsJson()) {
             return response()->json(['ok' => true, 'message' => 'Registo eliminado.']);
         }
+        if ($request->filled('return_to')) {
+            return redirect($this->accountReturnUrl($request, $tipo === 'despesa' ? 'despesas.index' : 'receitas.index'))
+                ->with('success', 'Registo eliminado.');
+        }
 
         return back()->with('success', 'Registo eliminado.');
     }
+
+    private function accountReturnUrl(Request $request, string $fallbackRoute): string
+    {
+        $accountId = (string) $request->input('return_to', '');
+        if ($accountId !== '' && $request->user()->contasFinanceiras()->whereKey($accountId)->exists()) {
+            return route('financial.accounts.show', $accountId);
+        }
+
+        return route($fallbackRoute);
+    }
+
 }

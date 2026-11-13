@@ -12,6 +12,13 @@ class DashboardController extends Controller
     public function __invoke(Request $request)
     {
         $user = $request->user();
+        $accounts = $user->contasFinanceiras()
+            ->whereIn('type', ['bank', 'cash', 'credit_card'])
+            ->where('is_operational', true)
+            ->where('status', 'active')
+            ->whereNotNull('opening_balance')
+            ->orderBy('name')
+            ->get();
         [$inicio, $mes] = $this->periodo($request->query('mes'));
         $fim = $inicio->copy()->endOfMonth();
 
@@ -25,10 +32,14 @@ class DashboardController extends Controller
         $filtroCategoria = $requestedCategory === 'all' || array_key_exists($requestedCategory, $categorias)
             ? $requestedCategory : 'all';
 
-        $totalDespesas = (float) $user->despesas()
-            ->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
-        $totalReceitas = (float) $user->receitas()
-            ->whereBetween('income_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
+        $totais = $user->movimentos()
+            ->where('status', 'settled')
+            ->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->selectRaw("COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS despesas")
+            ->selectRaw("COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS receitas")
+            ->first();
+        $totalDespesas = (float) $totais->despesas;
+        $totalReceitas = (float) $totais->receitas;
 
         // A primeira página carrega os dois tipos de movimento. O filtro de tipo é
         // aplicado no cliente sem uma segunda requisição ao abrir o Dashboard.
@@ -65,6 +76,10 @@ class DashboardController extends Controller
                 'category_icon' => $item->category_icon,
                 'category_color' => $item->category_color,
                 'data_movimento' => $item->data_movimento,
+                'account_id' => $item->account_id,
+                'movement_status' => $item->movement_status,
+                'is_historical' => (bool) ($item->is_historical ?? false),
+                'requires_account_assignment' => $item->requires_account_assignment,
             ];
         })->values();
 
@@ -72,7 +87,7 @@ class DashboardController extends Controller
             'inicio', 'mes', 'movimentos', 'movimentosVisiveis', 'movimentosIniciais', 'categorias', 'categoriasDespesa',
             'categoriasReceita', 'filtroTipo', 'filtroCategoria',
             'totalDespesas', 'totalReceitas', 'totalMovimentos', 'totalDespesasFiltradas', 'totalReceitasFiltradas', 'limit'
-        ))->with('moeda', $user->currency);
+        ))->with('moeda', $user->currency)->with('accounts', $accounts);
     }
 
     public function movimentos(Request $request)
@@ -105,10 +120,14 @@ class DashboardController extends Controller
         $items = (clone $query)->offset($offset)->limit($limit)->get();
         $total = $totalDespesasFiltradas + $totalReceitasFiltradas;
 
-        $totalDespesas = (float) $user->despesas()
-            ->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
-        $totalReceitas = (float) $user->receitas()
-            ->whereBetween('income_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
+        $totais = $user->movimentos()
+            ->where('status', 'settled')
+            ->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->selectRaw("COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS despesas")
+            ->selectRaw("COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS receitas")
+            ->first();
+        $totalDespesas = (float) $totais->despesas;
+        $totalReceitas = (float) $totais->receitas;
 
         return response()->json([
             'data' => $items,
@@ -153,15 +172,25 @@ class DashboardController extends Controller
     ): Builder {
         $despesas = DB::table('despesas')
             ->join('categorias', 'categorias.id', '=', 'despesas.category_id')
+            ->leftJoin('movimentos as financial_movements', function ($join) use ($userId) {
+                $join->on('financial_movements.legacy_id', '=', 'despesas.id')
+                    ->where('financial_movements.legacy_type', '=', 'despesa')
+                    ->where('financial_movements.user_id', '=', $userId);
+            })
             ->where('despesas.user_id', $userId)
             ->whereBetween('despesas.expense_date', [$inicio->toDateString(), $fim->toDateString()])
-            ->selectRaw("despesas.id, 'despesa' AS tipo, despesas.description, despesas.amount, despesas.currency, categorias.id AS category, categorias.name AS category_label, categorias.icon AS category_icon, categorias.color AS category_color, despesas.expense_date AS data_movimento");
+            ->selectRaw("despesas.id, 'despesa' AS tipo, despesas.description, despesas.amount, despesas.currency, categorias.id AS category, categorias.name AS category_label, categorias.icon AS category_icon, categorias.color AS category_color, despesas.expense_date AS data_movimento, financial_movements.source_account_id AS account_id, financial_movements.status AS movement_status, financial_movements.requires_account_assignment AS requires_account_assignment, financial_movements.is_historical AS is_historical");
 
         $receitas = DB::table('receitas')
             ->join('categorias', 'categorias.id', '=', 'receitas.category_id')
+            ->leftJoin('movimentos as financial_movements', function ($join) use ($userId) {
+                $join->on('financial_movements.legacy_id', '=', 'receitas.id')
+                    ->where('financial_movements.legacy_type', '=', 'receita')
+                    ->where('financial_movements.user_id', '=', $userId);
+            })
             ->where('receitas.user_id', $userId)
             ->whereBetween('receitas.income_date', [$inicio->toDateString(), $fim->toDateString()])
-            ->selectRaw("receitas.id, 'receita' AS tipo, receitas.description, receitas.amount, receitas.currency, categorias.id AS category, categorias.name AS category_label, categorias.icon AS category_icon, categorias.color AS category_color, receitas.income_date AS data_movimento");
+            ->selectRaw("receitas.id, 'receita' AS tipo, receitas.description, receitas.amount, receitas.currency, categorias.id AS category, categorias.name AS category_label, categorias.icon AS category_icon, categorias.color AS category_color, receitas.income_date AS data_movimento, financial_movements.destination_account_id AS account_id, financial_movements.status AS movement_status, financial_movements.requires_account_assignment AS requires_account_assignment, financial_movements.is_historical AS is_historical");
 
         if ($tipo === 'despesa') {
             $query = $despesas;

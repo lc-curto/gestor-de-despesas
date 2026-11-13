@@ -104,6 +104,18 @@
                             </div>
                         </div>
                         <div class="mb-3">
+                            <label for="movementAccount" class="form-label">Conta</label>
+                            <select class="form-select" id="movementAccount" name="account_id" required>
+                                <option value="">Selecionar conta</option>
+                                @foreach ($accounts as $account)
+                                    <option value="{{ $account->id }}" @selected($accounts->count() === 1)>{{ $account->name }} · {{ $account->currency }}</option>
+                                @endforeach
+                            </select>
+                            @if ($accounts->isEmpty())
+                                <div class="form-text text-warning">Cria uma conta e configura o saldo inicial em <a href="{{ route('financial.accounts.page') }}">Contas</a> antes de registar.</div>
+                            @endif
+                        </div>
+                        <div class="mb-3">
                             <label for="movementCategory" class="form-label">Categoria</label>
                             <select class="form-select" id="movementCategory" name="category_id" required>
                                 <option value="" selected disabled>Seleciona uma categoria</option>
@@ -112,8 +124,22 @@
                                 @endforeach
                             </select>
                         </div>
+                        <div id="dashboardPaymentFields" class="border-top pt-3 mb-3">
+                            <label class="form-label d-block">Condições de pagamento</label>
+                            <div class="d-flex flex-wrap gap-3 mb-3">
+                                <label class="form-check"><input class="form-check-input" type="radio" name="payment_condition" value="cash" checked> <span class="form-check-label">A pronto</span></label>
+                                <label class="form-check"><input class="form-check-input" type="radio" name="payment_condition" value="deferred"> <span class="form-check-label">A prazo</span></label>
+                                <label class="form-check"><input class="form-check-input" type="radio" name="payment_condition" value="installments"> <span class="form-check-label">Parcelado</span></label>
+                            </div>
+                            <div id="dashboardCommitmentOptions" class="row g-2" hidden>
+                                <div class="col-6"><label for="dashboardPaymentMethod" class="form-label">Método</label><select id="dashboardPaymentMethod" name="payment_method" class="form-select"><option value="">Selecionar</option><option value="cash">Dinheiro</option><option value="card">Cartão</option><option value="transfer">Transferência</option><option value="mbway">MB WAY</option><option value="other">Outro</option></select></div>
+                                <div class="col-6" id="dashboardInstallmentsField" hidden><label for="dashboardInstallments" class="form-label">Parcelas</label><input id="dashboardInstallments" name="installments_count" type="number" min="2" max="120" value="2" class="form-control"></div>
+                                <div class="col-6"><label for="dashboardDueDate" class="form-label">Primeiro vencimento</label><input id="dashboardDueDate" name="due_date" type="date" class="form-control" value="{{ now()->toDateString() }}"></div>
+                            </div>
+                            <div id="dashboardPaidFields" class="mt-3" hidden><label class="form-label d-block">Já foi pago?</label><div class="d-flex gap-3"><label class="form-check"><input class="form-check-input" type="radio" name="paid_now" value="1"> <span class="form-check-label">Sim</span></label><label class="form-check"><input class="form-check-input" type="radio" name="paid_now" value="0" checked> <span class="form-check-label">Ainda não</span></label></div><div id="dashboardPaymentDetails" class="row g-2 mt-1" hidden><div class="col-6"><label for="dashboardPaymentAmount" class="form-label">Valor pago</label><input id="dashboardPaymentAmount" name="payment_amount" type="number" min="0.01" step="0.01" class="form-control"></div><div class="col-6"><label for="dashboardPaymentDate" class="form-label">Data</label><input id="dashboardPaymentDate" name="payment_date" type="date" class="form-control" value="{{ now()->toDateString() }}"></div><div class="col-12"><label for="dashboardPaymentAccount" class="form-label">Conta do pagamento</label><select id="dashboardPaymentAccount" name="payment_account_id" class="form-select"><option value="">Selecionar conta</option>@foreach ($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }} · {{ $account->currency }}</option>@endforeach</select></div></div></div>
+                        </div>
                         <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-danger w-100" id="saveMovementButton">Guardar despesa</button>
+                            <button type="submit" class="btn btn-danger w-100" id="saveMovementButton" @disabled($accounts->isEmpty())>Guardar despesa</button>
                             <button type="button" class="btn btn-outline-secondary d-none" id="cancelMovementEdit">Cancelar edição</button>
                         </div>
                     </form>
@@ -177,7 +203,8 @@
                             data-edit-url="{{ route($isExpense ? 'despesas.update' : 'receitas.update', $movimento->id) }}"
                             data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}"
                             data-amount="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}"
-                            data-category-id="{{ $movimento->category }}">
+                            data-category-id="{{ $movimento->category }}" data-account-id="{{ $movimento->account_id }}"
+                            data-movement-status="{{ $movimento->movement_status }}">
                             <div class="d-flex align-items-center gap-3 min-w-0">
                                 <div class="expense-icon flex-shrink-0" style="--category-color: {{ $movimento->category_color ?? '#635BFF' }}" aria-hidden="true">
                                     <i data-lucide="{{ $movimento->category_icon ?? 'tag' }}"></i>
@@ -192,7 +219,7 @@
                                     data-value="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}">{{ $isExpense ? '−' : '+' }}{{ number_format((float) $movimento->amount, 2, ',', '.') }}</strong>
                                 <div class="btn-group btn-group-sm" role="group" aria-label="Ações de {{ $movimento->description }}">
                                     <button type="button" class="btn btn-outline-secondary edit-movement" data-acao="editar" aria-label="Editar {{ $movimento->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></button>
-                                    <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $movimento->id) }}" data-delete-type="{{ $movimento->tipo }}">
+                                    <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $movimento->id) }}" data-delete-type="{{ $movimento->tipo }}" onsubmit="return confirm('Eliminar definitivamente este registo?')">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="btn btn-outline-danger" aria-label="Eliminar {{ $movimento->description }}" title="Eliminar"><i data-lucide="trash-2" aria-hidden="true"></i></button>
                                     </form>
@@ -284,6 +311,8 @@ window.meuBolsoDashboard = {
     movementsUrl: @json(route('dashboard.movimentos')),
     expenseStore: @json(route('despesas.store')),
     incomeStore: @json(route('receitas.store')),
+    commitmentStore: @json(route('financial.commitments.store')),
+    commitmentBase: @json(url('/api/financial/commitments')),
     expenseUpdateBase: @json(url('/despesas')),
     incomeUpdateBase: @json(url('/receitas')),
     expenseCategories: @json($categoriasDespesa),

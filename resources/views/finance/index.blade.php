@@ -12,10 +12,10 @@
     <div class="finance-page-copy">
         <h1 class="h2 fw-bold mb-1">{{ $pageTitle }}</h1>
     </div>
-    <a class="btn btn-primary finance-create-button" href="{{ route($isExpense ? 'despesas.create' : 'receitas.create') }}">
+    <button class="btn btn-primary finance-create-button" type="button" data-bs-toggle="modal" data-bs-target="#financeEntryModal" data-form-url="{{ route($isExpense ? 'despesas.create' : 'receitas.create', ['modal' => 1]) }}">
         <i data-lucide="plus" aria-hidden="true"></i>
         <span>Novo</span>
-    </a>
+    </button>
 </header>
 
 <form method="GET" class="finance-filter-card">
@@ -69,6 +69,7 @@
 
     <div class="finance-record-list">
         @forelse ($registos as $item)
+            @php $financialMovement = $linkedMovements->get($item->id); @endphp
             <article class="finance-record-item">
                 <div class="finance-record-main">
                     <span class="category-color-icon finance-category-icon" style="--category-color: {{ $item->categoria?->color ?? '#64748B' }}" aria-hidden="true">
@@ -76,7 +77,18 @@
                     </span>
                     <div class="finance-record-copy">
                         <strong>{{ $item->description }}</strong>
-                        <span>{{ $item->{$data}->format('d/m/Y') }} <span aria-hidden="true">·</span> {{ $item->categoria?->name ?? 'Categoria indisponível' }}</span>
+                        <span>{{ $item->{$data}->format('d/m/Y') }} <span aria-hidden="true">·</span> {{ $item->categoria?->name ?? 'Categoria indisponível' }}
+                            @if ($financialMovement?->requires_account_assignment)
+                                <span class="text-warning">· Conta por associar — usa Editar</span>
+                            @elseif ($financialMovement?->is_historical && $financialMovement?->contaOrigem?->type === 'legacy' || $financialMovement?->is_historical && $financialMovement?->contaDestino?->type === 'legacy')
+                                <span class="text-secondary">· Histórico — associa uma conta em Editar</span>
+                            @elseif ($financialMovement?->contaOrigem || $financialMovement?->contaDestino)
+                                <span>· {{ $financialMovement->contaOrigem?->name ?? $financialMovement->contaDestino?->name }}</span>
+                            @endif
+                            @if ($financialMovement?->status === 'settled')
+                                <span class="text-success">· Liquidado</span>
+                            @endif
+                        </span>
                     </div>
                 </div>
                 <div class="finance-record-actions">
@@ -87,7 +99,7 @@
                         <a class="btn btn-sm btn-outline-secondary" href="{{ route($isExpense ? 'despesas.edit' : 'receitas.edit', $item->id) }}" aria-label="Editar {{ $item->description }}" title="Editar">
                             <i data-lucide="pencil" aria-hidden="true"></i>
                         </a>
-                        <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $item->id) }}" onsubmit="return confirm('Eliminar este registo?')">
+                        <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $item->id) }}" onsubmit="return confirm('Eliminar definitivamente este registo?')">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Eliminar {{ $item->description }}" title="Eliminar">
@@ -101,7 +113,7 @@
             <div class="finance-empty-state">
                 <span class="finance-empty-icon" aria-hidden="true"><i data-lucide="{{ $isExpense ? 'wallet' : 'trending-up' }}"></i></span>
                 <h3 class="h6 fw-bold">Ainda não existem {{ strtolower($pageTitle) }}</h3>
-                <a class="btn btn-primary btn-sm mt-3" href="{{ route($isExpense ? 'despesas.create' : 'receitas.create') }}">Novo</a>
+                <button class="btn btn-primary btn-sm mt-3" type="button" data-bs-toggle="modal" data-bs-target="#financeEntryModal" data-form-url="{{ route($isExpense ? 'despesas.create' : 'receitas.create', ['modal' => 1]) }}">Novo</button>
             </div>
         @endforelse
     </div>
@@ -110,4 +122,12 @@
         <div class="finance-pagination">{{ $registos->links() }}</div>
     @endif
 </section>
+<div class="modal fade" id="financeEntryModal" tabindex="-1" aria-labelledby="financeEntryModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable"><div class="modal-content border-0 shadow rounded-4">
+        <div class="modal-header border-0 pb-0"><h2 class="modal-title h5 fw-bold" id="financeEntryModalTitle">Novo {{ strtolower($pageTitle) }}</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+        <div class="modal-body p-0"><iframe id="financeEntryFrame" title="Formulário de novo lançamento" class="finance-entry-frame" src="about:blank"></iframe></div>
+    </div></div>
+</div>
+@push('styles')<style>.finance-entry-frame{display:block;width:100%;height:min(78vh,760px);border:0;background:var(--bs-body-bg)}.finance-create-button{border:0}</style>@endpush
+@push('scripts')<script>document.querySelectorAll('[data-form-url]').forEach((button)=>button.addEventListener('click',()=>{const frame=document.getElementById('financeEntryFrame');if(frame)frame.src=button.dataset.formUrl;}));</script>@endpush
 @endsection

@@ -31,6 +31,7 @@
     const description = document.getElementById('movementDescription');
     const amount = document.getElementById('movementAmount');
     const date = document.getElementById('movementDate');
+    const account = document.getElementById('movementAccount');
     const category = document.getElementById('movementCategory');
     const saveButton = document.getElementById('saveMovementButton');
     const method = document.getElementById('movementMethod');
@@ -39,6 +40,10 @@
     const editorCard = document.getElementById('movementEntryCard');
     const editorModalElement = document.getElementById('movementEntryModal');
     const editorModal = editorModalElement ? bootstrap.Modal.getOrCreateInstance(editorModalElement) : null;
+    const paymentFields = document.getElementById('dashboardPaymentFields');
+    const commitmentOptions = document.getElementById('dashboardCommitmentOptions');
+    const paidFields = document.getElementById('dashboardPaidFields');
+    const paymentDetails = document.getElementById('dashboardPaymentDetails');
     const monthInput = document.getElementById('periodMonth');
     const periodCaption = document.getElementById('periodCaption');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -58,6 +63,18 @@
     let cachedMovements = [];
     let totalExpenses = Number(document.getElementById('totalAmount')?.dataset.total || 0);
     let totalIncome = Number(document.getElementById('totalIncome')?.dataset.total || 0);
+
+    function refreshPaymentFields() {
+        const isExpense = movementType === 'despesa';
+        const condition = form.querySelector('[name="payment_condition"]:checked')?.value || 'cash';
+        if (paymentFields) paymentFields.hidden = !isExpense;
+        if (commitmentOptions) commitmentOptions.hidden = !isExpense || condition === 'cash';
+        if (paidFields) paidFields.hidden = !isExpense || condition === 'cash';
+        const count = document.getElementById('dashboardInstallmentsField');
+        if (count) count.hidden = condition !== 'installments';
+        const paid = form.querySelector('[name="paid_now"]:checked')?.value === '1';
+        if (paymentDetails) paymentDetails.hidden = !paid || !isExpense || condition === 'cash';
+    }
 
     try {
         if (cfg.userId) localStorage.setItem('meu-bolso:active-user', String(cfg.userId));
@@ -195,6 +212,8 @@
         article.dataset.amount = item.amount;
         article.dataset.currency = item.currency || cfg.currency || 'EUR';
         article.dataset.categoryId = item.category;
+        article.dataset.accountId = item.account_id || '';
+        article.dataset.movementStatus = item.movement_status || '';
 
         const info = document.createElement('div');
         info.className = 'd-flex align-items-center gap-3 min-w-0';
@@ -229,28 +248,31 @@
         edit.dataset.acao = 'editar';
         edit.setAttribute('aria-label', 'Editar ' + item.description);
         edit.title = 'Editar';
-        edit.innerHTML = '<i class="bi bi-pencil" aria-hidden="true"></i>';
+        edit.innerHTML = '<i data-lucide="pencil" aria-hidden="true"></i>';
 
-        const deleteForm = document.createElement('form');
-        deleteForm.method = 'POST';
-        deleteForm.action = article.dataset.editUrl;
-        deleteForm.dataset.deleteType = item.tipo;
-        const token = document.createElement('input');
-        token.type = 'hidden';
-        token.name = '_token';
-        token.value = csrf || '';
-        const verb = document.createElement('input');
-        verb.type = 'hidden';
-        verb.name = '_method';
-        verb.value = 'DELETE';
-        const remove = document.createElement('button');
-        remove.type = 'submit';
-        remove.className = 'btn btn-outline-danger';
-        remove.setAttribute('aria-label', 'Eliminar ' + item.description);
-        remove.title = 'Eliminar';
-        remove.innerHTML = '<i class="bi bi-trash" aria-hidden="true"></i>';
-        deleteForm.append(token, verb, remove);
-        actions.append(value, edit, deleteForm);
+        actions.append(value, edit);
+        if (item.id) {
+            const deleteForm = document.createElement('form');
+            deleteForm.method = 'POST';
+            deleteForm.action = article.dataset.editUrl;
+            deleteForm.dataset.deleteType = item.tipo;
+            const token = document.createElement('input');
+            token.type = 'hidden';
+            token.name = '_token';
+            token.value = csrf || '';
+            const verb = document.createElement('input');
+            verb.type = 'hidden';
+            verb.name = '_method';
+            verb.value = 'DELETE';
+            const remove = document.createElement('button');
+            remove.type = 'submit';
+            remove.className = 'btn btn-outline-danger';
+            remove.setAttribute('aria-label', 'Eliminar ' + item.description);
+            remove.title = 'Eliminar';
+            remove.innerHTML = '<i data-lucide="trash-2" aria-hidden="true"></i>';
+            deleteForm.append(token, verb, remove);
+            actions.append(deleteForm);
+        }
         article.append(info, actions);
         return article;
     }
@@ -332,7 +354,9 @@
         const options = income ? cfg.incomeCategories : cfg.expenseCategories;
         Object.entries(options || {}).forEach(([key, label]) => category.add(new Option(label, key)));
         category.disabled = false;
+        if (account) account.disabled = false;
         cancelButton?.classList.toggle('d-none', !isEditing);
+        refreshPaymentFields();
     }
 
     function openEditor() { editorModal?.show(); }
@@ -344,8 +368,11 @@
         method.value = 'POST';
         form.reset();
         date.value = localDate();
+        amount.readOnly = false;
+        date.readOnly = false;
         form.action = restoredType === 'receita' ? cfg.incomeStore : cfg.expenseStore;
         setMovementType(restoredType);
+        refreshPaymentFields();
         cancelButton?.classList.add('d-none');
         closeEditor();
     }
@@ -480,6 +507,11 @@
         amount.value = row.dataset.amount;
         date.value = row.dataset.date;
         category.value = row.dataset.categoryId;
+        if (account) account.value = row.dataset.accountId || '';
+        // A edição substitui o movimento canónico no backend; todos os campos
+        // permanecem editáveis, inclusive em movimentos liquidados.
+        amount.readOnly = false;
+        date.readOnly = false;
         cancelButton?.classList.remove('d-none');
         openEditor();
         form.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -506,13 +538,23 @@
         saveButton.disabled = true;
         saveButton.textContent = 'A guardar...';
         try {
-            const response = await fetch(form.action, {
-                method: 'POST',
-                body: new FormData(form),
-                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                credentials: 'same-origin'
-            });
-            const payload = await response.json().catch(() => ({}));
+            const values = Object.fromEntries(new FormData(form).entries());
+            let response;
+            let payload;
+            const commitment = !editing && movementType === 'despesa' && values.payment_condition && values.payment_condition !== 'cash';
+            if (commitment) {
+                response = await fetch(cfg.commitmentStore, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf }, body: JSON.stringify({ name: values.description, total_amount: values.amount, start_date: values.expense_date, due_date: values.due_date, payment_condition: values.payment_condition, payment_method: values.payment_method, installments_count: values.installments_count }) });
+                payload = await response.json().catch(() => ({}));
+                if (response.ok && values.paid_now === '1') {
+                    const installment = payload.data?.parcelas?.[0];
+                    const paid = await fetch(cfg.commitmentBase + '/' + payload.data.id + '/installments/' + installment.id + '/pay', { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf }, body: JSON.stringify({ account_id: values.payment_account_id, amount: values.payment_amount || values.amount, payment_date: values.payment_date }) });
+                    if (!paid.ok) { payload = await paid.json().catch(() => ({})); response = paid; }
+                }
+                if (response.ok) payload.ok = true;
+            } else {
+                response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+                payload = await response.json().catch(() => ({}));
+            }
             if (response.status === 422) {
                 const errors = payload.errors || {};
                 const firstError = Object.values(errors).flat()[0] || payload.message || 'Não foi possível guardar as alterações.';
@@ -745,6 +787,7 @@
         expenseButton?.setAttribute('aria-expanded', 'false');
         incomeButton?.setAttribute('aria-expanded', 'false');
     });
+    form.querySelectorAll('[name="payment_condition"], [name="paid_now"]').forEach((input) => input.addEventListener('change', refreshPaymentFields));
 
     const currencyFrom = document.getElementById('conversionFrom');
     const currencyTo = document.getElementById('conversionTo');
