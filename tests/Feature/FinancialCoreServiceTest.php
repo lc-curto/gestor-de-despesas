@@ -62,6 +62,46 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertDatabaseCount('despesas', 0);
     }
 
+    public function test_card_invoice_supports_multiple_partial_payments_without_creating_expenses(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->account($user, 'Conta principal', '100.00');
+        $card = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Visa', 'type' => 'credit_card', 'opening_balance' => '0.00',
+            'opening_balance_date' => '2026-11-01', 'closing_day' => 25, 'due_day' => 5,
+            'credit_limit' => '500.00',
+        ]);
+
+        $this->actingAs($user)->postJson('/api/financial/cards/purchases', [
+            'account_id' => $card->id, 'description' => 'Compra', 'amount' => '60.00',
+            'movement_date' => '2026-11-12',
+        ])->assertCreated();
+
+        $invoice = $user->faturas()->firstOrFail();
+        $this->postJson('/api/financial/invoices/'.$invoice->id.'/pay', [
+            'account_id' => $bank->id, 'amount' => '25.00', 'payment_date' => '2026-12-01',
+        ])->assertOk()->assertJsonPath('data.type', 'transfer');
+
+        $invoiceData = $this->getJson('/api/financial/invoices')->assertOk()->json('data.data.0');
+        $this->assertSame('25.00', $invoiceData['paid_amount']);
+        $this->assertSame('35.00', $invoiceData['remaining_amount']);
+        $this->assertSame('partial', $invoiceData['display_status']);
+
+        $this->postJson('/api/financial/invoices/'.$invoice->id.'/pay', [
+            'account_id' => $bank->id, 'amount' => '35.00', 'payment_date' => '2026-12-02',
+        ])->assertOk();
+
+        $this->assertSame('paid', $invoice->fresh()->status);
+        $this->assertSame('0.00', app(AccountBalanceService::class)->balance($card));
+        $this->assertSame('40.00', app(AccountBalanceService::class)->balance($bank));
+        $this->assertDatabaseCount('despesas', 0);
+        $this->assertDatabaseHas('movimentos', [
+            'invoice_id' => $invoice->id,
+            'type' => 'transfer',
+            'amount' => '25.00',
+        ]);
+    }
+
     public function test_installment_commitment_splits_cents_and_supports_partial_payment(): void
     {
         $user = User::factory()->create();
@@ -83,10 +123,9 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('66.66', app(AccountBalanceService::class)->balance($bank));
     }
 
-    public function test_installment_paid_with_card_is_added_to_card_invoice(): void
+    public function test_installment_cannot_be_settled_using_a_credit_card(): void
     {
         $user = User::factory()->create();
-        $bank = $this->account($user, 'Conta principal', '100.00');
         $card = app(FinancialAccountService::class)->create($user, [
             'name' => 'Visa', 'type' => 'credit_card', 'opening_balance' => '0.00',
             'opening_balance_date' => '2026-11-01', 'closing_day' => 25, 'due_day' => 5,
@@ -99,13 +138,11 @@ class FinancialCoreServiceTest extends TestCase
 
         $this->postJson('/api/financial/commitments/'.$debt['id'].'/installments/'.$debt['parcelas'][0]['id'].'/pay', [
             'account_id' => $card->id, 'payment_date' => '2026-11-12',
-        ])->assertOk()->assertJsonPath('data.status', 'paid');
+        ])->assertUnprocessable();
 
-        $movement = $user->movimentos()->where('invoice_id', $user->faturas()->value('id'))->firstOrFail();
-        $this->assertSame($debt['id'], $movement->debt_id);
-        $this->assertSame($debt['parcelas'][0]['id'], $movement->installment_id);
-        $this->assertSame('100.00', app(AccountBalanceService::class)->balance($bank));
-        $this->assertSame('-50.00', app(AccountBalanceService::class)->balance($card));
+        $this->assertSame('pending', $user->parcelasDivida()->whereKey($debt['parcelas'][0]['id'])->value('status'));
+        $this->assertSame('0.00', app(AccountBalanceService::class)->balance($card));
+        $this->assertDatabaseCount('faturas', 0);
     }
 
     public function test_account_balance_reflects_settled_income_expense_and_transfers_without_double_counting(): void
