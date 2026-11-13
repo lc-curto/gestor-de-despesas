@@ -36,6 +36,32 @@ class FinanceFlowTest extends TestCase
             'legacy_type' => 'despesa', 'legacy_id' => $legacyId,
         ]);
     }
+
+    public function test_expense_form_with_credit_card_creates_the_invoice_and_keeps_legacy_link(): void
+    {
+        $user = User::factory()->create();
+        $card = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Visa', 'type' => 'credit_card', 'opening_balance' => '0.00',
+            'opening_balance_date' => '2026-11-01', 'closing_day' => 25, 'due_day' => 5,
+            'credit_limit' => '1000.00',
+        ]);
+
+        $this->actingAs($user)->post(route('despesas.store'), [
+            'description' => 'Compra no supermercado', 'amount' => '35.50', 'currency' => 'EUR',
+            'category' => 'alimentacao', 'expense_date' => '2026-11-09', 'account_id' => $card->id,
+        ])->assertRedirect(route('despesas.index'));
+
+        $legacyExpense = $user->despesas()->where('description', 'Compra no supermercado')->firstOrFail();
+        $invoice = $user->faturas()->firstOrFail();
+        $this->assertSame('2026-11-01', $invoice->reference_month->toDateString());
+        $this->assertDatabaseHas('movimentos', [
+            'user_id' => $user->id, 'legacy_type' => 'despesa', 'legacy_id' => $legacyExpense->id,
+            'source_account_id' => $card->id, 'invoice_id' => $invoice->id, 'amount' => '35.50',
+        ]);
+        $this->assertDatabaseCount('despesas', 1);
+        $this->assertDatabaseCount('faturas', 1);
+    }
+
     public function test_authenticated_user_can_create_an_income(): void
     {
         $user=User::factory()->create();

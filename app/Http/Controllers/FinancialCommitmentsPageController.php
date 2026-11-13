@@ -18,10 +18,9 @@ class FinancialCommitmentsPageController extends Controller
         });
         $paymentAccounts = $user->contasFinanceiras()->whereIn('type', ['bank', 'cash'])->where('is_operational', true)->where('status', 'active')->orderBy('name')->get();
         $commitmentPaymentAccounts = $user->contasFinanceiras()->whereIn('type', ['bank', 'cash', 'credit_card'])->where('is_operational', true)->where('status', 'active')->orderBy('name')->get();
-        $categories = $user->categorias()->where('type', 'despesa')->where('is_active', true)->orderBy('name')->get();
         $invoicePage = $invoices->listInvoices($user);
         $commitments = $user->dividas()->with('parcelas')->latest()->paginate(30, ['*'], 'commitments');
 
-        return view('financial.commitments', compact('cards', 'paymentAccounts', 'commitmentPaymentAccounts', 'categories', 'invoicePage', 'commitments'));
+        return view('financial.commitments', compact('cards', 'paymentAccounts', 'commitmentPaymentAccounts', 'invoicePage', 'commitments'));
     }
 }

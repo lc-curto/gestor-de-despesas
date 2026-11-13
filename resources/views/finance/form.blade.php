@@ -44,6 +44,9 @@
                     <option value="{{ $account->id }}" @selected(old('account_id', $selectedAccountId) === $account->id)>{{ $account->name }} · {{ $account->currency }}</option>
                 @endforeach
             </select>
+            @if ($tipo === 'despesa')
+                <div class="form-text">Se escolheres um cartão, esta despesa entra automaticamente na fatura do cartão.</div>
+            @endif
             @if ($accounts->isEmpty())
                 <div class="form-text text-warning">Cria uma conta ativa e configura o saldo inicial em <a href="{{ route('financial.accounts.page') }}">Contas</a> antes de registar movimentos.</div>
             @endif

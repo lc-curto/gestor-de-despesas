@@ -2,7 +2,7 @@
 
 ## Estado
 
-A Fase 2 tem fluxo funcional na interface autenticada `/compromissos` e endpoints JSON em `routes/web.php`.
+A página autenticada `/compromissos` é para acompanhar cartões, faturas e parcelas. Novas despesas, compras com cartão e compromissos criam-se no formulário habitual `/despesas/criar`, evitando lançamentos duplicados.
 
 ## Cartões
 
@@ -13,7 +13,7 @@ A Fase 2 tem fluxo funcional na interface autenticada `/compromissos` e endpoint
 
 ## Compras e faturas
 
-- Cada compra no cartão cria um movimento do tipo `expense` debitado no cartão, ligado à categoria (se escolhida) e à fatura do ciclo.
+- Ao guardar uma despesa em `/despesas/criar` com uma conta `credit_card`, cria-se um movimento do tipo `expense` debitado no cartão, ligado à despesa legada, categoria (se escolhida) e fatura do ciclo.
 - Compra até ao dia de fecho, inclusive, entra na fatura desse mês; compra após o fecho passa para o ciclo do mês seguinte.
 - A data de vencimento é o dia configurado do mês seguinte ao mês de referência.
 - O total da fatura é calculado pelos movimentos liquidados associados; não é mantido um total paralelo.
@@ -30,7 +30,7 @@ A Fase 2 tem fluxo funcional na interface autenticada `/compromissos` e endpoint
 
 ## Rotas acrescentadas
 
-- `GET /compromissos`: interface para cartões, compras, faturas e compromissos.
+- `GET /compromissos`: acompanhamento e pagamento de faturas/parcelas, com atalhos para lançar despesas em `/despesas/criar`.
 - `POST /api/financial/cards/purchases`: regista compra no cartão.
 - `GET /api/financial/invoices`: lista faturas com total e quantidade de compras.
 - `POST /api/financial/invoices/{id}/pay`: liquida fatura por transferência.

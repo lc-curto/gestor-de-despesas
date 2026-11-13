@@ -32,6 +32,9 @@ class CardInvoiceService
                 }
             }
             $date = Carbon::parse($data['movement_date'])->startOfDay();
+            if ($date->greaterThan(today())) {
+                throw ValidationException::withMessages(['movement_date' => 'A data da compra no cartão não pode ser futura.']);
+            }
             $reference = $date->day > $card->closing_day ? $date->copy()->addMonthNoOverflow() : $date->copy();
             $reference->day = 1;
             $closing = $reference->copy()->day(min($card->closing_day, $reference->daysInMonth));
@@ -49,6 +52,8 @@ class CardInvoiceService
                 'movement_date' => $date->toDateString(), 'source_account_id' => $card->id,
                 'category_id' => $data['category_id'] ?? null, 'invoice_id' => $invoice->id,
                 'debt_id' => $data['debt_id'] ?? null, 'installment_id' => $data['installment_id'] ?? null,
+                'legacy_type' => $data['legacy_type'] ?? null, 'legacy_id' => $data['legacy_id'] ?? null,
+                'is_historical' => (bool) ($data['is_historical'] ?? false),
             ]);
         });
     }
@@ -56,6 +61,7 @@ class CardInvoiceService
     public function listInvoices(User $user)
     {
         return Fatura::query()->where('user_id', $user->id)
+            ->whereHas('movimentos', fn ($q) => $q->where('status', 'settled'))
             ->with('conta:id,name,type,currency,credit_limit')
             ->with(['movimentos' => fn ($q) => $q->where('status', 'settled')->select('id', 'invoice_id', 'description', 'amount', 'movement_date')])
             ->withSum(['movimentos as total_amount' => fn ($q) => $q->where('status', 'settled')], 'amount')

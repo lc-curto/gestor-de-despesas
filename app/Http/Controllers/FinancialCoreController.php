@@ -193,7 +193,7 @@ class FinancialCoreController extends Controller
         return response()->json($query->orderByDesc('movement_date')->paginate(30));
     }
 
-    public function storeMovement(Request $request, FinancialMovementService $service): JsonResponse
+    public function storeMovement(Request $request, FinancialMovementService $service, CardInvoiceService $invoices): JsonResponse
     {
         $data = $request->validate([
             'type' => ['required', Rule::in(['income', 'expense', 'transfer', 'adjustment'])],
@@ -207,9 +207,22 @@ class FinancialCoreController extends Controller
             'adjustment_direction' => ['nullable', Rule::in(['increase', 'decrease'])],
         ]);
 
-        $movement = ($data['status'] ?? 'settled') === 'pending'
-            ? $service->createPending($request->user(), $data)
-            : $service->create($request->user(), $data);
+        if (($data['status'] ?? 'settled') === 'pending') {
+            $movement = $service->createPending($request->user(), $data);
+        } else {
+            $account = $data['type'] === 'expense' && !empty($data['source_account_id'])
+                ? $request->user()->contasFinanceiras()->whereKey($data['source_account_id'])->first()
+                : null;
+            $movement = $account?->type === 'credit_card'
+                ? $invoices->purchase($request->user(), [
+                    'account_id' => $account->id,
+                    'description' => $data['description'],
+                    'amount' => $data['amount'],
+                    'movement_date' => $data['movement_date'],
+                    'category_id' => $data['category_id'] ?? null,
+                ])
+                : $service->create($request->user(), $data);
+        }
         return response()->json(['data' => $movement], 201);
     }
 

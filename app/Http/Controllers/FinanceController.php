@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Financial\CardInvoiceService;
 use App\Services\Financial\FinancialMovementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -148,6 +149,27 @@ class FinanceController extends Controller
         ];
     }
 
+    private function createLinkedMovement(Request $request, array $payload, FinancialMovementService $movements, CardInvoiceService $invoices): void
+    {
+        $accountId = $payload['source_account_id'] ?? null;
+        $account = $accountId ? $request->user()->contasFinanceiras()->whereKey($accountId)->first() : null;
+        if ($payload['type'] === 'expense' && $account?->type === 'credit_card') {
+            $invoices->purchase($request->user(), [
+                'account_id' => $account->id,
+                'description' => $payload['description'],
+                'amount' => $payload['amount'],
+                'movement_date' => $payload['movement_date'],
+                'category_id' => $payload['category_id'] ?? null,
+                'legacy_type' => $payload['legacy_type'] ?? null,
+                'legacy_id' => $payload['legacy_id'] ?? null,
+                'is_historical' => $payload['is_historical'] ?? false,
+            ]);
+            return;
+        }
+
+        $movements->create($request->user(), $payload);
+    }
+
     public function index(Request $request)
     {
         [$tipo, , $dateField] = $this->config($request);
@@ -197,7 +219,7 @@ class FinanceController extends Controller
         return view('finance.form', compact('tipo', 'data', 'cats', 'registo', 'accounts', 'financialMovement', 'returnUrl'));
     }
 
-    public function store(Request $request, FinancialMovementService $service)
+    public function store(Request $request, FinancialMovementService $service, CardInvoiceService $invoices)
     {
         [$tipo] = $this->config($request);
         $data = $this->validatedData($request);
@@ -206,10 +228,10 @@ class FinanceController extends Controller
         $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
         $dateField = $tipo === 'despesa' ? 'expense_date' : 'income_date';
 
-        DB::transaction(function () use ($request, $service, $tipo, $data, $accountId, $legacyType, $dateField): void {
+        DB::transaction(function () use ($request, $service, $invoices, $tipo, $data, $accountId, $legacyType, $dateField): void {
             $legacy = $this->query($request)->create($data);
             $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId]), $legacyType, $legacy->id);
-            $service->create($request->user(), $payload);
+            $this->createLinkedMovement($request, $payload, $service, $invoices);
         });
 
         if ($request->expectsJson()) {
@@ -236,7 +258,7 @@ class FinanceController extends Controller
         return view('finance.form', compact('tipo', 'data', 'cats', 'registo', 'accounts', 'financialMovement', 'returnUrl'));
     }
 
-    public function update(Request $request, string $id, FinancialMovementService $service)
+    public function update(Request $request, string $id, FinancialMovementService $service, CardInvoiceService $invoices)
     {
         [$tipo, , $dateField] = $this->config($request);
         $data = $this->validatedData($request, $id);
@@ -245,15 +267,21 @@ class FinanceController extends Controller
         $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
         $date = $data[$dateField];
 
-        DB::transaction(function () use ($request, $service, $tipo, $id, $data, $accountId, $legacyType, $dateField, $date): void {
+        DB::transaction(function () use ($request, $service, $invoices, $tipo, $id, $data, $accountId, $legacyType, $dateField, $date): void {
             $legacy = $this->query($request)->whereKey($id)->lockForUpdate()->firstOrFail();
             $movement = $this->linkedMovement($request, $tipo, $legacy->id);
+            if ($movement?->invoice_id) {
+                $invoice = $request->user()->faturas()->whereKey($movement->invoice_id)->firstOrFail();
+                if ($invoice->status !== 'open') {
+                    throw ValidationException::withMessages(['expense' => 'Não é possível editar uma compra de fatura já liquidada. Estorna o movimento e regista a correção.']);
+                }
+            }
             $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId]), $legacyType, $legacy->id);
 
             if (!$movement) {
                 $cutoff = $request->user()->financial_cutoff_date?->toDateString();
                 $payload['is_historical'] = $cutoff !== null && $date <= $cutoff;
-                $service->create($request->user(), $payload);
+                $this->createLinkedMovement($request, $payload, $service, $invoices);
             } elseif ($movement->status === 'pending') {
                 $movement = $service->updatePending($request->user(), $movement, [
                     'description' => $payload['description'],
@@ -271,7 +299,7 @@ class FinanceController extends Controller
                 $payload['is_historical'] = (bool) $movement->is_historical || ($cutoff !== null && $date <= $cutoff);
                 $movement->historico()->delete();
                 $movement->delete();
-                $service->create($request->user(), $payload);
+                $this->createLinkedMovement($request, $payload, $service, $invoices);
             }
 
             $legacy->update($data);
