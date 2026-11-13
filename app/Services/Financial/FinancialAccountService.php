@@ -16,18 +16,12 @@ class FinancialAccountService
     public function create(User $user, array $data): ContaFinanceira
     {
         return DB::transaction(function () use ($user, $data) {
-            $openingBalance = $data['opening_balance'] ?? null;
-            if (($data['type'] ?? null) === 'credit_card' && $openingBalance === null) {
-                $openingBalance = '0.00';
-            }
-            $allowNegative = (bool) ($data['allow_negative_balance'] ?? false);
-
-            if ($openingBalance !== null && ($data['opening_balance_date'] ?? now()->toDateString()) > now()->toDateString()) {
+            // Toda conta começa utilizável com saldo zero. O saldo real pode
+            // ser corrigido mais tarde, inclusive depois de lançamentos.
+            $openingBalance = $data['opening_balance'] ?? '0.00';
+            $allowNegative = true;
+            if (($data['opening_balance_date'] ?? now()->toDateString()) > now()->toDateString()) {
                 throw ValidationException::withMessages(['opening_balance_date' => 'A data do saldo inicial não pode ser futura.']);
-            }
-
-            if ($openingBalance !== null && $this->balances->toCents((string) $openingBalance) < 0 && !$allowNegative) {
-                throw ValidationException::withMessages(['opening_balance' => 'Saldo inicial negativo exige autorização explícita.']);
             }
 
             return ContaFinanceira::query()->create([
@@ -37,10 +31,10 @@ class FinancialAccountService
                 'type' => $data['type'],
                 'currency' => $user->currency,
                 'opening_balance' => $openingBalance,
-                'opening_balance_date' => $openingBalance !== null ? ($data['opening_balance_date'] ?? now()->toDateString()) : null,
+                'opening_balance_date' => $data['opening_balance_date'] ?? now()->toDateString(),
                 'is_operational' => true,
                 'allow_negative_balance' => $allowNegative,
-                'status' => $openingBalance !== null ? 'active' : 'setup_pending',
+                'status' => 'active',
             ]);
         });
     }
@@ -55,19 +49,10 @@ class FinancialAccountService
             if ($date > now()->toDateString()) {
                 throw ValidationException::withMessages(['opening_balance_date' => 'A data do saldo inicial não pode ser futura.']);
             }
-            if ($this->balances->toCents($amount) < 0 && !$allowNegative) {
-                throw ValidationException::withMessages(['opening_balance' => 'Saldo inicial negativo exige autorização explícita.']);
-            }
-            if (DB::table('movimentos')->where('user_id', $user->id)->where(function ($q) use ($locked) {
-                $q->where('source_account_id', $locked->id)->orWhere('destination_account_id', $locked->id);
-            })->exists()) {
-                throw ValidationException::withMessages(['opening_balance' => 'Não é possível alterar o saldo inicial depois de existirem movimentos na conta.']);
-            }
-
             $locked->update([
                 'opening_balance' => $amount,
                 'opening_balance_date' => $date,
-                'allow_negative_balance' => $allowNegative,
+                'allow_negative_balance' => $allowNegative || $this->balances->toCents($amount) < 0,
                 'status' => 'active',
             ]);
 
@@ -95,11 +80,9 @@ class FinancialAccountService
             if (!$locked->is_operational || $locked->status === 'closed' || !in_array($locked->type, ['bank', 'cash'], true)) {
                 throw ValidationException::withMessages(['account' => 'Esta configuração só se aplica a contas bancárias e de dinheiro ativas.']);
             }
-            if (!$allowed && $locked->opening_balance !== null && $this->balances->toCents((string) $locked->opening_balance) < 0) {
-                throw ValidationException::withMessages(['allow_negative_balance' => 'Regulariza o saldo inicial negativo antes de desativar esta opção.']);
-            }
-
-            $locked->update(['allow_negative_balance' => $allowed]);
+            $locked->update([
+                'allow_negative_balance' => $allowed || ($locked->opening_balance !== null && $this->balances->toCents((string) $locked->opening_balance) < 0),
+            ]);
             return $locked->refresh();
         });
     }

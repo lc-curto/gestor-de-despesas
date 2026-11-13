@@ -460,11 +460,11 @@
             const openingFields = document.getElementById('editOpeningBalanceFields');
             const openingSummary = document.getElementById('editOpeningSummary');
             const negativeField = document.getElementById('editNegativeBalanceField');
-            const canEditOpening = button.dataset.type !== 'credit_card' && (button.dataset.opening !== '1' || button.dataset.movements === '0');
-            openingFields.classList.toggle('d-none', !canEditOpening);
+            openingFields.classList.remove('d-none');
             document.getElementById('editOpeningBalance').value = button.dataset.openingValue || '';
             document.getElementById('editOpeningDate').value = button.dataset.openingIso || '{{ now()->toDateString() }}';
             openingSummary.classList.toggle('d-none', button.dataset.opening !== '1');
+            form.elements.opening_balance.value = button.dataset.opening === '1' ? (button.dataset.openingValue || '') : '';
             document.getElementById('editOpeningSummaryValue').textContent = button.dataset.opening === '1'
                 ? Number(button.dataset.openingValue || 0).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + button.dataset.currency
                 : '';
@@ -479,7 +479,7 @@
         const form = event.currentTarget;
         try {
             await submitJsonForm(form, 'PUT', false);
-            if (form.elements.opening_balance.value && (form.dataset.openingConfigured === '0' || form.dataset.hasMovements === '0')) {
+            if (form.elements.opening_balance.value) {
                 const opening = new FormData();
                 opening.set('opening_balance', form.elements.opening_balance.value);
                 opening.set('opening_balance_date', document.getElementById('editOpeningDate').value);
@@ -519,7 +519,7 @@
             const form = document.getElementById('openingBalanceForm');
             form.dataset.endpoint = button.dataset.endpoint;
             form.elements.opening_balance.value = '';
-            document.getElementById('editOpeningDate').value = '{{ now()->toDateString() }}';
+            document.getElementById('openingBalanceReference').value = '{{ now()->toDateString() }}';
             form.querySelector('[name="allow_negative_balance"]').checked = false;
             document.getElementById('openingBalanceAccountName').textContent = button.dataset.name;
         });

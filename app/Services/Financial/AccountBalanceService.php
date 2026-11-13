@@ -9,8 +9,8 @@ use RuntimeException;
 class AccountBalanceService
 {
     /**
-     * Saldo = saldo inicial + movimentos liquidados desde a data de abertura.
-     * A conta legacy nunca é considerada operacional.
+     * Saldo = saldo inicial + todos os movimentos operacionais liquidados.
+     * A data do saldo inicial é uma referência, não um bloqueio de lançamentos.
      */
     public function balance(ContaFinanceira $account): string
     {
@@ -22,8 +22,6 @@ class AccountBalanceService
             ->where('user_id', $account->user_id)
             ->where('status', 'settled')
             ->where('is_historical', false)
-            // O saldo inicial é a fotografia do corte; lançamentos posteriores no mesmo dia também contam.
-            ->whereDate('movement_date', '>=', $account->opening_balance_date->toDateString())
             ->where(function ($query) use ($account) {
                 $query->where('source_account_id', $account->id)
                     ->orWhere('destination_account_id', $account->id);
@@ -45,16 +43,9 @@ class AccountBalanceService
 
     public function assertCanDebit(ContaFinanceira $account, string $amount): void
     {
-        if ($account->type === 'credit_card' || $account->allow_negative_balance) {
-            return;
-        }
-
-        $balance = $this->toCents($this->balance($account));
-        $debit = $this->toCents($amount);
-
-        if ($balance - $debit < 0) {
-            throw new RuntimeException('Saldo insuficiente. Ative a permissão de saldo negativo se pretender continuar.');
-        }
+        // O saldo é informativo e pode ficar negativo: bancos permitem
+        // descoberto, dinheiro pode ser corrigido depois e cartões são crédito.
+        // A aplicação não bloqueia um lançamento por falta de saldo calculado.
     }
 
     public function toCents(string $amount): int

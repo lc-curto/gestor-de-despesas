@@ -23,11 +23,6 @@ class FinancialMovementService
             $this->assertShape($type, $source, $destination, $data['adjustment_direction'] ?? null);
             $isHistorical = (bool) ($data['is_historical'] ?? false);
 
-            if (!$isHistorical) {
-                foreach ([$source, $destination] as $account) {
-                    if ($account) $this->assertMovementDateCompatible($account, (string) $data['movement_date']);
-                }
-            }
             if ($source && !$isHistorical) {
                 $this->balances->assertCanDebit($source, (string) $data['amount']);
             }
@@ -99,9 +94,6 @@ class FinancialMovementService
             $destination = $this->account($user, $accounts['destination_account_id'] ?? null);
             $this->assertShape($locked->type, $source, $destination, $locked->adjustment_direction);
 
-            foreach ([$source, $destination] as $account) {
-                if ($account) $this->assertMovementDateCompatible($account, $locked->movement_date->toDateString());
-            }
             if ($source) {
                 $this->balances->assertCanDebit($source, (string) $locked->amount);
             }
@@ -134,11 +126,8 @@ class FinancialMovementService
             $currentId = $locked->type === 'expense' ? $locked->source_account_id : $locked->destination_account_id;
             if ($currentId === $account->id) return $locked;
 
-            if (!$locked->is_historical) {
-                $this->assertMovementDateCompatible($account, $locked->movement_date->toDateString());
-                if ($locked->type === 'expense') {
-                    $this->balances->assertCanDebit($account, (string) $locked->amount);
-                }
+            if (!$locked->is_historical && $locked->type === 'expense') {
+                $this->balances->assertCanDebit($account, (string) $locked->amount);
             }
 
             $before = $locked->getAttributes();
@@ -178,21 +167,8 @@ class FinancialMovementService
             $before = $locked->getAttributes();
 
             if ($locked->status === 'settled') {
-                $financialChange = false;
-                if (array_key_exists('amount', $data)) {
-                    $financialChange = $this->balances->toCents((string) $data['amount']) !== $this->balances->toCents((string) $locked->amount);
-                }
-                if (array_key_exists('movement_date', $data)) {
-                    $financialChange = $financialChange || substr((string) $data['movement_date'], 0, 10) !== $locked->movement_date->toDateString();
-                }
-                foreach (['type', 'source_account_id', 'destination_account_id'] as $field) {
-                    if (array_key_exists($field, $data) && $data[$field] !== $locked->{$field}) $financialChange = true;
-                }
-                if ($financialChange) {
-                    throw ValidationException::withMessages(['movement' => 'Alterações financeiras em movimentos liquidados exigem exclusão e novo lançamento.']);
-                }
-                $allowed = ['description', 'category_id'];
-                $action = 'description_corrected';
+                $allowed = ['description', 'amount', 'movement_date', 'category_id'];
+                $action = 'updated';
             } elseif ($locked->status === 'pending') {
                 $allowed = ['description', 'amount', 'movement_date', 'category_id'];
                 $action = 'updated';
@@ -218,13 +194,6 @@ class FinancialMovementService
             throw ValidationException::withMessages(['account' => 'A moeda da conta não corresponde à moeda do utilizador.']);
         }
         return $account;
-    }
-
-    private function assertMovementDateCompatible(ContaFinanceira $account, string $movementDate): void
-    {
-        if ($account->opening_balance_date && substr($movementDate, 0, 10) < $account->opening_balance_date->toDateString()) {
-            throw ValidationException::withMessages(['movement_date' => 'A data do movimento não pode ser anterior à data do saldo inicial desta conta.']);
-        }
     }
 
     private function assertShape(string $type, ?ContaFinanceira $source, ?ContaFinanceira $destination, ?string $direction): void

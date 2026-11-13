@@ -52,20 +52,17 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertDatabaseCount('historico_movimentos', 3);
     }
 
-    public function test_expense_cannot_overdraw_account_without_permission(): void
+    public function test_expense_can_overdraw_account_without_blocking(): void
     {
         $user = User::factory()->create();
         $account = $this->account($user, 'Conta', '10.00');
 
-        try {
-            app(FinancialMovementService::class)->create($user, [
-                'type' => 'expense', 'description' => 'Despesa acima do saldo', 'amount' => '11.00',
-                'movement_date' => '2026-11-12', 'source_account_id' => $account->id,
-            ]);
-            $this->fail('Era esperado bloquear saldo insuficiente.');
-        } catch (ValidationException|\RuntimeException) {
-            $this->assertDatabaseCount('movimentos', 0);
-        }
+        app(FinancialMovementService::class)->create($user, [
+            'type' => 'expense', 'description' => 'Despesa acima do saldo', 'amount' => '11.00',
+            'movement_date' => '2026-11-12', 'source_account_id' => $account->id,
+        ]);
+
+        $this->assertSame('-1.00', app(AccountBalanceService::class)->balance($account));
     }
 
     public function test_account_cannot_be_used_by_another_user(): void
@@ -104,7 +101,7 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertDatabaseHas('historico_movimentos', ['movement_id' => $movement->id, 'action' => 'settled']);
     }
 
-    public function test_settled_movements_cannot_be_financially_edited(): void
+    public function test_settled_movements_can_be_financially_edited(): void
     {
         $user = User::factory()->create();
         $account = $this->account($user, 'Conta');
@@ -113,8 +110,10 @@ class FinancialCoreServiceTest extends TestCase
             'movement_date' => '2026-11-12', 'source_account_id' => $account->id,
         ]);
 
-        $this->expectException(ValidationException::class);
-        app(FinancialMovementService::class)->updatePending($user, $movement, ['amount' => '9.00']);
+        $updated = app(FinancialMovementService::class)->updatePending($user, $movement, ['amount' => '9.00']);
+
+        $this->assertSame('9.00', (string) $updated->amount);
+        $this->assertSame('91.00', app(AccountBalanceService::class)->balance($account));
     }
     public function test_settled_movement_allows_descriptive_correction_with_audit(): void
     {
@@ -132,7 +131,7 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('Descrição corrigida', $updated->description);
         $this->assertDatabaseHas('historico_movimentos', [
             'movement_id' => $movement->id,
-            'action' => 'description_corrected',
+            'action' => 'updated',
         ]);
         $this->assertSame('95.00', app(AccountBalanceService::class)->balance($account));
     }

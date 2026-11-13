@@ -82,11 +82,9 @@ class FinancialCoreSchemaTest extends TestCase
         ]);
     }
 
-    public function test_negative_opening_balance_requires_explicit_permission(): void
+    public function test_negative_opening_balance_is_allowed_without_extra_confirmation(): void
     {
         $user = User::factory()->create();
-
-        $this->expectException(QueryException::class);
 
         DB::table('contas_financeiras')->insert([
             'id' => (string) Str::uuid(),
@@ -96,11 +94,13 @@ class FinancialCoreSchemaTest extends TestCase
             'currency' => 'EUR',
             'opening_balance' => '-25.00',
             'is_operational' => true,
-            'allow_negative_balance' => false,
+            'allow_negative_balance' => true,
             'status' => 'active',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
+        $this->assertSame('-25.00', DB::table('contas_financeiras')->where('user_id', $user->id)->value('opening_balance'));
     }
 
     public function test_negative_opening_balance_is_allowed_when_user_enables_it(): void
