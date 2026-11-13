@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ContaFinanceira;
 use App\Services\Financial\AccountBalanceService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class FinancialAccountsPageController extends Controller
 {
@@ -56,5 +57,17 @@ class FinancialAccountsPageController extends Controller
             ->withQueryString();
 
         return view('financial.account-show', compact('account', 'movements'));
+    }
+
+    public function destroyMovement(Request $request, string $id)
+    {
+        $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
+
+        DB::transaction(function () use ($movement): void {
+            $movement->historico()->delete();
+            $movement->delete();
+        });
+
+        return back()->with('success', 'Transferência eliminada. Os saldos foram recalculados.');
     }
 }

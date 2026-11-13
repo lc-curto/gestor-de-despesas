@@ -26,6 +26,10 @@
         </div>
     </header>
 
+    @if (session('success'))
+        <div class="alert alert-success" role="status">{{ session('success') }}</div>
+    @endif
+
     <section class="card border-0 shadow-sm rounded-4 history-card account-history-card" aria-labelledby="accountMovementsTitle">
         <div class="card-body p-0 history-card-body">
             <div class="p-3 p-sm-4 pb-3 border-bottom">
@@ -78,6 +82,13 @@
                             </div>
                             @if ($editRoute)
                                 <a class="btn btn-outline-secondary btn-sm" href="{{ $editRoute }}" aria-label="Editar {{ $movement->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                            @endif
+                            @if ($isTransfer)
+                                <form method="POST" action="{{ route('financial.accounts.movement.destroy', $movement->id) }}" onsubmit="return confirm('Eliminar esta transferência? O saldo das duas contas será recalculado.')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button class="btn btn-outline-danger btn-sm" type="submit" aria-label="Eliminar transferência" title="Eliminar transferência"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                                </form>
                             @endif
                         </div>
                     </article>
