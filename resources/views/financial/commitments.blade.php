@@ -6,14 +6,42 @@
 <div class="app-content">
     <header class="page-heading mb-4 d-flex flex-wrap justify-content-between align-items-end gap-3">
         <div>
-            <p class="eyebrow mb-1">Fase 2 · Acompanhamento</p>
             <h1 class="h2 fw-bold mb-1">Cartões e compromissos</h1>
             <p class="text-secondary mb-0">Acompanha o que tens por pagar, os próximos vencimentos e os pagamentos realizados.</p>
         </div>
-        <a class="btn btn-outline-secondary" href="{{ route('financial.accounts.page') }}">Gerir contas e cartões</a>
+        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#accountsModal">Gerir contas e cartões</button>
     </header>
 
     <div id="commitmentFeedback" class="alert d-none" role="status" aria-live="polite"></div>
+
+    <div class="modal fade" id="accountsModal" tabindex="-1" aria-labelledby="accountsModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+            <div class="modal-header"><h2 class="modal-title h5" id="accountsModalTitle">Gerir contas e cartões</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+            <div class="modal-body">
+                <div id="accountsModalFeedback" class="alert d-none" role="alert"></div>
+                <div id="accountsList" class="mb-4"><p class="text-secondary">A carregar contas…</p></div>
+                <hr>
+                <h3 class="h6 fw-bold mb-3">Adicionar conta ou cartão</h3>
+                <form id="createAccountForm" class="row g-3">
+                    <div class="col-md-6"><label class="form-label" for="newAccountName">Nome</label><input class="form-control" id="newAccountName" name="name" maxlength="120" required></div>
+                    <div class="col-md-6"><label class="form-label" for="newAccountType">Tipo</label><select class="form-select" id="newAccountType" name="type" required><option value="bank">Conta bancária</option><option value="cash">Dinheiro</option><option value="credit_card">Cartão de crédito</option></select></div>
+                    <div class="col-md-6"><label class="form-label" for="newAccountBalance">Saldo inicial</label><input class="form-control" id="newAccountBalance" name="opening_balance" type="number" step="0.01" placeholder="0,00"></div>
+                    <div class="col-md-6"><label class="form-label" for="newAccountDate">Data do saldo inicial</label><input class="form-control" id="newAccountDate" name="opening_balance_date" type="date" value="{{ now()->toDateString() }}"></div>
+                    <div class="col-md-4 card-only d-none"><label class="form-label" for="newCardLimit">Limite de crédito</label><input class="form-control" id="newCardLimit" name="credit_limit" type="number" min="0.01" step="0.01"></div>
+                    <div class="col-md-4 card-only d-none"><label class="form-label" for="newCardClosing">Dia de fecho</label><input class="form-control" id="newCardClosing" name="closing_day" type="number" min="1" max="28"></div>
+                    <div class="col-md-4 card-only d-none"><label class="form-label" for="newCardDue">Dia de vencimento</label><input class="form-control" id="newCardDue" name="due_day" type="number" min="1" max="28"></div>
+                    <div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" name="allow_negative_balance" value="1" id="newAllowNegative"><label class="form-check-label" for="newAllowNegative">Permitir saldo negativo</label></div></div>
+                    <div class="col-12 text-end"><button class="btn btn-primary" type="submit">Guardar conta</button></div>
+                </form>
+            </div>
+        </div></div>
+    </div>
+    <div class="modal fade" id="expenseModal" tabindex="-1" aria-labelledby="expenseModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+            <div class="modal-header"><h2 class="modal-title h5" id="expenseModalTitle">Nova despesa</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+            <div class="modal-body" id="expenseModalBody"><p class="text-secondary">A carregar formulário…</p></div>
+        </div></div>
+    </div>
 
     <section class="row g-3 mb-4" aria-label="Resumo financeiro">
         <div class="col-md-4">
@@ -49,7 +77,7 @@
                     <h2 class="h5 fw-bold mb-1">Cartões de crédito</h2>
                     <p class="small text-secondary mb-0">As compras são registadas em Despesas e associadas automaticamente à fatura do cartão.</p>
                 </div>
-                <a class="btn btn-primary btn-sm" href="{{ route('despesas.create') }}">Nova despesa</a>
+                <button class="btn btn-primary btn-sm" type="button" id="openExpenseModal">Nova despesa</button>
             </div>
 
             @forelse ($cards as $card)
@@ -130,7 +158,7 @@
                 <div class="text-center py-4">
                     <p class="fw-semibold mb-1">Ainda não tens cartões configurados.</p>
                     <p class="text-secondary small mb-3">Adiciona um cartão nas contas para começares a registar compras e acompanhar faturas.</p>
-                    <a href="{{ route('financial.accounts.page') }}" class="btn btn-outline-primary btn-sm">Adicionar cartão</a>
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#accountsModal" data-open-card-form="1">Adicionar cartão</button>
                 </div>
             @endforelse
         </div>
@@ -279,37 +307,83 @@
 (() => {
     const token = document.querySelector('meta[name="csrf-token"]')?.content;
     const feedback = document.getElementById('commitmentFeedback');
+    const modal = (id) => bootstrap.Modal.getOrCreateInstance(document.getElementById(id));
+    const showError = (element, message) => { element.className = 'alert alert-danger'; element.textContent = message; };
 
     document.querySelectorAll('.js-api-form').forEach((form) => {
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
-            const button = form.querySelector('[type="submit"]');
-            button.disabled = true;
-
+            const button = form.querySelector('[type="submit"]'); button.disabled = true;
             try {
-                const payload = Object.fromEntries(new FormData(form).entries());
-                const response = await fetch(form.dataset.endpoint, {
-                    method: form.dataset.method || 'POST',
-                    credentials: 'same-origin',
-                    headers: {
-                        Accept: 'application/json',
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': token,
-                    },
-                    body: JSON.stringify(payload),
-                });
+                const response = await fetch(form.dataset.endpoint, { method: form.dataset.method || 'POST', credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                    body: JSON.stringify(Object.fromEntries(new FormData(form).entries())) });
                 const result = await response.json().catch(() => ({}));
-                if (!response.ok) {
-                    throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'Não foi possível guardar.');
-                }
+                if (!response.ok) throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'Não foi possível guardar.');
                 window.location.reload();
-            } catch (error) {
-                feedback.className = 'alert alert-danger';
-                feedback.textContent = error.message;
-                feedback.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                button.disabled = false;
-            }
+            } catch (error) { showError(feedback, error.message); feedback.scrollIntoView({behavior:'smooth',block:'center'}); button.disabled = false; }
         });
+    });
+
+    const accountsModal = document.getElementById('accountsModal');
+    const accountsList = document.getElementById('accountsList');
+    const accountsFeedback = document.getElementById('accountsModalFeedback');
+    const typeSelect = document.getElementById('newAccountType');
+    const toggleCardFields = () => document.querySelectorAll('.card-only').forEach(el => el.classList.toggle('d-none', typeSelect.value !== 'credit_card'));
+    typeSelect.addEventListener('change', toggleCardFields);
+    toggleCardFields();
+
+    async function loadAccounts() {
+        accountsList.innerHTML = '<p class="text-secondary">A carregar contas…</p>';
+        const response = await fetch('{{ route('financial.accounts.index') }}', {headers:{Accept:'application/json'},credentials:'same-origin'});
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Não foi possível carregar as contas.');
+        const accounts = result.data || [];
+        accountsList.innerHTML = accounts.length ? accounts.map(account => `
+            <div class="d-flex justify-content-between align-items-center border rounded-3 p-3 mb-2">
+                <div><strong>${account.name}</strong><div class="small text-secondary">${({bank:'Conta bancária',cash:'Dinheiro',credit_card:'Cartão de crédito'})[account.type] || account.type} · ${account.status === 'active' ? 'Ativa' : 'Encerrada'}</div></div>
+                <strong>${account.current_balance ?? '—'} ${account.currency || ''}</strong>
+            </div>`).join('') : '<p class="text-secondary">Ainda não existem contas configuradas.</p>';
+    }
+    accountsModal.addEventListener('show.bs.modal', () => loadAccounts().catch(error => showError(accountsFeedback,error.message)));
+    accountsModal.addEventListener('shown.bs.modal', event => {
+        if (event.relatedTarget?.hasAttribute('data-open-card-form')) { typeSelect.value='credit_card'; toggleCardFields(); document.getElementById('newAccountName').focus(); }
+    });
+    document.getElementById('createAccountForm').addEventListener('submit', async event => {
+        event.preventDefault(); const form=event.currentTarget, button=form.querySelector('[type=submit]'); button.disabled=true;
+        try {
+            const data=Object.fromEntries(new FormData(form).entries());
+            if(data.opening_balance === '') delete data.opening_balance;
+            if(data.type !== 'credit_card') { delete data.credit_limit; delete data.closing_day; delete data.due_day; }
+            const response=await fetch('{{ route('financial.accounts.store') }}',{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify(data)});
+            const result=await response.json().catch(()=>({}));
+            if(!response.ok) throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível criar a conta.');
+            form.reset(); typeSelect.value='bank'; toggleCardFields(); await loadAccounts(); window.location.reload();
+        } catch(error){showError(accountsFeedback,error.message);button.disabled=false;}
+    });
+
+    document.getElementById('openExpenseModal').addEventListener('click', async () => {
+        const body=document.getElementById('expenseModalBody'); body.innerHTML='<p class="text-secondary">A carregar formulário…</p>'; modal('expenseModal').show();
+        try {
+            const response=await fetch('{{ route('despesas.create') }}?modal=1',{credentials:'same-origin',headers:{Accept:'text/html'}});
+            if(!response.ok) throw new Error('Não foi possível carregar o formulário de despesa.');
+            const html=await response.text(), doc=new DOMParser().parseFromString(html,'text/html'), form=doc.querySelector('form[action*="/despesas"]');
+            if(!form) throw new Error('O formulário de despesa não foi encontrado.');
+            form.dataset.modal='1'; form.classList.add('js-expense-modal-form');
+            body.innerHTML=''; body.append(form);
+            const heading=doc.querySelector('.page-heading'); if(heading) document.getElementById('expenseModalTitle').textContent=heading.querySelector('h1')?.textContent || 'Nova despesa';
+            doc.querySelectorAll('script:not([src])').forEach(old => { const script=document.createElement('script'); script.textContent=old.textContent; body.append(script); });
+            form.addEventListener('submit', async event => {
+                if(form.dataset.submitting==='1') return;
+                event.preventDefault(); const button=form.querySelector('[type=submit]'); button.disabled=true;
+                try {
+                    const response=await fetch(form.action,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','X-CSRF-TOKEN':token},body:new FormData(form)});
+                    const result=await response.json().catch(()=>({}));
+                    if(!response.ok) throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível registar a despesa.');
+                    window.location.reload();
+                } catch(error) { let alert=form.querySelector('.alert-danger'); if(!alert){alert=document.createElement('div');alert.className='alert alert-danger';form.prepend(alert);} alert.textContent=error.message;button.disabled=false; }
+            });
+        } catch(error){body.innerHTML='<div class="alert alert-danger"></div>';body.querySelector('.alert').textContent=error.message;}
     });
 })();
 </script>
