@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\ContaFinanceira;
 use App\Models\Movimento;
+use App\Models\Divida;
+use App\Models\ParcelaDivida;
 use App\Services\Financial\AccountBalanceService;
 use App\Services\Financial\FinancialAccountService;
 use App\Services\Financial\FinancialMovementService;
@@ -16,6 +18,22 @@ use Illuminate\Support\Carbon;
 
 class FinancialCoreController extends Controller
 {
+    public function commitments(Request $request): JsonResponse
+    {
+        return response()->json(['data' => $request->user()->dividas()->with('parcelas')->latest()->paginate(30)]);
+    }
+
+    public function payCommitmentInstallment(Request $request, string $id, string $installmentId, FinancialCommitmentService $service): JsonResponse
+    {
+        $data = $request->validate([
+            'account_id' => ['required', 'uuid', Rule::exists('contas_financeiras', 'id')->where('user_id', $request->user()->id)],
+            'amount' => 'nullable|numeric|gt:0|decimal:0,2',
+            'payment_date' => 'nullable|date',
+        ]);
+        $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();
+        $installment = $debt->parcelas()->whereKey($installmentId)->firstOrFail();
+        return response()->json(['data' => $service->payInstallment($request->user(), $debt, $installment, $data)]);
+    }
     public function storeCommitment(Request $request, FinancialCommitmentService $service): JsonResponse
     {
         $data = $request->validate([

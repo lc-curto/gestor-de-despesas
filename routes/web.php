@@ -43,6 +43,8 @@ Route::middleware('auth')->group(function(){
   Route::get('/movements', [FinancialCoreController::class, 'movements'])->name('movements.index');
   Route::post('/movements', [FinancialCoreController::class, 'storeMovement'])->name('movements.store');
   Route::post('/commitments', [FinancialCoreController::class, 'storeCommitment'])->name('commitments.store');
+  Route::get('/commitments', [FinancialCoreController::class, 'commitments'])->name('commitments.index');
+  Route::post('/commitments/{id}/installments/{installmentId}/pay', [FinancialCoreController::class, 'payCommitmentInstallment'])->name('commitments.installments.pay');
   Route::put('/movements/{id}/settle', [FinancialCoreController::class, 'settleMovement'])->name('movements.settle');
   Route::put('/movements/{id}', [FinancialCoreController::class, 'updatePendingMovement'])->name('movements.update');
   Route::put('/movements/{id}/void', [FinancialCoreController::class, 'voidMovement'])->name('movements.void');

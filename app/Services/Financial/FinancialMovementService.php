@@ -43,6 +43,8 @@ class FinancialMovementService
                 'legacy_type' => $data['legacy_type'] ?? null,
                 'legacy_id' => $data['legacy_id'] ?? null,
                 'reversal_of_id' => $data['reversal_of_id'] ?? null,
+                'debt_id' => $data['debt_id'] ?? null,
+                'installment_id' => $data['installment_id'] ?? null,
                 'settled_at' => now(),
             ]);
 
