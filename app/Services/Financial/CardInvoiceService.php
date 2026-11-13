@@ -1,13 +1,13 @@
 <?php
 
-namespace App\\Services\\Financial;
+namespace App\Services\Financial;
 
-use App\\Models\\Fatura;
-use App\\Models\\Movimento;
-use App\\Models\\User;
-use Illuminate\\Support\\Carbon;
-use Illuminate\\Support\\Facades\\DB;
-use Illuminate\\Validation\\ValidationException;
+use App\Models\Fatura;
+use App\Models\Movimento;
+use App\Models\User;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CardInvoiceService
 {
