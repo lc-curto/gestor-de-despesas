@@ -71,10 +71,17 @@ class FinancialCoreController extends Controller
     {
         $data = $request->validate([
             'account_id' => ['required', 'uuid', Rule::exists('contas_financeiras', 'id')->where('user_id', $request->user()->id)],
+            'amount' => 'nullable|numeric|gt:0|decimal:0,2|max:9999999999.99',
             'payment_date' => 'required|date',
         ]);
         $invoice = $request->user()->faturas()->whereKey($id)->firstOrFail();
-        return response()->json(['data' => $service->pay($request->user(), $invoice, $data['account_id'], $data['payment_date'])]);
+        return response()->json(['data' => $service->pay(
+            $request->user(),
+            $invoice,
+            $data['account_id'],
+            $data['payment_date'],
+            isset($data['amount']) ? (string) $data['amount'] : null
+        )]);
     }
 
     public function updateCardSettings(Request $request, string $id): JsonResponse
