@@ -231,6 +231,7 @@ class FinancialCoreController extends Controller
     {
         $data = $request->validate([
             'type' => ['required', Rule::in(['income', 'expense', 'transfer', 'adjustment'])],
+            'expense_behavior' => ['nullable', Rule::in(['fixed', 'variable'])],
             'status' => ['sometimes', Rule::in(['pending', 'settled'])],
             'description' => 'required|string|max:255',
             'amount' => 'required|numeric|gt:0|decimal:0,2|max:9999999999.99',
