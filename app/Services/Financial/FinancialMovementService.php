@@ -34,6 +34,7 @@ class FinancialMovementService
                 'expense_behavior' => $type === 'expense' ? ($data['expense_behavior'] ?? 'variable') : 'variable',
                 'status' => 'settled',
                 'description' => $data['description'],
+                'notes' => $data['notes'] ?? null,
                 'amount' => $data['amount'],
                 'movement_date' => $data['movement_date'],
                 'source_account_id' => $source?->id,
@@ -199,7 +200,7 @@ class FinancialMovementService
             $before = $locked->getAttributes();
 
             if ($locked->status === 'settled') {
-                $allowed = ['description', 'amount', 'movement_date', 'category_id', 'expense_behavior'];
+                $allowed = ['description', 'notes', 'amount', 'movement_date', 'category_id', 'expense_behavior'];
                 $action = 'updated';
             } elseif ($locked->status === 'pending') {
                 $allowed = ['description', 'amount', 'movement_date', 'category_id', 'expense_behavior'];
