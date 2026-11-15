@@ -127,6 +127,11 @@
         </div>
         <div class="offcanvas-body pt-0">
             <nav class="mobile-more-list" aria-label="Mais funcionalidades">
+                <a class="mobile-more-item" href="{{ route('financial.route') }}">
+                    <i data-lucide="calendar-range" aria-hidden="true"></i>
+                    <span><strong>Rota Financeira</strong><small>Planeamento diário do saldo</small></span>
+                    <i data-lucide="chevron-right" class="mobile-more-chevron" aria-hidden="true"></i>
+                </a>
                 <a class="mobile-more-item" href="{{ route('financial.commitments.page') }}">
                     <i data-lucide="credit-card" aria-hidden="true"></i>
                     <span><strong>Cartões e compromissos</strong><small>Gerir faturas e pagamentos</small></span>
