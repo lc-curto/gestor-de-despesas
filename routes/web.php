@@ -6,6 +6,7 @@ use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\FinancialCoreController;
 use App\Http\Controllers\FinancialAccountsPageController;
 use App\Http\Controllers\FinancialCommitmentsPageController;
+use App\Http\Controllers\FinancialRouteController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 Route::get('/', function (Request $request) {
@@ -26,6 +27,7 @@ Route::middleware('guest')->group(function(){
 Route::middleware('auth')->group(function(){
  Route::post('/logout',[AccountController::class,'logout'])->name('logout');
  Route::get('/dashboard',DashboardController::class)->name('dashboard');
+ Route::get('/rota-financeira', FinancialRouteController::class)->name('financial.route');
  Route::get('/contas', FinancialAccountsPageController::class)->name('financial.accounts.page');
  Route::get('/compromissos', FinancialCommitmentsPageController::class)->name('financial.commitments.page');
  Route::delete('/contas/movimentos/{id}', [FinancialAccountsPageController::class, 'destroyMovement'])->name('financial.accounts.movement.destroy');
