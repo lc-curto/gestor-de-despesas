@@ -119,18 +119,32 @@
         </div>
     </div>
 
-    <div class="offcanvas offcanvas-bottom mobile-action-sheet" tabindex="-1" id="mobileMoreMenu" aria-labelledby="mobileMoreMenuTitle">
-        <div class="offcanvas-header"><h2 class="offcanvas-title h5 fw-bold" id="mobileMoreMenuTitle">Mais funcionalidades</h2><button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button></div>
+    <div class="offcanvas offcanvas-bottom mobile-action-sheet mobile-more-sheet" tabindex="-1" id="mobileMoreMenu" aria-labelledby="mobileMoreMenuTitle">
+        <div class="mobile-sheet-handle" aria-hidden="true"></div>
+        <div class="offcanvas-header">
+            <h2 class="offcanvas-title h5 fw-bold" id="mobileMoreMenuTitle">Mais</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+        </div>
         <div class="offcanvas-body pt-0">
-            <div class="mobile-more-grid">
-                <a class="mobile-sheet-action" href="{{ route('despesas.index') }}"><i data-lucide="arrow-down-circle" aria-hidden="true"></i><span><strong>Despesas</strong><small>Histórico de despesas</small></span></a>
-                <a class="mobile-sheet-action" href="{{ route('receitas.index') }}"><i data-lucide="arrow-up-circle" aria-hidden="true"></i><span><strong>Receitas</strong><small>Histórico de receitas</small></span></a>
-                <a class="mobile-sheet-action" href="{{ route('financial.commitments.page') }}"><i data-lucide="credit-card" aria-hidden="true"></i><span><strong>Cartões e compromissos</strong><small>Faturas e pagamentos</small></span></a>
-                <a class="mobile-sheet-action" href="{{ route('categorias.index') }}"><i data-lucide="tags" aria-hidden="true"></i><span><strong>Categorias</strong><small>Organizar movimentos</small></span></a>
-            </div>
-            <div class="mobile-sheet-utilities">
-                <button type="button" class="btn btn-outline-secondary" id="mobileThemeToggle"><i data-lucide="moon-star" aria-hidden="true"></i> Tema</button>
-                <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit" class="btn btn-outline-danger"><i data-lucide="log-out" aria-hidden="true"></i> Terminar sessão</button></form>
+            <nav class="mobile-more-list" aria-label="Mais funcionalidades">
+                <a class="mobile-more-item" href="{{ route('financial.commitments.page') }}">
+                    <i data-lucide="credit-card" aria-hidden="true"></i>
+                    <span><strong>Cartões e compromissos</strong><small>Gerir faturas e pagamentos</small></span>
+                    <i data-lucide="chevron-right" class="mobile-more-chevron" aria-hidden="true"></i>
+                </a>
+                <a class="mobile-more-item" href="{{ route('categorias.index') }}">
+                    <i data-lucide="tags" aria-hidden="true"></i>
+                    <span><strong>Categorias</strong><small>Gerir categorias</small></span>
+                    <i data-lucide="chevron-right" class="mobile-more-chevron" aria-hidden="true"></i>
+                </a>
+            </nav>
+            <div class="mobile-more-utilities">
+                <button type="button" class="mobile-more-utility" id="mobileThemeToggle">
+                    <i data-lucide="moon" aria-hidden="true"></i><span>Tema</span><i data-lucide="chevron-right" aria-hidden="true"></i>
+                </button>
+                <form method="POST" action="{{ route('logout') }}">@csrf
+                    <button type="submit" class="mobile-more-logout"><i data-lucide="log-out" aria-hidden="true"></i> Terminar sessão</button>
+                </form>
             </div>
         </div>
     </div>
