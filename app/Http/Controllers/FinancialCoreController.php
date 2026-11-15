@@ -85,6 +85,7 @@ class FinancialCoreController extends Controller
             'amount' => 'required|numeric|gt:0|decimal:0,2|max:9999999999.99',
             'movement_date' => 'required|date|before_or_equal:today',
             'category_id' => ['nullable', 'uuid', Rule::exists('categorias', 'id')->where('user_id', $request->user()->id)],
+            'expense_behavior' => ['nullable', Rule::in(['fixed', 'variable'])],
         ]);
         return response()->json(['data' => $service->purchase($request->user(), $data)], 201);
     }
@@ -239,6 +240,7 @@ class FinancialCoreController extends Controller
             'source_account_id' => 'nullable|uuid',
             'destination_account_id' => 'nullable|uuid',
             'category_id' => ['nullable', 'uuid', Rule::exists('categorias', 'id')->where('user_id', $request->user()->id)],
+            'expense_behavior' => ['nullable', Rule::in(['fixed', 'variable'])],
             'adjustment_direction' => ['nullable', Rule::in(['increase', 'decrease'])],
         ]);
 
@@ -255,6 +257,7 @@ class FinancialCoreController extends Controller
                     'amount' => $data['amount'],
                     'movement_date' => $data['movement_date'],
                     'category_id' => $data['category_id'] ?? null,
+                    'expense_behavior' => $data['expense_behavior'] ?? 'variable',
                 ])
                 : $service->create($request->user(), $data);
         }
