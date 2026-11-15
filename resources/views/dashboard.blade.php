@@ -1,328 +1,117 @@
 @extends('layouts.app')
 
-@section('title', 'Dashboard')
+@section('title', 'Início')
 
 @section('content')
 @php
     $simbolos = ['EUR' => '€', 'USD' => '$', 'GBP' => '£', 'BRL' => 'R$'];
+    $recentMovements = $movimentos->take(4);
 @endphp
 
-<header class="dashboard-intro">
-    <div class="dashboard-intro-copy">
-        <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> Resumo financeiro</p>
-        <h1 class="h2 fw-bold" id="greetingTitle">Olá, {{ auth()->user()->name }}!</h1>
-    </div>
-    <div class="date-time-card" aria-label="Data e hora locais do utilizador">
-        <span class="date-time-label">Agora</span>
-        <time id="currentDateTime" datetime="{{ now()->toIso8601String() }}">{{ now()->locale('pt_PT')->translatedFormat('l, d \\d\\e F \\d\\e Y') }} às {{ now()->format('H:i') }}</time>
-    </div>
-</header>
+<div class="home-dashboard">
+    <header class="dashboard-intro home-dashboard-intro">
+        <div class="dashboard-intro-copy">
+            <h1 class="h2 fw-bold mb-1" id="greetingTitle">Bom dia, {{ auth()->user()->name }}!</h1>
+            <p class="text-secondary mb-0">O teu resumo financeiro</p>
+        </div>
+        <div class="date-time-card" aria-label="Data e hora locais do utilizador">
+            <span class="date-time-label">Agora</span>
+            <time id="currentDateTime" datetime="{{ now()->toIso8601String() }}">{{ now()->locale('pt_PT')->translatedFormat('l, d \\d\\e F \\d\\e Y') }} às {{ now()->format('H:i') }}</time>
+        </div>
+    </header>
 
-<section class="row g-3 mb-4" aria-label="Resumo financeiro">
-    <div class="col-4 col-xl-4 dashboard-summary-column">
-        <article class="summary-card summary-card-primary h-100">
-            <span class="summary-icon" aria-hidden="true"><i data-lucide="wallet"></i></span>
-            <div class="d-flex align-items-center gap-3">
-                <div class="min-w-0">
-                    <p class="small mb-1 opacity-75">Saldo do período</p>
-                    <p class="summary-value summary-value-text mb-0" id="balanceAmount" data-total="{{ $totalReceitas - $totalDespesas }}">{{ number_format($totalReceitas - $totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
-                </div>
-            </div>
-        </article>
-    </div>
-    <div class="col-4 col-xl-4 dashboard-summary-column">
-        <article class="summary-card summary-card-expense h-100">
-            <span class="summary-icon" aria-hidden="true"><i data-lucide="arrow-down-right"></i></span>
-            <div class="d-flex align-items-center gap-3">
-                <div>
-                    <p class="small text-secondary mb-1">Despesas</p>
-                    <p class="summary-value mb-0 text-danger" id="totalAmount" data-total="{{ $totalDespesas }}">{{ number_format($totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
-                </div>
-            </div>
-        </article>
-    </div>
-    <div class="col-4 col-xl-4 dashboard-summary-column">
-        <article class="summary-card summary-card-income h-100">
+    <section class="home-balance-card mb-3">
+        <span class="small text-secondary">Saldo disponível</span>
+        <p class="home-balance-value mb-1">{{ number_format($availableBalance, 2, ',', '.') }} {{ $moeda }}</p>
+        <div class="d-flex flex-wrap gap-3 small">
+            <span class="text-success">↑ {{ number_format($totalReceitas, 2, ',', '.') }} {{ $moeda }} recebidos</span>
+            <span class="text-danger">↓ {{ number_format($totalDespesas, 2, ',', '.') }} {{ $moeda }} gastos</span>
+        </div>
+    </section>
+
+    <section class="row g-3 mb-4 home-month-summary" aria-label="Resumo do mês">
+        <div class="col-6"><article class="summary-card summary-card-income h-100">
+            <span class="summary-icon" aria-hidden="true"><i data-lucide="arrow-down-left"></i></span>
+            <p class="small text-secondary mb-1">Receitas</p>
+            <p class="summary-value mb-1 text-success">{{ number_format($totalReceitas, 2, ',', '.') }} {{ $moeda }}</p>
+            <span class="small text-secondary">Este mês</span>
+        </article></div>
+        <div class="col-6"><article class="summary-card summary-card-expense h-100">
             <span class="summary-icon" aria-hidden="true"><i data-lucide="arrow-up-right"></i></span>
-            <div class="d-flex align-items-center gap-3">
-                <div>
-                    <p class="small text-secondary mb-1">Receitas</p>
-                    <p class="summary-value mb-0 text-success" id="totalIncome" data-total="{{ $totalReceitas }}">{{ number_format($totalReceitas, 2, ',', '.') }} {{ $moeda }}</p>
-                </div>
-            </div>
-        </article>
-    </div>
-</section>
+            <p class="small text-secondary mb-1">Despesas</p>
+            <p class="summary-value mb-1 text-danger">{{ number_format($totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
+            <span class="small text-secondary">Este mês</span>
+        </article></div>
+    </section>
 
-<section class="dashboard-entry-bar" aria-label="Novo registo">
-    <strong>Novo registo</strong>
-    <div class="btn-group" role="group" aria-label="Tipo de registo">
-        <button type="button" class="btn btn-danger" id="quickExpenseButton"><i data-lucide="arrow-down-right" aria-hidden="true"></i> Despesa</button>
-        <button type="button" class="btn btn-outline-success" id="quickIncomeButton"><i data-lucide="arrow-up-right" aria-hidden="true"></i> Receita</button>
-    </div>
-</section>
-
-        <div class="modal fade" id="movementEntryModal" tabindex="-1" aria-labelledby="recordTitle" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 bg-transparent">
-        <article id="movementEntryCard" class="card border-0 shadow-sm rounded-4 movement-editor-card">
-            <div class="card-body p-3 p-lg-4">
-                <div class="d-flex align-items-center gap-2 mb-3">
-                    <i data-lucide="plus" class="text-primary" aria-hidden="true"></i>
-                    <div>
-                        <h2 id="recordTitle" class="h5 fw-bold mb-0">Adicionar despesa</h2>
-                    </div>
-                </div>
-
-                <div class="btn-group w-100 record-type-buttons mb-3" role="group" aria-label="Tipo de lançamento">
-                    <button type="button" class="btn btn-danger active" id="expenseTypeButton" aria-pressed="true" aria-controls="recordEditorPanel" aria-expanded="true"><i data-lucide="arrow-down-right" class="me-1"></i>Despesa</button>
-                    <button type="button" class="btn btn-outline-success" id="incomeTypeButton" aria-pressed="false" aria-controls="recordEditorPanel" aria-expanded="true"><i data-lucide="arrow-up-right" class="me-1"></i>Receita</button>
-                </div>
-
-                @if ($errors->any())
-                    <div class="alert alert-danger small"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
-                @endif
-
-                <div id="recordEditorPanel">
-                    <form id="dashboardMovementForm" method="POST" action="{{ route('despesas.store') }}">
-                        @csrf
-                        <input type="hidden" name="_method" id="movementMethod" value="POST">
-                        <div class="mb-3">
-                            <label for="movementDescription" class="form-label" id="descriptionLabel">Descrição</label>
-                            <input type="text" class="form-control" id="movementDescription" name="description" placeholder="Ex.: Supermercado" value="{{ old('description') }}" maxlength="255" required>
-                        </div>
-                        <div class="row g-2 mb-3">
-                            <div class="col-6">
-                                <label for="movementAmount" class="form-label">Valor</label>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" id="movementAmount" name="amount" placeholder="0,00" min="0.01" step="0.01" value="{{ old('amount') }}" required>
-                                    <span class="input-group-text" id="amountCurrencySymbol">{{ $simbolos[$moeda] ?? $moeda }}</span>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <label for="movementDate" class="form-label">Data</label>
-                                <input type="date" class="form-control" id="movementDate" name="expense_date" value="{{ old('expense_date', old('income_date', now()->toDateString())) }}" required>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="movementAccount" class="form-label">Conta</label>
-                            <select class="form-select" id="movementAccount" name="account_id" required>
-                                <option value="">Selecionar conta</option>
-                                @foreach ($accounts as $account)
-                                    <option value="{{ $account->id }}" @selected($accounts->count() === 1)>{{ $account->name }} · {{ $account->currency }}</option>
-                                @endforeach
-                            </select>
-                            @if ($accounts->isEmpty())
-                                <div class="form-text text-warning">Cria uma conta e configura o saldo inicial em <a href="{{ route('financial.accounts.page') }}">Contas</a> antes de registar.</div>
-                            @endif
-                        </div>
-                        <div class="mb-3">
-                            <label for="movementCategory" class="form-label">Categoria</label>
-                            <select class="form-select" id="movementCategory" name="category_id" required>
-                                <option value="" selected disabled>Seleciona uma categoria</option>
-                                @foreach ($categoriasDespesa as $id => $label)
-                                    <option value="{{ $id }}" @selected((string) old('category_id') === (string) $id)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div id="dashboardPaymentFields" class="border-top pt-3 mb-3">
-                            <label class="form-label d-block">Condições de pagamento</label>
-                            <div class="d-flex flex-wrap gap-3 mb-3">
-                                <label class="form-check"><input class="form-check-input" type="radio" name="payment_condition" value="cash" checked> <span class="form-check-label">A pronto</span></label>
-                                <label class="form-check"><input class="form-check-input" type="radio" name="payment_condition" value="deferred"> <span class="form-check-label">A prazo</span></label>
-                                <label class="form-check"><input class="form-check-input" type="radio" name="payment_condition" value="installments"> <span class="form-check-label">Parcelado</span></label>
-                            </div>
-                            <div id="dashboardCommitmentOptions" class="row g-2" hidden>
-                                <div class="col-6"><label for="dashboardPaymentMethod" class="form-label">Método</label><select id="dashboardPaymentMethod" name="payment_method" class="form-select"><option value="">Selecionar</option><option value="cash">Dinheiro</option><option value="card">Cartão</option><option value="transfer">Transferência</option><option value="mbway">MB WAY</option><option value="other">Outro</option></select></div>
-                                <div class="col-6" id="dashboardInstallmentsField" hidden><label for="dashboardInstallments" class="form-label">Parcelas</label><input id="dashboardInstallments" name="installments_count" type="number" min="2" max="120" value="2" class="form-control"></div>
-                                <div class="col-6"><label for="dashboardDueDate" class="form-label">Primeiro vencimento</label><input id="dashboardDueDate" name="due_date" type="date" class="form-control" value="{{ now()->toDateString() }}"></div>
-                            </div>
-                            <div id="dashboardPaidFields" class="mt-3" hidden><label class="form-label d-block">Já foi pago?</label><div class="d-flex gap-3"><label class="form-check"><input class="form-check-input" type="radio" name="paid_now" value="1"> <span class="form-check-label">Sim</span></label><label class="form-check"><input class="form-check-input" type="radio" name="paid_now" value="0" checked> <span class="form-check-label">Ainda não</span></label></div><div id="dashboardPaymentDetails" class="row g-2 mt-1" hidden><div class="col-6"><label for="dashboardPaymentAmount" class="form-label">Valor pago</label><input id="dashboardPaymentAmount" name="payment_amount" type="number" min="0.01" step="0.01" class="form-control"></div><div class="col-6"><label for="dashboardPaymentDate" class="form-label">Data</label><input id="dashboardPaymentDate" name="payment_date" type="date" class="form-control" value="{{ now()->toDateString() }}"></div><div class="col-12"><label for="dashboardPaymentAccount" class="form-label">Conta do pagamento</label><select id="dashboardPaymentAccount" name="payment_account_id" class="form-select"><option value="">Selecionar conta</option>@foreach ($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }} · {{ $account->currency }}</option>@endforeach</select></div></div></div>
-                        </div>
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-danger w-100" id="saveMovementButton" @disabled($accounts->isEmpty())>Guardar despesa</button>
-                            <button type="button" class="btn btn-outline-secondary d-none" id="cancelMovementEdit">Cancelar edição</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </article>
-            </div></div>
-        </div>
-
-<section class="row g-3 g-xl-4 align-items-start" aria-label="Movimentos">
-    <div class="col-12">
-        <article class="card border-0 shadow-sm rounded-4 history-card">
-            <div class="card-body p-0 history-card-body">
-                <div class="p-3 p-sm-4 pb-3">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-                        <h2 class="h5 fw-bold mb-0">Movimentos</h2>
-                        <form method="GET" action="{{ route('dashboard') }}" id="periodForm" class="period-controls dashboard-period-controls">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" id="periodPrevious" aria-label="Mês anterior"><i data-lucide="chevron-left"></i></button>
-                            <label for="periodMonth" class="visually-hidden">Selecionar mês</label>
-                            <input type="month" id="periodMonth" name="mes" class="form-control" value="{{ $mes }}">
-                            <input type="hidden" name="tipo" value="{{ $filtroTipo }}">
-                            <input type="hidden" name="categoria" value="{{ $filtroCategoria }}">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" id="periodNext" aria-label="Mês seguinte"><i data-lucide="chevron-right"></i></button>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="px-3 px-sm-4 border-bottom">
-                    <form method="GET" action="{{ route('dashboard') }}" class="transaction-filters d-flex flex-wrap align-items-center gap-2 pb-3">
-                        <input type="hidden" name="mes" value="{{ $mes }}">
-                        <input type="hidden" name="tipo" value="{{ $filtroTipo }}">
-                        <button class="btn {{ $filtroTipo === 'todos' ? 'btn-primary' : 'btn-link text-decoration-none' }} mobile-tap-target" name="tipo" value="todos">Tudo</button>
-                        <button class="btn {{ $filtroTipo === 'despesa' ? 'btn-primary' : 'btn-link text-decoration-none' }} mobile-tap-target" name="tipo" value="despesa">Despesas</button>
-                        <button class="btn {{ $filtroTipo === 'receita' ? 'btn-primary' : 'btn-link text-decoration-none' }} mobile-tap-target" name="tipo" value="receita">Receitas</button>
-                        <div class="ms-auto filter-control">
-                            <label for="categoryFilter" class="visually-hidden">Filtrar por categoria</label>
-                            <select class="form-select" id="categoryFilter" name="categoria">
-                                <option value="all">Todas as categorias</option>
-                                @foreach ($categorias as $key => $label)
-                                    <option value="{{ $key }}" @selected($filtroCategoria === (string) $key)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </form>
-                </div>
-
-                @php
-                    $totalVisivel = $filtroTipo === 'despesa'
-                        ? $totalDespesasFiltradas
-                        : ($filtroTipo === 'receita' ? $totalReceitasFiltradas : $totalMovimentos);
-                @endphp
-                <div id="expensesList" class="expense-list history-list px-3 px-sm-4" aria-live="polite">
-                    @forelse ($movimentosVisiveis as $movimento)
-                        @php
-                            $isExpense = $movimento->tipo === 'despesa';
-                            $dataMovimento = \Illuminate\Support\Carbon::parse($movimento->data_movimento);
-                            $categoriaLabel = $categorias[$movimento->category] ?? $movimento->category;
-                        @endphp
-                        <article class="expense-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom"
-                            data-movement-id="{{ $movimento->id }}" data-movement-type="{{ $movimento->tipo }}"
-                            data-edit-url="{{ route($isExpense ? 'despesas.update' : 'receitas.update', $movimento->id) }}"
-                            data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}"
-                            data-amount="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}"
-                            data-category-id="{{ $movimento->category }}" data-account-id="{{ $movimento->account_id }}"
-                            data-movement-status="{{ $movimento->movement_status }}">
-                            <div class="d-flex align-items-center gap-3 min-w-0">
-                                <div class="expense-icon flex-shrink-0" style="--category-color: {{ $movimento->category_color ?? '#635BFF' }}" aria-hidden="true">
-                                    <i data-lucide="{{ $movimento->category_icon ?? 'tag' }}"></i>
-                                </div>
-                                <div class="min-w-0">
-                                    <h3 class="h6 fw-semibold mb-1 text-break">{{ $movimento->description }}</h3>
-                                    <p class="small text-secondary mb-0">{{ $categoriaLabel }} · {{ $dataMovimento->format('d/m/Y') }}</p>
-                                </div>
-                            </div>
-                            <div class="expense-actions d-flex align-items-center justify-content-end gap-2">
-                                <strong class="{{ $isExpense ? 'text-danger' : 'text-success' }} text-nowrap movement-value"
-                                    data-value="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}">{{ $isExpense ? '−' : '+' }}{{ number_format((float) $movimento->amount, 2, ',', '.') }}</strong>
-                                <div class="btn-group btn-group-sm" role="group" aria-label="Ações de {{ $movimento->description }}">
-                                    <button type="button" class="btn btn-outline-secondary edit-movement" data-acao="editar" aria-label="Editar {{ $movimento->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></button>
-                                    <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $movimento->id) }}" data-delete-type="{{ $movimento->tipo }}" onsubmit="return confirm('Eliminar definitivamente este registo?')">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="btn btn-outline-danger" aria-label="Eliminar {{ $movimento->description }}" title="Eliminar"><i data-lucide="trash-2" aria-hidden="true"></i></button>
-                                    </form>
-                                </div>
-                            </div>
-                        </article>
-                    @empty
-                        <div class="empty-state text-center py-4">
-                            <div class="empty-icon mb-3" aria-hidden="true">◎</div>
-                            @if ($totalVisivel > 0)
-                                <h3 class="h6">Mais movimentos por carregar</h3>
-                                <p class="small text-secondary mb-0">Não há movimentos deste tipo nesta primeira página. Carrega mais para continuar.</p>
-                            @else
-                                <h3 class="h6">Ainda não existem movimentos</h3>
-                                <p class="small text-secondary mb-0">Adiciona uma despesa ou receita para começar.</p>
-                            @endif
-                        </div>
-                    @endforelse
-                    @if ($movimentosVisiveis->count() < $totalVisivel)
-                        <div class="d-flex justify-content-center py-3">
-                            <button type="button" id="loadMoreMovements" class="btn btn-outline-primary btn-sm px-4">Ver mais movimentos</button>
-                        </div>
-                    @endif
-                </div>
-            </div>
-        </article>
-    </div>
-</section>
-
-<section class="mt-4" aria-labelledby="currencyTitle">
-    <article class="currency-card rounded-4 p-3 p-md-4">
-        <div class="row g-3 align-items-end">
-            <div class="col-12 col-lg-5">
-                <div class="d-flex align-items-start gap-3">
-                    <div class="currency-icon" aria-hidden="true"><i data-lucide="arrow-left-right"></i></div>
-                    <div>
-                        <h2 id="currencyTitle" class="h5 fw-bold mb-1">Conversor de moedas</h2>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-sm-4 col-lg-2">
-                <label for="conversionAmount" class="form-label">Valor</label>
-                <input type="number" class="form-control" id="conversionAmount" placeholder="100,00" min="0.01" step="0.01">
-            </div>
-            <div class="col-6 col-sm-4 col-lg-2">
-                <label for="conversionFrom" class="form-label">De</label>
-                <select class="form-select" id="conversionFrom">
-                    @foreach (\App\Support\Categorias::MOEDAS as $currency)
-                        <option value="{{ $currency }}">{{ $currency }} ({{ $simbolos[$currency] ?? $currency }})</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-6 col-sm-4 col-lg-2">
-                <label for="conversionTo" class="form-label">Para</label>
-                <select class="form-select" id="conversionTo">
-                    @foreach (\App\Support\Categorias::MOEDAS as $currency)
-                        <option value="{{ $currency }}">{{ $currency }} ({{ $simbolos[$currency] ?? $currency }})</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-12 col-lg-1">
-                <button type="button" class="btn btn-primary w-100" id="convertButton" aria-label="Converter valor"><i data-lucide="arrow-right"></i></button>
-            </div>
+    <section class="home-quick-actions mb-4" aria-label="Ações rápidas">
+        <h2 class="h6 fw-bold mb-2">Ações rápidas</h2>
+        <div class="row g-2">
+            <div class="col-6"><a class="home-quick-action" href="{{ route('despesas.create') }}"><i data-lucide="plus-circle" aria-hidden="true"></i><strong>Nova despesa</strong></a></div>
+            <div class="col-6"><a class="home-quick-action" href="{{ route('receitas.create') }}"><i data-lucide="trending-up" aria-hidden="true"></i><strong>Nova receita</strong></a></div>
             <div class="col-12">
-                <div id="conversionResult" class="conversion-result" aria-live="polite">
-                    <strong id="convertedValue">—</strong>
-                    <span id="conversionRate" class="small text-secondary"></span>
-                </div>
+                <button type="button" class="home-quick-action home-converter-trigger" data-bs-toggle="modal" data-bs-target="#currencyConverterModal">
+                    <i data-lucide="arrow-left-right" aria-hidden="true"></i>
+                    <span><strong>Conversor de moedas</strong><small>Consultar taxas de câmbio</small></span>
+                    <i data-lucide="chevron-right" class="ms-auto" aria-hidden="true"></i>
+                </button>
             </div>
         </div>
-    </article>
-</section>
+    </section>
+
+    <section class="home-section-card mb-4" aria-labelledby="homePaymentsTitle">
+        <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+            <h2 class="h6 fw-bold mb-0" id="homePaymentsTitle">A tua situação</h2>
+            <span class="badge text-bg-warning">{{ $pendingPaymentCount }}</span>
+        </div>
+        <div class="d-flex justify-content-between gap-2 py-1"><span class="small text-secondary">Pagamentos pendentes</span></div>
+        <div class="d-flex justify-content-between gap-2 py-1"><span class="small text-secondary">Total pendente</span><strong>{{ number_format($pendingPaymentTotal, 2, ',', '.') }} {{ $moeda }}</strong></div>
+        <a class="small text-decoration-none" href="{{ route('financial.commitments.page') }}">Consultar compromissos →</a>
+    </section>
+
+    <section class="home-section-card" aria-labelledby="homeRecentTitle">
+        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+            <h2 class="h6 fw-bold mb-0" id="homeRecentTitle">Atividade recente</h2>
+            <a class="small text-decoration-none" href="{{ route('movements.page') }}">Ver todos os movimentos →</a>
+        </div>
+        @forelse ($recentMovements as $movement)
+            @php $isExpense = $movement->tipo === 'despesa'; $movementDate = \\Illuminate\\Support\\Carbon::parse($movement->data_movimento); @endphp
+            <div class="home-recent-item py-2">
+                <div class="d-flex justify-content-between align-items-center gap-2">
+                    <strong class="small text-break">{{ $movement->description }}</strong>
+                    <strong class="small text-nowrap {{ $isExpense ? 'text-danger' : 'text-success' }}">{{ $isExpense ? '−' : '+' }}{{ number_format((float) $movement->amount, 2, ',', '.') }} {{ $movement->currency }}</strong>
+                </div>
+                <span class="small text-secondary">{{ $isExpense ? 'Despesa' : 'Receita' }} · {{ $movementDate->format('d/m') }}</span>
+            </div>
+        @empty
+            <p class="small text-secondary mb-0">Ainda não existem movimentos neste período.</p>
+        @endforelse
+    </section>
+</div>
+
+<div class="modal fade" id="currencyConverterModal" tabindex="-1" aria-labelledby="currencyConverterTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pb-2">
+                <div><h2 class="modal-title h5 fw-bold" id="currencyConverterTitle">Conversor de moedas</h2><p class="small text-secondary mb-0">Taxas de câmbio</p></div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body pt-2">
+                <div class="mb-3"><label for="conversionAmount" class="form-label">Valor</label><input type="number" class="form-control form-control-lg" id="conversionAmount" placeholder="100,00" min="0.01" step="0.01" value="100"></div>
+                <div class="row g-2 align-items-end">
+                    <div class="col-5"><label for="conversionFrom" class="form-label">De</label><select class="form-select" id="conversionFrom">@foreach (\\App\\Support\\Categorias::MOEDAS as $currency)<option value="{{ $currency }}">{{ $currency }} ({{ $simbolos[$currency] ?? $currency }})</option>@endforeach</select></div>
+                    <div class="col-2 text-center pb-2"><button type="button" class="btn btn-outline-secondary" id="swapCurrencies" aria-label="Inverter moedas"><i data-lucide="arrow-left-right"></i></button></div>
+                    <div class="col-5"><label for="conversionTo" class="form-label">Para</label><select class="form-select" id="conversionTo">@foreach (\\App\\Support\\Categorias::MOEDAS as $currency)<option value="{{ $currency }}">{{ $currency }} ({{ $simbolos[$currency] ?? $currency }})</option>@endforeach</select></div>
+                </div>
+                <div class="conversion-result mt-3" aria-live="polite"><span class="small text-secondary">Resultado</span><strong id="convertedValue">—</strong><span id="conversionRate" class="small text-secondary">Introduz o valor e seleciona as moedas.</span></div>
+                <button type="button" class="btn btn-primary w-100 mt-3" id="convertButton">Converter</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
-<script>
-window.meuBolsoDashboard = {
-    userId: @json(auth()->id()),
-    name: @json(auth()->user()->name),
-    currency: @json($moeda),
-    initialType: @json(old('income_date') ? 'receita' : 'despesa'),
-    initialCategory: @json(old('category_id')),
-    type: @json($filtroTipo),
-    category: @json($filtroCategoria),
-    hasMore: @json($totalMovimentos > $limit),
-    initialExpenseCount: @json($totalDespesasFiltradas),
-    initialIncomeCount: @json($totalReceitasFiltradas),
-    initialMovements: @json($movimentosIniciais),
-    movementsUrl: @json(route('dashboard.movimentos')),
-    expenseStore: @json(route('despesas.store')),
-    incomeStore: @json(route('receitas.store')),
-    commitmentStore: @json(route('financial.commitments.store')),
-    commitmentBase: @json(url('/api/financial/commitments')),
-    expenseUpdateBase: @json(url('/despesas')),
-    incomeUpdateBase: @json(url('/receitas')),
-    expenseCategories: @json($categoriasDespesa),
-    incomeCategories: @json($categoriasReceita),
-    categories: @json($categorias)
-};
-</script>
-
-@if ($errors->any())
-<script>document.addEventListener('DOMContentLoaded', () => bootstrap.Modal.getOrCreateInstance(document.getElementById('movementEntryModal')).show());</script>
-@endif
-<script src="{{ asset('js/dashboard.js') }}?v={{ filemtime(public_path('js/dashboard.js')) }}" defer></script>
+<script>window.meuBolsoHome = { currency: @json($moeda) };</script>
+<script src="{{ asset('js/dashboard-home.js') }}?v={{ filemtime(public_path('js/dashboard-home.js')) }}" defer></script>
 @endpush
