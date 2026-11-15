@@ -14,7 +14,7 @@ class Movimento extends Model
     protected $table = 'movimentos';
 
     protected $fillable = ['user_id',
-        'type', 'status', 'description', 'amount', 'movement_date',
+        'type', 'expense_behavior', 'status', 'description', 'amount', 'movement_date',
         'source_account_id', 'destination_account_id', 'category_id',
         'invoice_id', 'recurrence_id', 'recurrence_occurrence_date', 'debt_id', 'installment_id',
         'adjustment_direction', 'is_historical', 'requires_account_assignment', 'legacy_type', 'legacy_id', 'reversal_of_id', 'settled_at',
