@@ -27,6 +27,17 @@ class FinancialRouteController extends Controller
         $rangeEnd = $months->last()->copy()->endOfMonth();
 
         // A tabela canónica evita somar novamente o registo legado associado.
+        $openingBalance = (float) $request->user()->contasFinanceiras()
+            ->where('is_operational', true)->where('status', 'active')->sum('opening_balance');
+        $prior = $request->user()->movimentos()
+            ->whereIn('type', ['income', 'expense'])
+            ->whereIn('status', ['pending', 'settled'])
+            ->where('is_historical', false)
+            ->where('movement_date', '<', $rangeStart->toDateString())
+            ->get(['type', 'amount']);
+        $openingBalance += (float) $prior->where('type', 'income')->sum('amount')
+            - (float) $prior->where('type', 'expense')->sum('amount');
+
         $movements = $request->user()->movimentos()
             ->whereIn('type', ['income', 'expense'])
             ->whereIn('status', ['pending', 'settled'])
@@ -58,6 +69,7 @@ class FinancialRouteController extends Controller
             'mode' => $mode,
             'month' => $start->format('Y-m'),
             'currency' => $request->user()->currency,
+            'openingBalance' => $openingBalance,
         ]);
     }
 }
