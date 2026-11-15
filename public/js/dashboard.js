@@ -120,11 +120,17 @@
 
     function updatePeriodCaption() {
         const parts = monthInput.value.split('-').map(Number);
-        if (!parts[0] || !parts[1] || !periodCaption) return;
-        periodCaption.textContent = new Intl.DateTimeFormat('pt-PT', {
+        if (!parts[0] || !parts[1]) return;
+
+        const formattedPeriod = new Intl.DateTimeFormat('pt-PT', {
             month: 'long',
             year: 'numeric'
         }).format(new Date(parts[0], parts[1] - 1, 1));
+
+        if (periodCaption) periodCaption.textContent = formattedPeriod;
+
+        const summaryPeriod = document.getElementById('movementsSummaryPeriod');
+        if (summaryPeriod) summaryPeriod.textContent = 'Resumo de ' + formattedPeriod;
     }
 
     function showStatus(message) {
