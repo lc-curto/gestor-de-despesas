@@ -202,7 +202,7 @@ class FinancialMovementService
                 $allowed = ['description', 'amount', 'movement_date', 'category_id', 'expense_behavior'];
                 $action = 'updated';
             } elseif ($locked->status === 'pending') {
-                $allowed = ['description', 'amount', 'movement_date', 'category_id'];
+                $allowed = ['description', 'amount', 'movement_date', 'category_id', 'expense_behavior'];
                 $action = 'updated';
             } else {
                 throw ValidationException::withMessages(['movement' => 'Movimentos anulados não podem ser editados.']);
