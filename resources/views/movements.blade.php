@@ -28,18 +28,7 @@
             </div>
         </article>
     </div>
-    <div class="col-4 col-xl-4 dashboard-summary-column">
-        <article class="summary-card summary-card-expense h-100">
-            <span class="summary-icon" aria-hidden="true"><i data-lucide="arrow-down-right"></i></span>
-            <div class="d-flex align-items-center gap-3">
-                <div>
-                    <p class="small text-secondary mb-1">Despesas</p>
-                    <p class="summary-value mb-0 text-danger" id="totalAmount" data-total="{{ $totalDespesas }}">{{ number_format($totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
-                </div>
-            </div>
-        </article>
-    </div>
-    <div class="col-4 col-xl-4 dashboard-summary-column">
+    <div class="col-6 col-xl-6 dashboard-summary-column">
         <article class="summary-card summary-card-income h-100">
             <span class="summary-icon" aria-hidden="true"><i data-lucide="arrow-up-right"></i></span>
             <div class="d-flex align-items-center gap-3">
