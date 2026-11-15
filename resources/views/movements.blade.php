@@ -23,7 +23,7 @@
             <div class="d-flex align-items-center gap-3">
                 <div class="min-w-0">
                     <p class="small mb-1 opacity-75">Despesas do mês</p>
-                    <p class="summary-value summary-value-text mb-0" id="balanceAmount" data-total="{{ $totalDespesas }}">{{ number_format($totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
+                    <p class="summary-value summary-value-text mb-0" id="totalAmount" data-total="{{ $totalDespesas }}">{{ number_format($totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
                 </div>
             </div>
         </article>
