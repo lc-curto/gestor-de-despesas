@@ -6,10 +6,12 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Services\Financial\AccountBalanceService;
+use App\Services\Financial\CardInvoiceService;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request)
+    public function __invoke(Request $request, AccountBalanceService $balances, CardInvoiceService $invoices)
     {
         $user = $request->user();
         $accounts = $user->contasFinanceiras()
@@ -40,6 +42,25 @@ class DashboardController extends Controller
             ->first();
         $totalDespesas = (float) $totais->despesas;
         $totalReceitas = (float) $totais->receitas;
+
+        $operationalAccounts = $user->contasFinanceiras()
+            ->whereIn('type', ['bank', 'cash'])
+            ->where('is_operational', true)
+            ->where('status', 'active')
+            ->whereNotNull('opening_balance')
+            ->whereNotNull('opening_balance_date')
+            ->get();
+        $availableBalance = $operationalAccounts->sum(fn ($account) => (float) $balances->balance($account));
+
+        $invoicePage = $invoices->listInvoices($user);
+        $openInvoiceTotal = (float) $invoicePage->getCollection()->sum('remaining_amount');
+        $openInstallmentTotal = (float) $user->parcelasDivida()
+            ->where('status', '!=', 'paid')
+            ->selectRaw('COALESCE(SUM(amount - paid_amount), 0) as remaining')
+            ->value('remaining');
+        $pendingPaymentTotal = $openInvoiceTotal + $openInstallmentTotal;
+        $pendingPaymentCount = $invoicePage->getCollection()->filter(fn ($invoice) => (float) $invoice->remaining_amount > 0)->count()
+            + $user->parcelasDivida()->where('status', '!=', 'paid')->count();
 
         // A primeira página carrega os dois tipos de movimento. O filtro de tipo é
         // aplicado no cliente sem uma segunda requisição ao abrir o Dashboard.
@@ -86,8 +107,15 @@ class DashboardController extends Controller
         return view('dashboard', compact(
             'inicio', 'mes', 'movimentos', 'movimentosVisiveis', 'movimentosIniciais', 'categorias', 'categoriasDespesa',
             'categoriasReceita', 'filtroTipo', 'filtroCategoria',
-            'totalDespesas', 'totalReceitas', 'totalMovimentos', 'totalDespesasFiltradas', 'totalReceitasFiltradas', 'limit'
+            'totalDespesas', 'totalReceitas', 'availableBalance', 'pendingPaymentTotal', 'pendingPaymentCount', 'totalMovimentos', 'totalDespesasFiltradas', 'totalReceitasFiltradas', 'limit'
         ))->with('moeda', $user->currency)->with('accounts', $accounts);
+    }
+
+    public function paginaMovimentos(Request $request, AccountBalanceService $balances, CardInvoiceService $invoices)
+    {
+        $dashboard = $this->__invoke($request, $balances, $invoices);
+
+        return view('movements', $dashboard->getData());
     }
 
     public function movimentos(Request $request)
