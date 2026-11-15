@@ -252,12 +252,13 @@ class FinanceController extends Controller
             return redirect()->route($tipo === 'despesa' ? 'despesas.index' : 'receitas.index')
                 ->with('success', ($tipo === 'despesa' ? 'Despesa' : 'Receita') . ' recorrente criada.');
         }
-        unset($data['account_id'], $data['recurrence_enabled'], $data['recurrence_frequency'], $data['recurrence_interval'], $data['recurrence_ends_at']);
+        $expenseBehavior = $data['expense_behavior'] ?? 'variable';
+        unset($data['expense_behavior'], $data['account_id'], $data['recurrence_enabled'], $data['recurrence_frequency'], $data['recurrence_interval'], $data['recurrence_ends_at']);
         $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
 
         DB::transaction(function () use ($request, $service, $invoices, $tipo, $data, $accountId, $legacyType): void {
             $legacy = $this->query($request)->create($data);
-            $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId]), $legacyType, $legacy->id);
+            $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId, 'expense_behavior' => $expenseBehavior]), $legacyType, $legacy->id);
             $this->createLinkedMovement($request, $payload, $service, $invoices);
         });
 
@@ -290,6 +291,8 @@ class FinanceController extends Controller
         [$tipo, , $dateField] = $this->config($request);
         $data = $this->validatedData($request, $id);
         unset($data['recurrence_enabled'], $data['recurrence_frequency'], $data['recurrence_interval'], $data['recurrence_ends_at']);
+        $expenseBehavior = $data['expense_behavior'] ?? 'variable';
+        unset($data['expense_behavior']);
         $accountId = $data['account_id'];
         unset($data['account_id']);
         $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
