@@ -83,6 +83,9 @@ class FinancialAccountService
             if (!$locked->is_operational || $locked->status === 'closed' || !in_array($locked->type, ['bank', 'cash'], true)) {
                 throw ValidationException::withMessages(['account' => 'Esta configuração só se aplica a contas bancárias e de dinheiro ativas.']);
             }
+            if (!$allowed && $locked->opening_balance !== null && $this->balances->toCents((string) $locked->opening_balance) < 0) {
+                throw ValidationException::withMessages(['allow_negative_balance' => 'Não é possível desativar esta opção enquanto o saldo inicial for negativo.']);
+            }
             $locked->update([
                 'allow_negative_balance' => $allowed || ($locked->opening_balance !== null && $this->balances->toCents((string) $locked->opening_balance) < 0),
             ]);

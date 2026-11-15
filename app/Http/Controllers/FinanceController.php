@@ -323,6 +323,13 @@ class FinanceController extends Controller
                         ($tipo === 'despesa' ? 'source_account_id' : 'destination_account_id') => $accountId,
                     ]);
                 }
+            } elseif ($movement->status === 'settled'
+                && $movement->type === ($tipo === 'despesa' ? 'expense' : 'income')
+                && (string) $movement->description === (string) $payload['description']
+                && (string) $movement->amount === (string) $payload['amount']
+                && $movement->movement_date->toDateString() === (string) $payload['movement_date']
+                && (string) $movement->category_id === (string) $payload['category_id']) {
+                $service->assignLegacyAccount($request->user(), $movement, $accountId);
             } else {
                 // Sem estorno: a edição substitui o movimento canónico numa só transação.
                 // Assim valor, data, conta e categoria ficam sempre sincronizados.

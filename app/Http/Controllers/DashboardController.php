@@ -116,6 +116,9 @@ class DashboardController extends Controller
 
     public function paginaMovimentos(Request $request, AccountBalanceService $balances, CardInvoiceService $invoices)
     {
+        if ($request->expectsJson()) {
+            return $this->movimentos($request);
+        }
         $dashboard = $this->__invoke($request, $balances, $invoices);
 
         return view('movements', $dashboard->getData());
