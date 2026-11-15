@@ -799,6 +799,14 @@
 
     document.querySelector('.transaction-filters')?.addEventListener('submit', applyFilters);
     document.getElementById('categoryFilter')?.addEventListener('change', () => applyFilters());
+    document.getElementById('clearMovementFilters')?.addEventListener('click', () => {
+        const categorySelect = document.getElementById('categoryFilter');
+        if (categorySelect) categorySelect.value = 'all';
+        if (accountFilter) accountFilter.value = 'all';
+        applyFilters();
+        const filtersElement = document.getElementById('movementFiltersSheet');
+        if (filtersElement) bootstrap.Offcanvas.getOrCreateInstance(filtersElement).hide();
+    });
     movementSearch?.addEventListener('input', () => renderMovements());
     accountFilter?.addEventListener('change', () => renderMovements());
     document.getElementById('periodPrevious')?.addEventListener('click', () => changeMonth(-1));
@@ -834,6 +842,8 @@
     movementType = cfg.initialType === 'receita' ? 'receita' : 'despesa';
     setMovementType(movementType);
     if (cfg.initialCategory) category.value = cfg.initialCategory;
+
+    if (cfg.autoOpenEditor) openEditor();
 
     updateSummary(totalExpenses, totalIncome);
     updatePeriodCaption();
