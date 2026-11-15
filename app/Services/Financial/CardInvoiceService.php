@@ -53,6 +53,7 @@ class CardInvoiceService
 
             return $this->movements->create($user, [
                 'type' => 'expense',
+                'expense_behavior' => $data['expense_behavior'] ?? 'variable',
                 'description' => $data['description'],
                 'amount' => $data['amount'],
                 'movement_date' => $date->toDateString(),
