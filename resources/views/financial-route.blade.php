@@ -23,7 +23,7 @@
             <h1>Rota Financeira</h1>
         </div>
         <div class="financial-route-actions">
-            <button type="button" class="btn btn-primary" id="routeNewMovement"><i data-lucide="plus" aria-hidden="true"></i> Novo movimento</button>
+            <button type="button" class="btn btn-primary" id="routeNewMovement"><i data-lucide="plus" aria-hidden="true"></i><span class="route-new-label">Novo movimento</span></button>
         </div>
     </header>
 
@@ -137,6 +137,56 @@
 @push('styles')
 <style>
 .financial-route-page{width:100%;min-width:0}.financial-route-header{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:1.25rem}.financial-route-eyebrow{font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--bs-secondary-color);font-weight:700;margin:0 0 .3rem}.financial-route-header h1{font-size:1.65rem;font-weight:750;letter-spacing:-.035em;margin:0}.financial-route-actions .btn{display:flex;align-items:center;gap:.4rem}.financial-route-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}.financial-route-period{display:flex;align-items:center;gap:.5rem}.financial-route-period strong{text-transform:capitalize;font-size:.95rem;min-width:12rem;text-align:center}.financial-route-months{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}.financial-route-months.mode-1{grid-template-columns:minmax(0,1fr)}.financial-route-month h2{font-size:.78rem;letter-spacing:.07em;font-weight:800;margin:0 0 .55rem}.financial-route-table-wrap{width:100%;border:1px solid var(--bs-border-color);border-radius:.7rem;background:var(--bs-body-bg);overflow:hidden}.financial-route-table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:.76rem;font-variant-numeric:tabular-nums}.financial-route-table th,.financial-route-table td{padding:.43rem .35rem;text-align:right;border-bottom:1px solid var(--bs-border-color-translucent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.financial-route-table th:first-child{width:15%;text-align:left}.financial-route-table th:nth-child(2),.financial-route-table th:nth-child(3),.financial-route-table th:nth-child(4){width:19%}.financial-route-table th:last-child{width:28%}.route-mobile-label{display:none}.financial-route-table thead th{font-size:.66rem;color:var(--bs-secondary-color);font-weight:700;background:var(--bs-tertiary-bg)}.route-cell{display:block;width:100%;border:0;padding:0;background:transparent;color:var(--bs-body-color);font:inherit;text-align:right;font-variant-numeric:tabular-nums}.route-date{text-align:left;font-weight:700}.route-cell:not(:disabled){cursor:pointer}.route-cell:hover{text-decoration:underline;text-underline-offset:2px}.route-balance{font-weight:800;padding:.38rem .25rem;border-radius:.25rem}.route-balance.risk{background:#fce8e8;color:#a1262e}.route-balance.attention{background:#fff3cd;color:#805b00}.route-balance.protected{background:#e5f3e9;color:#24633c}.route-balance.comfortable{background:#ccebd6;color:#155b32}.financial-route-table tfoot th,.financial-route-table tfoot td{font-weight:800;border-top:2px solid var(--bs-border-color);border-bottom:0}.financial-route-table tfoot th{text-align:left}.financial-route-table tfoot td{white-space:normal}.route-filter-tabs{display:flex;gap:.4rem;flex-wrap:wrap;margin:1rem 0}.route-filter-tabs button{border:1px solid var(--bs-border-color);border-radius:2rem;background:transparent;padding:.38rem .7rem;font-size:.78rem}.route-filter-tabs button.active{background:var(--bs-primary);border-color:var(--bs-primary);color:#fff}.route-day-balance{font-size:1.35rem;font-weight:800}.route-movement-list{display:grid;gap:.5rem}.route-movement-item{width:100%;display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:.8rem;border:1px solid var(--bs-border-color);border-radius:.65rem;background:var(--bs-body-bg);text-align:left}.route-movement-item small{display:block;color:var(--bs-secondary-color)}.route-movement-item strong{white-space:nowrap;font-variant-numeric:tabular-nums}.route-detail-amount{font-size:1.8rem;font-weight:800;margin:.2rem 0 1.2rem}.route-detail-list{margin:0}.route-detail-list div{display:flex;justify-content:space-between;gap:1rem;padding:.7rem 0;border-bottom:1px solid var(--bs-border-color-translucent)}.route-detail-list dt{color:var(--bs-secondary-color);font-weight:500}.route-detail-list dd{margin:0;text-align:right;font-weight:650}.route-type-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.45rem}.route-type-options label{margin:0}.route-type-options input{position:absolute;opacity:0}.route-type-options span{display:block;text-align:center;border:1px solid var(--bs-border-color);border-radius:.55rem;padding:.65rem .35rem;font-size:.84rem}.route-type-options input:checked+span{border-color:var(--bs-primary);background:var(--bs-primary-bg-subtle);color:var(--bs-primary);font-weight:700}.route-sheet-content{border:0;border-radius:1rem;overflow:hidden}.route-sheet-content .modal-header,.route-sheet-content .modal-footer{border-color:var(--bs-border-color-translucent)}@media(max-width:1199.98px) and (min-width:768px){.financial-route-months{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:767.98px){.route-desktop-label{display:none}.route-mobile-label{display:inline}.financial-route-months.mode-3 .financial-route-month:nth-child(n+2){display:none}.financial-route-toolbar .btn-group{display:none}.financial-route-header{align-items:flex-start}.financial-route-header h1{font-size:1.35rem}.financial-route-toolbar{gap:.5rem;flex-wrap:wrap}.financial-route-period{width:100%;justify-content:space-between}.financial-route-period strong{min-width:0;flex:1}.financial-route-months{grid-template-columns:1fr;gap:1.1rem}.financial-route-table{font-size:clamp(.59rem,2.5vw,.72rem)}.financial-route-table th,.financial-route-table td{padding:.48rem .12rem}.financial-route-table th:first-child{width:17%}.financial-route-table th:nth-child(2),.financial-route-table th:nth-child(3),.financial-route-table th:nth-child(4){width:18%}.financial-route-table th:last-child{width:29%}.financial-route-table thead th{font-size:clamp(.54rem,2.25vw,.65rem)}.route-balance{padding:.35rem .05rem}.route-sheet-content{border-radius:1.1rem 1.1rem 0 0}.modal-dialog{align-items:flex-end;margin:0;min-height:100%}.modal-dialog .modal-content{border-radius:1.1rem 1.1rem 0 0;max-height:88vh;overflow:auto}.route-type-options span{font-size:.75rem;padding:.6rem .15rem}.route-detail-list div{padding:.6rem 0}}
+
+/* Refinamento visual da Rota Financeira — mobile */
+@media(max-width:767.98px){
+ .financial-route-page{padding-bottom:.5rem}
+ .financial-route-header{align-items:center;gap:.65rem;margin:0 0 1rem}
+ .financial-route-eyebrow{font-size:.62rem;letter-spacing:.11em;margin-bottom:.22rem}
+ .financial-route-header h1{font-size:1.28rem;line-height:1.15;letter-spacing:-.04em}
+ .financial-route-actions{flex:0 0 auto}
+ .financial-route-actions .btn{min-height:42px;padding:.55rem .8rem;border-radius:.7rem;gap:.35rem;font-size:.82rem;font-weight:650;box-shadow:0 2px 7px rgba(89,78,220,.14)}
+ .financial-route-actions .btn svg{width:17px;height:17px}
+ .financial-route-toolbar{margin:0 0 1rem}
+ .financial-route-period{gap:.35rem}
+ .financial-route-period>button{width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--bs-border-color);border-radius:.65rem;background:var(--bs-body-bg)}
+ .financial-route-period strong{font-size:.91rem;font-weight:700;color:var(--bs-emphasis-color)}
+ #routeToday{width:auto;padding:0 .65rem;font-size:.72rem;border-radius:.6rem;white-space:nowrap}
+ .financial-route-months{gap:.75rem}
+ .financial-route-month h2{display:flex;align-items:center;justify-content:space-between;font-size:.75rem;letter-spacing:.075em;margin:0;padding:.85rem .9rem .65rem}
+ .financial-route-month h2:after{content:"SALDO ACUMULADO";font-size:.58rem;letter-spacing:.035em;font-weight:600;color:var(--bs-secondary-color)}
+ .financial-route-table-wrap{border:1px solid var(--bs-border-color);border-radius:.85rem;box-shadow:0 2px 10px rgba(25,25,45,.035)}
+ .financial-route-table{font-size:.69rem;line-height:1.2}
+ .financial-route-table th,.financial-route-table td{padding:.34rem .2rem;border-bottom:1px solid rgba(120,120,140,.13)}
+ .financial-route-table thead th{padding:.58rem .2rem;background:#f5f4fa;color:#666579;font-size:.62rem;letter-spacing:.01em}
+ .financial-route-table th:first-child{width:18%;padding-left:.65rem}
+ .financial-route-table th:nth-child(2),.financial-route-table th:nth-child(3),.financial-route-table th:nth-child(4){width:17%}
+ .financial-route-table th:last-child{width:31%;padding-right:.65rem}
+ .route-cell{min-height:24px;font-size:inherit;letter-spacing:-.015em}
+ .route-date{font-weight:650;color:var(--bs-emphasis-color)}
+ .route-balance{display:block;margin-left:auto;width:100%;padding:.31rem .25rem;border-radius:.35rem;background:transparent!important;font-weight:750}
+ .route-balance.risk{color:#c0444c}
+ .route-balance.attention{color:#a87917}
+ .route-balance.protected{color:#397b56}
+ .route-balance.comfortable{color:#267348}
+ .financial-route-table tbody tr:last-child th,.financial-route-table tbody tr:last-child td{border-bottom:1px solid rgba(120,120,140,.13)}
+ .financial-route-table tfoot th,.financial-route-table tfoot td{padding:.8rem .65rem;background:#f7f6fb;border-top:1px solid var(--bs-border-color);font-size:.76rem}
+ .financial-route-table tfoot th{border-radius:0 0 0 .75rem}
+ .financial-route-table tfoot td{border-radius:0 0 .75rem 0}
+ .financial-route-table tfoot .route-balance{background:transparent!important;padding:0;font-size:.9rem}
+ .route-sheet-content{box-shadow:0 -8px 30px rgba(20,20,40,.12)}
+}
+@media(max-width:380px){
+ .financial-route-header h1{font-size:1.16rem}
+ .financial-route-eyebrow{font-size:.57rem}
+ .financial-route-actions .btn{padding:.48rem .62rem;font-size:.76rem}
+ .financial-route-table{font-size:.63rem}
+ .financial-route-table th,.financial-route-table td{padding-left:.12rem;padding-right:.12rem}
+ .financial-route-table th:first-child{padding-left:.45rem}
+ .financial-route-table th:last-child{padding-right:.45rem}
+ .financial-route-table thead th{font-size:.57rem}
+}
+
 </style>
 @endpush
 
