@@ -169,6 +169,7 @@ class FinanceController extends Controller
                 'category_id' => $payload['category_id'] ?? null,
                 'legacy_type' => $payload['legacy_type'] ?? null,
                 'legacy_id' => $payload['legacy_id'] ?? null,
+                'expense_behavior' => $payload['expense_behavior'] ?? 'variable',
                 'is_historical' => $payload['is_historical'] ?? false,
             ]);
             return;
