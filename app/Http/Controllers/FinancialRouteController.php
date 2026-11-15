@@ -43,7 +43,7 @@ class FinancialRouteController extends Controller
             ->whereIn('status', ['pending', 'settled'])
             ->whereBetween('movement_date', [$rangeStart->toDateString(), $rangeEnd->toDateString()])
             ->orderBy('movement_date')
-            ->get(['id', 'type', 'status', 'description', 'notes', 'amount', 'movement_date', 'expense_behavior', 'category_id', 'source_account_id', 'destination_account_id']);
+            ->get(['id', 'type', 'status', 'description', 'notes', 'amount', 'movement_date', 'expense_behavior', 'category_id', 'source_account_id', 'destination_account_id', 'recurrence_id']);
 
         $days = [];
         foreach ($months as $month) {
