@@ -1442,3 +1442,11 @@ body.sidebar-collapsed .account-avatar {
     .movements-summary-after .summary-card p.small { font-size: .65rem; }
     .movements-summary-after .summary-value { font-size: clamp(.7rem, 2.8vw, .88rem); }
 }
+
+.movements-intro {
+    min-height: 0;
+    padding: 1rem 1.25rem;
+}
+@media (max-width: 767.98px) {
+    .movements-intro { padding: .85rem .9rem; }
+}
