@@ -68,6 +68,7 @@ class FinanceController extends Controller
 
         $data = $request->validate([
             'description' => 'required|string|max:255',
+            'expense_behavior' => ['nullable', Rule::in(['fixed', 'variable'])],
             'amount' => 'required|numeric|gt:0|decimal:0,2|max:9999999999.99',
             'account_id' => [
                 'required', 'uuid',
@@ -142,6 +143,7 @@ class FinanceController extends Controller
 
         return [
             'type' => $tipo === 'despesa' ? 'expense' : 'income',
+            'expense_behavior' => $tipo === 'despesa' ? ($data['expense_behavior'] ?? 'variable') : 'variable',
             'description' => $data['description'],
             'amount' => $data['amount'],
             'movement_date' => $data[$tipo === 'despesa' ? 'expense_date' : 'income_date'],
@@ -234,6 +236,7 @@ class FinanceController extends Controller
         if ($recurrenceEnabled) {
             $recurrences->create($request->user(), [
                 'type' => $tipo === 'despesa' ? 'expense' : 'income',
+                'expense_behavior' => $tipo === 'despesa' ? ($data['expense_behavior'] ?? 'variable') : 'variable',
                 'description' => $data['description'],
                 'amount' => $data['amount'],
                 'category_id' => $data['category_id'],
@@ -313,6 +316,7 @@ class FinanceController extends Controller
                     'amount' => $payload['amount'],
                     'movement_date' => $payload['movement_date'],
                     'category_id' => $payload['category_id'],
+                    'expense_behavior' => $payload['expense_behavior'],
                 ]);
                 if ($movement->recurrence_id) {
                     $service->confirmPending($request->user(), $movement, [
@@ -328,7 +332,8 @@ class FinanceController extends Controller
                 && (string) $movement->description === (string) $payload['description']
                 && (string) $movement->amount === (string) $payload['amount']
                 && $movement->movement_date->toDateString() === (string) $payload['movement_date']
-                && (string) $movement->category_id === (string) $payload['category_id']) {
+                && (string) $movement->category_id === (string) $payload['category_id']
+                && ($tipo !== 'despesa' || $movement->expense_behavior === $payload['expense_behavior'])) {
                 $service->assignLegacyAccount($request->user(), $movement, $accountId);
             } else {
                 // Sem estorno: a edição substitui o movimento canónico numa só transação.
