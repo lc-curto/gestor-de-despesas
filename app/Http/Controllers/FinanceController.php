@@ -256,7 +256,7 @@ class FinanceController extends Controller
         unset($data['expense_behavior'], $data['account_id'], $data['recurrence_enabled'], $data['recurrence_frequency'], $data['recurrence_interval'], $data['recurrence_ends_at']);
         $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
 
-        DB::transaction(function () use ($request, $service, $invoices, $tipo, $data, $accountId, $legacyType): void {
+        DB::transaction(function () use ($request, $service, $invoices, $tipo, $data, $accountId, $legacyType, $expenseBehavior): void {
             $legacy = $this->query($request)->create($data);
             $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId, 'expense_behavior' => $expenseBehavior]), $legacyType, $legacy->id);
             $this->createLinkedMovement($request, $payload, $service, $invoices);
@@ -298,7 +298,7 @@ class FinanceController extends Controller
         $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
         $date = $data[$dateField];
 
-        DB::transaction(function () use ($request, $service, $invoices, $tipo, $id, $data, $accountId, $legacyType, $dateField, $date): void {
+        DB::transaction(function () use ($request, $service, $invoices, $tipo, $id, $data, $accountId, $legacyType, $dateField, $date, $expenseBehavior): void {
             $legacy = $this->query($request)->whereKey($id)->lockForUpdate()->firstOrFail();
             $movement = $this->linkedMovement($request, $tipo, $legacy->id);
             if ($movement?->invoice_id) {
