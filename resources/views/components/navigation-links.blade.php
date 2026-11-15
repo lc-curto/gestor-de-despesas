@@ -1,10 +1,15 @@
 <nav class="app-navigation" aria-label="Navegação da aplicação">
     <div class="app-navigation-group">
         <p class="app-navigation-label">Visão geral</p>
-        <a class="app-navigation-link {{ request()->routeIs('dashboard*') ? 'active' : '' }}"
-            href="{{ route('dashboard') }}" title="Dashboard" aria-label="Dashboard"
-            @if(request()->routeIs('dashboard*')) aria-current="page" @endif>
-            <i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Dashboard</span>
+        <a class="app-navigation-link {{ request()->routeIs('dashboard') ? 'active' : '' }}"
+            href="{{ route('dashboard') }}" title="Início" aria-label="Início"
+            @if(request()->routeIs('dashboard')) aria-current="page" @endif>
+            <i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Início</span>
+        </a>
+        <a class="app-navigation-link {{ request()->routeIs('movements.*') ? 'active' : '' }}"
+            href="{{ route('movements.page') }}" title="Movimentos" aria-label="Movimentos"
+            @if(request()->routeIs('movements.*')) aria-current="page" @endif>
+            <i data-lucide="arrow-left-right" aria-hidden="true"></i><span>Movimentos</span>
         </a>
     </div>
 
