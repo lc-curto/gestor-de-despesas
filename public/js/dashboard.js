@@ -46,6 +46,7 @@
     const paymentDetails = document.getElementById('dashboardPaymentDetails');
     const monthInput = document.getElementById('periodMonth');
     const movementSearch = document.getElementById('movementSearch');
+    const accountFilter = document.getElementById('accountFilter');
     const periodCaption = document.getElementById('periodCaption');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
 
@@ -282,6 +283,7 @@
         const searchTerm = (movementSearch?.value || '').trim().toLocaleLowerCase('pt-PT');
         const filtered = loadedMovements
             .filter((item) => cfg.type === 'todos' || item.tipo === cfg.type)
+            .filter((item) => !accountFilter || accountFilter.value === 'all' || String(item.account_id || '') === accountFilter.value)
             .filter((item) => !searchTerm || [
                 item.description, item.category_label, item.category, item.currency
             ].some(value => String(value || '').toLocaleLowerCase('pt-PT').includes(searchTerm)))
@@ -792,6 +794,7 @@
     document.querySelector('.transaction-filters')?.addEventListener('submit', applyFilters);
     document.getElementById('categoryFilter')?.addEventListener('change', () => applyFilters());
     movementSearch?.addEventListener('input', () => renderMovements());
+    accountFilter?.addEventListener('change', () => renderMovements());
     document.getElementById('periodPrevious')?.addEventListener('click', () => changeMonth(-1));
     document.getElementById('periodNext')?.addEventListener('click', () => changeMonth(1));
     monthInput?.addEventListener('change', () => setMonth(monthInput.value));
