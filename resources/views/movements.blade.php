@@ -110,6 +110,14 @@
                                 @endforeach
                             </select>
                         </div>
+                        <div id="dashboardExpenseBehaviorField" class="mb-3">
+                            <label class="form-label d-block">Comportamento da despesa</label>
+                            <div class="d-flex gap-3">
+                                <label class="form-check"><input class="form-check-input" type="radio" name="expense_behavior" value="variable" checked> <span class="form-check-label">Variável</span></label>
+                                <label class="form-check"><input class="form-check-input" type="radio" name="expense_behavior" value="fixed"> <span class="form-check-label">Fixa</span></label>
+                            </div>
+                            <div class="form-text">Fixa é uma despesa estrutural ou regular, mesmo que o valor varie.</div>
+                        </div>
                         <div id="dashboardPaymentFields" class="border-top pt-3 mb-3">
                             <label class="form-label d-block">Condições de pagamento</label>
                             <div class="d-flex flex-wrap gap-3 mb-3">
