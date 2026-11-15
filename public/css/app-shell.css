@@ -1403,3 +1403,42 @@ body.sidebar-collapsed .account-avatar {
     .movements-summary { --bs-gutter-x: .55rem; }
     .movements-summary .summary-card { min-height: 5.2rem; padding: .75rem; }
 }
+
+
+/* Movimentos: histórico como conteúdo principal da página */
+.movements-intro { margin-bottom: .65rem; }
+.movements-intro .dashboard-intro-copy { flex: 1 1 100%; }
+.movements-entry-bar {
+    margin-bottom: .8rem;
+    padding: .45rem .55rem .45rem .85rem;
+}
+.movements-entry-bar > strong { color: var(--bs-secondary-color); }
+.movements-summary-after {
+    margin-top: 1rem !important;
+    margin-bottom: 1.25rem !important;
+}
+.movements-summary-after .summary-card {
+    display: flex;
+    min-height: 4.7rem;
+    align-items: center;
+    padding: .75rem;
+}
+.movements-summary-after .summary-card p.small {
+    margin-bottom: .2rem !important;
+    font-size: .72rem;
+}
+.movements-summary-after .summary-value {
+    font-size: clamp(.78rem, 1.5vw, 1.05rem);
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+@media (max-width: 767.98px) {
+    .movements-intro { margin-bottom: .6rem; }
+    .movements-entry-bar { margin-bottom: .65rem; padding: .4rem .45rem .4rem .7rem; }
+    .movements-entry-bar > strong { font-size: .78rem; }
+    .movements-entry-bar .btn { min-height: 2.35rem; padding: .35rem .55rem; font-size: .82rem; }
+    .movements-summary-after { --bs-gutter-x: .45rem; }
+    .movements-summary-after .summary-card { min-height: 4.35rem; padding: .55rem .45rem; }
+    .movements-summary-after .summary-card p.small { font-size: .65rem; }
+    .movements-summary-after .summary-value { font-size: clamp(.7rem, 2.8vw, .88rem); }
+}
