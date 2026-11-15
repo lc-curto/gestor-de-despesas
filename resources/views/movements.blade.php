@@ -145,20 +145,37 @@
                     </div>
                 </div>
 
-                <div class="px-3 px-sm-4 pb-3"><label class="visually-hidden" for="movementSearch">Pesquisar movimentos</label><div class="input-group"><span class="input-group-text"><i data-lucide="search"></i></span><input type="search" class="form-control" id="movementSearch" placeholder="Pesquisar movimento..."></div></div>
+                <div class="px-3 px-sm-4 pb-3">
+                    <label class="visually-hidden" for="movementSearch">Pesquisar movimentos</label>
+                    <div class="movements-search-row">
+                        <div class="input-group">
+                            <span class="input-group-text"><i data-lucide="search"></i></span>
+                            <input type="search" class="form-control" id="movementSearch" placeholder="Pesquisar movimentos...">
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary movements-filter-trigger" data-bs-toggle="offcanvas" data-bs-target="#movementFiltersSheet" aria-controls="movementFiltersSheet" aria-label="Abrir filtros avançados" title="Filtros avançados">
+                            <i data-lucide="sliders-horizontal" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </div>
                 <div class="px-3 px-sm-4 border-bottom">
-                    <form method="GET" action="{{ route('dashboard.movimentos') }}" class="transaction-filters d-flex flex-wrap align-items-center gap-2 pb-3">
+                    <form method="GET" action="{{ route('dashboard.movimentos') }}" class="transaction-filters movements-type-filters d-flex flex-wrap align-items-center gap-2 pb-3">
                         <input type="hidden" name="mes" value="{{ $mes }}">
                         <input type="hidden" name="tipo" value="{{ $filtroTipo }}">
-                        <button class="btn {{ $filtroTipo === 'todos' ? 'btn-primary' : 'btn-link text-decoration-none' }} mobile-tap-target" name="tipo" value="todos">Tudo</button>
-                        <button class="btn {{ $filtroTipo === 'despesa' ? 'btn-primary' : 'btn-link text-decoration-none' }} mobile-tap-target" name="tipo" value="despesa">Despesas</button>
-                        <button class="btn {{ $filtroTipo === 'receita' ? 'btn-primary' : 'btn-link text-decoration-none' }} mobile-tap-target" name="tipo" value="receita">Receitas</button>
+                        <button class="btn {{ $filtroTipo === 'todos' ? 'btn-primary' : 'btn-link text-decoration-none' }} mobile-tap-target" name="tipo" value="todos" aria-pressed="{{ $filtroTipo === 'todos' ? 'true' : 'false' }}">Tudo</button>
+                        <button class="btn {{ $filtroTipo === 'despesa' ? 'btn-primary' : 'btn-link text-decoration-none' }} mobile-tap-target" name="tipo" value="despesa" aria-pressed="{{ $filtroTipo === 'despesa' ? 'true' : 'false' }}">Despesas</button>
+                        <button class="btn {{ $filtroTipo === 'receita' ? 'btn-primary' : 'btn-link text-decoration-none' }} mobile-tap-target" name="tipo" value="receita" aria-pressed="{{ $filtroTipo === 'receita' ? 'true' : 'false' }}">Receitas</button>
                     </form>
-                    <details class="movement-advanced-filters pb-3">
-                        <summary class="small fw-semibold">Filtros avançados</summary>
-                        <div class="row g-2 mt-2">
-                            <div class="col-12 col-sm-6">
-                                <label for="categoryFilter" class="form-label small">Categoria</label>
+                </div>
+
+                <div class="offcanvas offcanvas-bottom mobile-action-sheet movement-filters-sheet" tabindex="-1" id="movementFiltersSheet" aria-labelledby="movementFiltersTitle">
+                    <div class="offcanvas-header">
+                        <h2 class="offcanvas-title h5 fw-bold" id="movementFiltersTitle">Filtros avançados</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+                    </div>
+                    <div class="offcanvas-body pt-0">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label for="categoryFilter" class="form-label small fw-semibold">Categoria</label>
                                 <select class="form-select" id="categoryFilter" name="categoria">
                                     <option value="all">Todas as categorias</option>
                                     @foreach ($categorias as $key => $label)
@@ -166,8 +183,8 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-12 col-sm-6">
-                                <label for="accountFilter" class="form-label small">Conta</label>
+                            <div class="col-12">
+                                <label for="accountFilter" class="form-label small fw-semibold">Conta</label>
                                 <select class="form-select" id="accountFilter">
                                     <option value="all">Todas as contas</option>
                                     @foreach ($accounts as $account)
@@ -176,7 +193,11 @@
                                 </select>
                             </div>
                         </div>
-                    </details>
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="button" class="btn btn-outline-secondary flex-fill" id="clearMovementFilters">Limpar filtros</button>
+                            <button type="button" class="btn btn-primary flex-fill" data-bs-dismiss="offcanvas">Concluir</button>
+                        </div>
+                    </div>
                 </div>
 
                 @php
