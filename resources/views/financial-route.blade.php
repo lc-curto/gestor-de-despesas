@@ -50,7 +50,7 @@
                                 $status = $running <= 0 ? 'risk' : ($running <= $fixedTotal ? 'attention' : ($running < ($fixedTotal + $variableTotal) ? 'protected' : 'comfortable'));
                             @endphp
                             <tr>
-                                <th scope="row">{{ \\Illuminate\\Support\\Carbon::parse($date)->format("d/m") }}</th>
+                                <th scope="row">{{ \Illuminate\\Support\\Carbon::parse($date)->format("d/m") }}</th>
                                 <td>{{ $values['income'] > 0 ? $format($values['income']) : '—' }}</td>
                                 <td>{{ $values['variable'] > 0 ? $format($values['variable']) : '—' }}</td>
                                 <td>{{ $values['fixed'] > 0 ? $format($values['fixed']) : '—' }}</td>
