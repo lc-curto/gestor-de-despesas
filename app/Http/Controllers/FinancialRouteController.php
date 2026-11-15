@@ -31,7 +31,7 @@ class FinancialRouteController extends Controller
             ->where('is_operational', true)->where('status', 'active')->sum('opening_balance');
         $prior = $request->user()->movimentos()
             ->whereIn('type', ['income', 'expense'])
-            ->whereIn('status', ['pending', 'settled'])
+            ->where('status', 'settled')
             ->where('is_historical', false)
             ->where('movement_date', '<', $rangeStart->toDateString())
             ->get(['type', 'amount']);
