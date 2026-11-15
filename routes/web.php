@@ -6,6 +6,7 @@ use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\FinancialCoreController;
 use App\Http\Controllers\FinancialAccountsPageController;
 use App\Http\Controllers\FinancialCommitmentsPageController;
+use App\Http\Controllers\FinancialRecurrencesPageController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 Route::get('/', function (Request $request) {
@@ -28,6 +29,7 @@ Route::middleware('auth')->group(function(){
  Route::get('/dashboard',DashboardController::class)->name('dashboard');
  Route::get('/contas', FinancialAccountsPageController::class)->name('financial.accounts.page');
  Route::get('/compromissos', FinancialCommitmentsPageController::class)->name('financial.commitments.page');
+ Route::get('/recorrencias', FinancialRecurrencesPageController::class)->name('financial.recurrences.page');
  Route::delete('/contas/movimentos/{id}', [FinancialAccountsPageController::class, 'destroyMovement'])->name('financial.accounts.movement.destroy');
  Route::post('/contas/movimentos/{id}/estornar', [FinancialAccountsPageController::class, 'reverseMovement'])->name('financial.accounts.movement.reverse');
  Route::get('/contas/{id}', [FinancialAccountsPageController::class, 'show'])->name('financial.accounts.show');
@@ -47,12 +49,15 @@ Route::middleware('auth')->group(function(){
   Route::get('/movements', [FinancialCoreController::class, 'movements'])->name('movements.index');
   Route::post('/movements', [FinancialCoreController::class, 'storeMovement'])->name('movements.store');
   Route::post('/commitments', [FinancialCoreController::class, 'storeCommitment'])->name('commitments.store');
+  Route::post('/recurrences', [FinancialCoreController::class, 'storeRecurrence'])->name('recurrences.store');
+  Route::patch('/recurrences/{id}/status', [FinancialCoreController::class, 'setRecurrenceStatus'])->name('recurrences.status');
   Route::post('/cards/purchases', [FinancialCoreController::class, 'storeCardPurchase'])->name('cards.purchase');
   Route::get('/invoices', [FinancialCoreController::class, 'invoices'])->name('invoices.index');
   Route::post('/invoices/{id}/pay', [FinancialCoreController::class, 'payInvoice'])->name('invoices.pay');
   Route::get('/commitments', [FinancialCoreController::class, 'commitments'])->name('commitments.index');
   Route::post('/commitments/{id}/installments/{installmentId}/pay', [FinancialCoreController::class, 'payCommitmentInstallment'])->name('commitments.installments.pay');
   Route::put('/movements/{id}/settle', [FinancialCoreController::class, 'settleMovement'])->name('movements.settle');
+  Route::put('/movements/{id}/confirm', [FinancialCoreController::class, 'confirmMovement'])->name('movements.confirm');
   Route::put('/movements/{id}', [FinancialCoreController::class, 'updatePendingMovement'])->name('movements.update');
   Route::put('/movements/{id}/void', [FinancialCoreController::class, 'voidMovement'])->name('movements.void');
   Route::post('/movements/{id}/reverse', [FinancialCoreController::class, 'reverseMovement'])->name('movements.reverse');

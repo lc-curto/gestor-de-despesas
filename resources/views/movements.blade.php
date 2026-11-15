@@ -218,25 +218,29 @@
                             data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}"
                             data-amount="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}"
                             data-category-id="{{ $movimento->category }}" data-account-id="{{ $movimento->account_id }}"
-                            data-movement-status="{{ $movimento->movement_status }}">
+                            data-movement-status="{{ $movimento->movement_status }}" data-recurrence-id="{{ $movimento->recurrence_id }}">
                             <div class="d-flex align-items-center gap-3 min-w-0">
                                 <div class="expense-icon flex-shrink-0" style="--category-color: {{ $movimento->category_color ?? '#635BFF' }}" aria-hidden="true">
                                     <i data-lucide="{{ $movimento->category_icon ?? 'tag' }}"></i>
                                 </div>
                                 <div class="min-w-0">
                                     <h3 class="h6 fw-semibold mb-1 text-break">{{ $movimento->description }}</h3>
-                                    <p class="small text-secondary mb-0">{{ $categoriaLabel }} · {{ $dataMovimento->format('d/m/Y') }}</p>
+                                    <p class="small text-secondary mb-0">{{ $categoriaLabel }} · {{ $dataMovimento->format('d/m/Y') }} @if($movimento->recurrence_id)<span class="badge text-bg-warning">Previsão</span>@endif</p>
                                 </div>
                             </div>
                             <div class="expense-actions d-flex align-items-center justify-content-end gap-2">
                                 <strong class="{{ $isExpense ? 'text-danger' : 'text-success' }} text-nowrap movement-value"
                                     data-value="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}">{{ $isExpense ? '−' : '+' }}{{ number_format((float) $movimento->amount, 2, ',', '.') }}</strong>
                                 <div class="btn-group btn-group-sm" role="group" aria-label="Ações de {{ $movimento->description }}">
-                                    <button type="button" class="btn btn-outline-secondary edit-movement" data-acao="editar" aria-label="Editar {{ $movimento->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></button>
-                                    <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $movimento->id) }}" data-delete-type="{{ $movimento->tipo }}" onsubmit="return confirm('Eliminar definitivamente este registo?')">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="btn btn-outline-danger" aria-label="Eliminar {{ $movimento->description }}" title="Eliminar"><i data-lucide="trash-2" aria-hidden="true"></i></button>
-                                    </form>
+                                    @if ($movimento->recurrence_id)
+                                        <a class="btn btn-outline-primary" href="{{ route('financial.recurrences.page') }}" aria-label="Gerir recorrência de {{ $movimento->description }}" title="Gerir recorrência"><i data-lucide="repeat-2" aria-hidden="true"></i></a>
+                                    @else
+                                        <button type="button" class="btn btn-outline-secondary edit-movement" data-acao="editar" aria-label="Editar {{ $movimento->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></button>
+                                        <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $movimento->id) }}" data-delete-type="{{ $movimento->tipo }}" onsubmit="return confirm('Eliminar definitivamente este registo?')">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="btn btn-outline-danger" aria-label="Eliminar {{ $movimento->description }}" title="Eliminar"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                                        </form>
+                                    @endif
                                 </div>
                             </div>
                         </article>
@@ -283,6 +287,7 @@ window.meuBolsoDashboard = {
     initialIncomeCount: @json($totalReceitasFiltradas),
     initialMovements: @json($movimentosIniciais),
     movementsUrl: @json(route('dashboard.movimentos.data')),
+    recurrencesUrl: @json(route('financial.recurrences.page')),
     expenseStore: @json(route('despesas.store')),
     incomeStore: @json(route('receitas.store')),
     commitmentStore: @json(route('financial.commitments.store')),
@@ -300,4 +305,3 @@ window.meuBolsoDashboard = {
 @endif
 <script src="{{ asset('js/dashboard.js') }}?v={{ filemtime(public_path('js/dashboard.js')) }}" defer></script>
 @endpush
-

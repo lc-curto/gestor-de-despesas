@@ -6,11 +6,13 @@ use App\Models\ContaFinanceira;
 use App\Models\Movimento;
 use App\Models\Divida;
 use App\Models\ParcelaDivida;
+use App\Models\Recorrencia;
 use App\Services\Financial\AccountBalanceService;
 use App\Services\Financial\FinancialAccountService;
 use App\Services\Financial\FinancialMovementService;
 use App\Services\Financial\FinancialCommitmentService;
 use App\Services\Financial\CardInvoiceService;
+use App\Services\Financial\RecurrenceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -48,6 +50,31 @@ class FinancialCoreController extends Controller
             'account_id' => ['nullable', 'uuid', Rule::exists('contas_financeiras', 'id')->where('user_id', $request->user()->id)],
         ]);
         return response()->json(['data' => $service->create($request->user(), $data)], 201);
+    }
+
+    public function storeRecurrence(Request $request, RecurrenceService $service): JsonResponse
+    {
+        $data = $request->validate([
+            'type' => ['required', Rule::in(['income', 'expense'])],
+            'description' => 'required|string|max:255',
+            'amount' => 'required|numeric|gt:0|decimal:0,2|max:9999999999.99',
+            'category_id' => ['required', 'uuid', Rule::exists('categorias', 'id')->where('user_id', $request->user()->id)],
+            'account_id' => ['nullable', 'uuid', Rule::exists('contas_financeiras', 'id')->where('user_id', $request->user()->id)],
+            'frequency' => ['required', Rule::in(['daily', 'weekly', 'monthly', 'yearly', 'custom'])],
+            'interval_value' => 'required|integer|min:1|max:365',
+            'start_date' => 'required|date|after_or_equal:today',
+            'ends_at' => 'nullable|date|after_or_equal:start_date',
+        ]);
+        $rule = $service->create($request->user(), $data);
+        return response()->json(['data' => $rule, 'message' => 'Recorrência criada; previsões geradas para os próximos 90 dias.'], 201);
+    }
+
+    public function setRecurrenceStatus(Request $request, string $id, RecurrenceService $service): JsonResponse
+    {
+        $data = $request->validate(['is_active' => 'required|boolean']);
+        $rule = $request->user()->recorrencias()->whereKey($id)->firstOrFail();
+        $updated = $service->setActive($request->user(), $rule, (bool) $data['is_active']);
+        return response()->json(['data' => $updated, 'message' => $updated->is_active ? 'Recorrência retomada.' : 'Recorrência pausada.']);
     }
 
     public function storeCardPurchase(Request $request, CardInvoiceService $service): JsonResponse
@@ -233,14 +260,31 @@ class FinancialCoreController extends Controller
         return response()->json(['data' => $movement], 201);
     }
 
-    public function settleMovement(Request $request, string $id, FinancialMovementService $service): JsonResponse
+    public function settleMovement(Request $request, string $id, FinancialMovementService $service, CardInvoiceService $invoices): JsonResponse
     {
         $data = $request->validate([
             'source_account_id' => 'nullable|uuid',
             'destination_account_id' => 'nullable|uuid',
         ]);
         $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
+        if ($movement->type === 'expense') {
+            $accountId = $data['source_account_id'] ?? $movement->source_account_id;
+            $account = $accountId ? $request->user()->contasFinanceiras()->whereKey($accountId)->first() : null;
+            if ($account?->type === 'credit_card') {
+                return response()->json(['data' => $invoices->settlePendingPurchase($request->user(), $movement, $account->id)]);
+            }
+        }
         return response()->json(['data' => $service->settle($request->user(), $movement, $data)]);
+    }
+
+    public function confirmMovement(Request $request, string $id, FinancialMovementService $service): JsonResponse
+    {
+        $data = $request->validate([
+            'source_account_id' => 'nullable|uuid',
+            'destination_account_id' => 'nullable|uuid',
+        ]);
+        $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
+        return response()->json(['data' => $service->confirmPending($request->user(), $movement, $data)]);
     }
 
     public function voidMovement(Request $request, string $id, FinancialMovementService $service): JsonResponse
@@ -260,6 +304,9 @@ class FinancialCoreController extends Controller
     public function destroyMovement(Request $request, string $id): JsonResponse
     {
         $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
+        if ($movement->recurrence_id) {
+            return response()->json(['message' => 'Ocorrências recorrentes devem ser anuladas para preservar o histórico.'], 422);
+        }
         if ($movement->status === 'settled') {
             return response()->json(['message' => 'Movimentos liquidados devem ser estornados, não eliminados.'], 422);
         }
@@ -281,6 +328,30 @@ class FinancialCoreController extends Controller
             'category_id' => ['sometimes', 'nullable', 'uuid', Rule::exists('categorias', 'id')->where('user_id', $request->user()->id)],
         ]);
         $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
-        return response()->json(['data' => $service->updatePending($request->user(), $movement, $data)]);
+        $updated = DB::transaction(function () use ($request, $service, $movement, $data) {
+            $updated = $service->updatePending($request->user(), $movement, $data);
+            if ($updated->recurrence_id && $updated->legacy_type && $updated->legacy_id) {
+                $table = $updated->legacy_type === 'despesa' ? 'despesas' : ($updated->legacy_type === 'receita' ? 'receitas' : null);
+                if ($table) {
+                    $dateColumn = $updated->legacy_type === 'despesa' ? 'expense_date' : 'income_date';
+                    $slug = $updated->category_id
+                        ? DB::table('categorias')->where('user_id', $request->user()->id)->where('id', $updated->category_id)->value('slug')
+                        : null;
+                    $allowed = $updated->type === 'expense'
+                        ? ['casa', 'alimentacao', 'transportes', 'saude', 'lazer', 'compras', 'educacao', 'outros']
+                        : ['salario', 'vendas', 'trabalho_extra', 'investimentos', 'reembolsos', 'outros'];
+                    DB::table($table)->where('user_id', $request->user()->id)->where('id', $updated->legacy_id)->update([
+                        'description' => $updated->description,
+                        'amount' => $updated->amount,
+                        'currency' => $request->user()->currency,
+                        'category_id' => $updated->category_id,
+                        'category' => in_array($slug, $allowed, true) ? $slug : 'outros',
+                        $dateColumn => $updated->movement_date->toDateString(),
+                    ]);
+                }
+            }
+            return $updated;
+        });
+        return response()->json(['data' => $updated]);
     }
 }

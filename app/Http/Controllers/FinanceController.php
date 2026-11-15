@@ -250,6 +250,7 @@ class FinanceController extends Controller
         [$tipo, , $dateField] = $this->config($request);
         $registo = $this->query($request)->findOrFail($id);
         $financialMovement = $this->linkedMovement($request, $tipo, $registo->id);
+        abort_if($financialMovement?->recurrence_id, 403, 'Gere esta ocorrência na página de Recorrências.');
         $data = $dateField;
         $cats = $this->categoryOptions($request, $tipo, true);
         $accounts = $this->availableAccounts($request, $tipo);
@@ -270,6 +271,9 @@ class FinanceController extends Controller
         DB::transaction(function () use ($request, $service, $invoices, $tipo, $id, $data, $accountId, $legacyType, $dateField, $date): void {
             $legacy = $this->query($request)->whereKey($id)->lockForUpdate()->firstOrFail();
             $movement = $this->linkedMovement($request, $tipo, $legacy->id);
+            if ($movement?->recurrence_id) {
+                throw ValidationException::withMessages(['movement' => 'Gere esta ocorrência na página de Recorrências.']);
+            }
             if ($movement?->invoice_id) {
                 $invoice = $request->user()->faturas()->whereKey($movement->invoice_id)->firstOrFail();
                 if ($invoice->status !== 'open') {
@@ -327,6 +331,9 @@ class FinanceController extends Controller
             $legacy = $this->query($request)->whereKey($id)->lockForUpdate()->firstOrFail();
             $movement = $this->linkedMovement($request, $tipo, $legacy->id);
             if ($movement) {
+                if ($movement->recurrence_id) {
+                    throw ValidationException::withMessages(['movement' => 'Anule esta ocorrência na página de Recorrências para preservar o histórico.']);
+                }
                 if ($movement->status === 'settled') {
                     throw ValidationException::withMessages(['movement' => 'Movimentos liquidados devem ser estornados, não eliminados.']);
                 }

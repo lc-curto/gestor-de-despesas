@@ -1,6 +1,6 @@
 # Núcleo financeiro — serviços e contratos da API
 
-Esta etapa acrescenta a camada de domínio sobre as tabelas introduzidas em `feature/financial-core-schema`. Não altera os ecrãs existentes nem substitui ainda o dashboard legado.
+Este documento descreve a camada de domínio e a integração gradual com o histórico legado. A gestão de recorrências e previsões da Fase 3 está em `docs/financial-phase-3.md` e na página autenticada `/recorrencias`.
 
 Os fluxos de cartões de crédito, faturas e compromissos da Fase 2 estão implementados em `docs/financial-phase-2.md` e disponíveis na página autenticada `/compromissos`.
 
@@ -9,7 +9,7 @@ Os fluxos de cartões de crédito, faturas e compromissos da Fase 2 estão imple
 - `ContaFinanceira`: conta bancária, dinheiro, cartão ou histórico.
 - `Movimento`: entrada, saída, transferência ou ajuste.
 - `HistoricoMovimento`: auditoria imutável das operações.
-- `Fatura`, `Recorrencia`, `Divida` e `ParcelaDivida`: modelos e relações Eloquent para as entidades já criadas no schema.
+- `Fatura`, `Recorrencia`, `Divida` e `ParcelaDivida`: entidades financeiras; recorrências geram movimentos pendentes com rastreio de ocorrência.
 - `User`: relações para contas, movimentos, dívidas e recorrências.
 
 ## Serviços
@@ -46,7 +46,10 @@ As rotas são registadas em `routes/web.php`, sob `auth`, e devolvem JSON.
 | POST | `/api/financial/accounts/{id}/close` | Encerrar conta |
 | GET | `/api/financial/movements` | Listar movimentos com filtros e paginação |
 | POST | `/api/financial/movements` | Criar movimento ou compromisso pendente |
+| POST | `/api/financial/recurrences` | Criar regra e gerar previsões |
+| PATCH | `/api/financial/recurrences/{id}/status` | Pausar ou retomar uma regra |
 | PUT | `/api/financial/movements/{id}` | Editar pendente ou corrigir descrição de liquidado |
+| PUT | `/api/financial/movements/{id}/confirm` | Confirmar uma previsão sem alterar o saldo |
 | PUT | `/api/financial/movements/{id}/settle` | Liquidar e associar a conta |
 | PUT | `/api/financial/movements/{id}/void` | Anular pendente |
 
@@ -92,15 +95,15 @@ Liquidar pendente:
 }
 ```
 
-## Fora do âmbito desta etapa
+## Fora do âmbito do núcleo descrito neste documento
 
 - Interface de gestão de contas e movimentos.
 - Migração do dashboard antigo para a nova tabela `movimentos`.
-- Gestão funcional de cartões/faturas, planos de dívida e geração automática de recorrências.
+- Geração, histórico e operação de recorrências: `docs/financial-phase-3.md`.
 - Projeção da Rota Financeira e relatórios.
 - Ajustes/estornos financeiros completos de movimentos liquidados (a regra de bloqueio está aplicada; o fluxo de estorno será uma etapa própria).
 
-## Segurança operacional
+## Segurança operacional do núcleo original
 
 - Nenhuma migration nova nesta etapa.
 - Nenhuma migration executada em produção.

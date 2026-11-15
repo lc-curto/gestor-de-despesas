@@ -68,6 +68,52 @@ class CardInvoiceService
         });
     }
 
+    public function settlePendingPurchase(User $user, Movimento $movement, string $cardId): Movimento
+    {
+        return DB::transaction(function () use ($user, $movement, $cardId): Movimento {
+            $locked = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== 'pending' || $locked->type !== 'expense') {
+                throw ValidationException::withMessages(['movement' => 'Só previsões de despesa pendentes podem ser liquidadas com cartão.']);
+            }
+
+            $card = $user->contasFinanceiras()->whereKey($cardId)->lockForUpdate()->firstOrFail();
+            if ($card->type !== 'credit_card' || !$card->is_operational || $card->status !== 'active' || !$card->closing_day || !$card->due_day) {
+                throw ValidationException::withMessages(['account_id' => 'Seleciona um cartão ativo e configurado.']);
+            }
+            $date = Carbon::parse($locked->movement_date)->startOfDay();
+            if ($date->greaterThan(today())) {
+                throw ValidationException::withMessages(['movement_date' => 'Uma previsão futura pode ser confirmada, mas só liquidada na data prevista.']);
+            }
+
+            if ($card->credit_limit !== null) {
+                $balances = app(AccountBalanceService::class);
+                $used = max(0, -$balances->toCents($balances->balance($card)));
+                if ($used + $balances->toCents((string) $locked->amount) > $balances->toCents((string) $card->credit_limit)) {
+                    throw ValidationException::withMessages(['amount' => 'A compra excede o limite disponível do cartão.']);
+                }
+            }
+
+            $reference = $date->day > $card->closing_day ? $date->copy()->addMonthNoOverflow() : $date->copy();
+            $reference->day = 1;
+            $closing = $reference->copy()->day(min($card->closing_day, $reference->daysInMonth));
+            $dueMonth = $reference->copy()->addMonthNoOverflow();
+            $due = $dueMonth->copy()->day(min($card->due_day, $dueMonth->daysInMonth));
+            $invoice = Fatura::query()->firstOrCreate(
+                ['user_id' => $user->id, 'account_id' => $card->id, 'reference_month' => $reference->toDateString()],
+                ['closing_date' => $closing->toDateString(), 'due_date' => $due->toDateString(), 'status' => 'open']
+            );
+            $invoice = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+            if ($invoice->status === 'paid' || ($invoice->closing_date && $invoice->closing_date->lt(today()))) {
+                throw ValidationException::withMessages(['invoice' => 'A fatura deste ciclo já foi fechada. A compra deve entrar no ciclo seguinte.']);
+            }
+
+            return $this->movements->settle($user, $locked, [
+                'source_account_id' => $card->id,
+                'invoice_id' => $invoice->id,
+            ]);
+        });
+    }
+
     public function listInvoices(User $user)
     {
         return Fatura::query()->where('user_id', $user->id)

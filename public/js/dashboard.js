@@ -222,6 +222,7 @@
         article.dataset.categoryId = item.category;
         article.dataset.accountId = item.account_id || '';
         article.dataset.movementStatus = item.movement_status || '';
+        article.dataset.recurrenceId = item.recurrence_id || '';
 
         const info = document.createElement('div');
         info.className = 'd-flex align-items-center gap-3 min-w-0';
@@ -238,7 +239,7 @@
         name.textContent = item.description;
         const metadata = document.createElement('p');
         metadata.className = 'small text-secondary mb-0';
-        metadata.textContent = categoryName(item) + ' · ' + displayDate;
+        metadata.textContent = categoryName(item) + ' · ' + displayDate + (item.recurrence_id ? ' · Previsão' : '');
         details.append(name, metadata);
         info.append(icon, details);
 
@@ -250,16 +251,26 @@
         value.dataset.currency = item.currency || cfg.currency || 'EUR';
         value.textContent = (isExpense ? '−' : '+') + formatCurrency(item.amount, item.currency);
 
-        const edit = document.createElement('button');
-        edit.type = 'button';
-        edit.className = 'btn btn-outline-secondary';
-        edit.dataset.acao = 'editar';
-        edit.setAttribute('aria-label', 'Editar ' + item.description);
-        edit.title = 'Editar';
-        edit.innerHTML = '<i data-lucide="pencil" aria-hidden="true"></i>';
-
-        actions.append(value, edit);
-        if (item.id) {
+        actions.append(value);
+        if (item.recurrence_id) {
+            const manage = document.createElement('a');
+            manage.className = 'btn btn-outline-primary';
+            manage.href = cfg.recurrencesUrl;
+            manage.title = 'Gerir recorrência';
+            manage.setAttribute('aria-label', 'Gerir recorrência de ' + item.description);
+            manage.innerHTML = '<i data-lucide="repeat-2" aria-hidden="true"></i>';
+            actions.append(manage);
+        } else {
+            const edit = document.createElement('button');
+            edit.type = 'button';
+            edit.className = 'btn btn-outline-secondary';
+            edit.dataset.acao = 'editar';
+            edit.setAttribute('aria-label', 'Editar ' + item.description);
+            edit.title = 'Editar';
+            edit.innerHTML = '<i data-lucide="pencil" aria-hidden="true"></i>';
+            actions.append(edit);
+        }
+        if (item.id && !item.recurrence_id) {
             const deleteForm = document.createElement('form');
             deleteForm.method = 'POST';
             deleteForm.action = article.dataset.editUrl;

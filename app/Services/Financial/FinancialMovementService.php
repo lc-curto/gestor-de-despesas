@@ -69,6 +69,8 @@ class FinancialMovementService
                 'amount' => $data['amount'],
                 'movement_date' => $data['movement_date'],
                 'category_id' => $data['category_id'] ?? null,
+                'recurrence_id' => $data['recurrence_id'] ?? null,
+                'recurrence_occurrence_date' => $data['recurrence_occurrence_date'] ?? null,
                 'legacy_type' => $data['legacy_type'] ?? null,
                 'legacy_id' => $data['legacy_id'] ?? null,
                 'is_historical' => false,
@@ -94,8 +96,8 @@ class FinancialMovementService
                 throw ValidationException::withMessages(['movement' => 'Só é possível liquidar movimentos pendentes.']);
             }
 
-            $source = $this->account($user, $accounts['source_account_id'] ?? null);
-            $destination = $this->account($user, $accounts['destination_account_id'] ?? null);
+            $source = $this->account($user, $accounts['source_account_id'] ?? $locked->source_account_id);
+            $destination = $this->account($user, $accounts['destination_account_id'] ?? $locked->destination_account_id);
             $this->assertShape($locked->type, $source, $destination, $locked->adjustment_direction);
 
             if ($source) {
@@ -106,11 +108,35 @@ class FinancialMovementService
             $locked->update([
                 'source_account_id' => $source?->id,
                 'destination_account_id' => $destination?->id,
+                'invoice_id' => $accounts['invoice_id'] ?? $locked->invoice_id,
                 'requires_account_assignment' => false,
                 'status' => 'settled',
                 'settled_at' => now(),
             ]);
             $this->audit($user, $locked, 'settled', $before, $locked->getAttributes());
+            return $locked->refresh();
+        });
+    }
+
+    public function confirmPending(User $user, Movimento $movement, array $accounts): Movimento
+    {
+        return DB::transaction(function () use ($user, $movement, $accounts) {
+            $locked = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== 'pending') {
+                throw ValidationException::withMessages(['movement' => 'Só é possível confirmar previsões pendentes.']);
+            }
+
+            $source = $this->account($user, $accounts['source_account_id'] ?? null);
+            $destination = $this->account($user, $accounts['destination_account_id'] ?? null);
+            $this->assertShape($locked->type, $source, $destination, $locked->adjustment_direction);
+
+            $before = $locked->getAttributes();
+            $locked->update([
+                'source_account_id' => $source?->id,
+                'destination_account_id' => $destination?->id,
+                'requires_account_assignment' => false,
+            ]);
+            $this->audit($user, $locked, 'confirmed', $before, $locked->getAttributes());
             return $locked->refresh();
         });
     }
@@ -158,7 +184,7 @@ class FinancialMovementService
                 throw ValidationException::withMessages(['movement' => 'Movimentos liquidados não podem ser anulados diretamente.']);
             }
             $before = $locked->getAttributes();
-            $locked->update(['status' => 'void', 'requires_account_assignment' => false]);
+            $locked->update(['status' => 'void']);
             $this->audit($user, $locked, 'voided', $before, $locked->getAttributes(), $reason);
             return $locked->refresh();
         });

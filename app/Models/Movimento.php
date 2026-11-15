@@ -16,7 +16,7 @@ class Movimento extends Model
     protected $fillable = ['user_id',
         'type', 'status', 'description', 'amount', 'movement_date',
         'source_account_id', 'destination_account_id', 'category_id',
-        'invoice_id', 'recurrence_id', 'debt_id', 'installment_id',
+        'invoice_id', 'recurrence_id', 'recurrence_occurrence_date', 'debt_id', 'installment_id',
         'adjustment_direction', 'is_historical', 'requires_account_assignment', 'legacy_type', 'legacy_id', 'reversal_of_id', 'settled_at',
     ];
 
@@ -25,6 +25,7 @@ class Movimento extends Model
         return [
             'amount' => 'decimal:2',
             'movement_date' => 'date',
+            'recurrence_occurrence_date' => 'date',
             'settled_at' => 'datetime',
             'is_historical' => 'boolean',
             'requires_account_assignment' => 'boolean',
@@ -35,5 +36,6 @@ class Movimento extends Model
     public function contaOrigem(): BelongsTo { return $this->belongsTo(ContaFinanceira::class, 'source_account_id'); }
     public function contaDestino(): BelongsTo { return $this->belongsTo(ContaFinanceira::class, 'destination_account_id'); }
     public function categoria(): BelongsTo { return $this->belongsTo(Categoria::class, 'category_id'); }
+    public function recorrencia(): BelongsTo { return $this->belongsTo(Recorrencia::class, 'recurrence_id'); }
     public function historico(): HasMany { return $this->hasMany(HistoricoMovimento::class, 'movement_id'); }
 }
