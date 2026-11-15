@@ -36,7 +36,7 @@
                 $monthDays = $days[$monthKey];
                 $fixedTotal = collect($monthDays)->sum('fixed');
                 $variableTotal = collect($monthDays)->sum('variable');
-                $running = 0.0;
+                $running = $openingBalance;
             @endphp
             <section class="financial-route-month" aria-label="{{ $monthDate->locale('pt_PT')->translatedFormat('F Y') }}">
                 <h2>{{ $monthDate->locale('pt_PT')->translatedFormat('F Y') }}</h2>
@@ -62,6 +62,7 @@
                     </table>
                 </div>
             </section>
+            @php $openingBalance = $running; @endphp
         @endforeach
     </div>
 </section>
