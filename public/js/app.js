@@ -1,6 +1,7 @@
 (() => {
     const root = document.documentElement;
     const themeButton = document.getElementById('themeToggle');
+    const mobileThemeButton = document.getElementById('mobileThemeToggle');
     const sidebarToggle = document.getElementById('sidebarToggle');
     const mobileSidebarOpen = document.getElementById('mobileSidebarOpen');
     const sidebarBackdrop = document.getElementById('sidebarBackdrop');
@@ -63,9 +64,9 @@
     catch (error) { console.warn('Não foi possível ler a preferência de tema:', error); }
     applyTheme(['light', 'dark'].includes(storedTheme) ? storedTheme : 'light');
 
-    themeButton?.addEventListener('click', () => {
-        applyTheme(root.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark');
-    });
+    const toggleTheme = () => applyTheme(root.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark');
+    themeButton?.addEventListener('click', toggleTheme);
+    mobileThemeButton?.addEventListener('click', toggleTheme);
 
     const legacyIcons = {
         'bi-grid-1x2':'layout-dashboard','bi-arrow-down-circle':'arrow-down-circle',
