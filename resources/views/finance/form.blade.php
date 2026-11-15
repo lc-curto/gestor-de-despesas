@@ -61,6 +61,16 @@
             </select>
             <div class="form-text"><a href="{{ route('categorias.index') }}">Gerir categorias</a></div>
         </div>
+        @if ($tipo === "despesa")
+        <div class="col-12">
+            <label class="form-label d-block">Comportamento da despesa</label>
+            <div class="d-flex flex-wrap gap-3">
+                <label class="form-check"><input class="form-check-input" type="radio" name="expense_behavior" value="variable" @checked(old("expense_behavior", $financialMovement?->expense_behavior ?? "variable") === "variable")> <span class="form-check-label">Variável</span></label>
+                <label class="form-check"><input class="form-check-input" type="radio" name="expense_behavior" value="fixed" @checked(old("expense_behavior", $financialMovement?->expense_behavior ?? "variable") === "fixed")> <span class="form-check-label">Fixa</span></label>
+            </div>
+            <div class="form-text">Fixa é uma despesa estrutural ou regular, mesmo que o valor varie.</div>
+        </div>
+        @endif
         <div class="col-md-6">
             <label for="{{ $data }}" class="form-label">Data</label>
             <input id="{{ $data }}" name="{{ $data }}" type="date" class="form-control" value="{{ old($data, $registo?->{$data}?->format('Y-m-d') ?? now()->format('Y-m-d')) }}" required>
