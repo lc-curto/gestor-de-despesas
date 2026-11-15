@@ -7,6 +7,7 @@ use App\Http\Controllers\FinancialCoreController;
 use App\Http\Controllers\FinancialAccountsPageController;
 use App\Http\Controllers\FinancialCommitmentsPageController;
 use App\Http\Controllers\FinancialRouteController;
+use App\Http\Controllers\FinancialDataReviewController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 Route::get('/', function (Request $request) {
@@ -24,7 +25,9 @@ Route::middleware('guest')->group(function(){
  Route::view('/password/reset/{token}','auth.reset')->name('password.reset');
  Route::post('/password/reset',[AccountController::class,'reset'])->middleware('throttle:3,1')->name('password.update');
 });
-Route::middleware('auth')->group(function(){
+Route::middleware(['auth', 'financial.review'])->group(function(){
+ Route::get('/revisao-dados', [FinancialDataReviewController::class, 'index'])->name('financial.review.index');
+ Route::post('/revisao-dados/etapa', [FinancialDataReviewController::class, 'completeStep'])->name('financial.review.step');
  Route::post('/logout',[AccountController::class,'logout'])->name('logout');
  Route::get('/dashboard',DashboardController::class)->name('dashboard');
  Route::get('/rota-financeira', FinancialRouteController::class)->name('financial.route');
