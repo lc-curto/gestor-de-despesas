@@ -67,8 +67,8 @@ Route::middleware('auth')->group(function(){
  Route::patch('/categorias/{id}/estado',[CategoriaController::class,'toggle'])->name('categorias.toggle');
  Route::delete('/categorias/{id}',[CategoriaController::class,'destroy'])->name('categorias.destroy');
  foreach(['despesas'=>'despesa','receitas'=>'receita'] as $uri=>$tipo){
-  Route::get("/$uri", fn () => redirect()->route('dashboard.movimentos', ['tipo' => $tipo]))->name("$uri.index");
-  Route::get("/$uri/criar", fn () => redirect()->route('dashboard.movimentos', ['tipo' => $tipo, 'novo' => 1]))->name("$uri.create");
+  Route::get("/$uri", [FinanceController::class, 'index'])->defaults('tipo',$tipo)->name("$uri.index");
+  Route::get("/$uri/criar", [FinanceController::class, 'create'])->defaults('tipo',$tipo)->name("$uri.create");
   Route::post("/$uri",[FinanceController::class,'store'])->defaults('tipo',$tipo)->name("$uri.store");
   Route::get("/$uri/{id}/editar",[FinanceController::class,'edit'])->defaults('tipo',$tipo)->name("$uri.edit");
   Route::put("/$uri/{id}",[FinanceController::class,'update'])->defaults('tipo',$tipo)->name("$uri.update");
