@@ -1334,7 +1334,7 @@ body.sidebar-collapsed .account-avatar {
 }
 
 /* Dashboard operacional e página independente de movimentos */
-.home-dashboard { width: 100%; max-width: 58rem; margin: 0 auto; }
+.home-dashboard { width: 100%; max-width: none; margin: 0; }
 .home-dashboard-intro { margin-bottom: 1rem; }
 .home-dashboard-intro .dashboard-intro-copy { flex: 1 1 100%; }
 .home-dashboard-intro h1 { margin: 0; }
