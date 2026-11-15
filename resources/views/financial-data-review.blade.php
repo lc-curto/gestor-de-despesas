@@ -69,6 +69,21 @@
                             </div>
                             <p class="text-secondary small mt-2 mb-2">{{ $step['description'] }}</p>
                             <p class="small fw-semibold mb-3">{{ $step['detail'] }}</p>
+                            @if ($step['id'] !== 'final')
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    @if ($step['id'] === 'accounts')
+                                        <a class="btn btn-sm btn-light border" href="{{ route('financial.accounts.page') }}">Rever contas</a>
+                                    @elseif ($step['id'] === 'categories')
+                                        <a class="btn btn-sm btn-light border" href="{{ route('categorias.index') }}">Rever categorias</a>
+                                    @elseif ($step['id'] === 'movements')
+                                        <a class="btn btn-sm btn-light border" href="{{ route('dashboard.movimentos') }}">Rever movimentos</a>
+                                        <a class="btn btn-sm btn-light border" href="{{ route('despesas.index') }}">Despesas antigas</a>
+                                        <a class="btn btn-sm btn-light border" href="{{ route('receitas.index') }}">Receitas antigas</a>
+                                    @elseif ($step['id'] === 'classification')
+                                        <a class="btn btn-sm btn-light border" href="{{ route('dashboard.movimentos') }}">Rever classificação nos movimentos</a>
+                                    @endif
+                                </div>
+                            @endif
 
                             @if (!$done && !$locked)
                                 <form method="POST" action="{{ route('financial.review.step') }}">
