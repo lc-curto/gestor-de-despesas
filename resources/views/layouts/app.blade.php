@@ -92,6 +92,49 @@
         </main>
     </div>
 
+
+    <nav class="mobile-bottom-bar" aria-label="Navegação principal">
+        <a class="mobile-bottom-link {{ request()->routeIs('dashboard*') ? 'active' : '' }}" href="{{ route('dashboard') }}" @if(request()->routeIs('dashboard*')) aria-current="page" @endif>
+            <i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Início</span>
+        </a>
+        <a class="mobile-bottom-link {{ request()->routeIs('despesas.*', 'receitas.*') ? 'active' : '' }}" href="{{ route('dashboard') }}#expensesList" @if(request()->routeIs('despesas.*', 'receitas.*')) aria-current="page" @endif>
+            <i data-lucide="arrow-left-right" aria-hidden="true"></i><span>Movimentos</span>
+        </a>
+        <button class="mobile-bottom-link mobile-bottom-new" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileNewMenu" aria-controls="mobileNewMenu">
+            <span class="mobile-bottom-new-icon"><i data-lucide="plus" aria-hidden="true"></i></span><span>Novo</span>
+        </button>
+        <a class="mobile-bottom-link {{ request()->routeIs('financial.accounts.*') ? 'active' : '' }}" href="{{ route('financial.accounts.page') }}" @if(request()->routeIs('financial.accounts.*')) aria-current="page" @endif>
+            <i data-lucide="wallet-cards" aria-hidden="true"></i><span>Contas</span>
+        </a>
+        <button class="mobile-bottom-link {{ request()->routeIs('categorias.*', 'financial.commitments.*') ? 'active' : '' }}" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileMoreMenu" aria-controls="mobileMoreMenu">
+            <i data-lucide="grid-2x2" aria-hidden="true"></i><span>Mais</span>
+        </button>
+    </nav>
+
+    <div class="offcanvas offcanvas-bottom mobile-action-sheet" tabindex="-1" id="mobileNewMenu" aria-labelledby="mobileNewMenuTitle">
+        <div class="offcanvas-header"><h2 class="offcanvas-title h5 fw-bold" id="mobileNewMenuTitle">Novo registo</h2><button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button></div>
+        <div class="offcanvas-body pt-0">
+            <a class="mobile-sheet-action" href="{{ route('despesas.create') }}"><i data-lucide="arrow-down-right" aria-hidden="true"></i><span><strong>Nova despesa</strong><small>Registar um pagamento ou compromisso</small></span></a>
+            <a class="mobile-sheet-action" href="{{ route('receitas.create') }}"><i data-lucide="arrow-up-right" aria-hidden="true"></i><span><strong>Nova receita</strong><small>Registar dinheiro recebido</small></span></a>
+        </div>
+    </div>
+
+    <div class="offcanvas offcanvas-bottom mobile-action-sheet" tabindex="-1" id="mobileMoreMenu" aria-labelledby="mobileMoreMenuTitle">
+        <div class="offcanvas-header"><h2 class="offcanvas-title h5 fw-bold" id="mobileMoreMenuTitle">Mais funcionalidades</h2><button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button></div>
+        <div class="offcanvas-body pt-0">
+            <div class="mobile-more-grid">
+                <a class="mobile-sheet-action" href="{{ route('despesas.index') }}"><i data-lucide="arrow-down-circle" aria-hidden="true"></i><span><strong>Despesas</strong><small>Histórico de despesas</small></span></a>
+                <a class="mobile-sheet-action" href="{{ route('receitas.index') }}"><i data-lucide="arrow-up-circle" aria-hidden="true"></i><span><strong>Receitas</strong><small>Histórico de receitas</small></span></a>
+                <a class="mobile-sheet-action" href="{{ route('financial.commitments.page') }}"><i data-lucide="credit-card" aria-hidden="true"></i><span><strong>Cartões e compromissos</strong><small>Faturas e pagamentos</small></span></a>
+                <a class="mobile-sheet-action" href="{{ route('categorias.index') }}"><i data-lucide="tags" aria-hidden="true"></i><span><strong>Categorias</strong><small>Organizar movimentos</small></span></a>
+            </div>
+            <div class="mobile-sheet-utilities">
+                <button type="button" class="btn btn-outline-secondary" id="mobileThemeToggle"><i data-lucide="moon-star" aria-hidden="true"></i> Tema</button>
+                <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit" class="btn btn-outline-danger"><i data-lucide="log-out" aria-hidden="true"></i> Terminar sessão</button></form>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="inactivityModal" tabindex="-1" aria-labelledby="inactivityModalTitle"
         aria-describedby="inactivityModalDescription" aria-hidden="true"
         data-bs-backdrop="static" data-bs-keyboard="false">
