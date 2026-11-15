@@ -31,7 +31,8 @@ Route::middleware('auth')->group(function(){
  Route::delete('/contas/movimentos/{id}', [FinancialAccountsPageController::class, 'destroyMovement'])->name('financial.accounts.movement.destroy');
  Route::post('/contas/movimentos/{id}/estornar', [FinancialAccountsPageController::class, 'reverseMovement'])->name('financial.accounts.movement.reverse');
  Route::get('/contas/{id}', [FinancialAccountsPageController::class, 'show'])->name('financial.accounts.show');
- Route::get('/dashboard/movimentos',[DashboardController::class,'movimentos'])->middleware('throttle:60,1')->name('dashboard.movimentos');
+ Route::get('/dashboard/movimentos', [DashboardController::class, 'paginaMovimentos'])->name('dashboard.movimentos');
+ Route::get('/dashboard/movimentos/dados', [DashboardController::class, 'movimentos'])->middleware('throttle:60,1')->name('dashboard.movimentos.data');
  Route::post('/session/activity',fn()=>response()->noContent())->name('session.activity');
 
  // Núcleo financeiro: endpoints JSON, sem alterar a interface existente.
