@@ -185,7 +185,7 @@
                                 </select>
                             </div>
                         </div>
-                    </details>                    </form>
+                    </details>
                 </div>
 
                 @php
