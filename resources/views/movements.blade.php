@@ -15,7 +15,7 @@
 </header>
 
 <section class="movements-period-summary" aria-label="Resumo financeiro do período">
-    <div class="movements-period-summary-heading" id="movementsSummaryPeriod">Resumo de {{ \\Illuminate\\Support\\Carbon::createFromFormat('Y-m', $mes)->locale('pt_PT')->translatedFormat('F Y') }}</div>
+    <div class="movements-period-summary-heading" id="movementsSummaryPeriod">Resumo de {{ \Illuminate\Support\Carbon::createFromFormat('Y-m', $mes)->locale('pt_PT')->translatedFormat('F Y') }}</div>
     <div class="movements-period-summary-values">
         <div class="movements-period-metric">
             <span>Receitas</span>
