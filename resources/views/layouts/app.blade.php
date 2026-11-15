@@ -94,10 +94,10 @@
 
 
     <nav class="mobile-bottom-bar" aria-label="Navegação principal">
-        <a class="mobile-bottom-link {{ request()->routeIs('dashboard*') ? 'active' : '' }}" href="{{ route('dashboard') }}" @if(request()->routeIs('dashboard*')) aria-current="page" @endif>
+        <a class="mobile-bottom-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}" @if(request()->routeIs('dashboard')) aria-current="page" @endif>
             <i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Início</span>
         </a>
-        <a class="mobile-bottom-link {{ request()->routeIs('despesas.*', 'receitas.*') ? 'active' : '' }}" href="{{ route('dashboard') }}#expensesList" @if(request()->routeIs('despesas.*', 'receitas.*')) aria-current="page" @endif>
+        <a class="mobile-bottom-link {{ request()->routeIs('movements.*') ? 'active' : '' }}" href="{{ route('movements.page') }}" @if(request()->routeIs('movements.*')) aria-current="page" @endif>
             <i data-lucide="arrow-left-right" aria-hidden="true"></i><span>Movimentos</span>
         </a>
         <button class="mobile-bottom-link mobile-bottom-new" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileNewMenu" aria-controls="mobileNewMenu">
