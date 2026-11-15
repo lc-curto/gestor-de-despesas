@@ -11,10 +11,10 @@
 @endphp
 
 <section class="financial-route-page" id="financialRoute"
-    data-store-url="{{ route('movements.store') }}"
-    data-update-url="{{ url('/financial/movements') }}"
-    data-delete-url="{{ url('/financial/movements') }}"
-    data-reverse-url="{{ url('/financial/movements') }}"
+    data-store-url="{{ route('financial.movements.store') }}"
+    data-update-url="{{ url('/api/financial/movements') }}"
+    data-delete-url="{{ url('/api/financial/movements') }}"
+    data-reverse-url="{{ url('/api/financial/movements') }}"
     data-currency="{{ $currency }}"
     data-today="{{ $today }}">
     <header class="financial-route-header">
@@ -64,7 +64,9 @@
                                     'description' => $item->description, 'amount' => (float) $item->amount,
                                     'date' => $item->movement_date->toDateString(),
                                     'expense_behavior' => $item->expense_behavior,
-                                    'category' => $item->categoria?->name ?? 'Sem categoria',
+                                    'category' => $item->categoria?->name ?? 'Sem categoria', 'category_id' => $item->category_id,
+                                    'account_id' => $item->type === 'expense' ? $item->source_account_id : $item->destination_account_id,
+                                    'notes' => $item->notes ?? '',
                                 ])->values();
                             @endphp
                             <tr>
