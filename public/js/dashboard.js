@@ -68,6 +68,8 @@
 
     function refreshPaymentFields() {
         const isExpense = movementType === 'despesa';
+        const behaviorField = document.getElementById('dashboardExpenseBehaviorField');
+        if (behaviorField) behaviorField.hidden = !isExpense;
         const condition = form.querySelector('[name="payment_condition"]:checked')?.value || 'cash';
         if (paymentFields) paymentFields.hidden = !isExpense;
         if (commitmentOptions) commitmentOptions.hidden = !isExpense || condition === 'cash';
