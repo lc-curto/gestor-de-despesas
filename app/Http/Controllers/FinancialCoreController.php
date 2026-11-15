@@ -330,6 +330,7 @@ class FinancialCoreController extends Controller
             'amount' => 'sometimes|required|numeric|gt:0|decimal:0,2|max:9999999999.99',
             'movement_date' => 'sometimes|required|date',
             'category_id' => ['sometimes', 'nullable', 'uuid', Rule::exists('categorias', 'id')->where('user_id', $request->user()->id)],
+            'expense_behavior' => ['sometimes', Rule::in(['fixed', 'variable'])],
         ]);
         $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
         $updated = DB::transaction(function () use ($request, $service, $movement, $data) {
