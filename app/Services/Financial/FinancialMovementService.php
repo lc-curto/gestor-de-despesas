@@ -69,6 +69,7 @@ class FinancialMovementService
                 'expense_behavior' => $data['type'] === 'expense' ? ($data['expense_behavior'] ?? 'variable') : 'variable',
                 'status' => 'pending',
                 'description' => $data['description'],
+                'notes' => $data['notes'] ?? null,
                 'amount' => $data['amount'],
                 'movement_date' => $data['movement_date'],
                 'category_id' => $data['category_id'] ?? null,
@@ -203,7 +204,7 @@ class FinancialMovementService
                 $allowed = ['description', 'notes', 'amount', 'movement_date', 'category_id', 'expense_behavior'];
                 $action = 'updated';
             } elseif ($locked->status === 'pending') {
-                $allowed = ['description', 'amount', 'movement_date', 'category_id', 'expense_behavior'];
+                $allowed = ['description', 'notes', 'amount', 'movement_date', 'category_id', 'expense_behavior'];
                 $action = 'updated';
             } else {
                 throw ValidationException::withMessages(['movement' => 'Movimentos anulados não podem ser editados.']);
