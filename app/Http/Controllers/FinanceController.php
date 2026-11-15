@@ -308,7 +308,7 @@ class FinanceController extends Controller
                     throw ValidationException::withMessages(['expense' => 'Não é possível editar uma compra de fatura já liquidada. Estorna o movimento e regista a correção.']);
                 }
             }
-            $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId]), $legacyType, $legacy->id);
+            $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId, 'expense_behavior' => $expenseBehavior]), $legacyType, $legacy->id);
 
             if (!$movement) {
                 $cutoff = $request->user()->financial_cutoff_date?->toDateString();
