@@ -43,7 +43,7 @@ class FinancialRouteController extends Controller
             ->whereIn('status', ['pending', 'settled'])
             ->whereBetween('movement_date', [$rangeStart->toDateString(), $rangeEnd->toDateString()])
             ->orderBy('movement_date')
-            ->get(['id', 'type', 'status', 'description', 'amount', 'movement_date', 'expense_behavior']);
+            ->with('categoria:id,name')->get(['id', 'type', 'status', 'description', 'amount', 'movement_date', 'expense_behavior', 'category_id']);
 
         $days = [];
         foreach ($months as $month) {
@@ -70,6 +70,8 @@ class FinancialRouteController extends Controller
             'month' => $start->format('Y-m'),
             'currency' => $request->user()->currency,
             'openingBalance' => $openingBalance,
+            'categories' => $request->user()->categorias()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'type']),
+            'accounts' => $request->user()->contasFinanceiras()->where('is_operational', true)->where('status', 'active')->orderBy('name')->get(['id', 'name', 'type']),
         ]);
     }
 }
