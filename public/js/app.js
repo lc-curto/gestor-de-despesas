@@ -43,20 +43,32 @@
     }
 
     function updateThemeButton(theme) {
-        if (!themeButton) return;
-        const icon = themeButton.querySelector('i[data-lucide]');
-        if (icon) icon.setAttribute('data-lucide', theme === 'dark' ? 'sun' : 'moon-star');
+        const iconName = theme === 'dark' ? 'sun' : 'moon-star';
         const label = theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro';
-        themeButton.setAttribute('aria-label', label);
-        themeButton.title = label;
-        renderIcons(themeButton);
+
+        [themeButton, mobileThemeButton].forEach((button) => {
+            if (!button) return;
+            const icon = button.querySelector('i[data-lucide]');
+            if (icon) icon.setAttribute('data-lucide', iconName);
+            button.setAttribute('aria-label', label);
+            button.title = label;
+            renderIcons(button);
+        });
     }
 
     function applyTheme(theme) {
-        root.setAttribute('data-bs-theme', theme);
-        try { localStorage.setItem(THEME_KEY, theme); }
+        const selectedTheme = theme === 'dark' ? 'dark' : 'light';
+        root.setAttribute('data-bs-theme', selectedTheme);
+        document.body?.setAttribute('data-bs-theme', selectedTheme);
+        root.style.colorScheme = selectedTheme;
+
+        try { localStorage.setItem(THEME_KEY, selectedTheme); }
         catch (error) { console.warn('Não foi possível guardar a preferência de tema:', error); }
-        updateThemeButton(theme);
+
+        updateThemeButton(selectedTheme);
+        window.dispatchEvent(new CustomEvent('meu-bolso:theme-changed', {
+            detail: { theme: selectedTheme }
+        }));
     }
 
     let storedTheme = null;
