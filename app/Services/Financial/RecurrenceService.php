@@ -29,6 +29,7 @@ class RecurrenceService
         $rule = DB::transaction(function () use ($user, $data): Recorrencia {
             $rule = $user->recorrencias()->create([
                 'type' => $data['type'],
+                'expense_behavior' => $data['type'] === 'expense' ? ($data['expense_behavior'] ?? 'variable') : 'variable',
                 'description' => $data['description'],
                 'amount' => $data['amount'],
                 'category_id' => $data['category_id'],
@@ -117,6 +118,7 @@ class RecurrenceService
                     $legacy = $this->createLegacyRecord($user, $rule, $category, $scheduledDate);
                     $this->movements->createPending($user, [
                         'type' => $rule->type,
+                        'expense_behavior' => $rule->type === 'expense' ? $rule->expense_behavior : 'variable',
                         'description' => $rule->description,
                         'amount' => (string) $rule->amount,
                         'movement_date' => $scheduledDate,
