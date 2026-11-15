@@ -14,12 +14,29 @@
     </div>
 </header>
 
+<section class="movements-period-summary" aria-label="Resumo financeiro do período">
+    <div class="movements-period-summary-heading" id="movementsSummaryPeriod">Resumo de {{ \\Illuminate\\Support\\Carbon::createFromFormat('Y-m', $mes)->locale('pt_PT')->translatedFormat('F Y') }}</div>
+    <div class="movements-period-summary-values">
+        <div class="movements-period-metric">
+            <span>Receitas</span>
+            <strong id="totalIncome" class="text-success">{{ number_format($totalReceitas, 2, ',', '.') }} {{ $moeda }}</strong>
+        </div>
+        <div class="movements-period-metric">
+            <span>Despesas</span>
+            <strong id="totalAmount" class="text-danger">{{ number_format($totalDespesas, 2, ',', '.') }} {{ $moeda }}</strong>
+        </div>
+        <div class="movements-period-metric movements-period-result">
+            <span>Resultado</span>
+            <strong id="balanceAmount">{{ number_format($totalReceitas - $totalDespesas, 2, ',', '.') }} {{ $moeda }}</strong>
+        </div>
+    </div>
+</section>
 
 <section class="dashboard-entry-bar movements-entry-bar" aria-label="Novo movimento">
-    <strong>Novo movimento</strong>
+    <span class="movements-entry-label">Adicionar</span>
     <div class="btn-group" role="group" aria-label="Tipo de registo">
-        <button type="button" class="btn btn-danger" id="quickExpenseButton"><i data-lucide="arrow-down-right" aria-hidden="true"></i> Despesa</button>
-        <button type="button" class="btn btn-outline-success" id="quickIncomeButton"><i data-lucide="arrow-up-right" aria-hidden="true"></i> Receita</button>
+        <button type="button" class="btn btn-outline-danger btn-sm" id="quickExpenseButton"><i data-lucide="arrow-down-right" aria-hidden="true"></i> Despesa</button>
+        <button type="button" class="btn btn-outline-success btn-sm" id="quickIncomeButton"><i data-lucide="arrow-up-right" aria-hidden="true"></i> Receita</button>
     </div>
 </section>
 
@@ -226,32 +243,6 @@
 </section>
 
 
-<section class="row g-2 g-md-3 mt-3 mb-4 movements-summary movements-summary-after" aria-label="Resumo financeiro do período">
-    <div class="col-4 dashboard-summary-column">
-        <article class="summary-card summary-card-income h-100">
-            <div class="min-w-0">
-                <p class="small text-secondary mb-1">Receitas</p>
-                <p class="summary-value mb-0 text-success" id="totalIncome" data-total="{{ $totalReceitas }}">{{ number_format($totalReceitas, 2, ',', '.') }} {{ $moeda }}</p>
-            </div>
-        </article>
-    </div>
-    <div class="col-4 dashboard-summary-column">
-        <article class="summary-card summary-card-expense h-100">
-            <div class="min-w-0">
-                <p class="small text-secondary mb-1">Despesas</p>
-                <p class="summary-value summary-value-text mb-0 text-danger" id="totalAmount" data-total="{{ $totalDespesas }}">{{ number_format($totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
-            </div>
-        </article>
-    </div>
-    <div class="col-4 dashboard-summary-column">
-        <article class="summary-card h-100">
-            <div class="min-w-0">
-                <p class="small text-secondary mb-1">Resultado</p>
-                <p class="summary-value mb-0" id="balanceAmount">{{ number_format($totalReceitas - $totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
-            </div>
-        </article>
-    </div>
-</section>
 
 @endsection
 
