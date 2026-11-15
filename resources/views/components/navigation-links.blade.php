@@ -11,6 +11,11 @@
             @if(request()->routeIs('dashboard.movimentos')) aria-current="page" @endif>
             <i data-lucide="arrow-left-right" aria-hidden="true"></i><span>Movimentos</span>
         </a>
+        <a class="app-navigation-link {{ request()->routeIs('financial.route') ? 'active' : '' }}"
+            href="{{ route('financial.route') }}" title="Rota Financeira" aria-label="Rota Financeira"
+            @if(request()->routeIs('financial.route')) aria-current="page" @endif>
+            <i data-lucide="calendar-range" aria-hidden="true"></i><span>Rota Financeira</span>
+        </a>
     </div>
 
     <div class="app-navigation-group">
