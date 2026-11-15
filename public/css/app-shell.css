@@ -1225,3 +1225,68 @@ body.sidebar-collapsed .account-avatar {
     .mobile-bottom-link > span:last-child { font-size: .62rem; }
     .mobile-more-grid { grid-template-columns: 1fr; }
 }
+
+/* Cartões e compromissos — layout mobile */
+.commitments-page { max-width: 100%; }
+.commitments-heading p { max-width: 42rem; }
+.commitment-summary-card { background: var(--bs-body-bg); }
+.commitment-section { min-width: 0; }
+.commitment-item { background: var(--bs-body-bg); border-color: var(--app-border) !important; }
+.commitment-section > .card-body { min-width: 0; }
+
+@media (max-width: 767.98px) {
+    .commitments-page { padding-bottom: .25rem; }
+    .commitments-heading { margin-bottom: 1rem !important; }
+    .commitments-heading h1 { font-size: 1.55rem; line-height: 1.15; letter-spacing: -.035em; }
+    .commitments-heading p { font-size: .82rem; line-height: 1.45; }
+
+    .commitment-summary {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: .5rem !important;
+        margin: 0 0 1rem !important;
+    }
+    .commitment-summary > div { width: auto !important; padding: 0 !important; }
+    .commitment-summary-card { min-height: 5.6rem !important; border: 1px solid var(--app-border) !important; border-radius: .85rem !important; }
+    .commitment-summary-card .card-body { display: flex; min-width: 0; flex-direction: column; justify-content: center; padding: .65rem .55rem !important; }
+    .commitment-summary-card p:first-child { min-height: 1.9em; margin-bottom: .35rem !important; font-size: .64rem; line-height: 1.15; }
+    .commitment-summary-card p:last-child { overflow-wrap: anywhere; font-size: clamp(.72rem, 2.8vw, .9rem); line-height: 1.15; letter-spacing: -.025em; }
+
+    .commitment-section { margin-bottom: .85rem !important; border: 1px solid var(--app-border) !important; border-radius: 1rem !important; box-shadow: none !important; }
+    .commitment-section > .card-body { padding: .9rem !important; }
+    .commitment-section h2 { font-size: 1rem !important; letter-spacing: -.02em; }
+    .commitment-section .card-body > .d-flex { align-items: flex-start !important; }
+    .commitment-section .card-body > .d-flex p,
+    .commitment-section .card-body > div > p { font-size: .75rem; line-height: 1.45; }
+    .commitment-section .btn { min-height: 2.45rem; }
+
+    .commitment-item { margin-bottom: .7rem !important; padding: .85rem !important; border-radius: .85rem !important; }
+    .commitment-item h3 { font-size: .9rem !important; line-height: 1.25; }
+    .commitment-item .h4,
+    .commitment-item .h5 { font-size: 1.05rem; }
+    .commitment-item .row { --bs-gutter-x: .65rem; --bs-gutter-y: .65rem; }
+    .commitment-item .progress { height: .45rem !important; }
+    .commitment-item details { padding-top: .65rem; border-top: 1px solid var(--app-border); }
+    .commitment-item summary { min-height: 2rem; display: flex; align-items: center; cursor: pointer; }
+    .commitment-item form { margin-top: .75rem !important; }
+    .commitment-item form .form-label { margin-bottom: .3rem; font-size: .7rem; }
+    .commitment-item form .form-control,
+    .commitment-item form .form-select { min-height: 2.65rem; font-size: .85rem; }
+    .commitment-item form button { width: 100%; min-height: 2.7rem; }
+    .commitment-invoice-item > .d-flex { gap: .65rem !important; }
+    .commitment-invoice-item .badge { font-size: .67rem; }
+    .commitment-invoice-item .table-responsive { font-size: .75rem; }
+    .commitment-invoice-item .table { min-width: 25rem; }
+    .commitment-obligation-item > .d-flex { align-items: flex-start !important; }
+    .commitment-obligation-item > .d-flex > strong { font-size: .9rem; }
+    .commitment-obligation-item > div.border-top { gap: .5rem !important; }
+    .commitment-obligation-item > div.border-top > div:last-child { text-align: right; }
+    .commitments-page .pagination { flex-wrap: wrap; gap: .25rem; }
+}
+@media (max-width: 380px) {
+    .commitment-summary { gap: .35rem !important; }
+    .commitment-summary-card .card-body { padding: .55rem .4rem !important; }
+    .commitment-summary-card p:first-child { font-size: .59rem; }
+    .commitment-summary-card p:last-child { font-size: .69rem; }
+    .commitment-section > .card-body { padding: .75rem !important; }
+}
