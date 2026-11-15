@@ -50,7 +50,7 @@
                 || button.classList.contains('theme-toggle')
                 || label.includes('tema')
                 || title.includes('tema')
-                || text === 'tema';
+                || text.startsWith('tema');
         });
     }
 
@@ -92,7 +92,7 @@
             || button.classList.contains('theme-toggle')
             || label.includes('tema')
             || title.includes('tema')
-            || text === 'tema';
+            || text.startsWith('tema');
 
         if (!isThemeButton) return;
 
