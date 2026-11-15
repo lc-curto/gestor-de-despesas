@@ -9,11 +9,13 @@
 
 <header class="dashboard-intro movements-intro">
     <div class="dashboard-intro-copy">
-        <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> Gestão financeira</p>
         <h1 class="h2 fw-bold">Movimentos</h1>
         <p class="text-secondary mb-0">Consulta e gere as tuas despesas e receitas.</p>
     </div>
-
+    <div class="date-time-card" aria-label="Data e hora locais do utilizador">
+        <span class="date-time-label">Agora</span>
+        <time id="movementsCurrentDateTime" datetime="{{ now()->toIso8601String() }}">{{ now()->locale('pt_PT')->translatedFormat('l, d \\d\\e F \\d\\e Y') }} às {{ now()->format('H:i') }}</time>
+    </div>
 </header>
 
 <section class="row g-3 mb-4 movements-summary" aria-label="Resumo mensal">
@@ -255,6 +257,21 @@
 
 @push('scripts')
 <script>
+document.addEventListener('DOMContentLoaded', () => {
+    const clock = document.getElementById('movementsCurrentDateTime');
+    if (!clock) return;
+    const formatter = new Intl.DateTimeFormat('pt-PT', { dateStyle: 'full', timeStyle: 'short' });
+    const updateClock = () => {
+        const now = new Date();
+        clock.textContent = formatter.format(now);
+        clock.dateTime = now.toISOString();
+        clock.title = 'Fuso horário: ' + (Intl.DateTimeFormat().resolvedOptions().timeZone || 'local');
+    };
+    updateClock();
+    window.setInterval(updateClock, 30000);
+});
+</script>
+<script>
 window.meuBolsoDashboard = {
     userId: @json(auth()->id()),
     name: @json(auth()->user()->name),
@@ -267,7 +284,7 @@ window.meuBolsoDashboard = {
     initialExpenseCount: @json($totalDespesasFiltradas),
     initialIncomeCount: @json($totalReceitasFiltradas),
     initialMovements: @json($movimentosIniciais),
-    movementsUrl: @json(route('dashboard.movimentos')),
+    movementsUrl: @json(route('dashboard.movimentos.data')),
     expenseStore: @json(route('despesas.store')),
     incomeStore: @json(route('receitas.store')),
     commitmentStore: @json(route('financial.commitments.store')),
