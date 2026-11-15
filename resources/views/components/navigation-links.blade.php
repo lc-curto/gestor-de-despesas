@@ -6,9 +6,9 @@
             @if(request()->routeIs('dashboard')) aria-current="page" @endif>
             <i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Início</span>
         </a>
-        <a class="app-navigation-link {{ request()->routeIs('movements.*') ? 'active' : '' }}"
-            href="{{ route('movements.page') }}" title="Movimentos" aria-label="Movimentos"
-            @if(request()->routeIs('movements.*')) aria-current="page" @endif>
+        <a class="app-navigation-link {{ request()->routeIs('dashboard.movimentos') ? 'active' : '' }}"
+            href="{{ route('dashboard.movimentos') }}" title="Movimentos" aria-label="Movimentos"
+            @if(request()->routeIs('dashboard.movimentos')) aria-current="page" @endif>
             <i data-lucide="arrow-left-right" aria-hidden="true"></i><span>Movimentos</span>
         </a>
     </div>
@@ -46,3 +46,4 @@
         </a>
     </div>
 </nav>
+

@@ -72,10 +72,16 @@
     <section class="home-section-card" aria-labelledby="homeRecentTitle">
         <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
             <h2 class="h6 fw-bold mb-0" id="homeRecentTitle">Atividade recente</h2>
-            <a class="small text-decoration-none" href="{{ route('movements.page') }}">Ver todos os movimentos →</a>
+            <a class="small text-decoration-none"
+            href="{{ route('dashboard.movimentos') }}">
+             Ver todos os movimentos →
+         </a>
         </div>
         @forelse ($recentMovements as $movement)
-            @php $isExpense = $movement->tipo === 'despesa'; $movementDate = \\Illuminate\\Support\\Carbon::parse($movement->data_movimento); @endphp
+        @php
+        $isExpense = $movement->tipo === 'despesa';
+        $movementDate = \Illuminate\Support\Carbon::parse($movement->data_movimento);
+    @endphp
             <div class="home-recent-item py-2">
                 <div class="d-flex justify-content-between align-items-center gap-2">
                     <strong class="small text-break">{{ $movement->description }}</strong>
@@ -99,9 +105,9 @@
             <div class="modal-body pt-2">
                 <div class="mb-3"><label for="conversionAmount" class="form-label">Valor</label><input type="number" class="form-control form-control-lg" id="conversionAmount" placeholder="100,00" min="0.01" step="0.01" value="100"></div>
                 <div class="row g-2 align-items-end">
-                    <div class="col-5"><label for="conversionFrom" class="form-label">De</label><select class="form-select" id="conversionFrom">@foreach (\\App\\Support\\Categorias::MOEDAS as $currency)<option value="{{ $currency }}">{{ $currency }} ({{ $simbolos[$currency] ?? $currency }})</option>@endforeach</select></div>
+                    <div class="col-5"><label for="conversionFrom" class="form-label">De</label><select class="form-select" id="conversionFrom">@foreach (\App\Support\Categorias::MOEDAS as $currency)<option value="{{ $currency }}">{{ $currency }} ({{ $simbolos[$currency] ?? $currency }})</option>@endforeach</select></div>
                     <div class="col-2 text-center pb-2"><button type="button" class="btn btn-outline-secondary" id="swapCurrencies" aria-label="Inverter moedas"><i data-lucide="arrow-left-right"></i></button></div>
-                    <div class="col-5"><label for="conversionTo" class="form-label">Para</label><select class="form-select" id="conversionTo">@foreach (\\App\\Support\\Categorias::MOEDAS as $currency)<option value="{{ $currency }}">{{ $currency }} ({{ $simbolos[$currency] ?? $currency }})</option>@endforeach</select></div>
+                    <div class="col-5"><label for="conversionTo" class="form-label">Para</label><select class="form-select" id="conversionTo">@foreach (\App\Support\Categorias::MOEDAS as $currency)<option value="{{ $currency }}">{{ $currency }} ({{ $simbolos[$currency] ?? $currency }})</option>@endforeach</select></div>
                 </div>
                 <div class="conversion-result mt-3" aria-live="polite"><span class="small text-secondary">Resultado</span><strong id="convertedValue">—</strong><span id="conversionRate" class="small text-secondary">Introduz o valor e seleciona as moedas.</span></div>
                 <button type="button" class="btn btn-primary w-100 mt-3" id="convertButton">Converter</button>
