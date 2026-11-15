@@ -45,6 +45,7 @@
     const paidFields = document.getElementById('dashboardPaidFields');
     const paymentDetails = document.getElementById('dashboardPaymentDetails');
     const monthInput = document.getElementById('periodMonth');
+    const movementSearch = document.getElementById('movementSearch');
     const periodCaption = document.getElementById('periodCaption');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
 
@@ -278,8 +279,12 @@
     }
 
     function renderMovements() {
+        const searchTerm = (movementSearch?.value || '').trim().toLocaleLowerCase('pt-PT');
         const filtered = loadedMovements
             .filter((item) => cfg.type === 'todos' || item.tipo === cfg.type)
+            .filter((item) => !searchTerm || [
+                item.description, item.category_label, item.category, item.currency
+            ].some(value => String(value || '').toLocaleLowerCase('pt-PT').includes(searchTerm)))
             .sort((a, b) =>
                 String(b.data_movimento).localeCompare(String(a.data_movimento)) ||
                 String(a.id).localeCompare(String(b.id))
@@ -299,7 +304,26 @@
             empty.innerHTML = '<div class="empty-icon mb-3" aria-hidden="true">◎</div><h3 class="h6">Sem movimentos</h3><p class="small text-secondary mb-0"></p>';
             list.append(empty);
         } else {
-            visible.forEach((item) => list.append(renderItem(item)));
+            let currentDay = '';
+            visible.forEach((item) => {
+                const day = String(item.data_movimento || '').slice(0, 10);
+                if (day !== currentDay) {
+                    currentDay = day;
+                    const heading = document.createElement('div');
+                    heading.className = 'movement-day-heading';
+                    const match = day.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+                    if (match) {
+                        const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+                        heading.textContent = new Intl.DateTimeFormat('pt-PT', {
+                            weekday: 'long', day: '2-digit', month: 'long'
+                        }).format(date);
+                    } else {
+                        heading.textContent = 'Data não disponível';
+                    }
+                    list.append(heading);
+                }
+                list.append(renderItem(item));
+            });
         }
 
         const controls = document.createElement('div');
@@ -767,6 +791,7 @@
 
     document.querySelector('.transaction-filters')?.addEventListener('submit', applyFilters);
     document.getElementById('categoryFilter')?.addEventListener('change', () => applyFilters());
+    movementSearch?.addEventListener('input', () => renderMovements());
     document.getElementById('periodPrevious')?.addEventListener('click', () => changeMonth(-1));
     document.getElementById('periodNext')?.addEventListener('click', () => changeMonth(1));
     monthInput?.addEventListener('change', () => setMonth(monthInput.value));
