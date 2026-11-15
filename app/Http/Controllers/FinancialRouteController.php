@@ -38,7 +38,7 @@ class FinancialRouteController extends Controller
         $openingBalance += (float) $prior->where('type', 'income')->sum('amount')
             - (float) $prior->where('type', 'expense')->sum('amount');
 
-        $movements = $request->user()->movimentos()
+        $movements = $request->user()->movimentos()->with('categoria:id,name')
             ->whereIn('type', ['income', 'expense'])
             ->whereIn('status', ['pending', 'settled'])
             ->whereBetween('movement_date', [$rangeStart->toDateString(), $rangeEnd->toDateString()])
