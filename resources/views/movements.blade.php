@@ -154,7 +154,7 @@
                 <div class="p-3 p-sm-4 pb-3">
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
                         <h2 class="h5 fw-bold mb-0">Histórico</h2>
-                        <form method="GET" action="{{ route('dashboard') }}" id="periodForm" class="period-controls dashboard-period-controls">
+                        <form method="GET" action="{{ route('movements.page') }}" id="periodForm" class="period-controls dashboard-period-controls">
                             <button type="button" class="btn btn-sm btn-outline-secondary" id="periodPrevious" aria-label="Mês anterior"><i data-lucide="chevron-left"></i></button>
                             <label for="periodMonth" class="visually-hidden">Selecionar mês</label>
                             <input type="month" id="periodMonth" name="mes" class="form-control" value="{{ $mes }}">
@@ -167,7 +167,7 @@
 
                 <div class="px-3 px-sm-4 pb-3"><label class="visually-hidden" for="movementSearch">Pesquisar movimentos</label><div class="input-group"><span class="input-group-text"><i data-lucide="search"></i></span><input type="search" class="form-control" id="movementSearch" placeholder="Pesquisar movimento..."></div></div>
                 <div class="px-3 px-sm-4 border-bottom">
-                    <form method="GET" action="{{ route('dashboard') }}" class="transaction-filters d-flex flex-wrap align-items-center gap-2 pb-3">
+                    <form method="GET" action="{{ route('movements.page') }}" class="transaction-filters d-flex flex-wrap align-items-center gap-2 pb-3">
                         <input type="hidden" name="mes" value="{{ $mes }}">
                         <input type="hidden" name="tipo" value="{{ $filtroTipo }}">
                         <button class="btn {{ $filtroTipo === 'todos' ? 'btn-primary' : 'btn-link text-decoration-none' }} mobile-tap-target" name="tipo" value="todos">Tudo</button>
