@@ -3,8 +3,8 @@
 @section('title', 'Cartões e compromissos')
 
 @section('content')
-<div class="app-content">
-    <header class="page-heading mb-4 d-flex flex-wrap justify-content-between align-items-end gap-3">
+<div class="app-content commitments-page">
+    <header class="page-heading commitments-heading mb-4 d-flex flex-wrap justify-content-between align-items-end gap-3">
         <div>
             <h1 class="h2 fw-bold mb-1">Cartões e compromissos</h1>
             <p class="text-secondary mb-0">Acompanha o que tens por pagar, os próximos vencimentos e os pagamentos realizados.</p>
@@ -37,9 +37,9 @@
         </div></div>
     </div>
 
-    <section class="row g-3 mb-4" aria-label="Resumo financeiro">
+    <section class="row g-3 mb-4 commitment-summary" aria-label="Resumo financeiro">
         <div class="col-md-4">
-            <article class="card border-0 shadow-sm rounded-4 h-100">
+            <article class="card border-0 shadow-sm rounded-4 h-100 commitment-summary-card">
                 <div class="card-body p-4">
                     <p class="text-secondary small mb-1">Total em aberto</p>
                     <p class="h3 fw-bold mb-0">{{ number_format($summary['open'], 2, ',', '.') }} {{ auth()->user()->currency }}</p>
@@ -64,7 +64,7 @@
         </div>
     </section>
 
-    <section class="card border-0 shadow-sm rounded-4 mb-4">
+    <section class="card border-0 shadow-sm rounded-4 mb-4 commitment-section commitment-cards-section">
         <div class="card-body p-4">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                 <div>
@@ -82,7 +82,7 @@
                     $limit = (float) $card->credit_limit;
                     $usage = $limit > 0 ? min(100, ($used / $limit) * 100) : 0;
                 @endphp
-                <article class="border rounded-4 p-3 p-md-4 mb-3">
+                <article class="border rounded-4 p-3 p-md-4 mb-3 commitment-item commitment-card-item">
                     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
                         <div>
                             <h3 class="h6 fw-bold mb-1">{{ $card->name }}</h3>
@@ -158,7 +158,7 @@
         </div>
     </section>
 
-    <section class="card border-0 shadow-sm rounded-4 mb-4">
+    <section class="card border-0 shadow-sm rounded-4 mb-4 commitment-section commitment-invoices-section">
         <div class="card-body p-4">
             <div class="mb-3">
                 <h2 class="h5 fw-bold mb-1">Faturas</h2>
@@ -170,7 +170,7 @@
                     $statusLabels = ['open' => 'Aberta', 'closed' => 'Fechada', 'partial' => 'Parcialmente paga', 'paid' => 'Paga', 'overdue' => 'Em atraso'];
                     $statusClasses = ['open' => 'text-bg-info', 'closed' => 'text-bg-secondary', 'partial' => 'text-bg-warning', 'paid' => 'text-bg-success', 'overdue' => 'text-bg-danger'];
                 @endphp
-                <article class="border rounded-4 p-3 mb-3">
+                <article class="border rounded-4 p-3 mb-3 commitment-item commitment-invoice-item">
                     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
                         <div>
                             <h3 class="h6 fw-bold mb-1">{{ $invoice->conta->name ?? 'Cartão' }} · {{ $invoice->reference_month->format('m/Y') }}</h3>
@@ -234,7 +234,7 @@
         </div>
     </section>
 
-    <section class="card border-0 shadow-sm rounded-4">
+    <section class="card border-0 shadow-sm rounded-4 commitment-section commitment-obligations-section">
         <div class="card-body p-4">
             <div class="mb-3">
                 <h2 class="h5 fw-bold mb-1">Compromissos financeiros</h2>
@@ -242,7 +242,7 @@
             </div>
 
             @forelse ($commitments as $commitment)
-                <article class="border rounded-4 p-3 mb-3">
+                <article class="border rounded-4 p-3 mb-3 commitment-item commitment-obligation-item">
                     <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
                         <div>
                             <h3 class="h6 fw-bold mb-1">{{ $commitment->name }}</h3>
