@@ -15,16 +15,6 @@
 
     <div class="app-navigation-group">
         <p class="app-navigation-label">Finanças</p>
-        <a class="app-navigation-link {{ request()->routeIs('despesas.*') ? 'active' : '' }}"
-            href="{{ route('despesas.index') }}" title="Despesas" aria-label="Despesas"
-            @if(request()->routeIs('despesas.*')) aria-current="page" @endif>
-            <i data-lucide="arrow-down-circle" aria-hidden="true"></i><span>Despesas</span>
-        </a>
-        <a class="app-navigation-link {{ request()->routeIs('receitas.*') ? 'active' : '' }}"
-            href="{{ route('receitas.index') }}" title="Receitas" aria-label="Receitas"
-            @if(request()->routeIs('receitas.*')) aria-current="page" @endif>
-            <i data-lucide="arrow-up-circle" aria-hidden="true"></i><span>Receitas</span>
-        </a>
         <a class="app-navigation-link {{ request()->routeIs('financial.accounts.*') ? 'active' : '' }}"
             href="{{ route('financial.accounts.page') }}" title="Contas" aria-label="Contas"
             @if(request()->routeIs('financial.accounts.*')) aria-current="page" @endif>
