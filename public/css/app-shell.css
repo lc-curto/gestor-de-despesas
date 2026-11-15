@@ -1290,3 +1290,45 @@ body.sidebar-collapsed .account-avatar {
     .commitment-summary-card p:last-child { font-size: .69rem; }
     .commitment-section > .card-body { padding: .75rem !important; }
 }
+
+/* Dashboard compacto de cartões e pagamentos */
+.commitments-page .commitment-section { padding: 1.1rem 1.2rem; border: 1px solid var(--app-border); border-radius: 1rem; background: var(--bs-body-bg); box-shadow: var(--app-shadow); }
+.commitments-page .commitment-summary-card { border: 1px solid var(--app-border) !important; background: var(--bs-body-bg); box-shadow: none !important; }
+.commitments-page .commitment-card-item,
+.commitments-page .commitment-payment-item { background: var(--bs-body-bg); border-color: var(--app-border) !important; }
+.commitments-page .commitment-empty-state { padding: .75rem .85rem; border: 1px dashed var(--app-border); border-radius: .8rem; background: var(--bs-tertiary-bg); }
+.commitments-page .commitment-payment-item details { padding-top: .65rem; border-top: 1px solid var(--app-border); }
+.commitments-page .commitment-payment-item summary { min-height: 2rem; display: flex; align-items: center; cursor: pointer; }
+@media (max-width: 767.98px) {
+    .commitments-page .commitment-section { padding: .85rem; margin-bottom: .85rem !important; box-shadow: none; }
+    .commitments-page .commitment-summary { display: grid !important; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .45rem !important; }
+    .commitments-page .commitment-summary > div { width: auto; padding: 0; }
+    .commitments-page .commitment-summary-card { min-height: 5rem !important; border-radius: .85rem !important; }
+    .commitments-page .commitment-summary-card .card-body { padding: .65rem .5rem !important; }
+    .commitments-page .commitment-summary-card p:first-child { min-height: 1.8em; font-size: .64rem; line-height: 1.15; }
+    .commitments-page .commitment-summary-card p:last-child { font-size: clamp(.7rem,2.8vw,.9rem); line-height: 1.2; overflow-wrap: anywhere; }
+    .commitments-page .commitment-section h2 { font-size: 1rem !important; }
+    .commitments-page .commitment-section > .d-flex { align-items: flex-start !important; }
+    .commitments-page .commitment-section .btn { min-height: 2.4rem; }
+    .commitments-page .commitment-card-item,
+    .commitments-page .commitment-payment-item { padding: .8rem !important; border-radius: .85rem !important; }
+    .commitments-page .commitment-card-item h3,
+    .commitments-page .commitment-payment-item h3 { font-size: .88rem !important; }
+    .commitments-page .commitment-card-item form,
+    .commitments-page .commitment-payment-item form { margin-top: .7rem !important; }
+    .commitments-page .commitment-card-item form .form-control,
+    .commitments-page .commitment-payment-item form .form-control,
+    .commitments-page .commitment-payment-item form .form-select { min-height: 2.65rem; font-size: .85rem; }
+    .commitments-page .commitment-card-item form button,
+    .commitments-page .commitment-payment-item form button { width: 100%; min-height: 2.65rem; }
+    .commitments-page .commitment-payment-item .badge { font-size: .66rem; }
+    .commitments-page .commitment-payment-item .table { min-width: 24rem; font-size: .75rem; }
+    .commitments-page .pagination { flex-wrap: wrap; gap: .25rem; }
+}
+@media (max-width: 380px) {
+    .commitments-page .commitment-section { padding: .7rem; }
+    .commitments-page .commitment-summary { gap: .3rem !important; }
+    .commitments-page .commitment-summary-card .card-body { padding: .55rem .38rem !important; }
+    .commitments-page .commitment-summary-card p:first-child { font-size: .59rem; }
+    .commitments-page .commitment-summary-card p:last-child { font-size: .68rem; }
+}
