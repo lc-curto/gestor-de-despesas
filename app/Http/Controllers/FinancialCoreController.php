@@ -57,6 +57,7 @@ class FinancialCoreController extends Controller
         $data = $request->validate([
             'type' => ['required', Rule::in(['income', 'expense'])],
             'description' => 'required|string|max:255',
+            'notes' => 'nullable|string|max:2000',
             'amount' => 'required|numeric|gt:0|decimal:0,2|max:9999999999.99',
             'category_id' => ['required', 'uuid', Rule::exists('categorias', 'id')->where('user_id', $request->user()->id)],
             'account_id' => ['nullable', 'uuid', Rule::exists('contas_financeiras', 'id')->where('user_id', $request->user()->id)],
@@ -327,6 +328,7 @@ class FinancialCoreController extends Controller
     {
         $data = $request->validate([
             'description' => 'sometimes|required|string|max:255',
+            'notes' => 'sometimes|nullable|string|max:2000',
             'amount' => 'sometimes|required|numeric|gt:0|decimal:0,2|max:9999999999.99',
             'movement_date' => 'sometimes|required|date',
             'category_id' => ['sometimes', 'nullable', 'uuid', Rule::exists('categorias', 'id')->where('user_id', $request->user()->id)],
