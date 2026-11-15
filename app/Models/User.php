@@ -25,6 +25,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'financial_cutoff_date' => 'date',
+            'financial_review_required' => 'boolean',
             'password' => 'hashed',
         ];
     }
