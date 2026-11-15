@@ -12,39 +12,11 @@
         <h1 class="h2 fw-bold">Movimentos</h1>
         <p class="text-secondary mb-0">Consulta e gere as tuas despesas e receitas.</p>
     </div>
-    <div class="date-time-card" aria-label="Data e hora locais do utilizador">
-        <span class="date-time-label">Agora</span>
-        <time id="movementsCurrentDateTime" datetime="{{ now()->toIso8601String() }}">{{ now()->locale('pt_PT')->translatedFormat('l, d \\d\\e F \\d\\e Y') }} às {{ now()->format('H:i') }}</time>
-    </div>
 </header>
 
-<section class="row g-3 mb-4 movements-summary" aria-label="Resumo mensal">
-    <div class="col-6 col-xl-6 dashboard-summary-column">
-        <article class="summary-card summary-card-primary h-100">
-            <span class="summary-icon" aria-hidden="true"><i data-lucide="wallet"></i></span>
-            <div class="d-flex align-items-center gap-3">
-                <div class="min-w-0">
-                    <p class="small mb-1 opacity-75">Despesas do mês</p>
-                    <p class="summary-value summary-value-text mb-0" id="totalAmount" data-total="{{ $totalDespesas }}">{{ number_format($totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
-                </div>
-            </div>
-        </article>
-    </div>
-    <div class="col-6 col-xl-6 dashboard-summary-column">
-        <article class="summary-card summary-card-income h-100">
-            <span class="summary-icon" aria-hidden="true"><i data-lucide="arrow-up-right"></i></span>
-            <div class="d-flex align-items-center gap-3">
-                <div>
-                    <p class="small text-secondary mb-1">Receitas</p>
-                    <p class="summary-value mb-0 text-success" id="totalIncome" data-total="{{ $totalReceitas }}">{{ number_format($totalReceitas, 2, ',', '.') }} {{ $moeda }}</p>
-                </div>
-            </div>
-        </article>
-    </div>
-</section>
 
-<section class="dashboard-entry-bar" aria-label="Novo registo">
-    <strong>Adicionar movimento</strong>
+<section class="dashboard-entry-bar movements-entry-bar" aria-label="Novo movimento">
+    <strong>Novo movimento</strong>
     <div class="btn-group" role="group" aria-label="Tipo de registo">
         <button type="button" class="btn btn-danger" id="quickExpenseButton"><i data-lucide="arrow-down-right" aria-hidden="true"></i> Despesa</button>
         <button type="button" class="btn btn-outline-success" id="quickIncomeButton"><i data-lucide="arrow-up-right" aria-hidden="true"></i> Receita</button>
@@ -144,7 +116,7 @@
             <div class="card-body p-0 history-card-body">
                 <div class="p-3 p-sm-4 pb-3">
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-                        <h2 class="h5 fw-bold mb-0">Histórico</h2>
+                        <h2 class="h5 fw-bold mb-0">Histórico de movimentos</h2>
                         <form method="GET" action="{{ route('dashboard.movimentos') }}" id="periodForm" class="period-controls dashboard-period-controls">
                             <button type="button" class="btn btn-sm btn-outline-secondary" id="periodPrevious" aria-label="Mês anterior"><i data-lucide="chevron-left"></i></button>
                             <label for="periodMonth" class="visually-hidden">Selecionar mês</label>
@@ -253,24 +225,37 @@
     </div>
 </section>
 
+
+<section class="row g-2 g-md-3 mt-3 mb-4 movements-summary movements-summary-after" aria-label="Resumo financeiro do período">
+    <div class="col-4 dashboard-summary-column">
+        <article class="summary-card summary-card-income h-100">
+            <div class="min-w-0">
+                <p class="small text-secondary mb-1">Receitas</p>
+                <p class="summary-value mb-0 text-success" id="totalIncome" data-total="{{ $totalReceitas }}">{{ number_format($totalReceitas, 2, ',', '.') }} {{ $moeda }}</p>
+            </div>
+        </article>
+    </div>
+    <div class="col-4 dashboard-summary-column">
+        <article class="summary-card summary-card-expense h-100">
+            <div class="min-w-0">
+                <p class="small text-secondary mb-1">Despesas</p>
+                <p class="summary-value summary-value-text mb-0 text-danger" id="totalAmount" data-total="{{ $totalDespesas }}">{{ number_format($totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
+            </div>
+        </article>
+    </div>
+    <div class="col-4 dashboard-summary-column">
+        <article class="summary-card h-100">
+            <div class="min-w-0">
+                <p class="small text-secondary mb-1">Resultado</p>
+                <p class="summary-value mb-0" id="balanceAmount">{{ number_format($totalReceitas - $totalDespesas, 2, ',', '.') }} {{ $moeda }}</p>
+            </div>
+        </article>
+    </div>
+</section>
+
 @endsection
 
 @push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const clock = document.getElementById('movementsCurrentDateTime');
-    if (!clock) return;
-    const formatter = new Intl.DateTimeFormat('pt-PT', { dateStyle: 'full', timeStyle: 'short' });
-    const updateClock = () => {
-        const now = new Date();
-        clock.textContent = formatter.format(now);
-        clock.dateTime = now.toISOString();
-        clock.title = 'Fuso horário: ' + (Intl.DateTimeFormat().resolvedOptions().timeZone || 'local');
-    };
-    updateClock();
-    window.setInterval(updateClock, 30000);
-});
-</script>
 <script>
 window.meuBolsoDashboard = {
     userId: @json(auth()->id()),
