@@ -31,6 +31,7 @@ class FinancialMovementService
                 'id' => (string) Str::uuid(),
                 'user_id' => $user->id,
                 'type' => $type,
+                'expense_behavior' => $type === 'expense' ? ($data['expense_behavior'] ?? 'variable') : 'variable',
                 'status' => 'settled',
                 'description' => $data['description'],
                 'amount' => $data['amount'],
@@ -64,6 +65,7 @@ class FinancialMovementService
             $movement = Movimento::query()->create([
                 'user_id' => $user->id,
                 'type' => $data['type'],
+                'expense_behavior' => $data['type'] === 'expense' ? ($data['expense_behavior'] ?? 'variable') : 'variable',
                 'status' => 'pending',
                 'description' => $data['description'],
                 'amount' => $data['amount'],
@@ -197,7 +199,7 @@ class FinancialMovementService
             $before = $locked->getAttributes();
 
             if ($locked->status === 'settled') {
-                $allowed = ['description', 'amount', 'movement_date', 'category_id'];
+                $allowed = ['description', 'amount', 'movement_date', 'category_id', 'expense_behavior'];
                 $action = 'updated';
             } elseif ($locked->status === 'pending') {
                 $allowed = ['description', 'amount', 'movement_date', 'category_id'];
