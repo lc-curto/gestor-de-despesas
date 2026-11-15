@@ -1537,3 +1537,84 @@ body.sidebar-collapsed .account-avatar {
     .movements-period-summary { padding-inline: .55rem; }
     .movements-period-metric strong { font-size: .7rem; }
 }
+
+
+/* Filtros do histórico: controlos compactos e filtros adicionais em bottom sheet */
+.movements-search-row {
+    display: flex;
+    align-items: stretch;
+    gap: .55rem;
+}
+.movements-search-row .input-group { flex: 1 1 auto; min-width: 0; }
+.movements-filter-trigger {
+    display: inline-flex;
+    width: 2.8rem;
+    min-width: 2.8rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: .7rem !important;
+}
+.movements-filter-trigger svg { width: 1.1rem; height: 1.1rem; }
+.movements-type-filters { padding-bottom: .65rem !important; }
+.movements-type-filters .btn { min-height: 2.2rem; padding: .35rem .7rem; }
+.movement-filters-sheet { z-index: 1090; }
+.movement-filters-sheet .offcanvas-body { padding-bottom: max(1.25rem, env(safe-area-inset-bottom)); }
+
+/* Bottom sheet Mais: lista curta, sem grelha redundante */
+.mobile-more-sheet { border-radius: 1.25rem 1.25rem 0 0; }
+.mobile-sheet-handle {
+    width: 2.25rem;
+    height: .25rem;
+    margin: .65rem auto 0;
+    border-radius: 999px;
+    background: var(--bs-border-color);
+}
+.mobile-more-sheet .offcanvas-header { padding: .8rem 1.1rem .65rem; }
+.mobile-more-list { display: flex; flex-direction: column; }
+.mobile-more-item {
+    display: flex;
+    min-height: 4.15rem;
+    align-items: center;
+    gap: .9rem;
+    padding: .65rem .15rem;
+    border-bottom: 1px solid var(--app-border);
+    color: var(--bs-body-color);
+    text-decoration: none;
+}
+.mobile-more-item > svg:first-child { width: 1.25rem; height: 1.25rem; flex: 0 0 auto; color: var(--app-primary); }
+.mobile-more-item > span { display: flex; min-width: 0; flex: 1 1 auto; flex-direction: column; gap: .12rem; }
+.mobile-more-item strong { font-size: .9rem; font-weight: 650; }
+.mobile-more-item small { color: var(--bs-secondary-color); font-size: .75rem; }
+.mobile-more-item .mobile-more-chevron { width: 1rem; height: 1rem; color: var(--bs-secondary-color); }
+.mobile-more-utilities { display: grid; gap: .65rem; padding-top: 1rem; }
+.mobile-more-utility {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: .65rem;
+    padding: .55rem .15rem;
+    border: 0;
+    background: transparent;
+    color: var(--bs-body-color);
+    text-align: left;
+}
+.mobile-more-utility svg:last-child { margin-left: auto; color: var(--bs-secondary-color); }
+.mobile-more-logout {
+    display: flex;
+    width: 100%;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    border: 1px solid var(--bs-danger);
+    border-radius: .65rem;
+    background: transparent;
+    color: var(--bs-danger);
+    font-weight: 600;
+}
+@media (max-width: 767.98px) {
+    .movements-search-row { gap: .45rem; }
+    .movements-filter-trigger { width: 2.65rem; min-width: 2.65rem; }
+    .movements-type-filters { padding-bottom: .55rem !important; }
+    .movements-type-filters .btn { min-height: 2rem; padding: .3rem .6rem; font-size: .8rem; }
+}
