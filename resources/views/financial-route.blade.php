@@ -158,8 +158,10 @@
  const shiftMonth=(value,count)=>{const [y,m]=value.split('-').map(Number);const d=new Date(y,m-1+count,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
  document.getElementById('routePrevious').addEventListener('click',()=>{month=shiftMonth(month,-periodStep());setPeriod()});
  document.getElementById('routeNext').addEventListener('click',()=>{month=shiftMonth(month,periodStep());setPeriod()});
- document.getElementById('routeToday').addEventListener('click',()=>{month=root.dataset.today.slice(0,7);setPeriod()});
+ document.getElementById('routeToday').addEventListener('click',()=>{month=root.dataset.today.slice(0,7);window.location.hash='route-today';setPeriod()});
  document.querySelectorAll('[data-route-mode]').forEach(b=>b.addEventListener('click',()=>{mode=Number(b.dataset.routeMode);setPeriod()}));
+ if(window.matchMedia('(max-width: 767.98px)').matches){const [year,monthNumber]=month.split('-').map(Number);document.getElementById('routePeriodLabel').textContent=new Intl.DateTimeFormat('pt-PT',{month:'long',year:'numeric'}).format(new Date(year,monthNumber-1,1));}
+ if(window.location.hash==='#route-today'){requestAnimationFrame(()=>document.querySelector('[data-date="'+root.dataset.today+'"]')?.scrollIntoView({behavior:'smooth',block:'center'}));window.history.replaceState(null,'',window.location.pathname+window.location.search);}
  document.getElementById('routeNewMovement').addEventListener('click',()=>openForm());
  document.getElementById('routeAddFromDay').addEventListener('click',()=>{dayModal.hide();openForm(activeDate)});
  function openForm(date=activeDate,movement=null){
