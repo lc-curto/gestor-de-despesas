@@ -243,6 +243,9 @@ class FinanceController extends Controller
                 'start_date' => $data[$dateField],
                 'ends_at' => $data['recurrence_ends_at'] ?? null,
             ]);
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => true, 'message' => ($tipo === 'despesa' ? 'Despesa' : 'Receita') . ' recorrente criada.']);
+            }
             return redirect()->route($tipo === 'despesa' ? 'despesas.index' : 'receitas.index')
                 ->with('success', ($tipo === 'despesa' ? 'Despesa' : 'Receita') . ' recorrente criada.');
         }

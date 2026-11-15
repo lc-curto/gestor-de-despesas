@@ -93,6 +93,14 @@
                                 <div class="form-text text-warning">Cria uma conta e configura o saldo inicial em <a href="{{ route('financial.accounts.page') }}">Contas</a> antes de registar.</div>
                             @endif
                         </div>
+                        <div class="border-top pt-3 mb-3">
+                            <label class="form-check mb-2"><input class="form-check-input" type="checkbox" name="recurrence_enabled" value="1" id="dashboardRecurrenceEnabled"> <span class="form-check-label">Repetir esta despesa/receita</span></label>
+                            <div id="dashboardRecurrenceFields" class="row g-2" hidden>
+                                <div class="col-4"><label for="dashboardRecurrenceInterval" class="form-label">A cada</label><input id="dashboardRecurrenceInterval" name="recurrence_interval" type="number" min="1" max="365" value="1" class="form-control"></div>
+                                <div class="col-4"><label for="dashboardRecurrenceFrequency" class="form-label">Frequência</label><select id="dashboardRecurrenceFrequency" name="recurrence_frequency" class="form-select"><option value="daily">Dia(s)</option><option value="weekly">Semana(s)</option><option value="monthly" selected>Mês(es)</option><option value="yearly">Ano(s)</option><option value="custom">Dias</option></select></div>
+                                <div class="col-4"><label for="dashboardRecurrenceEnds" class="form-label">Termina em</label><input id="dashboardRecurrenceEnds" name="recurrence_ends_at" type="date" class="form-control"></div>
+                            </div>
+                        </div>
                         <div class="mb-3">
                             <label for="movementCategory" class="form-label">Categoria</label>
                             <select class="form-select" id="movementCategory" name="category_id" required>
@@ -270,6 +278,8 @@
 
 @endsection
 
+@push('scripts')
+<script>document.addEventListener('DOMContentLoaded',()=>{const c=document.getElementById('dashboardRecurrenceEnabled'),f=document.getElementById('dashboardRecurrenceFields');if(c&&f){const sync=()=>f.hidden=!c.checked;c.addEventListener('change',sync);sync();}});</script>
 @push('scripts')
 <script>
 window.meuBolsoDashboard = {
