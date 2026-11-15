@@ -1,6 +1,5 @@
 (() => {
     const root = document.documentElement;
-    const themeButton = document.getElementById('themeToggle');
     const sidebarToggle = document.getElementById('sidebarToggle');
     const mobileSidebarOpen = document.getElementById('mobileSidebarOpen');
     const sidebarBackdrop = document.getElementById('sidebarBackdrop');
@@ -41,21 +40,37 @@
         window.setInterval(updateCurrentDateTime, 30000);
     }
 
-    function updateThemeButton(theme) {
-        if (!themeButton) return;
-        const icon = themeButton.querySelector('i[data-lucide]');
-        if (icon) icon.setAttribute('data-lucide', theme === 'dark' ? 'sun' : 'moon-star');
+    function getThemeButtons() {
+        return [...document.querySelectorAll('button')].filter((button) => {
+            const label = (button.getAttribute('aria-label') || '').toLocaleLowerCase('pt-PT');
+            const title = (button.getAttribute('title') || '').toLocaleLowerCase('pt-PT');
+            const text = (button.textContent || '').trim().toLocaleLowerCase('pt-PT');
+            return button.id === 'themeToggle'
+                || button.hasAttribute('data-theme-toggle')
+                || button.classList.contains('theme-toggle')
+                || label.includes('tema')
+                || title.includes('tema')
+                || text === 'tema';
+        });
+    }
+
+    function updateThemeButtons(theme) {
         const label = theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro';
-        themeButton.setAttribute('aria-label', label);
-        themeButton.title = label;
-        renderIcons(themeButton);
+
+        getThemeButtons().forEach((button) => {
+            const icon = button.querySelector('i[data-lucide]');
+            if (icon) icon.setAttribute('data-lucide', theme === 'dark' ? 'sun' : 'moon-star');
+            button.setAttribute('aria-label', label);
+            button.title = label;
+            renderIcons(button);
+        });
     }
 
     function applyTheme(theme) {
         root.setAttribute('data-bs-theme', theme);
         try { localStorage.setItem(THEME_KEY, theme); }
         catch (error) { console.warn('Não foi possível guardar a preferência de tema:', error); }
-        updateThemeButton(theme);
+        updateThemeButtons(theme);
     }
 
     let storedTheme = null;
@@ -63,7 +78,24 @@
     catch (error) { console.warn('Não foi possível ler a preferência de tema:', error); }
     applyTheme(['light', 'dark'].includes(storedTheme) ? storedTheme : 'light');
 
-    themeButton?.addEventListener('click', () => {
+    // Delegação de eventos: funciona tanto no botão da sidebar como na opção
+    // Tema do painel mobile "Mais", mesmo que esse painel seja renderizado depois.
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('button');
+        if (!button) return;
+
+        const label = (button.getAttribute('aria-label') || '').toLocaleLowerCase('pt-PT');
+        const title = (button.getAttribute('title') || '').toLocaleLowerCase('pt-PT');
+        const text = (button.textContent || '').trim().toLocaleLowerCase('pt-PT');
+        const isThemeButton = button.id === 'themeToggle'
+            || button.hasAttribute('data-theme-toggle')
+            || button.classList.contains('theme-toggle')
+            || label.includes('tema')
+            || title.includes('tema')
+            || text === 'tema';
+
+        if (!isThemeButton) return;
+
         applyTheme(root.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark');
     });
 
