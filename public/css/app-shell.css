@@ -1332,3 +1332,74 @@ body.sidebar-collapsed .account-avatar {
     .commitments-page .commitment-summary-card p:first-child { font-size: .59rem; }
     .commitments-page .commitment-summary-card p:last-child { font-size: .68rem; }
 }
+
+/* Dashboard operacional e página independente de movimentos */
+.home-dashboard { width: 100%; max-width: 58rem; margin: 0 auto; }
+.home-dashboard-intro { margin-bottom: 1rem; }
+.home-dashboard-intro .dashboard-intro-copy { flex: 1 1 100%; }
+.home-dashboard-intro h1 { margin: 0; }
+.home-balance-card,
+.home-section-card {
+    padding: 1rem;
+    border: 1px solid var(--app-border);
+    border-radius: 1rem;
+    background: var(--bs-body-bg);
+    box-shadow: var(--app-shadow);
+}
+.home-balance-value { font-size: clamp(1.7rem, 4vw, 2.2rem); font-weight: 850; letter-spacing: -.045em; line-height: 1.15; }
+.home-month-summary .summary-card { min-height: 7.2rem; padding: .9rem; }
+.home-month-summary .summary-icon { margin-bottom: .45rem; }
+.home-month-summary .summary-value { font-size: 1.1rem; }
+.home-quick-action {
+    display: flex;
+    width: 100%;
+    min-height: 4.3rem;
+    align-items: center;
+    justify-content: center;
+    gap: .65rem;
+    padding: .8rem;
+    border: 1px solid var(--app-border);
+    border-radius: .9rem;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    text-align: center;
+    text-decoration: none;
+}
+.home-quick-action:hover { border-color: var(--app-primary); color: var(--app-primary); }
+.home-quick-action > svg { width: 1.25rem; height: 1.25rem; flex: 0 0 auto; color: var(--app-primary); }
+.home-converter-trigger { justify-content: flex-start; text-align: left; }
+.home-converter-trigger span { display: flex; flex-direction: column; gap: .12rem; }
+.home-converter-trigger small { color: var(--bs-secondary-color); font-size: .75rem; }
+.home-section-card { padding: 1rem; }
+.home-recent-item + .home-recent-item { border-top: 1px solid var(--app-border); }
+.home-section-card a { text-decoration: none; }
+.movements-intro { margin-bottom: 1rem; }
+.movements-intro .dashboard-intro-copy { flex: 1 1 100%; }
+.movements-summary .summary-card { min-height: 5.8rem; }
+.movement-day-heading {
+    padding: .85rem 0 .35rem;
+    color: var(--bs-secondary-color);
+    font-size: .75rem;
+    font-weight: 750;
+    letter-spacing: .025em;
+    text-transform: capitalize;
+}
+.movement-day-heading:first-child { padding-top: .35rem; }
+#movementSearch { min-height: 2.8rem; }
+#movementSearch + .input-group-text { border-radius: .7rem 0 0 .7rem; }
+
+@media (max-width: 767.98px) {
+    .home-dashboard-intro { display: block; }
+    .home-dashboard-intro .date-time-card { margin-top: .8rem; }
+    .home-dashboard .home-balance-card { padding: .95rem; }
+    .home-dashboard .home-section-card { padding: .9rem; }
+    .home-dashboard .home-month-summary { --bs-gutter-x: .55rem; }
+    .home-dashboard .home-month-summary .summary-card { min-height: 7rem; padding: .7rem; }
+    .home-dashboard .home-month-summary .summary-value { font-size: .98rem; overflow-wrap: anywhere; }
+    .home-quick-action { min-height: 4.1rem; padding: .7rem .5rem; font-size: .84rem; }
+    .home-converter-trigger { min-height: 4.2rem; padding: .75rem; }
+    .home-recent-item { min-width: 0; }
+    .movements-intro { margin-bottom: .85rem; }
+    .movements-summary { --bs-gutter-x: .55rem; }
+    .movements-summary .summary-card { min-height: 5.2rem; padding: .75rem; }
+}
