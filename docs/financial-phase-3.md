@@ -18,8 +18,8 @@ O scheduler Laravel requer que o alojamento invoque `schedule:run` a cada minuto
 * * * * * cd /caminho/da/aplicacao && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-Sem essa tarefa externa, a geração continua a ocorrer quando o utilizador abre a página de Recorrências, mas não é garantida enquanto a aplicação estiver sem acessos.
+Sem essa tarefa externa, a geração continua a ocorrer quando o utilizador abre as páginas de Receitas ou Despesas, mas não é garantida enquanto a aplicação estiver sem acessos.
 
 ## Teste local
 
-Depois de atualizar a branch e instalar as dependências, executar `php artisan migrate` e abrir `/recorrencias`. A geração também pode ser acionada manualmente com `php artisan financial:generate-recurring-movements`; a suite específica é `php artisan test --filter=FinancialRecurrenceTest`.
+Depois de atualizar a branch e instalar as dependências, executar `php artisan migrate`, abrir Receitas ou Despesas e testar a opção “Repetir”. A geração também pode ser acionada manualmente com `php artisan financial:generate-recurring-movements`; a suite específica é `php artisan test --filter=FinancialRecurrenceTest`.

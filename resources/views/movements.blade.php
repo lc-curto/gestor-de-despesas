@@ -233,7 +233,6 @@
                                     data-value="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}">{{ $isExpense ? '−' : '+' }}{{ number_format((float) $movimento->amount, 2, ',', '.') }}</strong>
                                 <div class="btn-group btn-group-sm" role="group" aria-label="Ações de {{ $movimento->description }}">
                                     @if ($movimento->recurrence_id)
-                                        <a class="btn btn-outline-primary" href="{{ route('financial.recurrences.page') }}" aria-label="Gerir recorrência de {{ $movimento->description }}" title="Gerir recorrência"><i data-lucide="repeat-2" aria-hidden="true"></i></a>
                                     @else
                                         <button type="button" class="btn btn-outline-secondary edit-movement" data-acao="editar" aria-label="Editar {{ $movimento->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></button>
                                         <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $movimento->id) }}" data-delete-type="{{ $movimento->tipo }}" onsubmit="return confirm('Eliminar definitivamente este registo?')">
@@ -287,7 +286,6 @@ window.meuBolsoDashboard = {
     initialIncomeCount: @json($totalReceitasFiltradas),
     initialMovements: @json($movimentosIniciais),
     movementsUrl: @json(route('dashboard.movimentos.data')),
-    recurrencesUrl: @json(route('financial.recurrences.page')),
     expenseStore: @json(route('despesas.store')),
     incomeStore: @json(route('receitas.store')),
     commitmentStore: @json(route('financial.commitments.store')),

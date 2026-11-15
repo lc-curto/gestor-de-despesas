@@ -87,12 +87,30 @@
         </div>
     </section>
     @endif
+    @if (!$registo)
+    <hr class="my-4">
+    <section aria-labelledby="recurrenceTitle">
+        <h2 id="recurrenceTitle" class="h6 fw-bold mb-3">Repetição</h2>
+        <label class="form-check mb-3"><input class="form-check-input" type="checkbox" name="recurrence_enabled" value="1" id="recurrence_enabled" @checked(old('recurrence_enabled'))> <span class="form-check-label">Repetir esta {{ $tipo }}</span></label>
+        <div id="recurrenceFields" class="row g-3" hidden>
+            <div class="col-md-4"><label for="recurrence_interval" class="form-label">Repetir a cada</label><input id="recurrence_interval" name="recurrence_interval" type="number" min="1" max="365" class="form-control" value="{{ old('recurrence_interval', 1) }}"></div>
+            <div class="col-md-4"><label for="recurrence_frequency" class="form-label">Frequência</label><select id="recurrence_frequency" name="recurrence_frequency" class="form-select"><option value="daily">Dia(s)</option><option value="weekly">Semana(s)</option><option value="monthly" selected>Mês(es)</option><option value="yearly">Ano(s)</option><option value="custom">Dias personalizados</option></select></div>
+            <div class="col-md-4"><label for="recurrence_ends_at" class="form-label">Termina em <span class="text-secondary">(opcional)</span></label><input id="recurrence_ends_at" name="recurrence_ends_at" type="date" class="form-control" value="{{ old('recurrence_ends_at') }}"></div>
+        </div>
+        <div class="form-text">As próximas ocorrências aparecem em {{ $tipo === 'despesa' ? 'Despesas' : 'Receitas' }} como previsões e não alteram o saldo até serem liquidadas.</div>
+    </section>
+    @endif
     <div class="d-flex gap-2 mt-4">
         <button class="btn btn-primary" @disabled($accounts->isEmpty())>Guardar</button>
         <a class="btn btn-outline-secondary" href="{{ $returnUrl }}">Cancelar</a>
     </div>
 </form>
 @endsection
+@if (!$registo)
+@push('scripts')
+<script>document.addEventListener('DOMContentLoaded',()=>{const c=document.getElementById('recurrence_enabled'),f=document.getElementById('recurrenceFields');if(c&&f){const sync=()=>f.hidden=!c.checked;c.addEventListener('change',sync);sync();}});</script>
+@endpush
+@endif
 @if ($tipo === 'despesa' && !$registo)
 @push('scripts')
 <script>

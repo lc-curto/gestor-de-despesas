@@ -78,6 +78,9 @@
                     <div class="finance-record-copy">
                         <strong>{{ $item->description }}</strong>
                         <span>{{ $item->{$data}->format('d/m/Y') }} <span aria-hidden="true">·</span> {{ $item->categoria?->name ?? 'Categoria indisponível' }}
+                            @if ($financialMovement?->recurrence_id)
+                                <span class="text-warning">· Previsão recorrente</span>
+                            @endif
                             @if ($financialMovement?->requires_account_assignment)
                                 <span class="text-warning">· Conta por associar — usa Editar</span>
                             @elseif ($financialMovement?->is_historical && $financialMovement?->contaOrigem?->type === 'legacy' || $financialMovement?->is_historical && $financialMovement?->contaDestino?->type === 'legacy')

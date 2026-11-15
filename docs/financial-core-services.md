@@ -1,6 +1,6 @@
 # Núcleo financeiro — serviços e contratos da API
 
-Este documento descreve a camada de domínio e a integração gradual com o histórico legado. A gestão de recorrências e previsões da Fase 3 está em `docs/financial-phase-3.md` e na página autenticada `/recorrencias`.
+Este documento descreve a camada de domínio e a integração gradual com o histórico legado. A gestão de recorrências e previsões da Fase 3 está integrada nos formulários e listas de Receitas e Despesas; a geração é mantida pelo serviço e pelo scheduler.
 
 Os fluxos de cartões de crédito, faturas e compromissos da Fase 2 estão implementados em `docs/financial-phase-2.md` e disponíveis na página autenticada `/compromissos`.
 

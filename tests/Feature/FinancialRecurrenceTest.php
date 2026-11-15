@@ -72,7 +72,9 @@ class FinancialRecurrenceTest extends TestCase
 
         $this->getJson(route('dashboard.movimentos.data', ['mes' => '2026-11', 'limit' => 50]))
             ->assertOk()->assertJsonPath('data.0.recurrence_id', $user->recorrencias()->firstOrFail()->id);
-        $this->get('/recorrencias')->assertOk()->assertSee('Nova regra recorrente')->assertSee('Previsões e histórico');
+        $this->get('/recorrencias')->assertNotFound();
+        $this->get(route('despesas.create'))->assertOk()->assertSee('Repetir esta despesa');
+        $this->get(route('despesas.index'))->assertOk()->assertSee('Previsão recorrente');
 
         $novemberForecast = $user->movimentos()->where('recurrence_occurrence_date', '2026-11-15')->firstOrFail();
         $this->putJson('/api/financial/movements/'.$novemberForecast->id.'/void', ['reason' => 'Não aplicável este mês.'])->assertOk();
@@ -80,6 +82,24 @@ class FinancialRecurrenceTest extends TestCase
         $this->assertSame(3, $user->movimentos()->whereNotNull('recurrence_id')->count());
         $this->getJson(route('dashboard.movimentos.data', ['mes' => '2026-11', 'limit' => 50]))
             ->assertOk()->assertJsonPath('total', 0)->assertJsonCount(0, 'data');
+    }
+
+    public function test_recurrence_is_created_from_the_expense_form(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->account($user);
+        $category = $user->categorias()->where('type', 'despesa')->firstOrFail();
+
+        $this->actingAs($user)->post(route('despesas.store'), [
+            'description' => 'Internet', 'amount' => '30.00', 'account_id' => $account->id,
+            'category_id' => $category->id, 'expense_date' => '2026-11-15',
+            'recurrence_enabled' => '1', 'recurrence_frequency' => 'monthly',
+            'recurrence_interval' => '1',
+        ])->assertRedirect(route('despesas.index'));
+
+        $this->assertDatabaseHas('recorrencias', ['description' => 'Internet', 'type' => 'expense']);
+        $this->assertSame(3, $user->despesas()->count());
+        $this->assertSame(3, $user->movimentos()->whereNotNull('recurrence_id')->count());
     }
 
     public function test_forecast_can_be_confirmed_reagendado_and_settled_without_losing_history(): void

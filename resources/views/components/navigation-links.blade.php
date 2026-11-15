@@ -25,11 +25,6 @@
             @if(request()->routeIs('financial.commitments.*')) aria-current="page" @endif>
             <i data-lucide="credit-card" aria-hidden="true"></i><span>Cartões e compromissos</span>
         </a>
-        <a class="app-navigation-link {{ request()->routeIs('financial.recurrences.*') ? 'active' : '' }}"
-            href="{{ route('financial.recurrences.page') }}" title="Recorrências" aria-label="Recorrências"
-            @if(request()->routeIs('financial.recurrences.*')) aria-current="page" @endif>
-            <i data-lucide="repeat-2" aria-hidden="true"></i><span>Recorrências</span>
-        </a>
     </div>
 
     <div class="app-navigation-group">

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\Financial\CardInvoiceService;
 use App\Services\Financial\FinancialMovementService;
+use App\Services\Financial\RecurrenceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -87,6 +88,10 @@ class FinanceController extends Controller
                     ->where('type', $tipo),
             ],
             $dateField => 'required|date',
+            'recurrence_enabled' => 'sometimes|boolean',
+            'recurrence_frequency' => ['required_if:recurrence_enabled,1', Rule::in(['daily', 'weekly', 'monthly', 'yearly', 'custom'])],
+            'recurrence_interval' => 'required_if:recurrence_enabled,1|integer|min:1|max:365',
+            'recurrence_ends_at' => 'nullable|date|after_or_equal:' . $dateField,
         ]);
 
         $account = $request->user()->contasFinanceiras()
@@ -198,7 +203,7 @@ class FinanceController extends Controller
         $linkedMovements = $request->user()->movimentos()
             ->where('legacy_type', $legacyType)
             ->whereIn('legacy_id', $registos->getCollection()->pluck('id'))
-            ->with(['contaOrigem', 'contaDestino'])
+            ->with(['contaOrigem', 'contaDestino', 'recorrencia'])
             ->get()
             ->keyBy('legacy_id');
         $data = $dateField;
@@ -219,16 +224,32 @@ class FinanceController extends Controller
         return view('finance.form', compact('tipo', 'data', 'cats', 'registo', 'accounts', 'financialMovement', 'returnUrl'));
     }
 
-    public function store(Request $request, FinancialMovementService $service, CardInvoiceService $invoices)
+    public function store(Request $request, FinancialMovementService $service, CardInvoiceService $invoices, RecurrenceService $recurrences)
     {
         [$tipo] = $this->config($request);
         $data = $this->validatedData($request);
         $accountId = $data['account_id'];
-        unset($data['account_id']);
-        $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
+        $recurrenceEnabled = (bool) ($data['recurrence_enabled'] ?? false);
         $dateField = $tipo === 'despesa' ? 'expense_date' : 'income_date';
+        if ($recurrenceEnabled) {
+            $recurrences->create($request->user(), [
+                'type' => $tipo === 'despesa' ? 'expense' : 'income',
+                'description' => $data['description'],
+                'amount' => $data['amount'],
+                'category_id' => $data['category_id'],
+                'account_id' => $accountId,
+                'frequency' => $data['recurrence_frequency'],
+                'interval_value' => $data['recurrence_interval'],
+                'start_date' => $data[$dateField],
+                'ends_at' => $data['recurrence_ends_at'] ?? null,
+            ]);
+            return redirect()->route($tipo === 'despesa' ? 'despesas.index' : 'receitas.index')
+                ->with('success', ($tipo === 'despesa' ? 'Despesa' : 'Receita') . ' recorrente criada.');
+        }
+        unset($data['account_id'], $data['recurrence_enabled'], $data['recurrence_frequency'], $data['recurrence_interval'], $data['recurrence_ends_at']);
+        $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
 
-        DB::transaction(function () use ($request, $service, $invoices, $tipo, $data, $accountId, $legacyType, $dateField): void {
+        DB::transaction(function () use ($request, $service, $invoices, $tipo, $data, $accountId, $legacyType): void {
             $legacy = $this->query($request)->create($data);
             $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId]), $legacyType, $legacy->id);
             $this->createLinkedMovement($request, $payload, $service, $invoices);
@@ -250,7 +271,6 @@ class FinanceController extends Controller
         [$tipo, , $dateField] = $this->config($request);
         $registo = $this->query($request)->findOrFail($id);
         $financialMovement = $this->linkedMovement($request, $tipo, $registo->id);
-        abort_if($financialMovement?->recurrence_id, 403, 'Gere esta ocorrência na página de Recorrências.');
         $data = $dateField;
         $cats = $this->categoryOptions($request, $tipo, true);
         $accounts = $this->availableAccounts($request, $tipo);
@@ -263,6 +283,7 @@ class FinanceController extends Controller
     {
         [$tipo, , $dateField] = $this->config($request);
         $data = $this->validatedData($request, $id);
+        unset($data['recurrence_enabled'], $data['recurrence_frequency'], $data['recurrence_interval'], $data['recurrence_ends_at']);
         $accountId = $data['account_id'];
         unset($data['account_id']);
         $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
@@ -271,9 +292,6 @@ class FinanceController extends Controller
         DB::transaction(function () use ($request, $service, $invoices, $tipo, $id, $data, $accountId, $legacyType, $dateField, $date): void {
             $legacy = $this->query($request)->whereKey($id)->lockForUpdate()->firstOrFail();
             $movement = $this->linkedMovement($request, $tipo, $legacy->id);
-            if ($movement?->recurrence_id) {
-                throw ValidationException::withMessages(['movement' => 'Gere esta ocorrência na página de Recorrências.']);
-            }
             if ($movement?->invoice_id) {
                 $invoice = $request->user()->faturas()->whereKey($movement->invoice_id)->firstOrFail();
                 if ($invoice->status !== 'open') {
@@ -293,9 +311,15 @@ class FinanceController extends Controller
                     'movement_date' => $payload['movement_date'],
                     'category_id' => $payload['category_id'],
                 ]);
-                $service->settle($request->user(), $movement, [
-                    ($tipo === 'despesa' ? 'source_account_id' : 'destination_account_id') => $accountId,
-                ]);
+                if ($movement->recurrence_id) {
+                    $service->confirmPending($request->user(), $movement, [
+                        ($tipo === 'despesa' ? 'source_account_id' : 'destination_account_id') => $accountId,
+                    ]);
+                } else {
+                    $service->settle($request->user(), $movement, [
+                        ($tipo === 'despesa' ? 'source_account_id' : 'destination_account_id') => $accountId,
+                    ]);
+                }
             } else {
                 // Sem estorno: a edição substitui o movimento canónico numa só transação.
                 // Assim valor, data, conta e categoria ficam sempre sincronizados.
@@ -332,7 +356,7 @@ class FinanceController extends Controller
             $movement = $this->linkedMovement($request, $tipo, $legacy->id);
             if ($movement) {
                 if ($movement->recurrence_id) {
-                    throw ValidationException::withMessages(['movement' => 'Anule esta ocorrência na página de Recorrências para preservar o histórico.']);
+                    throw ValidationException::withMessages(['movement' => 'Anule esta ocorrência através do histórico de movimentos para preservar o histórico.']);
                 }
                 if ($movement->status === 'settled') {
                     throw ValidationException::withMessages(['movement' => 'Movimentos liquidados devem ser estornados, não eliminados.']);
