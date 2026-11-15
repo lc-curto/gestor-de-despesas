@@ -162,16 +162,30 @@
                         <button class="btn {{ $filtroTipo === 'todos' ? 'btn-primary' : 'btn-link text-decoration-none' }} mobile-tap-target" name="tipo" value="todos">Tudo</button>
                         <button class="btn {{ $filtroTipo === 'despesa' ? 'btn-primary' : 'btn-link text-decoration-none' }} mobile-tap-target" name="tipo" value="despesa">Despesas</button>
                         <button class="btn {{ $filtroTipo === 'receita' ? 'btn-primary' : 'btn-link text-decoration-none' }} mobile-tap-target" name="tipo" value="receita">Receitas</button>
-                        <div class="ms-auto filter-control">
-                            <label for="categoryFilter" class="visually-hidden">Filtrar por categoria</label>
-                            <select class="form-select" id="categoryFilter" name="categoria">
-                                <option value="all">Todas as categorias</option>
-                                @foreach ($categorias as $key => $label)
-                                    <option value="{{ $key }}" @selected($filtroCategoria === (string) $key)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </div>
                     </form>
+                    <details class="movement-advanced-filters pb-3">
+                        <summary class="small fw-semibold">Filtros avançados</summary>
+                        <div class="row g-2 mt-2">
+                            <div class="col-12 col-sm-6">
+                                <label for="categoryFilter" class="form-label small">Categoria</label>
+                                <select class="form-select" id="categoryFilter" name="categoria">
+                                    <option value="all">Todas as categorias</option>
+                                    @foreach ($categorias as $key => $label)
+                                        <option value="{{ $key }}" @selected($filtroCategoria === (string) $key)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <label for="accountFilter" class="form-label small">Conta</label>
+                                <select class="form-select" id="accountFilter">
+                                    <option value="all">Todas as contas</option>
+                                    @foreach ($accounts as $account)
+                                        <option value="{{ $account->id }}">{{ $account->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                    </details>                    </form>
                 </div>
 
                 @php
