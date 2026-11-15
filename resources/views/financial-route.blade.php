@@ -124,7 +124,7 @@
 <div class="modal fade" id="routeMovementDetailModal" tabindex="-1" aria-labelledby="routeMovementDetailTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered"><div class="modal-content route-sheet-content">
         <div class="modal-header"><div><p class="small text-secondary mb-1" id="routeMovementKind"></p><h2 class="modal-title h5 fw-bold" id="routeMovementDetailTitle">Movimento</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
-        <div class="modal-body"><div class="route-detail-amount" id="routeMovementAmount"></div><dl class="route-detail-list"><div><dt>Categoria</dt><dd id="routeMovementCategory"></dd></div><div><dt>Data</dt><dd id="routeMovementDate"></dd></div><div><dt>Descrição</dt><dd id="routeMovementDescription"></dd></div></dl><div class="small text-danger" id="routeDetailError" role="alert"></div></div>
+        <div class="modal-body"><div class="route-detail-amount" id="routeMovementAmount"></div><dl class="route-detail-list"><div><dt>Categoria</dt><dd id="routeMovementCategory"></dd></div><div><dt>Data</dt><dd id="routeMovementDate"></dd></div><div><dt>Descrição</dt><dd id="routeMovementDescription"></dd></div><div><dt>Observação</dt><dd id="routeMovementNotes"></dd></div></dl><div class="small text-danger" id="routeDetailError" role="alert"></div></div>
         <div class="modal-footer justify-content-between"><button type="button" class="btn btn-outline-danger" id="routeDeleteMovement">Excluir</button><div><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button type="button" class="btn btn-primary" id="routeEditMovement">Editar</button></div></div>
     </div></div>
 </div>
@@ -172,8 +172,12 @@
    document.getElementById('routeCategory').value=movement?.category_id||'';
    document.getElementById('routeNotes').value=movement?.notes||'';
    document.getElementById('routeAccount').value=movement?.account_id||'';
+   document.getElementById('routeAccount').disabled=!!movement;
+   document.getElementById('routeAccount').setAttribute('aria-label',movement?'Conta associada; não alterável nesta edição':'Conta');
    const type=movement?.type==='income'?'income':(movement?.expense_behavior==='fixed'?'fixed':'variable');
+   form.querySelectorAll('#routeCategory option[data-type]').forEach(option=>{option.hidden=option.dataset.type!==(type==='income'?'receita':'despesa')&&option.value!==''});
    form.querySelector('[name="route_type"][value="'+type+'"]').checked=true;
+   form.querySelectorAll('[name="route_type"]').forEach(radio=>radio.disabled=!!movement);
    document.getElementById('routeFormError').textContent='';
    movementModal.show();
  }
@@ -205,6 +209,7 @@
    document.getElementById('routeMovementCategory').textContent=item.category;
    document.getElementById('routeMovementDate').textContent=dateLabel(item.date);
    document.getElementById('routeMovementDescription').textContent=item.description;
+   document.getElementById('routeMovementNotes').textContent=item.notes||'—';
    document.getElementById('routeDetailError').textContent='';
    const deleteButton=document.getElementById('routeDeleteMovement');
    deleteButton.textContent=item.status==='settled'?'Estornar':(item.recurrence_id?'Anular':'Excluir');
@@ -219,6 +224,7 @@
    detailModal.hide();confirmModal.show();
  });
  document.getElementById('routeConfirmAction').addEventListener('click',async()=>{try{if(confirmCallback)await confirmCallback()}catch(e){document.getElementById('routeConfirmText').textContent=e.message} });
+ form.querySelectorAll('[name="route_type"]').forEach(radio=>radio.addEventListener('change',()=>{const type=radio.value==='income'?'receita':'despesa';form.querySelectorAll('#routeCategory option[data-type]').forEach(option=>{option.hidden=option.dataset.type!==type});if(document.getElementById('routeCategory').selectedOptions[0]?.hidden)document.getElementById('routeCategory').value=''}));
  form.addEventListener('submit',async e=>{
    e.preventDefault();const data=new FormData(form);const selected=data.get('route_type');
    const type=selected==='income'?'income':'expense';const behavior=selected==='fixed'?'fixed':'variable';
