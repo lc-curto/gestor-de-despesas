@@ -10,7 +10,7 @@
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
     <link rel="stylesheet" href="{{ asset('css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/app-shell.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/app-shell.css') }}?v={{ filemtime(public_path('css/app-shell.css')) }}">
     @stack('styles')
 </head>
 <body>
