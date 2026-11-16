@@ -257,7 +257,7 @@
         name.textContent = item.description;
         const metadata = document.createElement('p');
         metadata.className = 'small text-secondary mb-0';
-        metadata.textContent = categoryName(item) + ' · ' + displayDate + (item.recurrence_id ? ' · Previsão' : '');
+        metadata.textContent = categoryName(item) + ' · ' + displayDate + (item.recurrence_id ? ' · Recorrente' : '') + (item.movement_status === 'pending' ? ' · Pendente' : '');
         details.append(name, metadata);
         info.append(icon, details);
 
