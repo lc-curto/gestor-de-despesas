@@ -186,7 +186,7 @@
                             <p class="form-text mb-0 mt-2">A recorrência cria novas obrigações. O parcelamento divide o valor desta obrigação em prestações.</p>
                         </div>
                         <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-danger w-100" id="saveMovementButton" @disabled($accounts->isEmpty())>Guardar despesa</button>
+                            <button type="submit" class="btn btn-danger w-100" id="saveMovementButton" >Guardar despesa</button>
                             <button type="button" class="btn btn-outline-secondary d-none" id="cancelMovementEdit">Cancelar edição</button>
                         </div>
                     </form>
