@@ -21,16 +21,6 @@ use Illuminate\Support\Carbon;
 
 class FinancialCoreController extends Controller
 {
-    public function recurrencesPage(Request $request)
-    {
-        $recurrences = $request->user()->recorrencias()
-            ->with(['categoria:id,name', 'conta:id,name,currency'])
-            ->orderByDesc('is_active')
-            ->orderByDesc('created_at')
-            ->get();
-
-        return view('financial.recurrences', compact('recurrences'));
-    }
 
     public function commitments(Request $request): JsonResponse
     {
