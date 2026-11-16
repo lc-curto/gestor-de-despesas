@@ -132,12 +132,12 @@
                         <div class="col-12 form-text">Os dias 1–28 evitam datas inexistentes em meses curtos.</div>
                     </div>
                     <div class="row g-3">
-                        <div class="col-7">
+                        <div class="col-7" id="bankOpeningBalanceField">
                             <label for="openingBalance" class="form-label">Saldo inicial</label>
                             <input id="openingBalance" name="opening_balance" type="number" class="form-control" min="-9999999999.99" max="9999999999.99" step="0.01" inputmode="decimal" placeholder="Opcional">
                         </div>
                         <div class="col-5">
-                            <label for="openingBalanceDate" class="form-label">Data do saldo</label>
+                            <label for="openingBalanceDate" class="form-label">Data de referência</label>
                             <input id="openingBalanceDate" name="opening_balance_date" type="date" class="form-control" value="{{ now()->toDateString() }}" max="{{ now()->toDateString() }}">
                         </div>
                     </div>
@@ -454,6 +454,10 @@
     const cardBillingFields = document.getElementById('cardBillingFields');
     const refreshCardFields = () => {
         const enabled = accountType?.value === 'credit_card';
+        const bankOpeningField = document.getElementById('bankOpeningBalanceField');
+        const bankOpeningInput = document.getElementById('openingBalance');
+        bankOpeningField?.classList.toggle('d-none', enabled);
+        if (bankOpeningInput) bankOpeningInput.disabled = enabled;
         cardBillingFields?.classList.toggle('d-none', !enabled);
         cardBillingFields?.querySelectorAll('input').forEach((input) => { input.disabled = !enabled; });
         const debtField = document.getElementById('cardOpeningDebtField');
