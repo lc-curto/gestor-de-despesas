@@ -42,7 +42,6 @@ Route::middleware(['auth', 'financial.review'])->group(function(){
  Route::get('/dashboard/movimentos/dados', [DashboardController::class, 'movimentos'])->middleware('throttle:60,1')->name('dashboard.movimentos.data');
  Route::post('/session/activity',fn()=>response()->noContent())->name('session.activity');
 
- Route::get('/recorrencias', [FinancialCoreController::class, 'recurrencesPage'])->name('financial.recurrences.page');
 
  // Núcleo financeiro: endpoints JSON, sem alterar a interface existente.
  Route::prefix('api/financial')->name('financial.')->group(function () {
@@ -74,6 +73,7 @@ Route::middleware(['auth', 'financial.review'])->group(function(){
   Route::put('/movements/{id}', [FinancialCoreController::class, 'updatePendingMovement'])->name('movements.update');
   Route::put('/movements/{id}/void', [FinancialCoreController::class, 'voidMovement'])->name('movements.void');
   Route::post('/movements/{id}/reverse', [FinancialCoreController::class, 'reverseMovement'])->name('movements.reverse');
+  Route::delete('/movements/{id}/recurrence-scope', [FinancialCoreController::class, 'destroyRecurringOccurrence'])->name('movements.recurrence.destroy');
   Route::delete('/movements/{id}', [FinancialCoreController::class, 'destroyMovement'])->name('movements.destroy');
  });
  Route::get('/categorias',[CategoriaController::class,'index'])->name('categorias.index');
