@@ -176,7 +176,7 @@ class FinancialCoreController extends Controller
         ]);
 
         if (($data['type'] ?? null) === 'credit_card' && isset($data['opening_debt_amount'], $data['credit_limit']) && (float) $data['opening_debt_amount'] > (float) $data['credit_limit']) {
-            throw \\Illuminate\\Validation\\ValidationException::withMessages(['opening_debt_amount' => 'A utilização inicial não pode ultrapassar o limite total do cartão.']);
+            throw \Illuminate\Validation\ValidationException::withMessages(['opening_debt_amount' => 'A utilização inicial não pode ultrapassar o limite total do cartão.']);
         }
 
         $account = $service->create($request->user(), $data);
