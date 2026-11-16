@@ -719,6 +719,9 @@
             if (isNewExpense && paidState === 'partial' && !isInstallment) {
                 throw new Error('O registo de pagamentos parciais para despesas sem parcelamento ainda não está disponível. Seleciona “Ainda não paguei” ou “Já paguei tudo”.');
             }
+            if (isInstallment && paidState !== '0') {
+                throw new Error('O registo de pagamentos iniciais de parcelamentos ainda não está integrado. Guarda primeiro o parcelamento como pendente.');
+            }
 
             let response;
             let payload;
