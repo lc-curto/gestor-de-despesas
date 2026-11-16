@@ -65,7 +65,8 @@ class FinancialCommitmentService
             $newDue = Carbon::parse($data['due_date']);
             $locked->update(['name' => $data['name'], 'due_date' => $newDue->toDateString()]);
             foreach ($locked->parcelas()->whereIn('status', ['pending', 'partial'])->get() as $part) {
-                $part->update(['due_date' => $newDue->copy()->addMonthsNoOverflow(max(0, $part->installment_number - $firstNumber))->toDateString()]);
+                $offset = max(0, $part->installment_number - $firstNumber);
+                $part->update(['due_date' => $this->installmentDate($newDue->copy(), $offset, $locked->installment_frequency ?? 'monthly')->toDateString()]);
             }
             return $locked->refresh()->load('parcelas');
         });

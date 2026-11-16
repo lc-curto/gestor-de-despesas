@@ -158,6 +158,25 @@ class FinancialCoreServiceTest extends TestCase
         );
     }
 
+    public function test_deferred_commitment_has_one_unpaid_installment(): void
+    {
+        $user = User::factory()->create();
+
+        $debt = app(\App\Services\Financial\FinancialCommitmentService::class)->create($user, [
+            'name' => 'Fatura de eletricidade',
+            'total_amount' => '90.00',
+            'start_date' => '2026-11-01',
+            'due_date' => '2026-11-25',
+            'payment_condition' => 'deferred',
+        ]);
+
+        $this->assertSame('deferred', $debt->payment_condition);
+        $this->assertCount(1, $debt->parcelas);
+        $this->assertSame('90.00', (string) $debt->parcelas->first()->amount);
+        $this->assertSame('pending', $debt->parcelas->first()->status);
+        $this->assertDatabaseCount('movimentos', 0);
+    }
+
     public function test_installment_cannot_be_settled_using_a_credit_card(): void
     {
         $user = User::factory()->create();

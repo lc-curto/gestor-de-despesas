@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\Financial\CardInvoiceService;
 use App\Services\Financial\FinancialMovementService;
+use App\Services\Financial\FinancialCommitmentService;
 use App\Services\Financial\RecurrenceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -243,10 +244,29 @@ class FinanceController extends Controller
         return view('finance.form', compact('tipo', 'data', 'cats', 'registo', 'accounts', 'financialMovement', 'returnUrl', 'selectedAccountId'));
     }
 
-    public function store(Request $request, FinancialMovementService $service, CardInvoiceService $invoices, RecurrenceService $recurrences)
+    public function store(Request $request, FinancialMovementService $service, CardInvoiceService $invoices, RecurrenceService $recurrences, FinancialCommitmentService $commitments)
     {
         [$tipo] = $this->config($request);
         $data = $this->validatedData($request);
+        if ($tipo === 'despesa' && in_array($data['payment_condition'] ?? 'cash', ['deferred', 'installments'], true)) {
+            if (($data['paid_now'] ?? '0') !== '0') {
+                throw ValidationException::withMessages(['paid_now' => 'Regista primeiro a obrigação como pendente; o pagamento deve ser feito em Compromissos.']);
+            }
+            $commitments->create($request->user(), [
+                'name' => $data['description'],
+                'total_amount' => $data['amount'],
+                'start_date' => $data['expense_date'],
+                'due_date' => $data['due_date'] ?? $data['expense_date'],
+                'payment_condition' => $data['payment_condition'],
+                'payment_method' => $data['payment_method'] ?? null,
+                'installments_count' => $data['installments_count'] ?? null,
+                'installment_frequency' => $data['installment_frequency'] ?? 'monthly',
+            ]);
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => true, 'message' => 'Compromisso criado.']);
+            }
+            return redirect()->route('despesas.index')->with('success', 'Compromisso criado.');
+        }
         $recurrenceEnabled = (bool) ($data['recurrence_enabled'] ?? false);
         $isPendingExpense = $tipo === 'despesa' && !$recurrenceEnabled && ($data['paid_now'] ?? '0') === '0';
         $accountId = $isPendingExpense ? null : ($data['payment_account_id'] ?? $data['account_id'] ?? null);

@@ -786,27 +786,10 @@
                     throw new Error(commitmentPayload.message || 'Não foi possível criar o parcelamento.');
                 }
 
-                // O movimento principal é registado no histórico tradicional e ligado
-                // ao motor financeiro como pendente, sem criar um segundo débito.
-                const movementData = new FormData(form);
-                movementData.set('paid_now', '0');
-                movementData.delete('account_id');
-                movementData.delete('payment_account_id');
-                response = await fetch(form.action, {
-                    method: 'POST',
-                    body: movementData,
-                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    credentials: 'same-origin'
-                });
-                payload = await response.json().catch(() => ({}));
-                if (!response.ok || !payload.ok) {
-                    await fetch(cfg.commitmentBase + '/' + commitmentPayload.data.id + '/cancel', {
-                        method: 'POST',
-                        credentials: 'same-origin',
-                        headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf }
-                    }).catch(() => null);
-                    throw new Error(payload.message || 'O parcelamento foi criado, mas o movimento não foi registado. A obrigação foi cancelada automaticamente; confirma a lista de Compromissos.');
-                }
+                // A obrigação e as prestações são a fonte canónica. Não criar
+                // uma despesa pendente adicional pelo valor total da compra.
+                response = commitmentResponse;
+                payload = { ok: true, data: commitmentPayload.data, message: 'Parcelamento criado.' };
             } else {
                 const movementData = new FormData(form);
                 if (isNewExpense) {

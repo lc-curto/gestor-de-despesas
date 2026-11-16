@@ -511,6 +511,25 @@ class FinanceFlowTest extends TestCase
             ->assertSee('Próximos pagamentos');
     }
 
+    public function test_commitments_page_shows_deferred_commitment(): void
+    {
+        $user = User::factory()->create();
+        app(\App\Services\Financial\FinancialCommitmentService::class)->create($user, [
+            'name' => 'Fatura de eletricidade',
+            'total_amount' => '90.00',
+            'start_date' => '2026-11-01',
+            'due_date' => '2026-11-25',
+            'payment_condition' => 'deferred',
+        ]);
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureFinancialDataReviewed::class);
+
+        $this->actingAs($user)
+            ->get(route('financial.commitments.page'))
+            ->assertOk()
+            ->assertSee('Fatura de eletricidade')
+            ->assertSee('Compra a prazo');
+    }
+
 
     public function test_account_creation_form_has_only_account_fields_and_creates_opening_balance(): void
     {

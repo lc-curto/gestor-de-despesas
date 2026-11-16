@@ -4,10 +4,11 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use App\Services\Financial\FinancialProjectionService;
 
 class FinancialRouteController extends Controller
 {
-    public function __invoke(Request $request)
+    public function __invoke(Request $request, FinancialProjectionService $projection)
     {
         $validated = $request->validate([
             'mes' => ['nullable', 'date_format:Y-m'],
@@ -26,24 +27,9 @@ class FinancialRouteController extends Controller
         $rangeStart = $months->first()->copy()->startOfMonth();
         $rangeEnd = $months->last()->copy()->endOfMonth();
 
-        // A tabela canónica evita somar novamente o registo legado associado.
-        $openingBalance = (float) $request->user()->contasFinanceiras()
-            ->where('is_operational', true)->where('status', 'active')->sum('opening_balance');
-        $prior = $request->user()->movimentos()
-            ->whereIn('type', ['income', 'expense'])
-            ->where('status', 'settled')
-            ->where('is_historical', false)
-            ->where('movement_date', '<', $rangeStart->toDateString())
-            ->get(['type', 'amount']);
-        $openingBalance += (float) $prior->where('type', 'income')->sum('amount')
-            - (float) $prior->where('type', 'expense')->sum('amount');
-
-        $movements = $request->user()->movimentos()->with('categoria:id,name')
-            ->whereIn('type', ['income', 'expense'])
-            ->whereIn('status', ['pending', 'settled'])
-            ->whereBetween('movement_date', [$rangeStart->toDateString(), $rangeEnd->toDateString()])
-            ->orderBy('movement_date')
-            ->get(['id', 'type', 'status', 'description', 'notes', 'amount', 'movement_date', 'expense_behavior', 'category_id', 'source_account_id', 'destination_account_id', 'recurrence_id']);
+        $projectionData = $projection->build($request->user(), $rangeStart, $rangeEnd);
+        $openingBalance = $projectionData['openingBalance'];
+        $movements = $projectionData['movements'];
 
         $days = [];
         foreach ($months as $month) {
@@ -53,10 +39,13 @@ class FinancialRouteController extends Controller
             while ($cursor->lte($month->copy()->endOfMonth())) {
                 $key = $cursor->toDateString();
                 $items = $movements->filter(fn ($movement) => $movement->movement_date->toDateString() === $key);
+                $cashIncome = $items->where('type', 'income')->sum('amount');
+                $cashExpenses = $items->where('type', 'expense');
                 $days[$monthKey][$key] = [
-                    'income' => (float) $items->where('type', 'income')->sum('amount'),
-                    'variable' => (float) $items->where('type', 'expense')->where('expense_behavior', 'variable')->sum('amount'),
-                    'fixed' => (float) $items->where('type', 'expense')->where('expense_behavior', 'fixed')->sum('amount'),
+                    'income' => (float) $cashIncome,
+                    'variable' => (float) $cashExpenses->where('expense_behavior', 'variable')->sum('amount'),
+                    'fixed' => (float) $cashExpenses->where('expense_behavior', 'fixed')->sum('amount'),
+                    'cash_delta' => (float) $items->sum(fn ($item) => (float) ($item->projection_delta ?? 0)),
                     'items' => $items->values(),
                 ];
                 $cursor->addDay();

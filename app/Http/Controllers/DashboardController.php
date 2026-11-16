@@ -51,6 +51,12 @@ class DashboardController extends Controller
                     ->where('movimentos.status', 'void');
             })->sum('amount');
 
+        // Registos novos vivem no núcleo; o legado acima permanece apenas para compatibilidade.
+        $totalDespesas += (float) $user->movimentos()->whereNull('legacy_type')->where('type', 'expense')
+            ->whereIn('status', ['pending', 'settled'])->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
+        $totalReceitas += (float) $user->movimentos()->whereNull('legacy_type')->where('type', 'income')
+            ->whereIn('status', ['pending', 'settled'])->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
+
         $operationalAccounts = $user->contasFinanceiras()
             ->whereIn('type', ['bank', 'cash'])
             ->where('is_operational', true)
@@ -88,6 +94,12 @@ class DashboardController extends Controller
         $totalDespesasFiltradas = (clone $despesasFiltradas)->count()
             + $user->movimentos()->where('type', 'transfer')->where('status', 'settled')->whereNotNull('invoice_id')->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->count();
         $totalReceitasFiltradas = (clone $receitasFiltradas)->count();
+        $totalDespesasFiltradas += $user->movimentos()->whereNull('legacy_type')->where('type', 'expense')
+            ->whereIn('status', ['pending', 'settled'])->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->when($filtroCategoria !== 'all', fn ($query) => $query->where('category_id', $filtroCategoria))->count();
+        $totalReceitasFiltradas += $user->movimentos()->whereNull('legacy_type')->where('type', 'income')
+            ->whereIn('status', ['pending', 'settled'])->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->when($filtroCategoria !== 'all', fn ($query) => $query->where('category_id', $filtroCategoria))->count();
         $totalMovimentos = $totalDespesasFiltradas + $totalReceitasFiltradas;
 
         $query = $this->movimentosQuery($user->id, $inicio, $fim, 'todos', $filtroCategoria);
@@ -192,6 +204,17 @@ class DashboardController extends Controller
                     ->where('movimentos.status', 'void');
             })->sum('amount');
 
+        $totalDespesas += (float) $user->movimentos()->whereNull('legacy_type')->where('type', 'expense')
+            ->whereIn('status', ['pending', 'settled'])->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
+        $totalReceitas += (float) $user->movimentos()->whereNull('legacy_type')->where('type', 'income')
+            ->whereIn('status', ['pending', 'settled'])->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
+        $totalDespesasFiltradas += $user->movimentos()->whereNull('legacy_type')->where('type', 'expense')
+            ->whereIn('status', ['pending', 'settled'])->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->when($categoria !== 'all', fn ($query) => $query->where('category_id', $categoria))->count();
+        $totalReceitasFiltradas += $user->movimentos()->whereNull('legacy_type')->where('type', 'income')
+            ->whereIn('status', ['pending', 'settled'])->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->when($categoria !== 'all', fn ($query) => $query->where('category_id', $categoria))->count();
+
         return response()->json([
             'data' => $items,
             'page' => $page,
@@ -270,12 +293,23 @@ class DashboardController extends Controller
             ->where(fn ($q) => $q->whereNull('financial_movements.status')->orWhere('financial_movements.status', '!=', 'void'))
             ->selectRaw("receitas.id, financial_movements.id AS financial_movement_id, 0 AS is_invoice_payment, 'receita' AS tipo, receitas.description, receitas.amount, receitas.currency, categorias.id AS category, categorias.name AS category_label, categorias.icon AS category_icon, categorias.color AS category_color, receitas.income_date AS data_movimento, financial_movements.destination_account_id AS account_id, financial_movements.status AS movement_status, financial_movements.requires_account_assignment AS requires_account_assignment, financial_movements.is_historical AS is_historical, financial_movements.expense_behavior AS expense_behavior, NULL AS due_date, financial_movements.recurrence_id AS recurrence_id, recurrence_rules.frequency AS recurrence_frequency, recurrence_rules.interval_value AS recurrence_interval, recurrence_rules.ends_at AS recurrence_ends_at");
 
+        $canonical = DB::table('movimentos as canonical_movements')
+            ->leftJoin('categorias as canonical_categories', 'canonical_categories.id', '=', 'canonical_movements.category_id')
+            ->leftJoin('recorrencias as canonical_rules', 'canonical_rules.id', '=', 'canonical_movements.recurrence_id')
+            ->join('users as canonical_users', 'canonical_users.id', '=', 'canonical_movements.user_id')
+            ->where('canonical_movements.user_id', $userId)
+            ->whereNull('canonical_movements.legacy_type')
+            ->whereIn('canonical_movements.type', ['income', 'expense'])
+            ->whereIn('canonical_movements.status', ['pending', 'settled'])
+            ->whereBetween('canonical_movements.movement_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->selectRaw("canonical_movements.id, canonical_movements.id AS financial_movement_id, 0 AS is_invoice_payment, CASE WHEN canonical_movements.type = 'income' THEN 'receita' ELSE 'despesa' END AS tipo, canonical_movements.description, canonical_movements.amount, canonical_users.currency, canonical_categories.id AS category, canonical_categories.name AS category_label, canonical_categories.icon AS category_icon, canonical_categories.color AS category_color, canonical_movements.movement_date AS data_movimento, CASE WHEN canonical_movements.type = 'income' THEN canonical_movements.destination_account_id ELSE canonical_movements.source_account_id END AS account_id, canonical_movements.status AS movement_status, canonical_movements.requires_account_assignment AS requires_account_assignment, canonical_movements.is_historical AS is_historical, canonical_movements.expense_behavior AS expense_behavior, NULL AS due_date, canonical_movements.recurrence_id AS recurrence_id, canonical_rules.frequency AS recurrence_frequency, canonical_rules.interval_value AS recurrence_interval, canonical_rules.ends_at AS recurrence_ends_at");
+
         if ($tipo === 'despesa') {
-            $query = $despesas->unionAll($cardPayments);
+            $query = $despesas->unionAll((clone $canonical)->where('canonical_movements.type', 'expense'))->unionAll($cardPayments);
         } elseif ($tipo === 'receita') {
-            $query = $receitas;
+            $query = $receitas->unionAll((clone $canonical)->where('canonical_movements.type', 'income'));
         } else {
-            $query = $despesas->unionAll($receitas)->unionAll($cardPayments);
+            $query = $despesas->unionAll($receitas)->unionAll($canonical)->unionAll($cardPayments);
         }
 
         $wrapped = DB::query()->fromSub($query, 'movimentos');

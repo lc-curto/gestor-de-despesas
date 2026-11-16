@@ -7,7 +7,7 @@
     <header class="page-heading commitments-heading mb-4 d-flex flex-wrap justify-content-between align-items-end gap-3">
         <div>
             <h1 class="h2 fw-bold mb-1">Compromissos</h1>
-            <p class="text-secondary mb-0">Acompanha faturas de cartões e compras parceladas.</p>
+            <p class="text-secondary mb-0">Acompanha faturas, compras a prazo e parcelamentos.</p>
         </div>
     </header>
 
@@ -110,7 +110,7 @@
                     <div class="d-flex justify-content-between align-items-start gap-2">
                         <div class="min-w-0">
                             <h3 class="small fw-semibold mb-0">{{ $commitment->name }}</h3>
-                            <span class="small text-secondary">Compra parcelada · {{ $installment->installment_number }}/{{ $commitment->installments_count }} · Vence {{ $installment->due_date->format('d/m/Y') }}</span>
+                            <span class="small text-secondary">{{ $commitment->payment_condition === 'installments' ? 'Compra parcelada · '.$installment->installment_number.'/'.$commitment->installments_count : 'Compra a prazo' }} · Vence {{ $installment->due_date->format('d/m/Y') }}</span>
                         </div>
                         <div class="text-end flex-shrink-0">
                             <strong class="d-block">{{ number_format($remaining, 2, ',', '.') }} {{ auth()->user()->currency }}</strong>
@@ -152,7 +152,7 @@
         <h2 class="h5 fw-bold mb-1" id="manageSectionTitle">Gerir compromissos</h2><p class="small text-secondary">Editar descrição e próximo vencimento ou encerrar, mantendo os pagamentos registados.</p>
         @foreach($commitments as $commitment)
             @if(!in_array($commitment->status,['paid','cancelled'],true))
-                <article class="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom py-3"><div><strong>{{ $commitment->name }}</strong><div class="small text-secondary">{{ $commitment->installments_count }} prestações · {{ number_format((float)$commitment->total_amount,2,',','.') }} {{ auth()->user()->currency }}</div></div>
+                <article class="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom py-3"><div><strong>{{ $commitment->name }}</strong><div class="small text-secondary">{{ $commitment->payment_condition === 'installments' ? $commitment->installments_count.' prestações' : 'Pagamento único' }} · {{ number_format((float)$commitment->total_amount,2,',','.') }} {{ auth()->user()->currency }}</div></div>
                     <div class="d-flex gap-2"><button class="btn btn-sm btn-outline-secondary js-edit-commitment" data-url="{{ route('financial.commitments.update',$commitment->id) }}" data-name="{{ $commitment->name }}" data-due="{{ optional($commitment->due_date)->format('Y-m-d') }}">Editar</button><button class="btn btn-sm btn-outline-danger js-cancel-commitment" data-url="{{ route('financial.commitments.cancel',$commitment->id) }}" data-name="{{ $commitment->name }}">Encerrar</button></div>
                 </article>
             @endif
