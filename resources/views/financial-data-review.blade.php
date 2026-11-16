@@ -124,7 +124,7 @@
                                     </div>
                                     <button class="btn btn-outline-primary btn-sm rounded-3" type="submit">Registar revisão</button>
                                 </form>
-                            @elseif ($step['id'] === 'final' && !$done)
+                            @elseif ($step['id'] === 'final' && !$done && !$locked)
                                 <form method="POST" action="{{ route('financial.review.step') }}">
                                     @csrf
                                     <input type="hidden" name="step" value="final">
