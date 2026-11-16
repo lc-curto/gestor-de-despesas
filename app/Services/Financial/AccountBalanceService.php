@@ -41,6 +41,46 @@ class AccountBalanceService
         return $this->fromCents($cents);
     }
 
+    /**
+     * Calcula o saldo da conta numa data de referência, usando a mesma regra
+     * de movimentos liquidados do saldo atual.
+     */
+    public function balanceAt(ContaFinanceira $account, string $date): string
+    {
+        if (!$account->is_operational || $account->opening_balance === null || !$account->opening_balance_date) {
+            throw new RuntimeException('A conta ainda não está configurada para cálculo de saldo.');
+        }
+
+        if ($account->opening_balance_date->toDateString() > $date) {
+            return '0.00';
+        }
+
+        $movementDelta = DB::table('movimentos')
+            ->where('user_id', $account->user_id)
+            ->where('status', 'settled')
+            ->where('is_historical', false)
+            ->whereDate('movement_date', '>=', $account->opening_balance_date->toDateString())
+            ->whereDate('movement_date', '<=', $date)
+            ->where(function ($query) use ($account) {
+                $query->where('source_account_id', $account->id)
+                    ->orWhere('destination_account_id', $account->id);
+            })
+            ->selectRaw(
+                "COALESCE(SUM(CASE
+                    WHEN destination_account_id = ? AND type IN ('income', 'transfer') THEN amount
+                    WHEN destination_account_id = ? AND type = 'adjustment' AND adjustment_direction = 'increase' THEN amount
+                    WHEN source_account_id = ? AND type IN ('expense', 'transfer') THEN -amount
+                    WHEN source_account_id = ? AND type = 'adjustment' AND adjustment_direction = 'decrease' THEN -amount
+                    ELSE 0 END), 0) AS delta",
+                [$account->id, $account->id, $account->id, $account->id]
+            )->value('delta');
+
+        return $this->fromCents(
+            $this->toCents((string) $account->opening_balance)
+            + $this->toCents((string) $movementDelta)
+        );
+    }
+
     public function assertCanDebit(ContaFinanceira $account, string $amount): void
     {
         // O saldo é informativo e pode ficar negativo: bancos permitem
