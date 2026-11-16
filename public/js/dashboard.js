@@ -675,7 +675,8 @@
         document.getElementById('deleteRecurringOptions').hidden = !recurring;
         document.getElementById('deleteSingleOption').hidden = recurring;
         document.getElementById('deleteMovementTitle').textContent = recurring ? 'Excluir movimento recorrente' : 'Excluir movimento';
-        document.getElementById('deleteScopeOnly').checked = true;
+        document.getElementById('deleteScopeOnly').checked = recurring;
+        document.getElementById('deleteScopeOnlySingle').checked = !recurring;
         deleteModal?.show();
     }
 
