@@ -8,7 +8,7 @@
     $statusLabels = ['active' => 'Ativa', 'setup_pending' => 'Por configurar', 'closed' => 'Encerrada'];
 @endphp
 
-<div class="accounts-page" id="accountsPage">
+<div class="app-content accounts-page" id="accountsPage">
     <header class="accounts-toolbar">
         <div>
             <h1 class="h2 fw-bold mb-0">Contas</h1>
@@ -194,111 +194,7 @@
 </div>
 @endif
 
-@push('styles')
-<style>
-.accounts-page { width:100%; max-width:none; margin:0; }
-.credit-cards-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem}.credit-cards-heading p{font-size:.9rem}.credit-cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,19rem),1fr));gap:1rem}.credit-card-item{min-width:0;padding:1.15rem;border:1px solid var(--app-border);border-radius:1rem;background:var(--bs-body-bg);box-shadow:var(--app-shadow)}.credit-card-top,.credit-card-title-link,.credit-card-values,.credit-card-usage,.credit-card-cycle{display:flex;align-items:center;justify-content:space-between;gap:.75rem}.credit-card-title-link{justify-content:flex-start;min-width:0;color:inherit;text-decoration:none}.credit-card-title-link>span:last-child{display:grid;gap:.2rem;min-width:0}.credit-card-title-link strong{overflow-wrap:anywhere}.credit-card-title-link small,.credit-card-values small,.credit-card-usage small{color:var(--bs-secondary-color);font-size:.78rem}.credit-card-icon{display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;border-radius:.8rem;background:rgba(99,91,255,.1);color:var(--app-primary)}.credit-card-icon svg{width:20px}.credit-card-more{border:0;background:transparent;color:var(--bs-secondary-color);padding:.4rem}.credit-card-values{margin:1.15rem 0 .7rem;align-items:flex-end}.credit-card-values>div{display:grid;gap:.2rem}.credit-card-values strong{font-size:1.1rem;white-space:nowrap;font-variant-numeric:tabular-nums}.credit-card-progress{height:8px;border-radius:99px;background:var(--bs-tertiary-bg);overflow:hidden}.credit-card-progress span{display:block;height:100%;border-radius:inherit;background:var(--app-primary)}.credit-card-usage{margin-top:.4rem}.credit-card-cycle{justify-content:flex-start;gap:1.5rem;margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--app-border);font-size:.85rem;color:var(--bs-secondary-color)}.credit-card-cycle strong{color:var(--bs-body-color)}.credit-card-debt-summary{display:grid;gap:.25rem;padding:1rem;border-radius:.8rem;background:var(--bs-tertiary-bg)}.credit-card-debt-summary small{color:var(--bs-secondary-color)}.credit-card-debt-summary strong{font-size:1.25rem}@media(max-width:640px){.credit-cards-heading{align-items:flex-start}.credit-cards-heading .btn{white-space:nowrap;padding:.55rem .7rem}.credit-card-item{padding:1rem}.credit-card-values strong{font-size:1rem}}
-.accounts-toolbar { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.25rem; }
-.accounts-list { display:grid; gap:.75rem; }
-.account-card { display:grid; grid-template-columns:minmax(0,1fr) minmax(180px,auto) 100px; align-items:center; gap:1rem; min-height:6.5rem; padding:1.15rem 1.25rem; border:1px solid var(--app-border); border-radius:1rem; background:var(--bs-body-bg); box-shadow:var(--app-shadow); }
-.account-card-link { grid-column:1; display:flex; align-items:center; gap:1rem; min-width:0; color:var(--bs-body-color); text-decoration:none; }
-.account-card-link:hover .account-name { color:var(--app-primary); }
-.account-balance { grid-column:2; grid-row:1; text-align:right; min-width:0; }
-.account-menu { grid-column:3; grid-row:1; justify-self:end; }
-.account-icon { display:grid; place-items:center; width:46px; height:46px; border-radius:.85rem; background:rgba(99,91,255,.1); color:var(--app-primary); }
-.account-icon svg { width:21px; height:21px; }
-.account-main { min-width:0; }
-.account-title-row { display:flex; align-items:center; flex-wrap:wrap; gap:.55rem; }
-.account-name { margin:0; font-size:1rem; font-weight:700; overflow-wrap:anywhere; }
-.account-subtitle { margin-top:.2rem; color:var(--bs-secondary-color); font-size:.85rem; }
-.account-status { padding:.2rem .55rem; border-radius:999px; font-size:.7rem; font-weight:600; }
-.account-status.is-active { background:rgba(22,163,74,.1); color:#18734a; }
-.account-status.is-pending { background:rgba(245,158,11,.14); color:#896000; }
-.account-status.is-closed { background:var(--bs-tertiary-bg); color:var(--bs-secondary-color); }
-.account-balance { text-align:right; }
-.account-balance strong { display:block; font-size:1.1rem; white-space:nowrap; }
-.account-balance strong small { font-size:.8rem; font-weight:600; }
-.account-balance span { display:block; color:var(--bs-secondary-color); font-size:.75rem; }
-.account-menu { grid-column:2; justify-self:end; }
-.account-menu-button { display:inline-flex; align-items:center; justify-content:center; gap:.35rem; min-width:5.5rem; height:36px; padding:0 .65rem; border:1px solid var(--app-border); border-radius:.7rem; color:var(--bs-secondary-color); background:var(--bs-body-bg); font-size:.78rem; font-weight:650; }
-.account-menu-button:hover, .account-menu-button:focus-visible { background:rgba(99,91,255,.08); color:var(--app-primary); }
-.account-menu-button svg { width:15px; height:15px; }
-.account-menu .dropdown-menu { min-width:180px; padding:.4rem; border:1px solid var(--app-border); border-radius:.8rem; box-shadow:var(--app-shadow); }
-.account-menu .dropdown-item { border-radius:.55rem; padding:.55rem .7rem; font-size:.9rem; }
-.account-edit-modal { min-width:min(100%,32rem); }
-.account-edit-modal .modal-header { padding:1.35rem 1.5rem .25rem; }
-.account-edit-modal .modal-footer { padding:1rem 1.5rem 1.35rem; }
-.account-opening-summary { display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; padding:1rem; border:1px solid color-mix(in srgb,var(--app-primary) 18%,var(--app-border)); border-radius:.85rem; background:rgba(99,91,255,.07); color:var(--app-primary); }
-.account-opening-summary > div { display:grid; gap:.25rem; }
-.account-opening-summary-label { color:var(--bs-secondary-color); font-size:.78rem; }
-.account-opening-summary strong { font-size:1.35rem; letter-spacing:-.02em; }
-.account-opening-summary > span { color:var(--bs-secondary-color); font-size:.78rem; white-space:nowrap; }
-.accounts-empty { border:1px dashed var(--app-border) !important; box-shadow:var(--app-shadow) !important; }
-.accounts-empty-icon { display:inline-grid; place-items:center; width:54px; height:54px; border-radius:1rem; background:rgba(99,91,255,.1); color:var(--app-primary); }
-.accounts-empty-icon svg { width:25px; height:25px; }
-.transfer-row { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.7rem 0; border-top:1px solid var(--app-border); }
-.transfer-row > div { display:grid; gap:.2rem; }
-.transfer-row span { color:var(--bs-secondary-color); font-size:.82rem; }
-.transfer-amount { white-space:nowrap; }
-#accountFeedback:not(.d-none) { margin-bottom:1rem; }
-@media (max-width:640px) {
-    .accounts-toolbar { align-items:flex-start; flex-direction:column; }
-    .account-card { grid-template-columns:minmax(0,1fr) auto; grid-template-rows:auto auto; gap:.55rem .65rem; min-height:0; padding:.9rem; }
-    .account-card-link { grid-column:1; grid-row:1; display:flex; gap:.7rem; }
-    .account-icon { width:40px; height:40px; flex:0 0 40px; }
-    .account-balance { grid-column:1; grid-row:2; padding-left:calc(40px + .7rem); text-align:left; }
-    .account-menu { grid-column:2; grid-row:1; justify-self:end; align-self:start; }
-    .transfer-row { align-items:flex-start; }
-}
-</style>
-<style>
-/* Correção estrutural da listagem de contas: layout flex evita sobreposição de colunas. */
-#accountsPage .accounts-toolbar {
-    display:flex !important; align-items:center !important; justify-content:space-between !important;
-    gap:1rem !important; margin:0 0 1.25rem !important; min-height:3.5rem;
-}
-#accountsPage .accounts-toolbar > div:first-child { display:block !important; min-width:0; color:var(--bs-body-color) !important; }
-#accountsPage .accounts-toolbar h1 { display:block !important; margin:0 !important; color:var(--bs-body-color) !important; font-size:1.75rem; line-height:1.2; }
-#accountsPage .accounts-toolbar .small { display:block !important; color:var(--bs-secondary-color) !important; }
-#accountsPage .accounts-toolbar > div:last-child { display:flex !important; flex:0 0 auto; flex-wrap:wrap; gap:.5rem !important; }
-#accountsPage .accounts-list { display:grid !important; grid-template-columns:minmax(0,1fr); gap:.8rem !important; }
-#accountsPage .account-card {
-    display:flex !important; flex-flow:row nowrap !important; align-items:center !important;
-    gap:1rem !important; width:100%; min-height:6rem !important; padding:1rem 1.15rem !important;
-    border:1px solid var(--app-border) !important; border-radius:1rem !important;
-    background:var(--bs-body-bg) !important; box-shadow:var(--app-shadow) !important;
-}
-#accountsPage .account-card-link {
-    display:flex !important; flex:1 1 auto !important; min-width:0 !important;
-    align-items:center !important; gap:.85rem !important; color:var(--bs-body-color) !important;
-    text-decoration:none !important; visibility:visible !important; opacity:1 !important;
-}
-#accountsPage .account-icon { display:grid !important; place-items:center; width:2.8rem; height:2.8rem; flex:0 0 2.8rem; border-radius:.85rem; background:rgba(99,91,255,.1); color:var(--app-primary); }
-#accountsPage .account-main { display:block !important; min-width:0 !important; }
-#accountsPage .account-title-row { display:flex !important; flex-wrap:wrap; align-items:center; gap:.5rem; }
-#accountsPage .account-name { display:block !important; margin:0; color:var(--bs-body-color) !important; font-size:1rem; font-weight:750; }
-#accountsPage .account-subtitle { display:block !important; margin-top:.2rem; color:var(--bs-secondary-color) !important; font-size:.82rem; }
-#accountsPage .account-balance {
-    display:block !important; flex:0 0 11rem !important; min-width:0; margin-left:auto;
-    text-align:right !important; color:var(--bs-body-color) !important;
-}
-#accountsPage .account-balance strong { display:block !important; color:var(--bs-body-color) !important; font-size:1.05rem; white-space:nowrap; }
-#accountsPage .account-balance span { display:block !important; color:var(--bs-secondary-color) !important; font-size:.75rem; }
-#accountsPage .account-menu { display:block !important; position:relative; flex:0 0 auto !important; grid-column:auto !important; grid-row:auto !important; justify-self:auto !important; }
-#accountsPage .account-menu-button { display:inline-flex !important; align-items:center; justify-content:center; gap:.35rem; min-width:5rem; min-height:2.4rem; padding:.4rem .65rem; border:1px solid var(--app-border); border-radius:.7rem; background:var(--bs-body-bg); color:var(--bs-body-color); }
-#accountsPage .account-menu .dropdown-menu { z-index:1080; }
-@media (max-width:767.98px) {
-    #accountsPage .accounts-toolbar { align-items:flex-start !important; flex-direction:column !important; }
-    #accountsPage .accounts-toolbar > div:last-child { width:100%; }
-    #accountsPage .accounts-toolbar > div:last-child .btn { flex:1 1 auto; }
-    #accountsPage .account-card { display:grid !important; grid-template-columns:minmax(0,1fr) auto !important; grid-template-rows:auto auto !important; gap:.6rem .7rem !important; padding:.85rem !important; }
-    #accountsPage .account-card-link { grid-column:1 !important; grid-row:1 !important; }
-    #accountsPage .account-menu { grid-column:2 !important; grid-row:1 !important; align-self:start; }
-    #accountsPage .account-balance { grid-column:1 / -1 !important; grid-row:2 !important; display:flex !important; flex-direction:row; align-items:baseline; justify-content:space-between; gap:.5rem; width:100%; padding-top:.55rem; border-top:1px solid var(--app-border); text-align:left !important; }
-    #accountsPage .account-balance strong { font-size:.98rem; }
-}
-</style>
-@endpush
+
 
 @push('scripts')
 <script>
