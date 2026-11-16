@@ -152,7 +152,7 @@ jobs:
 
             echo "Removendo release antiga/incompleta: $name"
             rm -rf -- "$candidate"
-          done < <(find "$RELEASES_DIR" -mindepth 1 -maxdepth 1 -type d -regextype posix-extended -regex '.*/release-[0-9a-f]{7}' -printf '%T@ %p\\n' | sort -rn | cut -d' ' -f2-)
+          done < <(find "$RELEASES_DIR" -mindepth 1 -maxdepth 1 -type d -regextype posix-extended -regex '.*/release-[0-9a-f]{7}' -printf '%T@ %p\n' | sort -rn | cut -d' ' -f2-)
 
           echo "Espaço libertado. Release ativa e uma release de rollback preservadas."
           REMOTE
@@ -314,7 +314,7 @@ jobs:
                 fi
                 ;;
             esac
-          done < <(find "$RELEASES_DIR" -mindepth 1 -maxdepth 1 -type d -regextype posix-extended -regex '.*/release-[0-9a-f]{7}' -printf '%T@ %p\\n' | sort -rn | cut -d' ' -f2-)
+          done < <(find "$RELEASES_DIR" -mindepth 1 -maxdepth 1 -type d -regextype posix-extended -regex '.*/release-[0-9a-f]{7}' -printf '%T@ %p\n' | sort -rn | cut -d' ' -f2-)
 
           echo "Limpeza concluída. Retenção: release ativa + até 2 releases anteriores."
           REMOTE
