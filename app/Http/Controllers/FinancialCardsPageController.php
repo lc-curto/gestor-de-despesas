@@ -17,9 +17,7 @@ class FinancialCardsPageController extends Controller
             ->get();
 
         $cards->each(function (ContaFinanceira $card) use ($balances): void {
-            $card->current_balance = $card->is_operational && $card->opening_balance !== null
-                ? $balances->balance($card)
-                : '0.00';
+            $card->current_balance = $card->opening_balance !== null ? $balances->balance($card) : '0.00';
             $card->used_limit = max(0, -(float) $card->current_balance);
             $card->available_limit = max(0, (float) ($card->credit_limit ?? 0) - $card->used_limit);
             $card->usage_percent = (float) ($card->credit_limit ?? 0) > 0
@@ -28,12 +26,13 @@ class FinancialCardsPageController extends Controller
         });
 
         $activeCards = $cards->where('status', 'active')->where('is_operational', true);
+        $inactiveCards = $cards->filter(fn (ContaFinanceira $card) => $card->status !== 'active' || !$card->is_operational)->values();
         $summary = [
             'used' => $activeCards->sum('used_limit'),
             'available' => $activeCards->sum('available_limit'),
             'count' => $activeCards->count(),
         ];
 
-        return view('financial.cards', compact('cards', 'summary'));
+        return view('financial.cards', compact('cards', 'inactiveCards', 'summary'));
     }
 }

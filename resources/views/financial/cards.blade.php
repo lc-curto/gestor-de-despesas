@@ -16,11 +16,13 @@
     </section>
     <section class="cards-grid" aria-label="Os meus cartões">
         @forelse($cards as $card)
-            <article class="credit-card-item">
+            @php($isInactive = $card->status !== 'active' || !$card->is_operational)
+            <article class="credit-card-item {{ $isInactive ? 'credit-card-inactive' : '' }}" @if($isInactive) hidden @endif>
                 <div class="credit-card-top">
                     <a href="{{ route('financial.accounts.show',$card->id) }}" class="credit-card-title-link"><span class="credit-card-icon"><i data-lucide="credit-card" aria-hidden="true"></i></span><span><strong>{{ $card->name }}</strong><small>Cartão de crédito</small></span></a>
                     <div class="dropdown"><button class="credit-card-more" type="button" data-bs-toggle="dropdown" aria-label="Ações do cartão"><i data-lucide="more-horizontal"></i></button><ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                        @if($card->status==='active' && $card->is_operational)<li><button class="dropdown-item js-edit-card" type="button" data-bs-toggle="modal" data-bs-target="#editCardModal" data-name="{{ $card->name }}" data-update-url="{{ route('financial.accounts.update',$card->id) }}" data-settings-url="{{ route('financial.cards.settings',$card->id) }}" data-close-url="{{ route('financial.accounts.close',$card->id) }}" data-limit="{{ $card->credit_limit }}" data-closing="{{ $card->closing_day }}" data-due="{{ $card->due_day }}" data-used="{{ number_format($card->used_limit,2,'.','') }}">Editar cartão</button></li>@endif
+                        @if($card->status!=='closed' && $card->is_operational)<li><button class="dropdown-item js-edit-card" type="button" data-bs-toggle="modal" data-bs-target="#editCardModal" data-name="{{ $card->name }}" data-update-url="{{ route('financial.accounts.update',$card->id) }}" data-settings-url="{{ route('financial.cards.settings',$card->id) }}" data-close-url="{{ route('financial.accounts.close',$card->id) }}" data-limit="{{ $card->credit_limit }}" data-closing="{{ $card->closing_day }}" data-due="{{ $card->due_day }}" data-used="{{ number_format($card->used_limit,2,'.','') }}">Editar cartão</button></li>@endif
+                        @if($card->status==='active' && $card->is_operational)<li><button class="dropdown-item js-card-status" data-status="suspended" data-status-url="{{ route('financial.cards.status',$card->id) }}" data-name="{{ $card->name }}">Suspender cartão</button></li>@elseif($card->status==='suspended' && $card->is_operational)<li><button class="dropdown-item js-card-status" data-status="active" data-status-url="{{ route('financial.cards.status',$card->id) }}" data-name="{{ $card->name }}">Reativar cartão</button></li>@endif
                         @if($card->status==='active' && $card->is_operational && $card->used_limit<=0.00001)<li><button class="dropdown-item text-danger js-close-card" type="button" data-close-url="{{ route('financial.accounts.close',$card->id) }}" data-name="{{ $card->name }}">Encerrar cartão</button></li>@endif
                     </ul></div>
                 </div>
@@ -28,13 +30,21 @@
                 <div class="credit-card-progress"><span style="width:{{ $card->usage_percent }}%"></span></div>
                 <div class="credit-card-usage"><small>Utilização: {{ number_format($card->usage_percent,0) }}%</small><small>Limite: {{ number_format((float)$card->credit_limit,2,',','.') }} {{ $card->currency }}</small></div>
                 <div class="credit-card-cycle"><span>Fecho: <strong>dia {{ $card->closing_day??'—' }}</strong></span><span>Vencimento: <strong>dia {{ $card->due_day??'—' }}</strong></span></div>
-                @if($card->status!=='active' || !$card->is_operational)<div class="mt-3"><span class="badge text-bg-secondary">Encerrado</span></div>@endif
+                @if($card->status!=='active' || !$card->is_operational)<div class="mt-3"><span class="badge text-bg-secondary">{{ $card->status === 'suspended' ? 'Suspenso' : 'Encerrado' }}</span></div>@endif
                 <a href="{{ route('financial.accounts.show',$card->id) }}" class="btn btn-outline-secondary btn-sm w-100 mt-3">Ver cartão e movimentos</a>
             </article>
         @empty
             <div class="card border-0 rounded-4 text-center p-4"><div class="card-body"><i data-lucide="credit-card" class="mb-3 text-secondary" style="width:32px;height:32px"></i><h2 class="h5">Ainda não tens cartões</h2><p class="text-secondary mb-3">Adiciona um cartão para acompanhar o limite utilizado e o crédito disponível.</p><button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCardModal">Adicionar cartão</button></div></div>
         @endforelse
     </section>
+    @if($inactiveCards->isNotEmpty())
+        <div class="mt-3">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="toggleInactiveCards" aria-expanded="false">
+                <i data-lucide="archive" aria-hidden="true"></i>
+                <span>Mostrar cartões inativos ({{ $inactiveCards->count() }})</span>
+            </button>
+        </div>
+    @endif
 </div>
 
 <div class="modal fade" id="createCardModal" tabindex="-1" aria-labelledby="createCardTitle" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow rounded-4">
@@ -69,7 +79,7 @@
 .cards-kpi-grid>.col{min-width:0}.cards-kpi-grid .card-body{min-width:0;padding:.85rem!important}.cards-kpi-grid .card-body>span{display:block;min-height:2.2em;font-size:.82rem;line-height:1.15}.cards-kpi-grid .card-body>strong{font-size:clamp(.78rem,2.5vw,1.35rem)!important;line-height:1.2;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 @media(max-width:640px){.cards-kpi-grid{--bs-gutter-x:.5rem;--bs-gutter-y:.5rem}.cards-kpi-grid .card-body{padding:.7rem!important}.cards-kpi-grid .card-body>span{font-size:.7rem;min-height:2.3em}.cards-kpi-grid .card-body>strong{font-size:clamp(.72rem,2.7vw,.95rem)!important;letter-spacing:-.025em}}
 .cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr));gap:1rem}
-.credit-card-item{min-width:0;padding:1.15rem;border:1px solid var(--app-border);border-radius:1rem;background:var(--bs-body-bg);box-shadow:var(--app-shadow)}
+.credit-card-item[hidden]{display:none!important}.credit-card-item{min-width:0;padding:1.15rem;border:1px solid var(--app-border);border-radius:1rem;background:var(--bs-body-bg);box-shadow:var(--app-shadow)}
 .credit-card-top,.credit-card-title-link,.credit-card-values,.credit-card-usage,.credit-card-cycle{display:flex;align-items:center;justify-content:space-between;gap:.75rem}
 .credit-card-title-link{justify-content:flex-start;min-width:0;color:inherit;text-decoration:none}.credit-card-title-link>span:last-child{display:grid;gap:.2rem;min-width:0}.credit-card-title-link strong{overflow-wrap:anywhere}
 .credit-card-title-link small,.credit-card-values small,.credit-card-usage small{color:var(--bs-secondary-color);font-size:.8rem}
@@ -108,6 +118,21 @@
             if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível atualizar o nome.');window.location.reload();
         }catch(error){showError(document.getElementById('editCardError'),error.message);button.disabled=false;}
     });
+    document.getElementById('toggleInactiveCards')?.addEventListener('click', (event) => {
+        const button=event.currentTarget, show=button.getAttribute('aria-expanded')!=='true';
+        document.querySelectorAll('.credit-card-inactive').forEach(card=>card.hidden=!show);
+        button.setAttribute('aria-expanded',String(show));
+        button.querySelector('span').textContent=(show?'Ocultar':'Mostrar')+' cartões inativos ({{ $inactiveCards->count() }})';
+    });
+    document.querySelectorAll('.js-card-status').forEach(button=>button.addEventListener('click',async()=>{
+        const next=button.dataset.status, verb=next==='active'?'reativar':'suspender';
+        if(!window.confirm('Queres '+verb+' o cartão '+button.dataset.name+'?'))return;
+        button.disabled=true;
+        try{const response=await fetch(button.dataset.statusUrl,{method:'POST',credentials:'same-origin',headers,body:JSON.stringify({status:next})});const result=await response.json().catch(()=>({}));
+            if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível alterar o estado.');
+            window.location.reload();
+        }catch(error){feedback.className='alert alert-danger';feedback.textContent=error.message;button.disabled=false;}
+    }));
     document.querySelectorAll('.js-close-card').forEach(button=>button.addEventListener('click',async()=>{
         if(!window.confirm('Encerrar o cartão '+button.dataset.name+'? O histórico será preservado.'))return;button.disabled=true;
         try{const response=await fetch(button.dataset.closeUrl,{method:'POST',credentials:'same-origin',headers,body:JSON.stringify({})});const result=await response.json().catch(()=>({}));

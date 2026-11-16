@@ -140,7 +140,7 @@ class FinancialCoreController extends Controller
             'due_day' => 'required|integer|between:1,28',
             'credit_limit' => 'nullable|numeric|gt:0|decimal:0,2|max:9999999999.99',
         ]);
-        $card = $request->user()->contasFinanceiras()->whereKey($id)->where('type', 'credit_card')->where('is_operational', true)->where('status', 'active')->firstOrFail();
+        $card = $request->user()->contasFinanceiras()->whereKey($id)->where('type', 'credit_card')->where('is_operational', true)->whereIn('status', ['active', 'suspended'])->firstOrFail();
         $used = abs((float) $balances->balance($card));
         if (isset($data['credit_limit']) && (float) $data['credit_limit'] + 0.00001 < $used) {
             return response()->json(['message' => 'O limite não pode ser inferior ao valor já utilizado.'], 422);
@@ -241,6 +241,14 @@ class FinancialCoreController extends Controller
         );
 
         return response()->json(['data' => $updated]);
+    }
+
+    public function setCardStatus(Request $request, string $id, FinancialAccountService $service): JsonResponse
+    {
+        $data = $request->validate(['status' => ['required', Rule::in(['active', 'suspended'])]]);
+        $card = $request->user()->contasFinanceiras()->whereKey($id)->where('type', 'credit_card')->firstOrFail();
+        $updated = $service->setCardStatus($request->user(), $card, $data['status']);
+        return response()->json(['data' => $updated, 'message' => $data['status'] === 'active' ? 'Cartão reativado.' : 'Cartão suspenso.']);
     }
 
     public function closeAccount(Request $request, string $id, FinancialAccountService $service): JsonResponse

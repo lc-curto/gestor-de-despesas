@@ -96,6 +96,21 @@ class FinancialAccountService
         });
     }
 
+    public function setCardStatus(User $user, ContaFinanceira $account, string $status): ContaFinanceira
+    {
+        return DB::transaction(function () use ($user, $account, $status) {
+            $locked = ContaFinanceira::query()->where('user_id', $user->id)->whereKey($account->id)->where('type', 'credit_card')->lockForUpdate()->firstOrFail();
+            if ($locked->status === 'closed' || !$locked->is_operational) {
+                throw ValidationException::withMessages(['status' => 'Um cartão encerrado não pode ser reativado.']);
+            }
+            if (!in_array($status, ['active', 'suspended'], true)) {
+                throw ValidationException::withMessages(['status' => 'Estado inválido.']);
+            }
+            $locked->update(['status' => $status]);
+            return $locked->refresh();
+        });
+    }
+
     public function close(User $user, ContaFinanceira $account, ?string $transferToAccountId = null): void
     {
         DB::transaction(function () use ($user, $account, $transferToAccountId) {
