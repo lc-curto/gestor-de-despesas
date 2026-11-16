@@ -37,6 +37,27 @@ class FinanceFlowTest extends TestCase
         ]);
     }
 
+    public function test_credit_card_creation_accepts_zero_padded_billing_days(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->postJson(route('accounts.store'), [
+            'name' => 'Novo Banco Crédito',
+            'type' => 'credit_card',
+            'closing_day' => '10',
+            'due_day' => '01',
+            'credit_limit' => '1000',
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('contas_financeiras', [
+            'user_id' => $user->id,
+            'name' => 'Novo Banco Crédito',
+            'type' => 'credit_card',
+            'closing_day' => 10,
+            'due_day' => 1,
+        ]);
+    }
+
     public function test_expense_form_with_credit_card_creates_the_invoice_and_keeps_legacy_link(): void
     {
         $user = User::factory()->create();

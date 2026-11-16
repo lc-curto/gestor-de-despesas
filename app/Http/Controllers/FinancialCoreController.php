@@ -115,6 +115,13 @@ class FinancialCoreController extends Controller
 
     public function updateCardSettings(Request $request, string $id): JsonResponse
     {
+        foreach (['closing_day', 'due_day'] as $field) {
+            $value = $request->input($field);
+            if (is_string($value) && preg_match('/^\\d+$/', $value)) {
+                $request->merge([$field => (int) $value]);
+            }
+        }
+
         $data = $request->validate([
             'closing_day' => 'required|integer|between:1,28',
             'due_day' => 'required|integer|between:1,28',
@@ -143,6 +150,15 @@ class FinancialCoreController extends Controller
 
     public function storeAccount(Request $request, FinancialAccountService $service): JsonResponse
     {
+        // Inputs type="number" can arrive as "01". Normalize valid digit strings
+        // before Laravel's integer validator, which rejects leading zeroes.
+        foreach (['closing_day', 'due_day'] as $field) {
+            $value = $request->input($field);
+            if (is_string($value) && preg_match('/^\\d+$/', $value)) {
+                $request->merge([$field => (int) $value]);
+            }
+        }
+
         $data = $request->validate([
             'name' => 'required|string|max:120',
             'type' => ['required', Rule::in(['bank', 'cash', 'credit_card'])],
