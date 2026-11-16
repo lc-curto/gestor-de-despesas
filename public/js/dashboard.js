@@ -332,7 +332,7 @@
                     currentDay = day;
                     const heading = document.createElement('div');
                     heading.className = 'movement-day-heading';
-                    const match = day.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+                    const match = day.match(/^(\d{4})-(\d{2})-(\d{2})$/);
                     if (match) {
                         const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
                         heading.textContent = new Intl.DateTimeFormat('pt-PT', {

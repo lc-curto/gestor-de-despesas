@@ -136,14 +136,29 @@ class FinancialCoreController extends Controller
         }
 
         $data = $request->validate([
-            'closing_day' => 'required|integer|between:1,28',
-            'due_day' => 'required|integer|between:1,28',
+            'closing_day' => 'required|integer|between:1,31',
+            'due_day' => 'required|integer|between:1,31',
             'credit_limit' => 'nullable|numeric|gt:0|decimal:0,2|max:9999999999.99',
+            'opening_debt_amount' => 'sometimes|required|numeric|min:0|decimal:0,2|max:9999999999.99',
         ]);
         $card = $request->user()->contasFinanceiras()->whereKey($id)->where('type', 'credit_card')->where('is_operational', true)->whereIn('status', ['active', 'suspended'])->firstOrFail();
-        $used = abs((float) $balances->balance($card));
+        $hasCardMovements = $request->user()->movimentos()->where(function ($query) use ($card) {
+            $query->where('source_account_id', $card->id)->orWhere('destination_account_id', $card->id);
+        })->exists();
+        $openingDebtChanged = array_key_exists('opening_debt_amount', $data)
+            && $balances->toCents((string) $data['opening_debt_amount']) !== $balances->toCents((string) ($card->opening_debt_amount ?? '0.00'));
+        if ($openingDebtChanged && $hasCardMovements) {
+            return response()->json(['message' => 'A dívida inicial só pode ser corrigida antes de existirem movimentos no cartão.'], 422);
+        }
+        if ($openingDebtChanged && isset($data['credit_limit']) && $balances->toCents((string) $data['opening_debt_amount']) > $balances->toCents((string) $data['credit_limit'])) {
+            return response()->json(['message' => 'A dívida inicial não pode ultrapassar o limite total do cartão.'], 422);
+        }
+        $used = $openingDebtChanged && !$hasCardMovements ? (float) $data['opening_debt_amount'] : abs((float) $balances->balance($card));
         if (isset($data['credit_limit']) && (float) $data['credit_limit'] + 0.00001 < $used) {
             return response()->json(['message' => 'O limite não pode ser inferior ao valor já utilizado.'], 422);
+        }
+        if ($openingDebtChanged) {
+            $data['opening_balance'] = '-' . number_format((float) $data['opening_debt_amount'], 2, '.', '');
         }
         $card->update($data);
         return response()->json(['data' => $card->refresh()]);
@@ -183,8 +198,8 @@ class FinancialCoreController extends Controller
             'opening_debt_amount' => 'nullable|numeric|min:0|decimal:0,2|max:9999999999.99',
             'opening_balance_date' => 'required_with:opening_balance|date|before_or_equal:today',
             'allow_negative_balance' => 'sometimes|boolean',
-            'closing_day' => 'required_if:type,credit_card|nullable|integer|between:1,28',
-            'due_day' => 'required_if:type,credit_card|nullable|integer|between:1,28',
+            'closing_day' => 'required_if:type,credit_card|nullable|integer|between:1,31',
+            'due_day' => 'required_if:type,credit_card|nullable|integer|between:1,31',
             'credit_limit' => 'nullable|numeric|gt:0|decimal:0,2|max:9999999999.99',
         ]);
 

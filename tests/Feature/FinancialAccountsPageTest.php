@@ -145,6 +145,40 @@ class FinancialAccountsPageTest extends TestCase
         $this->actingAs($user)->putJson('/api/financial/accounts/'.$card->id.'/card-settings',['credit_limit'=>'300.00','closing_day'=>10,'due_day'=>1])->assertUnprocessable();
     }
 
+    public function test_initial_card_debt_can_be_corrected_before_any_movement(): void
+    {
+        $user = User::factory()->create();
+        $card = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Cartão corrigível', 'type' => 'credit_card', 'opening_debt_amount' => '350.00',
+            'credit_limit' => '1000.00', 'closing_day' => 10, 'due_day' => 1,
+        ]);
+
+        $this->actingAs($user)->putJson('/api/financial/accounts/'.$card->id.'/card-settings', [
+            'credit_limit' => '1000.00', 'opening_debt_amount' => '275.50', 'closing_day' => 30, 'due_day' => 31,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('contas_financeiras', [
+            'id' => $card->id, 'opening_debt_amount' => '275.50', 'opening_balance' => '-275.50', 'closing_day' => 30, 'due_day' => 31,
+        ]);
+    }
+
+    public function test_initial_card_debt_cannot_be_changed_after_a_card_movement(): void
+    {
+        $user = User::factory()->create();
+        $card = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Cartão usado', 'type' => 'credit_card', 'opening_debt_amount' => '100.00',
+            'credit_limit' => '1000.00', 'closing_day' => 10, 'due_day' => 1,
+        ]);
+
+        $this->actingAs($user)->postJson('/api/financial/cards/purchases', [
+            'account_id' => $card->id, 'description' => 'Compra posterior', 'amount' => '20.00', 'movement_date' => '2026-11-16',
+        ])->assertCreated();
+
+        $this->actingAs($user)->putJson('/api/financial/accounts/'.$card->id.'/card-settings', [
+            'credit_limit' => '1000.00', 'opening_debt_amount' => '200.00', 'closing_day' => 10, 'due_day' => 1,
+        ])->assertUnprocessable()->assertJsonFragment(['message' => 'A dívida inicial só pode ser corrigida antes de existirem movimentos no cartão.']);
+    }
+
     public function test_accounts_page_shows_bank_to_cash_transfer_form(): void
     {
         $user = User::factory()->create();
