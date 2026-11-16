@@ -72,7 +72,7 @@ class FinancialRecurrenceTest extends TestCase
 
         $this->getJson(route('dashboard.movimentos.data', ['mes' => '2026-11', 'limit' => 50]))
             ->assertOk()->assertJsonPath('data.0.recurrence_id', $user->recorrencias()->firstOrFail()->id);
-        $this->get('/recorrencias')->assertOk()->assertSee('Recorrências')->assertSee('Pausar recorrência');
+        $this->get('/recorrencias')->assertNotFound();
         $this->get(route('despesas.create'))->assertOk()->assertSee('Repetir esta despesa');
         $this->get(route('despesas.index'))->assertOk()->assertSee('Previsão recorrente');
 
@@ -196,5 +196,109 @@ class FinancialRecurrenceTest extends TestCase
             'expense_behavior' => 'fixed',
         ]);
     }
+
+
+    public function test_settling_pending_expense_updates_effective_amount_date_and_legacy_record(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->account($user);
+        $this->actingAs($user)->postJson('/api/financial/recurrences', $this->createRule($user, $account->id))->assertCreated();
+
+        $movement = $user->movimentos()->whereNotNull('recurrence_id')->orderBy('movement_date')->firstOrFail();
+        $this->putJson('/api/financial/movements/'.$movement->id.'/settle', [
+            'amount' => '35.00',
+            'movement_date' => '2026-11-16',
+            'source_account_id' => $account->id,
+        ])->assertOk()->assertJsonPath('data.status', 'settled')->assertJsonPath('data.amount', '35.00');
+
+        $this->assertSame('2026-11-16', $movement->fresh()->movement_date->toDateString());
+        $this->assertDatabaseHas('despesas', [
+            'id' => $movement->legacy_id,
+            'amount' => '35.00',
+            'expense_date' => '2026-11-16',
+        ]);
+        $this->assertSame('65.00', app(AccountBalanceService::class)->balance($account));
+    }
+
+    public function test_settling_pending_income_uses_destination_account(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->account($user);
+        $category = $user->categorias()->where('type', 'receita')->firstOrFail();
+        $this->actingAs($user)->postJson('/api/financial/recurrences', [
+            'type' => 'income',
+            'description' => 'Salário',
+            'amount' => '100.00',
+            'category_id' => $category->id,
+            'account_id' => $account->id,
+            'frequency' => 'monthly',
+            'interval_value' => 1,
+            'start_date' => '2026-11-15',
+        ])->assertCreated();
+
+        $movement = $user->movimentos()->where('type', 'income')->whereNotNull('recurrence_id')->firstOrFail();
+        $this->putJson('/api/financial/movements/'.$movement->id.'/settle', [
+            'amount' => '125.00',
+            'movement_date' => '2026-11-16',
+            'destination_account_id' => $account->id,
+        ])->assertOk()->assertJsonPath('data.status', 'settled')->assertJsonPath('data.amount', '125.00');
+
+        $this->assertDatabaseHas('receitas', [
+            'id' => $movement->legacy_id,
+            'amount' => '125.00',
+            'income_date' => '2026-11-16',
+        ]);
+        $this->assertSame('225.00', app(AccountBalanceService::class)->balance($account));
+    }
+
+    public function test_recurring_delete_scope_only_removes_selected_occurrence(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user)->postJson('/api/financial/recurrences', $this->createRule($user))->assertCreated();
+        $rule = $user->recorrencias()->firstOrFail();
+        $selected = $user->movimentos()->where('recurrence_id', $rule->id)->orderBy('recurrence_occurrence_date')->firstOrFail();
+
+        $this->deleteJson('/api/financial/movements/'.$selected->id.'/recurrence-scope', ['scope' => 'only'])
+            ->assertOk()->assertJsonPath('ok', true);
+
+        $this->assertSame('void', $selected->fresh()->status);
+        $this->assertTrue($rule->fresh()->is_active);
+        $this->assertSame(2, $user->movimentos()->where('recurrence_id', $rule->id)->where('status', 'pending')->count());
+    }
+
+    public function test_recurring_delete_scope_this_and_future_stops_rule_and_preserves_earlier_occurrence(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user)->postJson('/api/financial/recurrences', $this->createRule($user))->assertCreated();
+        $rule = $user->recorrencias()->firstOrFail();
+        $selected = $user->movimentos()->where('recurrence_id', $rule->id)->orderBy('recurrence_occurrence_date')->skip(1)->firstOrFail();
+
+        $this->deleteJson('/api/financial/movements/'.$selected->id.'/recurrence-scope', ['scope' => 'this_and_future'])
+            ->assertOk();
+
+        $this->assertFalse($rule->fresh()->is_active);
+        $this->assertSame(1, $user->movimentos()->where('recurrence_id', $rule->id)->where('status', 'pending')->count());
+        $this->assertSame(2, $user->movimentos()->where('recurrence_id', $rule->id)->where('status', 'void')->count());
+    }
+
+    public function test_recurring_delete_scope_all_preserves_settled_movements_and_removes_pending_occurrences(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->account($user);
+        $this->actingAs($user)->postJson('/api/financial/recurrences', $this->createRule($user, $account->id))->assertCreated();
+        $rule = $user->recorrencias()->firstOrFail();
+        $settled = $user->movimentos()->where('recurrence_id', $rule->id)->orderBy('recurrence_occurrence_date')->firstOrFail();
+        $this->putJson('/api/financial/movements/'.$settled->id.'/settle', [
+            'source_account_id' => $account->id,
+        ])->assertOk();
+
+        $this->deleteJson('/api/financial/movements/'.$settled->id.'/recurrence-scope', ['scope' => 'all'])->assertOk();
+
+        $this->assertFalse($rule->fresh()->is_active);
+        $this->assertSame('settled', $settled->fresh()->status);
+        $this->assertSame(1, $user->movimentos()->where('recurrence_id', $rule->id)->where('status', 'settled')->count());
+        $this->assertSame(0, $user->movimentos()->where('recurrence_id', $rule->id)->where('status', 'pending')->count());
+    }
+
 
 }
