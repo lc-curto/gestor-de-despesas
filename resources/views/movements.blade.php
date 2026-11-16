@@ -292,7 +292,17 @@
                                 </div>
                                 <div class="min-w-0">
                                     <h3 class="h6 fw-semibold mb-1 text-break">{{ $movimento->description }}</h3>
-                                    <p class="small text-secondary mb-0">{{ $categoriaLabel }} · {{ $dataMovimento->format('d/m/Y') }} @if($movimento->recurrence_id)<span class="badge text-bg-warning">Previsão</span>@endif @if($movimento->movement_status === 'pending')<span class="badge text-bg-warning">Pendente</span>@endif</p>
+                                    <div class="movement-badges d-flex flex-wrap align-items-center gap-1 mt-1">
+                                        @if($movimento->movement_status === 'settled')
+                                            <span class="badge rounded-pill text-bg-success">Pago</span>
+                                        @elseif($movimento->movement_status === 'partial' || $movimento->movement_status === 'partially_settled')
+                                            <span class="badge rounded-pill text-bg-info">Parcialmente pago</span>
+                                        @else
+                                            <span class="badge rounded-pill text-bg-warning">Pendente</span>
+                                        @endif
+                                        @if($movimento->recurrence_id)<span class="badge rounded-pill text-bg-light border text-secondary">Recorrente</span>@endif
+                                    </div>
+                                    <p class="small text-secondary mb-0">{{ $categoriaLabel }} · {{ $dataMovimento->format('d/m/Y') }}</p>
                                 </div>
                             </div>
                             <div class="expense-actions d-flex align-items-center justify-content-end gap-2">
@@ -364,9 +374,9 @@
                         </select>
                     </div>
                 </div>
-                <div class="modal-footer border-0 pt-0 d-grid gap-2">
-                    <button type="submit" class="btn btn-success w-100" id="settleMovementSubmit">Confirmar movimento</button>
-                    <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">Cancelar</button>
+                <div class="modal-footer border-0 pt-0 d-flex flex-row gap-2">
+                    <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success flex-fill" id="settleMovementSubmit">Confirmar movimento</button>
                 </div>
             </form>
         </div>
