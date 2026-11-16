@@ -8,6 +8,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Services\Financial\AccountBalanceService;
 use App\Services\Financial\CardInvoiceService;
+use App\Services\Financial\DashboardMovementQuery;
 
 class DashboardController extends Controller
 {
