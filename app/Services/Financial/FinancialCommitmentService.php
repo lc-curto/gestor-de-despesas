@@ -27,7 +27,7 @@ class FinancialCommitmentService
             $debt = Divida::query()->create([
                 'user_id' => $user->id, 'name' => $data['name'], 'type' => 'purchase',
                 'payment_condition' => $condition, 'payment_method' => $data['payment_method'] ?? null,
-                'installments_count' => $count, 'account_id' => $data['account_id'] ?? null,
+                'installments_count' => $count, 'installment_frequency' => $data['installment_frequency'] ?? 'monthly', 'account_id' => $data['account_id'] ?? null,
                 'total_amount' => $data['total_amount'], 'start_date' => $start->toDateString(),
                 'due_date' => $data['due_date'] ?? $start->toDateString(), 'status' => 'open',
             ]);
@@ -35,7 +35,7 @@ class FinancialCommitmentService
                 $amountCents = $base + ($i <= $remainder ? 1 : 0);
                 ParcelaDivida::query()->create([
                     'user_id' => $user->id, 'debt_id' => $debt->id, 'installment_number' => $i,
-                    'due_date' => Carbon::parse($data['due_date'] ?? $start)->addMonthsNoOverflow($i - 1)->toDateString(),
+                    'due_date' => $this->installmentDate(Carbon::parse($data['due_date'] ?? $start), $i - 1, $data['installment_frequency'] ?? 'monthly')->toDateString(),
                     'amount' => number_format($amountCents / 100, 2, '.', ''),
                     'principal_amount' => number_format($amountCents / 100, 2, '.', ''),
                     'interest_amount' => '0.00', 'paid_amount' => '0.00', 'status' => 'pending',
@@ -45,7 +45,7 @@ class FinancialCommitmentService
         });
     }
 
-    public function update(User $user, Divida $debt, array $data): Divida
+    private function installmentDate(Carbon $date, int $offset, string $frequency): Carbon\n    {\n        return match ($frequency) {\n            'weekly' => $date->addWeeks($offset),\n            'biweekly' => $date->addWeeks($offset * 2),\n            default => $date->addMonthsNoOverflow($offset),\n        };\n    }\n\n    public function update(User $user, Divida $debt, array $data): Divida
     {
         return DB::transaction(function () use ($user, $debt, $data): Divida {
             $locked = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
