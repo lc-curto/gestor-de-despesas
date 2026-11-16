@@ -332,6 +332,7 @@
                 </div>
                 <div class="modal-body">
                     <p class="text-secondary small mb-3" id="deleteMovementDescription"></p>
+                    <p class="alert alert-info small py-2" id="deleteMovementNote" hidden></p>
                     <div id="deleteSingleOption" class="form-check border rounded-3 p-3">
                         <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeOnlySingle" value="only" checked>
                         <label class="form-check-label fw-semibold" for="deleteScopeOnlySingle">Apenas este movimento</label>
