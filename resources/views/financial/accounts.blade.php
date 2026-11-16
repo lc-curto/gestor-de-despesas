@@ -28,28 +28,7 @@
 
     <div id="accountFeedback" class="d-none" role="status" aria-live="polite"></div>
 
-    @if ($cards->isNotEmpty())
-        <section class="credit-cards-section mb-4" aria-labelledby="creditCardsTitle">
-            <div class="credit-cards-heading"><div><h2 id="creditCardsTitle" class="h4 fw-bold mb-1">Os meus cartões</h2><p class="text-secondary mb-0">Limites, utilização e ciclo de pagamento.</p></div><button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#newAccountModal" data-create-card="1"><i data-lucide="plus" aria-hidden="true"></i><span class="ms-1">Novo cartão</span></button></div>
-            <div class="credit-cards-grid">
-                @foreach ($cards as $card)
-                    @php $used=abs((float)($card->current_balance??0)); $limit=(float)($card->credit_limit??0); $available=max(0,$limit-$used); $usage=$limit>0?min(100,($used/$limit)*100):0; $movementCount=$card->movimentos_origem_count+$card->movimentos_destino_count; @endphp
-                    <article class="credit-card-item">
-                        <div class="credit-card-top"><a href="{{ route('financial.accounts.show',$card->id) }}" class="credit-card-title-link"><span class="credit-card-icon"><i data-lucide="credit-card" aria-hidden="true"></i></span><span><strong>{{ $card->name }}</strong><small>Cartão de crédito</small></span></a>
-                            <div class="dropdown"><button class="credit-card-more" type="button" data-bs-toggle="dropdown" aria-label="Ações do cartão"><i data-lucide="more-horizontal"></i></button><ul class="dropdown-menu dropdown-menu-end shadow-sm">@if($card->status==='active' && $card->is_operational)<li><button class="dropdown-item js-edit-credit-card" type="button" data-bs-toggle="modal" data-bs-target="#editCreditCardModal" data-name="{{ $card->name }}" data-update-url="{{ route('financial.accounts.update',$card->id) }}" data-settings-url="{{ route('financial.cards.settings',$card->id) }}" data-close-url="{{ route('financial.accounts.close',$card->id) }}" data-limit="{{ $card->credit_limit }}" data-closing="{{ $card->closing_day }}" data-due="{{ $card->due_day }}" data-used="{{ number_format($used,2,'.','') }}">Editar cartão</button></li>@endif
-                            @if($card->status==='active' && $card->is_operational && $used<=0.00001)<li><button class="dropdown-item text-danger js-close-credit-card" type="button" data-close-url="{{ route('financial.accounts.close',$card->id) }}" data-name="{{ $card->name }}">Encerrar cartão</button></li>@endif
-                            </ul></div>
-                        </div>
-                        <div class="credit-card-values"><div><small>Utilizado</small><strong>{{ number_format($used,2,',','.') }} {{ $card->currency }}</strong></div><div class="text-end"><small>Disponível</small><strong class="text-success">{{ number_format($available,2,',','.') }} {{ $card->currency }}</strong></div></div>
-                        <div class="credit-card-progress"><span style="width:{{ $usage }}%"></span></div><div class="credit-card-usage"><small>Utilização: {{ number_format($usage,0) }}%</small><small>Limite: {{ number_format($limit,2,',','.') }} {{ $card->currency }}</small></div>
-                        <div class="credit-card-cycle"><span>Fecho: <strong>dia {{ $card->closing_day??'—' }}</strong></span><span>Vencimento: <strong>dia {{ $card->due_day??'—' }}</strong></span></div>
-                    </article>
-                @endforeach
-            </div>
-        </section>
-    @endif
-
-    @if ($accounts->isEmpty() && $cards->isEmpty())
+    @if ($accounts->isEmpty())
         <section class="accounts-empty card border-0 shadow-sm rounded-4">
             <div class="card-body text-center py-5">
                 <span class="accounts-empty-icon"><i data-lucide="wallet-cards" aria-hidden="true"></i></span>
@@ -57,7 +36,7 @@
                 <button class="btn btn-primary mt-2" type="button" data-bs-toggle="modal" data-bs-target="#newAccountModal">Adicionar conta</button>
             </div>
         </section>
-    @elseif ($accounts->isNotEmpty())
+    @else
         <section class="accounts-list" aria-label="As minhas contas">
             @foreach ($accounts as $account)
                 @php
@@ -138,186 +117,9 @@
                         <select id="accountType" name="type" class="form-select" required>
                             <option value="bank">Banco</option>
                             <option value="cash">Dinheiro</option>
-                            <option value="credit_card">Cartão de crédito</option>
                         </select>
                     </div>
-                    <div id="cardOpeningDebtField" class="mb-3 d-none">
-                        <label for="cardOpeningDebt" class="form-label">Limite já utilizado</label>
-                        <input id="cardOpeningDebt" name="opening_debt_amount" type="number" class="form-control" min="0" max="9999999999.99" step="0.01" inputmode="decimal" placeholder="0,00" disabled>
-                        <div class="form-text">Valor já consumido antes de começares a utilizar a aplicação. Não serão criadas compras antigas.</div>
-                    </div>
-                    <div id="cardBillingFields" class="row g-3 d-none card-billing-fields">
-                        <div class="col-6"><label for="cardClosingDay" class="form-label">Dia de fecho</label><input id="cardClosingDay" name="closing_day" type="number" class="form-control" min="1" max="28" value="25" disabled></div>
-                        <div class="col-6"><label for="cardDueDay" class="form-label">Dia de vencimento</label><input id="cardDueDay" name="due_day" type="number" class="form-control" min="1" max="28" value="5" disabled></div>
-                        <div class="col-12"><label for="cardCreditLimit" class="form-label">Limite total (€)</label><input id="cardCreditLimit" name="credit_limit" type="number" class="form-control" min="0.01" step="0.01" placeholder="1.000,00" disabled></div>
-                        <div class="col-12 form-text">Os dias 1–28 evitam datas inexistentes em meses curtos.</div>
-                    </div>
-                    <div class="row g-3">
-                        <div class="col-7" id="bankOpeningBalanceField">
-                            <label for="openingBalance" class="form-label">Saldo inicial</label>
-                            <input id="openingBalance" name="opening_balance" type="number" class="form-control" min="-9999999999.99" max="9999999999.99" step="0.01" inputmode="decimal" placeholder="Opcional">
-                        </div>
-                        <div class="col-5">
-                            <label for="openingBalanceDate" class="form-label">Data de referência</label>
-                            <input id="openingBalanceDate" name="opening_balance_date" type="date" class="form-control" value="{{ now()->toDateString() }}" max="{{ now()->toDateString() }}">
-                        </div>
-                    </div>
-                    <div class="form-check mt-3">
-                        <input id="allowNegativeBalance" name="allow_negative_balance" type="checkbox" value="1" class="form-check-input">
-                        <label for="allowNegativeBalance" class="form-check-label">Permitir saldo negativo</label>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Guardar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-{{-- Editar cartão --}}
-<div class="modal fade" id="editCreditCardModal" tabindex="-1" aria-labelledby="editCreditCardTitle" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow rounded-4"><form id="creditCardEditForm"><div class="modal-header border-0 pb-0"><h2 class="modal-title h5 fw-bold" id="editCreditCardTitle">Editar cartão</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body p-4"><label class="form-label" for="editCardName">Nome</label><input id="editCardName" name="name" class="form-control mb-3" maxlength="120" required><label class="form-label" for="editCardLimit">Limite total (€)</label><input id="editCardLimit" name="credit_limit" type="number" min="0.01" step="0.01" class="form-control mb-3" required><div class="row g-3"><div class="col-6"><label class="form-label" for="editCardClosing">Dia de fecho</label><input id="editCardClosing" name="closing_day" type="number" min="1" max="28" class="form-control" required></div><div class="col-6"><label class="form-label" for="editCardDue">Dia de vencimento</label><input id="editCardDue" name="due_day" type="number" min="1" max="28" class="form-control" required></div></div><div class="credit-card-debt-summary mt-3"><small>Dívida atual — não editável</small><strong id="editCardUsed"></strong></div><div class="account-form-feedback small text-danger mt-3" role="alert"></div></div><div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar alterações</button></div></form></div></div></div>
-
-{{-- Editar conta --}}
-<div class="modal fade" id="renameAccountModal" tabindex="-1" aria-labelledby="renameAccountTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-md">
-        <div class="modal-content border-0 shadow rounded-4 account-edit-modal">
-            <form id="accountNameForm" data-endpoint="">
-                <div class="modal-header border-0 pb-0">
-                    <h2 class="modal-title h5 fw-bold" id="renameAccountTitle">Editar conta</h2>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                </div>
-                <div class="modal-body p-4">
-                    <label for="renameAccountName" class="form-label">Nome</label>
-                    <input id="renameAccountName" name="name" class="form-control" maxlength="120" required>
-                    <p class="small text-secondary mt-2 mb-0">Este nome aparece nas despesas, receitas e transferências.</p>
-                    <div id="editOpeningSummary" class="account-opening-summary mt-4 d-none">
-                        <div><span class="account-opening-summary-label">Saldo inicial</span><strong id="editOpeningSummaryValue"></strong></div>
-                        <span id="editOpeningSummaryDate"></span>
-                    </div>
-                    <div id="editOpeningBalanceFields" class="mt-3">
-<label for="editOpeningBalance" class="form-label">Saldo inicial</label>
-                        <input id="editOpeningBalance" name="opening_balance" type="number" class="form-control" min="-999999999.99" max="9999999999.99" step="0.01" inputmode="decimal" placeholder="Ex.: 1500,00">
-                        <label for="editOpeningDate" class="form-label mt-3">Data do saldo inicial</label>
-                        <input id="editOpeningDate" name="opening_balance_date" type="date" class="form-control" value="{{ now()->toDateString() }}" max="{{ now()->toDateString() }}">
-                        <div class="form-text">Usa a data em que o saldo real foi apurado.</div>
-                    </div>
-                    <div id="editNegativeBalanceField" class="form-check mt-3">
-                        <input id="editAllowNegative" name="allow_negative_balance" type="checkbox" value="1" class="form-check-input">
-                        <label for="editAllowNegative" class="form-check-label">Permitir saldo negativo</label>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Guardar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-{{-- Saldo negativo --}}
-<div class="modal fade" id="negativeBalanceModal" tabindex="-1" aria-labelledby="negativeBalanceTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-sm">
-        <div class="modal-content border-0 shadow rounded-4">
-            <form id="negativeBalanceForm" data-endpoint="">
-                <div class="modal-header border-0 pb-0">
-                    <h2 class="modal-title h5 fw-bold" id="negativeBalanceTitle">Saldo negativo</h2>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="small text-secondary mb-3" id="negativeBalanceAccountName"></p>
-                    <div class="form-check">
-                        <input id="negativeBalanceAllowed" name="allow_negative_balance" type="checkbox" value="1" class="form-check-input">
-                        <label for="negativeBalanceAllowed" class="form-check-label">Permitir saldo negativo</label>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Guardar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-{{-- Configurar saldo --}}
-<div class="modal fade" id="openingBalanceModal" tabindex="-1" aria-labelledby="openingBalanceTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow rounded-4">
-            <form id="openingBalanceForm" data-endpoint="">
-                <div class="modal-header border-0 pb-0">
-                    <h2 class="modal-title h5 fw-bold" id="openingBalanceTitle">Definir saldo inicial</h2>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="small text-secondary mb-3" id="openingBalanceAccountName">Indica o saldo atual desta conta. A data é definida automaticamente como hoje.</p>
-                    <div class="row g-3">
-                        <div class="col-7">
-                            <label for="openingBalanceValue" class="form-label">Saldo</label>
-                            <input id="openingBalanceValue" name="opening_balance" type="number" class="form-control" min="-9999999999.99" max="9999999999.99" step="0.01" required>
-                        </div>
-                        <div class="col-5">
-                            <label for="openingBalanceReference" class="form-label">Data do saldo</label>
-                            <input id="openingBalanceReference" name="opening_balance_date" type="date" class="form-control" value="{{ now()->toDateString() }}" max="{{ now()->toDateString() }}" required>
-                        </div>
-                    </div>
-                    <div class="form-check mt-3">
-                        <input id="allowNegativeOpening" name="allow_negative_balance" type="checkbox" value="1" class="form-check-input">
-                        <label for="allowNegativeOpening" class="form-check-label">Permitir saldo negativo</label>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Guardar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-{{-- Encerrar --}}
-<div class="modal fade" id="closeAccountModal" tabindex="-1" aria-labelledby="closeAccountTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-sm">
-        <div class="modal-content border-0 shadow rounded-4">
-            <form id="closeAccountForm" data-endpoint="">
-                <div class="modal-header border-0 pb-0">
-                    <h2 class="modal-title h5 fw-bold" id="closeAccountTitle">Encerrar conta</h2>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="mb-3" id="closeAccountName"></p>
-                    <label for="closeTransferTarget" class="form-label">Transferir saldo para</label>
-                    <select id="closeTransferTarget" name="transfer_to_account_id" class="form-select">
-                        <option value="">Não transferir</option>
-                        @foreach ($transferTargets as $target)
-                            <option value="{{ $target->id }}">{{ $target->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-danger">Encerrar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-{{-- Transferência --}}
-@if ($transferTargets->count() >= 2)
-    <div class="modal fade" id="accountTransferModal" tabindex="-1" aria-labelledby="accountTransferTitle" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow rounded-4">
-                <form id="accountTransferForm" data-endpoint="{{ route('financial.movements.store') }}">
-                    <input type="hidden" name="type" value="transfer">
-                    <div class="modal-header border-0 pb-0">
-                        <h2 class="modal-title h5 fw-bold" id="accountTransferTitle">Transferir</h2>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
+                    <div class="mb-3">
                             <label for="transferAmount" class="form-label">Valor</label>
                             <input id="transferAmount" name="amount" type="number" class="form-control" min="0.01" max="9999999999.99" step="0.01" required>
                         </div>
@@ -475,11 +277,6 @@
         }
     }
 
-    document.querySelector('[data-create-card="1"]')?.addEventListener('click', () => {
-        if (accountType) { accountType.value = 'credit_card'; refreshCardFields(); }
-        document.getElementById('newAccountTitle').textContent = 'Novo cartão';
-        document.getElementById('accountName').placeholder = 'Ex.: Novo Banco Crédito';
-    });
     document.getElementById('newAccountModal')?.addEventListener('hidden.bs.modal', () => {
         document.getElementById('newAccountTitle').textContent = 'Nova conta';
         document.getElementById('accountCreateForm')?.reset();
@@ -488,7 +285,7 @@
     const accountType = document.getElementById('accountType');
     const cardBillingFields = document.getElementById('cardBillingFields');
     const refreshCardFields = () => {
-        const enabled = accountType?.value === 'credit_card';
+        const enabled = false;
         const bankOpeningField = document.getElementById('bankOpeningBalanceField');
         const bankOpeningInput = document.getElementById('openingBalance');
         bankOpeningField?.classList.toggle('d-none', enabled);
@@ -497,10 +294,6 @@
         cardBillingFields?.querySelectorAll('input').forEach((input) => { input.disabled = !enabled; });
         const creditLimitInput = document.getElementById('cardCreditLimit');
         if (creditLimitInput) creditLimitInput.required = enabled;
-        const debtField = document.getElementById('cardOpeningDebtField');
-        debtField?.classList.toggle('d-none', !enabled);
-        const debtInput = document.getElementById('cardOpeningDebt');
-        if (debtInput) debtInput.disabled = !enabled;
     };
     accountType?.addEventListener('change', refreshCardFields);
     refreshCardFields();

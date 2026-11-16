@@ -66,7 +66,6 @@ class FinancialCommitmentsPageController extends Controller
         ];
 
         return view('financial.commitments', compact(
-            'cards',
             'paymentAccounts',
             'invoicePage',
             'commitments',

@@ -124,11 +124,18 @@ class FinancialAccountsPageTest extends TestCase
         $this->assertDatabaseHas('contas_financeiras', ['id' => $target->id, 'status' => 'active']);
     }
 
-    public function test_credit_cards_are_displayed_in_a_dedicated_section_with_usage_and_available_credit(): void
+    public function test_credit_cards_are_not_displayed_on_accounts_page(): void
     {
         $user = User::factory()->create();
         app(FinancialAccountService::class)->create($user, ['name'=>'Cartão principal','type'=>'credit_card','opening_debt_amount'=>'350.00','credit_limit'=>'1000.00','closing_day'=>10,'due_day'=>1]);
-        $this->actingAs($user)->get('/contas')->assertOk()->assertSee('Os meus cartões')->assertSee('Cartão principal')->assertSee('Utilizado')->assertSee('Disponível');
+        $this->actingAs($user)->get('/contas')->assertOk()->assertDontSee('Os meus cartões')->assertDontSee('Cartão principal');
+    }
+
+    public function test_credit_cards_are_displayed_on_their_own_page(): void
+    {
+        $user=User::factory()->create();
+        app(FinancialAccountService::class)->create($user,['name'=>'Cartão principal','type'=>'credit_card','opening_debt_amount'=>'350.00','credit_limit'=>'1000.00','closing_day'=>10,'due_day'=>1]);
+        $this->actingAs($user)->get('/cartoes')->assertOk()->assertSee('Cartões')->assertSee('Cartão principal')->assertSee('Utilizado')->assertSee('Disponível');
     }
 
     public function test_card_limit_cannot_be_reduced_below_current_utilization(): void

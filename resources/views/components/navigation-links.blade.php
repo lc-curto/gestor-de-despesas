@@ -25,10 +25,15 @@
             @if(request()->routeIs('financial.accounts.*')) aria-current="page" @endif>
             <i data-lucide="wallet-cards" aria-hidden="true"></i><span>Contas</span>
         </a>
+        <a class="app-navigation-link {{ request()->routeIs('financial.cards.*') ? 'active' : '' }}"
+            href="{{ route('financial.cards.page') }}" title="Cartões" aria-label="Cartões"
+            @if(request()->routeIs('financial.cards.*')) aria-current="page" @endif>
+            <i data-lucide="credit-card" aria-hidden="true"></i><span>Cartões</span>
+        </a>
         <a class="app-navigation-link {{ request()->routeIs('financial.commitments.*') ? 'active' : '' }}"
-            href="{{ route('financial.commitments.page') }}" title="Cartões e compromissos" aria-label="Cartões e compromissos"
+            href="{{ route('financial.commitments.page') }}" title="Compromissos" aria-label="Compromissos"
             @if(request()->routeIs('financial.commitments.*')) aria-current="page" @endif>
-            <i data-lucide="credit-card" aria-hidden="true"></i><span>Cartões e compromissos</span>
+            <i data-lucide="calendar-clock" aria-hidden="true"></i><span>Compromissos</span>
         </a>
     </div>
 

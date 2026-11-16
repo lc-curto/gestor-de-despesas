@@ -14,7 +14,7 @@ class FinancialAccountsPageController extends Controller
     public function __invoke(Request $request, AccountBalanceService $balances)
     {
         $accounts = $request->user()->contasFinanceiras()
-            ->where('type', '!=', 'legacy')
+            ->whereIn('type', ['bank', 'cash'])
             ->withCount(['movimentosOrigem', 'movimentosDestino'])
             ->orderBy('created_at')
             ->get();
@@ -31,10 +31,7 @@ class FinancialAccountsPageController extends Controller
                 $account->current_balance = $balances->balance($account);
             }
         });
-        $cards = $accounts->where('type', 'credit_card')->values();
-        $accounts = $accounts->where('type', '!=', 'credit_card')->values();
-
-        return view('financial.accounts', compact('accounts', 'cards', 'transferTargets'));
+        return view('financial.accounts', compact('accounts', 'transferTargets'));
     }
 
     public function show(Request $request, string $id, AccountBalanceService $balances)

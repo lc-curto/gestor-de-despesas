@@ -6,6 +6,7 @@ use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\FinancialCoreController;
 use App\Http\Controllers\FinancialAccountsPageController;
 use App\Http\Controllers\FinancialCommitmentsPageController;
+use App\Http\Controllers\FinancialCardsPageController;
 use App\Http\Controllers\FinancialRouteController;
 use App\Http\Controllers\FinancialDataReviewController;
 use Illuminate\Http\Request;
@@ -32,6 +33,7 @@ Route::middleware(['auth', 'financial.review'])->group(function(){
  Route::get('/dashboard',DashboardController::class)->name('dashboard');
  Route::get('/rota-financeira', FinancialRouteController::class)->name('financial.route');
  Route::get('/contas', FinancialAccountsPageController::class)->name('financial.accounts.page');
+ Route::get('/cartoes', [FinancialCardsPageController::class, '__invoke'])->name('financial.cards.page');
  Route::get('/compromissos', FinancialCommitmentsPageController::class)->name('financial.commitments.page');
  Route::delete('/contas/movimentos/{id}', [FinancialAccountsPageController::class, 'destroyMovement'])->name('financial.accounts.movement.destroy');
  Route::post('/contas/movimentos/{id}/estornar', [FinancialAccountsPageController::class, 'reverseMovement'])->name('financial.accounts.movement.reverse');
