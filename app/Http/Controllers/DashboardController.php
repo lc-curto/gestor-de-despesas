@@ -110,6 +110,7 @@ class DashboardController extends Controller
                 'category_icon' => $item->category_icon,
                 'category_color' => $item->category_color,
                 'data_movimento' => $item->data_movimento,
+                'due_date' => $item->due_date ?? null,
                 'account_id' => $item->account_id,
                 'movement_status' => $item->movement_status,
                 'is_historical' => (bool) ($item->is_historical ?? false),
@@ -242,7 +243,8 @@ class DashboardController extends Controller
             ->where('despesas.user_id', $userId)
             ->whereBetween('despesas.expense_date', [$inicio->toDateString(), $fim->toDateString()])
             ->where(fn ($q) => $q->whereNull('financial_movements.status')->orWhere('financial_movements.status', '!=', 'void'))
-            ->selectRaw("despesas.id, financial_movements.id AS financial_movement_id, 'despesa' AS tipo, despesas.description, despesas.amount, despesas.currency, categorias.id AS category, categorias.name AS category_label, categorias.icon AS category_icon, categorias.color AS category_color, despesas.expense_date AS data_movimento, financial_movements.source_account_id AS account_id, financial_movements.status AS movement_status, financial_movements.requires_account_assignment AS requires_account_assignment, financial_movements.is_historical AS is_historical, financial_movements.expense_behavior AS expense_behavior, financial_movements.recurrence_id AS recurrence_id, recurrence_rules.frequency AS recurrence_frequency, recurrence_rules.interval_value AS recurrence_interval, recurrence_rules.ends_at AS recurrence_ends_at");
+            ->whereNull('financial_movements.invoice_id')
+            ->selectRaw("despesas.id, financial_movements.id AS financial_movement_id, 'despesa' AS tipo, despesas.description, despesas.amount, despesas.currency, categorias.id AS category, categorias.name AS category_label, categorias.icon AS category_icon, categorias.color AS category_color, despesas.expense_date AS data_movimento, financial_movements.source_account_id AS account_id, financial_movements.status AS movement_status, financial_movements.requires_account_assignment AS requires_account_assignment, financial_movements.is_historical AS is_historical, financial_movements.expense_behavior AS expense_behavior, despesas.due_date AS due_date, financial_movements.recurrence_id AS recurrence_id, recurrence_rules.frequency AS recurrence_frequency, recurrence_rules.interval_value AS recurrence_interval, recurrence_rules.ends_at AS recurrence_ends_at");
 
         $receitas = DB::table('receitas')
             ->join('categorias', 'categorias.id', '=', 'receitas.category_id')
