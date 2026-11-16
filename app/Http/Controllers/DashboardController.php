@@ -168,7 +168,7 @@ class DashboardController extends Controller
         $totalDespesasFiltradas = (clone $despesasQuery)->count();
         $totalReceitasFiltradas = (clone $receitasQuery)->count();
 
-        $query = $this->movimentosQuery($user->id, $inicio, $fim, 'todos', $categoria);
+        $query = app(DashboardMovementQuery::class)->build($user->id, $inicio, $fim, 'todos', $categoria);
         $items = (clone $query)->offset($offset)->limit($limit)->get();
         $total = $totalDespesasFiltradas + $totalReceitasFiltradas;
 
