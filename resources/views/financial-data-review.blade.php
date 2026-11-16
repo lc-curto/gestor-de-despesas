@@ -1,37 +1,44 @@
 @extends('layouts.app')
 
-@section('title', 'Revisão dos dados')
+@section('title', 'Preparar os teus dados')
 
 @section('content')
-<div class="container-fluid py-3 py-md-4" style="max-width: 900px">
+@php
+    $steps = [
+        ['id' => 'accounts', 'title' => 'Contas', 'eyebrow' => 'Primeiro, vamos confirmar a base', 'intro' => 'As contas são o ponto de partida dos saldos. Confirma os nomes, moedas e saldos iniciais.', 'count' => $counts['accounts'], 'unit' => 'contas', 'tip' => 'O saldo inicial deve corresponder ao dinheiro que tinhas nessa conta na data de abertura indicada.'],
+        ['id' => 'categories', 'title' => 'Categorias', 'eyebrow' => 'Vamos pôr cada coisa no seu lugar', 'intro' => 'As categorias ajudam a perceber para onde vai o dinheiro. Confirma se os nomes e os tipos fazem sentido.', 'count' => $counts['categories'], 'unit' => 'categorias', 'tip' => 'Evita categorias repetidas com nomes diferentes. Uma categoria deve representar um tipo claro de receita ou despesa.'],
+        ['id' => 'movements', 'title' => 'Movimentos', 'eyebrow' => 'Vamos conferir o histórico', 'intro' => 'Confirma se os movimentos antigos estão completos e se os valores, datas, contas e categorias estão certos.', 'count' => $counts['movements'] + $counts['legacy_expenses'] + $counts['legacy_incomes'], 'unit' => 'registos encontrados', 'tip' => 'Se encontrares um possível duplicado, confirma primeiro se não são dois pagamentos diferentes antes de o remover.'],
+        ['id' => 'classification', 'title' => 'Despesas fixas e variáveis', 'eyebrow' => 'Um último ajuste para o planeamento', 'intro' => 'Esta distinção ajuda a Rota Financeira a mostrar quanto do teu dinheiro já está comprometido.', 'count' => null, 'unit' => '', 'tip' => 'Fixa é uma despesa estrutural ou regular. Variável é um gasto que não faz parte dos compromissos regulares. Ser recorrente não significa automaticamente ser fixa.'],
+    ];
+    $stepCount = count(array_filter(array_keys($steps), fn ($i) => $stepStates[$steps[$i]['id']]['done'] ?? false));
+    $active = collect($steps)->first(fn ($step) => !($stepStates[$step['id']]['done'] ?? false));
+    $isFinal = $active === null;
+    $activeIndex = $isFinal ? 4 : array_search($active['id'], array_column($steps, 'id'), true);
+@endphp
+
+<div class="container-fluid py-3 py-md-5" style="max-width:760px">
     <div class="mb-4">
-        <span class="small fw-bold text-uppercase text-secondary" style="letter-spacing:.1em">Atualização do Meu Bolso</span>
-        <h1 class="h2 fw-bold mt-2 mb-2">Vamos preparar os teus dados</h1>
-        <p class="text-secondary mb-0">A nova versão tem uma estrutura financeira mais completa. Revê os dados existentes antes de continuar. O processo guarda o teu progresso e não elimina movimentos.</p>
+        <span class="small fw-bold text-uppercase text-secondary" style="letter-spacing:.1em">Nova fase do Meu Bolso</span>
+        <h1 class="h2 fw-bold mt-2 mb-2">Vamos deixar tudo pronto.</h1>
+        <p class="text-secondary mb-0">Uma revisão rápida para garantir que os teus saldos e planeamentos começam com informação fiável. Não vamos apagar os teus dados.</p>
     </div>
 
-    @php
-        $steps = [
-            ['id' => 'accounts', 'title' => 'Contas financeiras', 'description' => 'Confirma que as contas existentes estão corretas e que os saldos iniciais representam a situação na data indicada.', 'detail' => $counts['accounts'].' contas financeiras encontradas.'],
-            ['id' => 'categories', 'title' => 'Categorias', 'description' => 'Revê os nomes, tipos e estado das categorias. Confirma que receitas e despesas estão classificadas corretamente.', 'detail' => $counts['categories'].' categorias encontradas.'],
-            ['id' => 'movements', 'title' => 'Movimentos existentes', 'description' => 'Confirma que os movimentos históricos estão completos. Presta atenção a datas, valores, contas, categorias e possíveis duplicados.', 'detail' => $counts['movements'].' movimentos no núcleo financeiro; '.$counts['legacy_expenses'].' despesas e '.$counts['legacy_incomes'].' receitas legadas.'],
-            ['id' => 'classification', 'title' => 'Despesas fixas e variáveis', 'description' => 'Confirma a natureza de cada despesa. Fixa significa estrutural ou regular; variável corresponde a gastos que não fazem parte dos compromissos regulares.', 'detail' => 'A classificação alimenta os cálculos da Rota Financeira. Não assumas que uma despesa recorrente é automaticamente fixa.'],
-            ['id' => 'final', 'title' => 'Conferência final', 'description' => 'Confirma que reveste os dados e que estás preparado para utilizar a nova versão.', 'detail' => 'A confirmação termina o bloqueio de acesso. As tuas alterações e os dados históricos serão preservados.'],
-        ];
-        $stepCount = count(array_filter(['accounts','categories','movements','classification'], fn ($id) => $stepStates[$id]['done'] ?? false));
-    @endphp
-
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
+    <section class="card border-0 shadow-sm rounded-4 mb-4">
         <div class="card-body p-3 p-md-4">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <strong class="small">Progresso da revisão</strong>
-                <span class="small text-secondary">{{ $stepCount }} de 4 etapas</span>
+                <span class="small fw-semibold">O teu progresso</span>
+                <span class="small text-secondary">{{ $stepCount }} de 4 concluídas</span>
             </div>
-            <div class="progress" role="progressbar" aria-valuenow="{{ $stepCount * 25 }}" aria-valuemin="0" aria-valuemax="100" style="height:8px">
+            <div class="progress mb-3" style="height:7px" role="progressbar" aria-valuenow="{{ $stepCount * 25 }}" aria-valuemin="0" aria-valuemax="100">
                 <div class="progress-bar" style="width:{{ $stepCount * 25 }}%;background:#635bff"></div>
             </div>
+            <div class="d-flex gap-2">
+                @foreach (['Contas','Categorias','Movimentos','Classificação'] as $label)
+                    <span class="flex-fill rounded-pill {{ $loop->index < $stepCount ? 'bg-success' : 'bg-body-secondary' }}" style="height:5px" title="{{ $label }}"></span>
+                @endforeach
+            </div>
         </div>
-    </div>
+    </section>
 
     @if ($errors->any())
         <div class="alert alert-danger rounded-3">{{ $errors->first() }}</div>
@@ -40,108 +47,105 @@
         <div class="alert alert-success rounded-3">{{ session('success') }}</div>
     @endif
 
-    <div class="d-grid gap-3">
-        @foreach ($steps as $index => $step)
-            @php
-                $done = $step['id'] === 'final' ? in_array('final', $completed, true) : ($stepStates[$step['id']]['done'] ?? false);
-                $state = $stepStates[$step['id']] ?? null;
-                $locked = $step['id'] === 'final' && $stepCount < 4;
-            @endphp
-            <section class="card rounded-4 {{ $done ? 'border-success' : 'border' }}">
-                <div class="card-body p-3 p-md-4">
-                    <div class="d-flex align-items-start gap-3">
-                        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 {{ $done ? 'bg-success-subtle text-success' : 'bg-body-secondary' }}" style="width:38px;height:38px">
-                            @if ($done)
-                                <i data-lucide="check" aria-hidden="true"></i>
-                            @else
-                                <span class="fw-bold">{{ $index + 1 }}</span>
-                            @endif
-                        </div>
-                        <div class="flex-grow-1 min-w-0">
-                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                                <h2 class="h6 fw-bold mb-0">{{ $step['title'] }}</h2>
-                                @if ($done)
-                                    <span class="badge text-bg-success">Concluída</span>
-                                @elseif ($locked)
-                                    <span class="badge text-bg-secondary">Bloqueada</span>
-                                @elseif ($state && $state['changed'])
-                                    <span class="badge text-bg-info">Alterações detetadas</span>
-                                @else
-                                    <span class="badge text-bg-warning">Por rever</span>
-                                @endif
-                            </div>
-                            <p class="text-secondary small mt-2 mb-2">{{ $step['description'] }}</p>
-                            <p class="small fw-semibold mb-2">{{ $step['detail'] }}</p>
-                            @if ($state)
-                                <p class="small text-secondary mb-3">
-                                    @if ($done)
-                                        Validada em {{ \Illuminate\Support\Carbon::parse($state['reviewed_at'])->format('d/m/Y H:i') }}.
-                                        @if (($state['state'] ?? '') === 'changes_reviewed') Foram detetadas alterações e a revisão foi confirmada. @else Confirmaste que os dados já estavam corretos. @endif
-                                    @elseif ($state['changed'])
-                                        O sistema detetou alterações desde o início desta revisão. Confirma que foram intencionais e que os dados estão corretos.
-                                    @else
-                                        Não foram detetadas alterações desde o início da revisão. Confirma explicitamente se os dados já estavam corretos.
-                                    @endif
-                                </p>
-                            @endif
-                            @if ($step['id'] !== 'final')
-                                <div class="d-flex flex-wrap gap-2 mb-3">
-                                    @if ($step['id'] === 'accounts')
-                                        <a class="btn btn-sm btn-light border" href="{{ route('financial.accounts.page') }}">Rever contas</a>
-                                    @elseif ($step['id'] === 'categories')
-                                        <a class="btn btn-sm btn-light border" href="{{ route('categorias.index') }}">Rever categorias</a>
-                                    @elseif ($step['id'] === 'movements')
-                                        <a class="btn btn-sm btn-light border" href="{{ route('dashboard.movimentos') }}">Rever movimentos</a>
-                                        <a class="btn btn-sm btn-light border" href="{{ route('despesas.index') }}">Despesas antigas</a>
-                                        <a class="btn btn-sm btn-light border" href="{{ route('receitas.index') }}">Receitas antigas</a>
-                                    @elseif ($step['id'] === 'classification')
-                                        <a class="btn btn-sm btn-light border" href="{{ route('dashboard.movimentos') }}">Rever classificação nos movimentos</a>
-                                    @endif
-                                </div>
-                            @endif
-
-                            @if (!$done && !$locked)
-                                <form method="POST" action="{{ route('financial.review.step') }}">
-                                    @csrf
-                                    <input type="hidden" name="step" value="{{ $step['id'] }}">
-                                    <fieldset class="mb-3">
-                                        <legend class="small fw-semibold mb-2">Resultado da revisão</legend>
-                                        @if ($state && $state['changed'])
-                                            <div class="form-check mb-2">
-                                                <input class="form-check-input" type="radio" name="decision" value="changes_reviewed" id="decision-{{ $step['id'] }}-changed" required>
-                                                <label class="form-check-label small" for="decision-{{ $step['id'] }}-changed">Revisei as alterações detetadas e confirmei que os dados estão corretos.</label>
-                                            </div>
-                                        @else
-                                            <div class="form-check mb-2">
-                                                <input class="form-check-input" type="radio" name="decision" value="confirmed_correct" id="decision-{{ $step['id'] }}-correct" required>
-                                                <label class="form-check-label small" for="decision-{{ $step['id'] }}-correct">Verifiquei os dados. Já estavam corretos e não foi necessária alteração.</label>
-                                            </div>
-                                        @endif
-                                    </fieldset>
-                                    <div class="form-check mb-3">
-                                        <input class="form-check-input" type="checkbox" name="confirmed" value="1" id="confirm-{{ $step['id'] }}" required>
-                                        <label class="form-check-label small" for="confirm-{{ $step['id'] }}">Confirmo que esta revisão foi feita por mim.</label>
-                                    </div>
-                                    <button class="btn btn-outline-primary btn-sm rounded-3" type="submit">Registar revisão</button>
-                                </form>
-                            @elseif ($step['id'] === 'final' && !$done && !$locked)
-                                <form method="POST" action="{{ route('financial.review.step') }}">
-                                    @csrf
-                                    <input type="hidden" name="step" value="final">
-                                    <div class="form-check mb-3">
-                                        <input class="form-check-input" type="checkbox" name="confirmed" value="1" id="confirm-final" required>
-                                        <label class="form-check-label small" for="confirm-final">Confirmo que revi os dados e compreendo que esta confirmação liberta o acesso à nova versão.</label>
-                                    </div>
-                                    <button class="btn btn-primary rounded-3" type="submit">Concluir revisão e continuar</button>
-                                </form>
-                            @endif
-                        </div>
-                    </div>
+    @if (!$isFinal)
+        @php
+            $state = $stepStates[$active['id']];
+            $changed = $state['changed'];
+        @endphp
+        <section class="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div class="card-body p-3 p-md-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="small fw-bold text-uppercase text-secondary">Etapa {{ $activeIndex + 1 }} de 4</span>
+                    @if ($changed)
+                        <span class="badge rounded-pill text-bg-info">Alterações detetadas</span>
+                    @else
+                        <span class="badge rounded-pill text-bg-warning">A confirmar</span>
+                    @endif
                 </div>
-            </section>
-        @endforeach
-    </div>
+                <h2 class="h3 fw-bold mb-1">{{ $active['title'] }}</h2>
+                <p class="text-primary small fw-semibold mb-3">{{ $active['eyebrow'] }}</p>
+                <p class="text-secondary">{{ $active['intro'] }}</p>
 
-    <p class="text-secondary small mt-4 mb-0">Podes terminar a sessão e regressar mais tarde. O progresso fica guardado. Se encontrares dados incorretos, corrige-os nas áreas correspondentes antes de confirmar a etapa.</p>
+                @if (!is_null($active['count']))
+                    <div class="rounded-3 bg-body-tertiary p-3 mb-3">
+                        <span class="d-block h3 fw-bold mb-0">{{ number_format($active['count'], 0, ',', '.') }}</span>
+                        <span class="small text-secondary">{{ $active['unit'] }}</span>
+                    </div>
+                @endif
+
+                <div class="rounded-3 border p-3 mb-4">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <i data-lucide="lightbulb" class="text-primary" aria-hidden="true"></i>
+                        <strong class="small">Dica rápida</strong>
+                    </div>
+                    <p class="small text-secondary mb-0">{{ $active['tip'] }}</p>
+                </div>
+
+                <div class="d-grid gap-2 mb-4">
+                    @if ($active['id'] === 'accounts')
+                        <a class="btn btn-outline-primary rounded-3" href="{{ route('financial.accounts.page') }}">Abrir as minhas contas <i data-lucide="arrow-up-right" class="ms-1" aria-hidden="true"></i></a>
+                    @elseif ($active['id'] === 'categories')
+                        <a class="btn btn-outline-primary rounded-3" href="{{ route('categorias.index') }}">Ver as minhas categorias <i data-lucide="arrow-up-right" class="ms-1" aria-hidden="true"></i></a>
+                    @elseif ($active['id'] === 'movements')
+                        <a class="btn btn-outline-primary rounded-3" href="{{ route('dashboard.movimentos') }}">Ver movimentos <i data-lucide="arrow-up-right" class="ms-1" aria-hidden="true"></i></a>
+                        <div class="d-flex gap-2">
+                            <a class="btn btn-light border rounded-3 flex-fill" href="{{ route('despesas.index') }}">Despesas antigas</a>
+                            <a class="btn btn-light border rounded-3 flex-fill" href="{{ route('receitas.index') }}">Receitas antigas</a>
+                        </div>
+                    @else
+                        <a class="btn btn-outline-primary rounded-3" href="{{ route('dashboard.movimentos') }}">Rever classificação nos movimentos <i data-lucide="arrow-up-right" class="ms-1" aria-hidden="true"></i></a>
+                    @endif
+                </div>
+
+                <div class="border-top pt-3">
+                    <p class="fw-semibold mb-2">E então, como estão os teus dados?</p>
+                    <form method="POST" action="{{ route('financial.review.step') }}">
+                        @csrf
+                        <input type="hidden" name="step" value="{{ $active['id'] }}">
+                        @if ($changed)
+                            <label class="d-flex gap-2 align-items-start rounded-3 border p-3 mb-2">
+                                <input class="form-check-input mt-1" type="radio" name="decision" value="changes_reviewed" required>
+                                <span><strong class="d-block small">Já revi as alterações</strong><span class="small text-secondary">Confirmei que os dados estão corretos depois das alterações.</span></span>
+                            </label>
+                        @else
+                            <label class="d-flex gap-2 align-items-start rounded-3 border p-3 mb-2">
+                                <input class="form-check-input mt-1" type="radio" name="decision" value="confirmed_correct" required>
+                                <span><strong class="d-block small">Está tudo certo</strong><span class="small text-secondary">Verifiquei esta área e não precisei de alterar nada.</span></span>
+                            </label>
+                        @endif
+                        <div class="form-check my-3">
+                            <input class="form-check-input" type="checkbox" name="confirmed" value="1" id="review-confirm" required>
+                            <label class="form-check-label small" for="review-confirm">Confirmo que verifiquei esta etapa.</label>
+                        </div>
+                        <button class="btn btn-primary rounded-3 w-100 py-2" type="submit">Guardar e continuar <i data-lucide="arrow-right" class="ms-1" aria-hidden="true"></i></button>
+                    </form>
+                </div>
+            </div>
+        </section>
+    @else
+        <section class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4 text-center">
+                <div class="rounded-circle bg-success-subtle text-success d-inline-flex align-items-center justify-content-center mb-3" style="width:60px;height:60px">
+                    <i data-lucide="check-check" style="width:30px;height:30px" aria-hidden="true"></i>
+                </div>
+                <h2 class="h3 fw-bold">Está tudo pronto.</h2>
+                <p class="text-secondary">As quatro etapas foram revistas. Confirma para começares a usar a nova experiência do Meu Bolso.</p>
+                <form method="POST" action="{{ route('financial.review.step') }}">
+                    @csrf
+                    <input type="hidden" name="step" value="final">
+                    <div class="form-check text-start my-3">
+                        <input class="form-check-input" type="checkbox" name="confirmed" value="1" id="confirm-final" required>
+                        <label class="form-check-label small" for="confirm-final">Confirmo que revi os dados e quero continuar.</label>
+                    </div>
+                    <button class="btn btn-primary rounded-3 w-100 py-2" type="submit">Concluir revisão e entrar</button>
+                </form>
+            </div>
+        </section>
+    @endif
+
+    <div class="d-flex align-items-center justify-content-center gap-2 text-secondary small mt-4">
+        <i data-lucide="save" aria-hidden="true"></i>
+        <span>O progresso fica guardado. Podes sair e continuar mais tarde.</span>
+    </div>
 </div>
 @endsection
