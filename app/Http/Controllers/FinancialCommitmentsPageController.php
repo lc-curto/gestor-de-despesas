@@ -39,6 +39,7 @@ class FinancialCommitmentsPageController extends Controller
 
         $invoicePage = $invoices->listInvoices($user);
         $commitments = $user->dividas()
+            ->where('payment_condition', 'installments')
             ->where('status', '!=', 'cancelled')
             ->with(['parcelas' => fn ($query) => $query->orderBy('due_date')])
             ->orderBy('due_date')
@@ -46,6 +47,7 @@ class FinancialCommitmentsPageController extends Controller
 
         $invoiceOpen = (float) $invoicePage->getCollection()->sum('remaining_amount');
         $commitmentOpen = (float) $user->parcelasDivida()
+            ->whereHas('divida', fn ($query) => $query->where('payment_condition', 'installments'))
             ->where('status', '!=', 'paid')
             ->selectRaw('COALESCE(SUM(amount - paid_amount), 0) as remaining')
             ->value('remaining');
@@ -54,6 +56,7 @@ class FinancialCommitmentsPageController extends Controller
             ->filter(fn ($invoice) => $invoice->display_status === 'overdue')
             ->sum('remaining_amount');
         $commitmentOverdue = (float) $user->parcelasDivida()
+            ->whereHas('divida', fn ($query) => $query->where('payment_condition', 'installments'))
             ->where('status', '!=', 'paid')
             ->whereDate('due_date', '<', today())
             ->selectRaw('COALESCE(SUM(amount - paid_amount), 0) as remaining')
