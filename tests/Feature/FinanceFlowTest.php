@@ -511,4 +511,57 @@ class FinanceFlowTest extends TestCase
             ->assertSee('Próximos pagamentos');
     }
 
+
+    public function test_account_creation_form_has_only_account_fields_and_creates_opening_balance(): void
+    {
+        $user = User::factory()->create(['currency' => 'EUR']);
+        $this->actingAs($user)->get(route('financial.accounts.page'))
+            ->assertOk()
+            ->assertSee('accountCreateForm')
+            ->assertSee('opening_balance')
+            ->assertDontSee('id="transferAmount"', false);
+
+        $response = $this->actingAs($user)->postJson(route('financial.accounts.store'), [
+            'name' => 'Conta principal',
+            'type' => 'bank',
+            'opening_balance' => '1250.50',
+            'opening_balance_date' => '2026-11-16',
+        ]);
+        $response->assertCreated();
+        $account = ContaFinanceira::query()->where('name', 'Conta principal')->firstOrFail();
+        $this->assertSame('1250.50', app(\\App\\Services\\Financial\\AccountBalanceService::class)->balance($account));
+    }
+
+    public function test_transfer_form_uses_transfer_movement_and_moves_balance_between_accounts(): void
+    {
+        $user = User::factory()->create(['currency' => 'EUR']);
+        $sourceId = $this->account($user, '500.00');
+        $destinationId = $this->account($user, '100.00');
+
+        $this->actingAs($user)->get(route('financial.accounts.page'))
+            ->assertOk()
+            ->assertSee('accountTransferForm')
+            ->assertSee('Transferir entre contas');
+
+        $this->actingAs($user)->postJson(route('financial.movements.store'), [
+            'type' => 'transfer',
+            'description' => 'Transferência entre contas',
+            'amount' => '75.00',
+            'movement_date' => '2026-11-16',
+            'source_account_id' => $sourceId,
+            'destination_account_id' => $destinationId,
+        ])->assertCreated();
+
+        $balances = app(\\App\\Services\\Financial\\AccountBalanceService::class);
+        $this->assertSame('425.00', $balances->balance(ContaFinanceira::query()->findOrFail($sourceId)));
+        $this->assertSame('175.00', $balances->balance(ContaFinanceira::query()->findOrFail($destinationId)));
+        $this->assertDatabaseHas('movimentos', [
+            'user_id' => $user->id,
+            'type' => 'transfer',
+            'source_account_id' => $sourceId,
+            'destination_account_id' => $destinationId,
+            'amount' => '75.00',
+        ]);
+    }
+
 }

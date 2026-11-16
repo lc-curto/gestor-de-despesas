@@ -98,7 +98,7 @@
 
 </div>
 
-{{-- Nova conta --}}
+{{-- Nova conta: cria uma conta bancária ou carteira com o saldo de partida --}}
 <div class="modal fade" id="newAccountModal" tabindex="-1" aria-labelledby="newAccountTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow rounded-4">
@@ -109,55 +109,90 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="accountName" class="form-label">Nome</label>
+                        <label for="accountName" class="form-label">Nome da conta</label>
                         <input id="accountName" name="name" class="form-control" maxlength="120" required placeholder="Ex.: Conta principal">
                     </div>
                     <div class="mb-3">
-                        <label for="accountType" class="form-label">Tipo</label>
+                        <label for="accountType" class="form-label">Tipo de conta</label>
                         <select id="accountType" name="type" class="form-select" required>
-                            <option value="bank">Banco</option>
-                            <option value="cash">Dinheiro</option>
+                            <option value="bank">Conta bancária</option>
+                            <option value="cash">Dinheiro / carteira</option>
                         </select>
                     </div>
-                    <div class="mb-3">
-                            <label for="transferAmount" class="form-label">Valor</label>
-                            <input id="transferAmount" name="amount" type="number" class="form-control" min="0.01" max="9999999999.99" step="0.01" required>
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <label for="openingBalance" class="form-label">Saldo inicial</label>
+                            <input id="openingBalance" name="opening_balance" type="number" class="form-control" min="-9999999999.99" max="9999999999.99" step="0.01" value="0.00" required>
+                            <div class="form-text">Saldo existente quando começas a controlar esta conta.</div>
                         </div>
-                        <div class="row g-3 mb-3">
-                            <div class="col-6">
-                                <label for="transferSource" class="form-label">De</label>
-                                <select id="transferSource" name="source_account_id" class="form-select" required>
-                                    <option value="">Origem</option>
-                                    @foreach ($transferTargets as $target)
-                                        <option value="{{ $target->id }}">{{ $target->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-6">
-                                <label for="transferDestination" class="form-label">Para</label>
-                                <select id="transferDestination" name="destination_account_id" class="form-select" required>
-                                    <option value="">Destino</option>
-                                    @foreach ($transferTargets as $target)
-                                        <option value="{{ $target->id }}">{{ $target->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
+                        <div class="col-sm-6">
+                            <label for="openingBalanceDate" class="form-label">Data do saldo</label>
+                            <input id="openingBalanceDate" name="opening_balance_date" type="date" class="form-control" value="{{ now()->toDateString() }}" max="{{ now()->toDateString() }}" required>
                         </div>
-                        <div class="mb-1">
-                            <label for="transferDate" class="form-label">Data</label>
-                            <input id="transferDate" name="movement_date" type="date" class="form-control" value="{{ now()->toDateString() }}" required>
-                        </div>
-                        <input type="hidden" name="description" value="Transferência entre contas">
                     </div>
-                    <div class="modal-footer border-0 pt-0">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">Transferir</button>
-                    </div>
-                </form>
-            </div>
+                    <div class="account-form-feedback small text-danger mt-3" role="alert"></div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Criar conta</button>
+                </div>
+            </form>
         </div>
     </div>
-@endsection
+</div>
+
+{{-- Transferência: movimenta dinheiro entre duas contas existentes; não é receita nem despesa --}}
+@if ($transferTargets->count() >= 2)
+<div class="modal fade" id="accountTransferModal" tabindex="-1" aria-labelledby="accountTransferTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <form id="accountTransferForm" data-endpoint="{{ route('financial.movements.store') }}">
+                <div class="modal-header border-0 pb-0">
+                    <h2 class="modal-title h5 fw-bold" id="accountTransferTitle">Transferir entre contas</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="type" value="transfer">
+                    <input type="hidden" name="description" value="Transferência entre contas">
+                    <div class="mb-3">
+                        <label for="transferAmount" class="form-label">Valor</label>
+                        <input id="transferAmount" name="amount" type="number" class="form-control" min="0.01" max="9999999999.99" step="0.01" required placeholder="0,00">
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label for="transferSource" class="form-label">Conta de origem</label>
+                            <select id="transferSource" name="source_account_id" class="form-select" required>
+                                <option value="">Selecionar</option>
+                                @foreach ($transferTargets as $target)
+                                    <option value="{{ $target->id }}">{{ $target->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label for="transferDestination" class="form-label">Conta de destino</label>
+                            <select id="transferDestination" name="destination_account_id" class="form-select" required>
+                                <option value="">Selecionar</option>
+                                @foreach ($transferTargets as $target)
+                                    <option value="{{ $target->id }}">{{ $target->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="transferDate" class="form-label">Data da transferência</label>
+                        <input id="transferDate" name="movement_date" type="date" class="form-control" value="{{ now()->toDateString() }}" required>
+                    </div>
+                    <div class="account-form-feedback small text-danger mt-3" role="alert"></div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Confirmar transferência</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
 
 @push('styles')
 <style>
@@ -242,11 +277,6 @@
     async function submitJsonForm(form, method = 'POST', reload = true) {
         form.querySelector('.account-form-feedback')?.remove();
         const data = Object.fromEntries(new FormData(form).entries());
-        if (form.id === 'accountCreateForm' && data.type === 'credit_card') {
-            data.opening_balance = '-' + (data.opening_debt_amount || '0');
-            data.opening_balance_date = document.getElementById('openingBalanceDate')?.value || new Date().toISOString().slice(0, 10);
-            delete data.opening_debt_amount;
-        }
         if (!data.opening_balance) {
             delete data.opening_balance;
             delete data.opening_balance_date;
@@ -277,29 +307,44 @@
     }
 
     document.getElementById('newAccountModal')?.addEventListener('hidden.bs.modal', () => {
-        document.getElementById('newAccountTitle').textContent = 'Nova conta';
-        document.getElementById('accountCreateForm')?.reset();
-        refreshCardFields();
+        const form = document.getElementById('accountCreateForm');
+        form?.reset();
+        form?.querySelector('.account-form-feedback')?.replaceChildren();
     });
-    const accountType = document.getElementById('accountType');
-    const cardBillingFields = document.getElementById('cardBillingFields');
-    const refreshCardFields = () => {
-        const enabled = false;
-        const bankOpeningField = document.getElementById('bankOpeningBalanceField');
-        const bankOpeningInput = document.getElementById('openingBalance');
-        bankOpeningField?.classList.toggle('d-none', enabled);
-        if (bankOpeningInput) bankOpeningInput.disabled = enabled;
-        cardBillingFields?.classList.toggle('d-none', !enabled);
-        cardBillingFields?.querySelectorAll('input').forEach((input) => { input.disabled = !enabled; });
-        const creditLimitInput = document.getElementById('cardCreditLimit');
-        if (creditLimitInput) creditLimitInput.required = enabled;
-    };
-    accountType?.addEventListener('change', refreshCardFields);
-    refreshCardFields();
+
     document.getElementById('accountCreateForm')?.addEventListener('submit', async (event) => {
         event.preventDefault();
-        try { await submitJsonForm(event.currentTarget); }
-        catch (error) { showFeedback(error.message, true, event.currentTarget); }
+        const form = event.currentTarget;
+        try {
+            await submitJsonForm(form);
+        } catch (error) {
+            showFeedback(error.message, true, form);
+        }
+    });
+
+    document.querySelectorAll('.js-account-transfer').forEach((button) => {
+        button.addEventListener('click', () => {
+            const form = document.getElementById('accountTransferForm');
+            if (!form) return;
+            form.elements.source_account_id.value = button.dataset.source || '';
+            form.elements.destination_account_id.value = '';
+        });
+    });
+
+    document.getElementById('accountTransferForm')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const source = form.elements.source_account_id.value;
+        const destination = form.elements.destination_account_id.value;
+        if (!source || !destination || source === destination) {
+            showFeedback('Seleciona duas contas diferentes.', true, form);
+            return;
+        }
+        try {
+            await submitJsonForm(form);
+        } catch (error) {
+            showFeedback(error.message, true, form);
+        }
     });
 
     document.querySelectorAll('.js-edit-credit-card').forEach((button) => button.addEventListener('click', () => { const form=document.getElementById('creditCardEditForm'); form.dataset.updateUrl=button.dataset.updateUrl; form.dataset.settingsUrl=button.dataset.settingsUrl; form.elements.name.value=button.dataset.name; form.elements.credit_limit.value=button.dataset.limit||''; form.elements.closing_day.value=button.dataset.closing||''; form.elements.due_day.value=button.dataset.due||''; document.getElementById('editCardUsed').textContent=Number(button.dataset.used||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; form.querySelector('.account-form-feedback').textContent=''; }));
