@@ -491,7 +491,7 @@ class FinanceFlowTest extends TestCase
     public function test_credit_cards_page_renders_for_authenticated_user(): void
     {
         $user = User::factory()->create();
-        $this->withoutMiddleware(\\App\\Http\\Middleware\\EnsureFinancialDataReviewed::class);
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureFinancialDataReviewed::class);
 
         $this->actingAs($user)
             ->get(route('financial.cards.page'))
@@ -502,7 +502,7 @@ class FinanceFlowTest extends TestCase
     public function test_commitments_page_renders_for_authenticated_user(): void
     {
         $user = User::factory()->create();
-        $this->withoutMiddleware(\\App\\Http\\Middleware\\EnsureFinancialDataReviewed::class);
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureFinancialDataReviewed::class);
 
         $this->actingAs($user)
             ->get(route('financial.commitments.page'))
