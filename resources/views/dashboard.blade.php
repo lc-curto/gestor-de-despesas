@@ -45,14 +45,17 @@
     </section>
 
     <section class="home-quick-actions mb-4" aria-label="Ações rápidas">
-        <h2 class="h6 fw-bold mb-2">Ações rápidas</h2>
+        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+            <h2 class="h6 fw-bold mb-0">Ações rápidas</h2>
+            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" data-bs-toggle="modal" data-bs-target="#currencyConverterModal">Conversor de moedas</button>
+        </div>
         <div class="row g-2">
             <div class="col-6"><a class="home-quick-action" href="{{ route('despesas.create') }}"><i data-lucide="plus-circle" aria-hidden="true"></i><strong>Nova despesa</strong></a></div>
             <div class="col-6"><a class="home-quick-action" href="{{ route('receitas.create') }}"><i data-lucide="trending-up" aria-hidden="true"></i><strong>Nova receita</strong></a></div>
             <div class="col-12">
-                <button type="button" class="home-quick-action home-converter-trigger" data-bs-toggle="modal" data-bs-target="#currencyConverterModal">
-                    <i data-lucide="arrow-left-right" aria-hidden="true"></i>
-                    <span><strong>Conversor de moedas</strong><small>Consultar taxas de câmbio</small></span>
+                <button type="button" class="home-quick-action home-api-trigger" data-bs-toggle="modal" data-bs-target="#financialApiModal">
+                    <i data-lucide="plug" aria-hidden="true"></i>
+                    <span><strong>API e integrações</strong><small>Consultar recursos da API financeira</small></span>
                     <i data-lucide="chevron-right" class="ms-auto" aria-hidden="true"></i>
                 </button>
             </div>
@@ -95,6 +98,43 @@
     </section>
 </div>
 
+<div class="modal fade" id="financialApiModal" tabindex="-1" aria-labelledby="financialApiTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pb-2">
+                <div>
+                    <h2 class="modal-title h5 fw-bold" id="financialApiTitle">API financeira</h2>
+                    <p class="small text-secondary mb-0">Recursos JSON disponíveis na sessão autenticada</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body pt-2">
+                <div class="alert alert-info small mb-3">Estes endpoints pertencem à API interna do Meu Bolso e exigem autenticação. Não são chaves públicas nem permitem acesso externo sem sessão.</div>
+                <div class="api-resource-list">
+                    @foreach ([
+                        ['name' => 'Contas', 'route' => 'financial.accounts.index', 'description' => 'Contas bancárias, numerário e saldos'],
+                        ['name' => 'Movimentos', 'route' => 'financial.movements.index', 'description' => 'Movimentos financeiros e respetivos estados'],
+                        ['name' => 'Faturas', 'route' => 'financial.invoices.index', 'description' => 'Faturas de cartões e valores em aberto'],
+                        ['name' => 'Compromissos', 'route' => 'financial.commitments.index', 'description' => 'Dívidas, parcelas e compromissos']
+                    ] as $resource)
+                        <div class="api-resource-row">
+                            <div class="min-w-0">
+                                <strong>{{ $resource['name'] }}</strong>
+                                <p class="small text-secondary mb-1">{{ $resource['description'] }}</p>
+                                <code class="api-resource-url">{{ url(route($resource['route'], [], false)) }}</code>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary api-copy-button" data-copy="{{ url(route($resource['route'], [], false)) }}" aria-label="Copiar endereço de {{ $resource['name'] }}">
+                                <i data-lucide="copy" aria-hidden="true"></i><span class="ms-1">Copiar</span>
+                            </button>
+                        </div>
+                    @endforeach
+                </div>
+                <p class="small text-secondary mt-3 mb-0" id="apiCopyFeedback" aria-live="polite">Os endereços devolvem JSON quando consultados com uma sessão válida.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="currencyConverterModal" tabindex="-1" aria-labelledby="currencyConverterTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow rounded-4">
@@ -118,6 +158,19 @@
 @endsection
 
 @push('scripts')
+<script>
+document.addEventListener('click', async (event) => {
+    const button = event.target.closest('.api-copy-button');
+    if (!button) return;
+    const feedback = document.getElementById('apiCopyFeedback');
+    try {
+        await navigator.clipboard.writeText(button.dataset.copy);
+        feedback.textContent = 'Endereço copiado.';
+    } catch {
+        feedback.textContent = 'Não foi possível copiar automaticamente. Seleciona o endereço apresentado.';
+    }
+});
+</script>
 <script>window.meuBolsoHome = { currency: @json($moeda) };</script>
 <script src="{{ asset('js/dashboard-home.js') }}?v={{ filemtime(public_path('js/dashboard-home.js')) }}" defer></script>
 @endpush

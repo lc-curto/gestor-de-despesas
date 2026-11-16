@@ -1,0 +1,130 @@
+/* Meu Bolso — sistema visual partilhado */
+:root {
+    --mb-primary: #635bff;
+    --mb-primary-hover: #5148e8;
+    --mb-text: #252936;
+    --mb-muted: #697386;
+    --mb-page: #f5f6fa;
+    --mb-surface: #ffffff;
+    --mb-border: #e7e9f0;
+    --mb-positive: #21845b;
+    --mb-negative: #d9485f;
+    --mb-radius-sm: .65rem;
+    --mb-radius-md: .9rem;
+    --mb-radius-lg: 1.1rem;
+    --mb-shadow: 0 5px 18px rgba(31, 38, 61, .045);
+}
+html { scroll-behavior: smooth; }
+body { color: var(--mb-text); background: var(--mb-page); -webkit-font-smoothing: antialiased; }
+[data-bs-theme="dark"] {
+    --mb-text: #edf0f8;
+    --mb-muted: #a6adbd;
+    --mb-page: #11121a;
+    --mb-surface: #191b26;
+    --mb-border: #303342;
+    --mb-shadow: 0 5px 18px rgba(0,0,0,.16);
+}
+.app-main { background: var(--mb-page); }
+.app-content, .home-dashboard { color: var(--mb-text); }
+.app-main h1, .app-main h2, .app-main h3, .app-main h4 { color: var(--mb-text); letter-spacing: -.025em; }
+.app-main .text-secondary, .app-main small.text-secondary { color: var(--mb-muted) !important; }
+.app-main .card, .app-main .home-section-card, .app-main .home-balance-card,
+.app-main .finance-filter-card, .app-main .finance-records-card, .app-main .commitment-section {
+    border-color: var(--mb-border) !important;
+    border-radius: var(--mb-radius-lg) !important;
+    background: var(--mb-surface);
+    box-shadow: var(--mb-shadow);
+}
+.app-main .card { overflow: hidden; }
+.app-main .btn { min-height: 2.45rem; border-radius: .7rem; font-weight: 650; }
+.app-main .btn-sm { min-height: 2rem; border-radius: .58rem; }
+.app-main .btn-primary { border-color: var(--mb-primary); background: var(--mb-primary); }
+.app-main .btn-primary:hover, .app-main .btn-primary:focus-visible { border-color: var(--mb-primary-hover); background: var(--mb-primary-hover); }
+.app-main .btn-outline-primary { border-color: color-mix(in srgb, var(--mb-primary) 45%, transparent); color: var(--mb-primary); }
+.app-main .form-control, .app-main .form-select, .app-main .input-group-text {
+    min-height: 2.7rem;
+    border-color: var(--mb-border);
+    border-radius: .7rem;
+    background-color: var(--mb-surface);
+    color: var(--mb-text);
+    box-shadow: none;
+}
+.app-main textarea.form-control { min-height: 6rem; }
+.app-main .form-control:focus, .app-main .form-select:focus {
+    border-color: var(--mb-primary);
+    box-shadow: 0 0 0 .2rem rgba(99,91,255,.12);
+}
+.app-main .form-label, .app-main label { color: var(--mb-text); font-size: .84rem; font-weight: 650; }
+.app-main .table { --bs-table-bg: transparent; color: var(--mb-text); }
+.app-main .table thead th { color: var(--mb-muted); font-size: .72rem; font-weight: 750; letter-spacing: .035em; text-transform: uppercase; }
+.app-main .table > :not(caption) > * > * { padding: .8rem .75rem; border-bottom-color: var(--mb-border); }
+.app-main .badge { border-radius: 999px; padding: .38rem .62rem; font-weight: 650; }
+.app-main .alert { border: 1px solid var(--mb-border); border-radius: var(--mb-radius-md); }
+.app-main .modal-content { border: 1px solid var(--mb-border) !important; border-radius: 1.15rem !important; background: var(--mb-surface); color: var(--mb-text); }
+.app-main .modal-header, .app-main .modal-footer { border-color: var(--mb-border); }
+.app-main .dropdown-menu { border-color: var(--mb-border); border-radius: .85rem; box-shadow: var(--mb-shadow); }
+.page-heading, .credit-cards-page > header, .commitments-page > header { margin-bottom: 1.35rem; }
+.page-heading h1, .credit-cards-page > header h1, .commitments-page > header h1 { font-size: clamp(1.45rem, 2.2vw, 1.9rem); font-weight: 800; }
+.summary-card, .summary-card-income, .summary-card-expense {
+    border: 1px solid var(--mb-border);
+    border-radius: var(--mb-radius-md);
+    background: var(--mb-surface);
+    box-shadow: none;
+}
+.home-balance-card { padding: 1.35rem 1.45rem; }
+.home-balance-value { font-size: clamp(2rem, 4vw, 2.65rem); }
+.home-quick-actions { padding: 0; }
+.home-quick-action { min-height: 4.5rem; border-color: var(--mb-border); border-radius: var(--mb-radius-md); box-shadow: none; transition: border-color .15s ease, background .15s ease, transform .15s ease; }
+.home-quick-action:hover { border-color: var(--mb-primary); background: color-mix(in srgb, var(--mb-primary) 4%, var(--mb-surface)); transform: translateY(-1px); }
+.home-api-trigger { justify-content: flex-start; text-align: left; }
+.home-api-trigger span { display: flex; flex-direction: column; gap: .12rem; }
+.home-api-trigger small { color: var(--mb-muted); font-size: .75rem; }
+.home-recent-item + .home-recent-item { border-color: var(--mb-border); }
+.api-resource-list { display: grid; gap: .6rem; }
+.api-resource-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .85rem; border: 1px solid var(--mb-border); border-radius: .8rem; }
+.api-resource-row strong { display: block; font-size: .9rem; }
+.api-resource-url { display: inline-block; max-width: 100%; overflow-wrap: anywhere; color: var(--mb-primary); font-size: .75rem; }
+.api-copy-button { flex: 0 0 auto; }
+.credit-cards-page .cards-grid { display: grid; grid-template-columns: repeat( auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 1rem; }
+.credit-cards-page .card-item, .credit-cards-page .credit-card-item { min-width: 0; }
+.credit-cards-page .cards-kpi-grid .card { box-shadow: none; }
+.credit-cards-page .cards-kpi-grid .fs-4 { font-size: clamp(1rem, 2vw, 1.4rem) !important; overflow-wrap: anywhere; }
+.account-card, .account-card-link { min-width: 0; }
+.account-card { border: 1px solid var(--mb-border); border-radius: var(--mb-radius-lg); background: var(--mb-surface); box-shadow: var(--mb-shadow); }
+.account-card-link { display: flex; min-width: 0; align-items: center; gap: .8rem; color: inherit; text-decoration: none; }
+.account-card-link:hover { color: var(--mb-primary); }
+.account-card-name, .account-card-type, .account-balance { min-width: 0; overflow-wrap: anywhere; }
+.movements-period-summary, .movements-period-metric { border-color: var(--mb-border); }
+.movement-day-heading { color: var(--mb-muted); }
+.category-card, .category-item .card { border-color: var(--mb-border); box-shadow: var(--mb-shadow); }
+.category-card .card-body { padding: 1rem; }
+.commitments-page .commitment-section { border-color: var(--mb-border); background: var(--mb-surface); }
+.app-sidebar { background: var(--mb-surface); border-color: var(--mb-border); }
+.app-navigation-link { border-radius: .72rem; }
+.app-navigation-link.active { background: rgba(99,91,255,.11); }
+.mobile-bottom-bar { border-color: var(--mb-border); background: color-mix(in srgb, var(--mb-surface) 94%, transparent); backdrop-filter: blur(16px); }
+.mobile-bottom-link { color: var(--mb-muted); }
+.mobile-bottom-link.active { color: var(--mb-primary); }
+.mobile-action-sheet { border-color: var(--mb-border); background: var(--mb-surface); }
+:focus-visible { outline: 2px solid var(--mb-primary); outline-offset: 2px; }
+@media (max-width: 767.98px) {
+    .app-main { padding-bottom: calc(6.2rem + env(safe-area-inset-bottom)); }
+    .page-heading, .credit-cards-page > header, .commitments-page > header { align-items: flex-start !important; gap: .75rem !important; }
+    .credit-cards-page > header > .btn { flex: 0 0 auto; }
+    .credit-cards-page .cards-grid { grid-template-columns: minmax(0, 1fr); }
+    .home-balance-card { padding: 1rem; }
+    .home-quick-action { min-height: 4rem; }
+    .api-resource-row { align-items: flex-start; padding: .7rem; }
+    .api-resource-row .btn { min-height: 2.2rem; }
+    .app-main .table-responsive { border-radius: .7rem; }
+}
+@media (max-width: 380px) {
+    .app-main { padding-inline: .65rem; }
+    .home-month-summary .summary-value { font-size: .88rem; }
+    .api-resource-row { gap: .5rem; }
+    .api-copy-button { padding-inline: .45rem; font-size: .72rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
