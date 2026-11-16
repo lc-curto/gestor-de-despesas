@@ -9,10 +9,10 @@
         <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#createCardModal"><i data-lucide="plus" aria-hidden="true"></i><span class="ms-1">Novo cartão</span></button>
     </header>
     <div id="cardsFeedback" class="alert d-none" role="status" aria-live="polite"></div>
-    <section class="row g-3 mb-4" aria-label="Resumo dos cartões">
-        <div class="col-6 col-lg-4"><div class="card border-0 rounded-4 h-100"><div class="card-body p-3"><span class="small text-secondary">Limite utilizado</span><strong class="d-block fs-4 mt-1">{{ number_format($summary['used'],2,',','.') }} {{ auth()->user()->currency }}</strong></div></div></div>
-        <div class="col-6 col-lg-4"><div class="card border-0 rounded-4 h-100"><div class="card-body p-3"><span class="small text-secondary">Crédito disponível</span><strong class="d-block fs-4 mt-1 text-success">{{ number_format($summary['available'],2,',','.') }} {{ auth()->user()->currency }}</strong></div></div></div>
-        <div class="col-12 col-lg-4"><div class="card border-0 rounded-4 h-100"><div class="card-body p-3"><span class="small text-secondary">Cartões ativos</span><strong class="d-block fs-4 mt-1">{{ $summary['count'] }}</strong></div></div></div>
+    <section class="row row-cols-3 g-2 mb-4 cards-kpi-grid" aria-label="Resumo dos cartões">
+        <div class="col"><div class="card border-0 rounded-4 h-100"><div class="card-body p-3"><span class="small text-secondary">Limite utilizado</span><strong class="d-block fs-4 mt-1">{{ number_format($summary['used'],2,',','.') }} {{ auth()->user()->currency }}</strong></div></div></div>
+        <div class="col"><div class="card border-0 rounded-4 h-100"><div class="card-body p-3"><span class="small text-secondary">Crédito disponível</span><strong class="d-block fs-4 mt-1 text-success">{{ number_format($summary['available'],2,',','.') }} {{ auth()->user()->currency }}</strong></div></div></div>
+        <div class="col"><div class="card border-0 rounded-4 h-100"><div class="card-body p-3"><span class="small text-secondary">Cartões ativos</span><strong class="d-block fs-4 mt-1">{{ $summary['count'] }}</strong></div></div></div>
     </section>
     <section class="cards-grid" aria-label="Os meus cartões">
         @forelse($cards as $card)
@@ -65,6 +65,9 @@
 
 @push('styles')
 <style>
+
+.cards-kpi-grid>.col{min-width:0}.cards-kpi-grid .card-body{min-width:0;padding:.85rem!important}.cards-kpi-grid .card-body>span{display:block;min-height:2.2em;font-size:.82rem;line-height:1.15}.cards-kpi-grid .card-body>strong{font-size:clamp(.78rem,2.5vw,1.35rem)!important;line-height:1.2;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+@media(max-width:640px){.cards-kpi-grid{--bs-gutter-x:.5rem;--bs-gutter-y:.5rem}.cards-kpi-grid .card-body{padding:.7rem!important}.cards-kpi-grid .card-body>span{font-size:.7rem;min-height:2.3em}.cards-kpi-grid .card-body>strong{font-size:clamp(.72rem,2.7vw,.95rem)!important;letter-spacing:-.025em}}
 .cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr));gap:1rem}
 .credit-card-item{min-width:0;padding:1.15rem;border:1px solid var(--app-border);border-radius:1rem;background:var(--bs-body-bg);box-shadow:var(--app-shadow)}
 .credit-card-top,.credit-card-title-link,.credit-card-values,.credit-card-usage,.credit-card-cycle{display:flex;align-items:center;justify-content:space-between;gap:.75rem}
