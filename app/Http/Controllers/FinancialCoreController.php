@@ -434,7 +434,9 @@ class FinancialCoreController extends Controller
 
         DB::transaction(function () use ($user, $movement, $data, $service): void {
             $rule = $user->recorrencias()->whereKey($movement->recurrence_id)->lockForUpdate()->firstOrFail();
-            $targets = $user->movimentos()->where('recurrence_id', $rule->id)->where('status', 'pending');
+            // A exclusão por âmbito também retira ocorrências já efetivadas da lista.
+            // deleteAsCorrection mantém auditoria e recalcula o impacto financeiro pelo status void.
+            $targets = $user->movimentos()->where('recurrence_id', $rule->id)->whereIn('status', ['pending', 'settled']);
 
             if ($data['scope'] === 'only') {
                 $targets->whereKey($movement->id);
