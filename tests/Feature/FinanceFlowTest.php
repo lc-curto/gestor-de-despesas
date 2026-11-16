@@ -272,10 +272,14 @@ class FinanceFlowTest extends TestCase
             'account_id' => $accountId,
         ])->assertOk()->assertJsonPath('ok', true);
 
-        $this->deleteJson(route('despesas.destroy', $expense->id))
-            ->assertUnprocessable();
+        $movement = $user->movimentos()->where('legacy_type', 'despesa')->where('legacy_id', $expense->id)->firstOrFail();
 
-        $this->assertDatabaseHas('despesas', ['id' => $expense->id]);
+        $this->deleteJson(route('despesas.destroy', $expense->id))
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        $this->assertDatabaseMissing('despesas', ['id' => $expense->id]);
+        $this->assertDatabaseHas('movimentos', ['id' => $movement->id, 'status' => 'void']);
     }
 
     public function test_deleting_a_settled_legacy_expense_automatically_removes_its_balance_impact_and_keeps_audit(): void
