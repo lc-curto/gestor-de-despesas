@@ -45,7 +45,16 @@ class FinancialCommitmentService
         });
     }
 
-    private function installmentDate(Carbon $date, int $offset, string $frequency): Carbon\n    {\n        return match ($frequency) {\n            'weekly' => $date->addWeeks($offset),\n            'biweekly' => $date->addWeeks($offset * 2),\n            default => $date->addMonthsNoOverflow($offset),\n        };\n    }\n\n    public function update(User $user, Divida $debt, array $data): Divida
+    private function installmentDate(Carbon $date, int $offset, string $frequency): Carbon
+    {
+        return match ($frequency) {
+            'weekly' => $date->addWeeks($offset),
+            'biweekly' => $date->addWeeks($offset * 2),
+            default => $date->addMonthsNoOverflow($offset),
+        };
+    }
+
+    public function update(User $user, Divida $debt, array $data): Divida
     {
         return DB::transaction(function () use ($user, $debt, $data): Divida {
             $locked = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
