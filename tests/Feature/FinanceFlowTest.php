@@ -587,4 +587,43 @@ class FinanceFlowTest extends TestCase
     }
 
 
+
+    public function test_financial_route_and_dashboard_use_the_same_traditional_movements(): void
+    {
+        $user = User::factory()->create(['currency' => 'EUR']);
+        $accountId = $this->account($user, '1000.00');
+
+        $this->actingAs($user)->post(route('despesas.store'), [
+            'description' => 'Despesa partilhada',
+            'amount' => '45.90',
+            'currency' => 'EUR',
+            'category' => 'alimentacao',
+            'expense_date' => '2026-11-09',
+            'account_id' => $accountId,
+        ])->assertRedirect();
+
+        $this->actingAs($user)->post(route('receitas.store'), [
+            'description' => 'Receita partilhada',
+            'amount' => '220.00',
+            'currency' => 'EUR',
+            'category' => 'salario',
+            'income_date' => '2026-11-10',
+            'account_id' => $accountId,
+        ])->assertRedirect();
+
+        $dashboard = $this->actingAs($user)->get(route('dashboard', ['mes' => '2026-11']))
+            ->assertOk()
+            ->assertSee('Despesa partilhada')
+            ->assertSee('Receita partilhada');
+
+        $route = $this->actingAs($user)->get(route('financial.route', ['mes' => '2026-11', 'modo' => 1]))
+            ->assertOk()
+            ->assertSee('Despesa partilhada')
+            ->assertSee('Receita partilhada');
+
+        $this->assertStringContainsString('45,90', $route->getContent());
+        $this->assertStringContainsString('220,00', $route->getContent());
+        $this->assertStringContainsString('45,90', $dashboard->getContent());
+        $this->assertStringContainsString('220,00', $dashboard->getContent());
+    }
 }
