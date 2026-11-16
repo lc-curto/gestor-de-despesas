@@ -61,7 +61,7 @@ class FinancialRouteController extends Controller
             $rangeEnd,
             'todos',
             'all'
-        )->orderBy('data_movimento')->get();
+        )->reorder('data_movimento')->get();
 
         $days = [];
         foreach ($months as $month) {
