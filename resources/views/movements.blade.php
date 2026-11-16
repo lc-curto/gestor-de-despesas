@@ -169,16 +169,18 @@
                                     <div class="list-group list-group-flush" id="dashboardInstallmentScheduleList" aria-live="polite"></div>
                                 </div>
                             </div>
-                            <div id="dashboardPaidFields" class="mt-3" hidden>
-                                <label class="form-label d-block">Já aconteceu?</label>
-                                <div class="d-flex gap-3">
-                                    <label class="form-check"><input class="form-check-input" type="radio" name="paid_now" value="1"> <span class="form-check-label">Sim</span></label>
-                                    <label class="form-check"><input class="form-check-input" type="radio" name="paid_now" value="0" checked> <span class="form-check-label">Ainda não</span></label>
+                            <div id="dashboardPaidFields" class="mt-3">
+                                <label class="form-label d-block fw-semibold">Estado do pagamento</label>
+                                <div class="payment-status-grid" role="radiogroup" aria-label="Estado do pagamento">
+                                    <label class="payment-status-option"><input class="form-check-input" type="radio" name="paid_now" value="0" checked><span>Ainda não paguei</span></label>
+                                    <label class="payment-status-option"><input class="form-check-input" type="radio" name="paid_now" value="partial"><span>Paguei uma parte</span></label>
+                                    <label class="payment-status-option"><input class="form-check-input" type="radio" name="paid_now" value="1"><span>Já paguei tudo</span></label>
                                 </div>
-                                <div id="dashboardPaymentDetails" class="row g-2 mt-1" hidden>
-                                    <div class="col-6"><label for="dashboardPaymentAmount" class="form-label">Valor pago</label><input id="dashboardPaymentAmount" name="payment_amount" type="number" min="0.01" step="0.01" class="form-control"></div>
+                                <div id="dashboardPaymentDetails" class="row g-2 mt-2" hidden>
+                                    <div class="col-12" id="dashboardPaymentAmountField"><label for="dashboardPaymentAmount" class="form-label">Valor pago</label><input id="dashboardPaymentAmount" name="payment_amount" type="number" min="0.01" step="0.01" class="form-control"></div>
                                     <div class="col-6"><label for="dashboardPaymentDate" class="form-label">Data do pagamento</label><input id="dashboardPaymentDate" name="payment_date" type="date" class="form-control" value="{{ now()->toDateString() }}"></div>
-                                    <div class="col-12"><label for="dashboardPaymentAccount" class="form-label">Conta utilizada</label><select id="dashboardPaymentAccount" name="payment_account_id" class="form-select"><option value="">Selecionar conta</option>@foreach ($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }} · {{ $account->currency }}</option>@endforeach</select></div>
+                                    <div class="col-6"><label for="dashboardPaymentAccount" class="form-label">Conta utilizada</label><select id="dashboardPaymentAccount" name="payment_account_id" class="form-select"><option value="">Selecionar conta</option>@foreach ($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }} · {{ $account->currency }}</option>@endforeach</select></div>
+                                    <div class="col-12"><label for="dashboardActualPaymentMethod" class="form-label">Método utilizado</label><select id="dashboardActualPaymentMethod" name="actual_payment_method" class="form-select"><option value="">Selecionar método</option><option value="cash">Dinheiro</option><option value="debit">Cartão de débito</option><option value="credit">Cartão de crédito</option><option value="transfer">Transferência bancária</option><option value="mbway">MB WAY</option><option value="direct_debit">Débito direto</option></select></div>
                                 </div>
                             </div>
                             <p class="form-text mb-0 mt-2">A recorrência cria novas obrigações. O parcelamento divide o valor desta obrigação em prestações.</p>
@@ -431,6 +433,10 @@
 @push('styles')
 <style>
     .payment-mode-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.65rem; }
+    .payment-status-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.5rem; }
+    .payment-status-option { display:flex; align-items:center; gap:.45rem; min-height:44px; padding:.65rem .7rem; border:1px solid var(--bs-border-color); border-radius:.75rem; font-size:.82rem; cursor:pointer; }
+    .payment-status-option:has(input:checked) { border-color:var(--bs-primary); background:var(--bs-primary-bg-subtle); }
+    @media(max-width:575.98px) { .payment-status-grid { grid-template-columns:1fr; } }
     .payment-mode-card { position:relative; display:flex; min-height:112px; flex-direction:column; gap:.35rem; padding:.85rem; border:1px solid var(--bs-border-color); border-radius:.85rem; background:var(--bs-body-bg); cursor:pointer; transition:border-color .15s ease,background-color .15s ease,box-shadow .15s ease; }
     .payment-mode-card:hover { border-color:var(--bs-primary); }
     .payment-mode-card:focus-within { outline:2px solid var(--bs-primary); outline-offset:2px; }
