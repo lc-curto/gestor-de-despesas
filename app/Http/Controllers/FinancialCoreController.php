@@ -113,7 +113,7 @@ class FinancialCoreController extends Controller
         )]);
     }
 
-    public function updateCardSettings(Request $request, string $id): JsonResponse
+    public function updateCardSettings(Request $request, string $id, AccountBalanceService $balances): JsonResponse
     {
         foreach (['closing_day', 'due_day'] as $field) {
             $value = $request->input($field);
@@ -128,6 +128,10 @@ class FinancialCoreController extends Controller
             'credit_limit' => 'nullable|numeric|gt:0|decimal:0,2|max:9999999999.99',
         ]);
         $card = $request->user()->contasFinanceiras()->whereKey($id)->where('type', 'credit_card')->where('is_operational', true)->where('status', 'active')->firstOrFail();
+        $used = abs((float) $balances->balance($card));
+        if (isset($data['credit_limit']) && (float) $data['credit_limit'] + 0.00001 < $used) {
+            return response()->json(['message' => 'O limite não pode ser inferior ao valor já utilizado.'], 422);
+        }
         $card->update($data);
         return response()->json(['data' => $card->refresh()]);
     }
@@ -170,6 +174,10 @@ class FinancialCoreController extends Controller
             'due_day' => 'required_if:type,credit_card|nullable|integer|between:1,28',
             'credit_limit' => 'nullable|numeric|gt:0|decimal:0,2|max:9999999999.99',
         ]);
+
+        if (($data['type'] ?? null) === 'credit_card' && isset($data['opening_debt_amount'], $data['credit_limit']) && (float) $data['opening_debt_amount'] > (float) $data['credit_limit']) {
+            throw \\Illuminate\\Validation\\ValidationException::withMessages(['opening_debt_amount' => 'A utilização inicial não pode ultrapassar o limite total do cartão.']);
+        }
 
         $account = $service->create($request->user(), $data);
         return response()->json(['data' => $account], 201);

@@ -28,7 +28,28 @@
 
     <div id="accountFeedback" class="d-none" role="status" aria-live="polite"></div>
 
-    @if ($accounts->isEmpty())
+    @if ($cards->isNotEmpty())
+        <section class="credit-cards-section mb-4" aria-labelledby="creditCardsTitle">
+            <div class="credit-cards-heading"><div><h2 id="creditCardsTitle" class="h4 fw-bold mb-1">Os meus cartões</h2><p class="text-secondary mb-0">Limites, utilização e ciclo de pagamento.</p></div><button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#newAccountModal" data-create-card="1"><i data-lucide="plus" aria-hidden="true"></i><span class="ms-1">Novo cartão</span></button></div>
+            <div class="credit-cards-grid">
+                @foreach ($cards as $card)
+                    @php $used=abs((float)($card->current_balance??0)); $limit=(float)($card->credit_limit??0); $available=max(0,$limit-$used); $usage=$limit>0?min(100,($used/$limit)*100):0; $movementCount=$card->movimentos_origem_count+$card->movimentos_destino_count; @endphp
+                    <article class="credit-card-item">
+                        <div class="credit-card-top"><a href="{{ route('financial.accounts.show',$card->id) }}" class="credit-card-title-link"><span class="credit-card-icon"><i data-lucide="credit-card" aria-hidden="true"></i></span><span><strong>{{ $card->name }}</strong><small>Cartão de crédito</small></span></a>
+                            <div class="dropdown"><button class="credit-card-more" type="button" data-bs-toggle="dropdown" aria-label="Ações do cartão"><i data-lucide="more-horizontal"></i></button><ul class="dropdown-menu dropdown-menu-end shadow-sm"><li><button class="dropdown-item js-edit-credit-card" type="button" data-bs-toggle="modal" data-bs-target="#editCreditCardModal" data-name="{{ $card->name }}" data-update-url="{{ route('financial.accounts.update',$card->id) }}" data-settings-url="{{ route('financial.cards.settings',$card->id) }}" data-close-url="{{ route('financial.accounts.close',$card->id) }}" data-limit="{{ $card->credit_limit }}" data-closing="{{ $card->closing_day }}" data-due="{{ $card->due_day }}" data-used="{{ number_format($used,2,'.','') }}">Editar cartão</button></li>
+                            @if($card->status==='active' && $card->is_operational && $used<=0.00001)<li><button class="dropdown-item text-danger js-close-credit-card" type="button" data-close-url="{{ route('financial.accounts.close',$card->id) }}" data-name="{{ $card->name }}">Encerrar cartão</button></li>@endif
+                            </ul></div>
+                        </div>
+                        <div class="credit-card-values"><div><small>Utilizado</small><strong>{{ number_format($used,2,',','.') }} {{ $card->currency }}</strong></div><div class="text-end"><small>Disponível</small><strong class="text-success">{{ number_format($available,2,',','.') }} {{ $card->currency }}</strong></div></div>
+                        <div class="credit-card-progress"><span style="width:{{ $usage }}%"></span></div><div class="credit-card-usage"><small>Utilização: {{ number_format($usage,0) }}%</small><small>Limite: {{ number_format($limit,2,',','.') }} {{ $card->currency }}</small></div>
+                        <div class="credit-card-cycle"><span>Fecho: <strong>dia {{ $card->closing_day??'—' }}</strong></span><span>Vencimento: <strong>dia {{ $card->due_day??'—' }}</strong></span></div>
+                    </article>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
+    @if ($accounts->isEmpty() && $cards->isEmpty())
         <section class="accounts-empty card border-0 shadow-sm rounded-4">
             <div class="card-body text-center py-5">
                 <span class="accounts-empty-icon"><i data-lucide="wallet-cards" aria-hidden="true"></i></span>
@@ -36,7 +57,7 @@
                 <button class="btn btn-primary mt-2" type="button" data-bs-toggle="modal" data-bs-target="#newAccountModal">Adicionar conta</button>
             </div>
         </section>
-    @else
+    @elseif ($accounts->isNotEmpty())
         <section class="accounts-list" aria-label="As minhas contas">
             @foreach ($accounts as $account)
                 @php
@@ -121,14 +142,14 @@
                         </select>
                     </div>
                     <div id="cardOpeningDebtField" class="mb-3 d-none">
-                        <label for="cardOpeningDebt" class="form-label">Dívida anterior ainda por pagar</label>
+                        <label for="cardOpeningDebt" class="form-label">Limite já utilizado</label>
                         <input id="cardOpeningDebt" name="opening_debt_amount" type="number" class="form-control" min="0" max="9999999999.99" step="0.01" inputmode="decimal" placeholder="0,00" disabled>
-                        <div class="form-text">Indica o total de compras anteriores que ainda deves. Não precisas de lançar cada compra.</div>
+                        <div class="form-text">Valor já consumido antes de começares a utilizar a aplicação. Não serão criadas compras antigas.</div>
                     </div>
-                    <div id="cardBillingFields" class="row g-3 d-none">
-                        <div class="col-4"><label for="cardClosingDay" class="form-label">Dia de fecho</label><input id="cardClosingDay" name="closing_day" type="number" class="form-control" min="1" max="28" value="25" disabled></div>
-                        <div class="col-4"><label for="cardDueDay" class="form-label">Dia de vencimento</label><input id="cardDueDay" name="due_day" type="number" class="form-control" min="1" max="28" value="5" disabled></div>
-                        <div class="col-4"><label for="cardCreditLimit" class="form-label">Limite (€)</label><input id="cardCreditLimit" name="credit_limit" type="number" class="form-control" min="0.01" step="0.01" placeholder="Opcional" disabled></div>
+                    <div id="cardBillingFields" class="row g-3 d-none card-billing-fields">
+                        <div class="col-6"><label for="cardClosingDay" class="form-label">Dia de fecho</label><input id="cardClosingDay" name="closing_day" type="number" class="form-control" min="1" max="28" value="25" disabled></div>
+                        <div class="col-6"><label for="cardDueDay" class="form-label">Dia de vencimento</label><input id="cardDueDay" name="due_day" type="number" class="form-control" min="1" max="28" value="5" disabled></div>
+                        <div class="col-12"><label for="cardCreditLimit" class="form-label">Limite total (€)</label><input id="cardCreditLimit" name="credit_limit" type="number" class="form-control" min="0.01" step="0.01" placeholder="Opcional" disabled></div>
                         <div class="col-12 form-text">Os dias 1–28 evitam datas inexistentes em meses curtos.</div>
                     </div>
                     <div class="row g-3">
@@ -154,6 +175,9 @@
         </div>
     </div>
 </div>
+
+{{-- Editar cartão --}}
+<div class="modal fade" id="editCreditCardModal" tabindex="-1" aria-labelledby="editCreditCardTitle" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow rounded-4"><form id="creditCardEditForm"><div class="modal-header border-0 pb-0"><h2 class="modal-title h5 fw-bold" id="editCreditCardTitle">Editar cartão</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body p-4"><label class="form-label" for="editCardName">Nome</label><input id="editCardName" name="name" class="form-control mb-3" maxlength="120" required><label class="form-label" for="editCardLimit">Limite total (€)</label><input id="editCardLimit" name="credit_limit" type="number" min="0.01" step="0.01" class="form-control mb-3" required><div class="row g-3"><div class="col-6"><label class="form-label" for="editCardClosing">Dia de fecho</label><input id="editCardClosing" name="closing_day" type="number" min="1" max="28" class="form-control" required></div><div class="col-6"><label class="form-label" for="editCardDue">Dia de vencimento</label><input id="editCardDue" name="due_day" type="number" min="1" max="28" class="form-control" required></div></div><div class="credit-card-debt-summary mt-3"><small>Dívida atual — não editável</small><strong id="editCardUsed"></strong></div><div class="account-form-feedback small text-danger mt-3" role="alert"></div></div><div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar alterações</button></div></form></div></div></div>
 
 {{-- Editar conta --}}
 <div class="modal fade" id="renameAccountModal" tabindex="-1" aria-labelledby="renameAccountTitle" aria-hidden="true">
@@ -337,6 +361,7 @@
 @push('styles')
 <style>
 .accounts-page { width:100%; max-width:none; margin:0; }
+.credit-cards-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem}.credit-cards-heading p{font-size:.9rem}.credit-cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,19rem),1fr));gap:1rem}.credit-card-item{min-width:0;padding:1.15rem;border:1px solid var(--app-border);border-radius:1rem;background:var(--bs-body-bg);box-shadow:var(--app-shadow)}.credit-card-top,.credit-card-title-link,.credit-card-values,.credit-card-usage,.credit-card-cycle{display:flex;align-items:center;justify-content:space-between;gap:.75rem}.credit-card-title-link{justify-content:flex-start;min-width:0;color:inherit;text-decoration:none}.credit-card-title-link>span:last-child{display:grid;gap:.2rem;min-width:0}.credit-card-title-link strong{overflow-wrap:anywhere}.credit-card-title-link small,.credit-card-values small,.credit-card-usage small{color:var(--bs-secondary-color);font-size:.78rem}.credit-card-icon{display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;border-radius:.8rem;background:rgba(99,91,255,.1);color:var(--app-primary)}.credit-card-icon svg{width:20px}.credit-card-more{border:0;background:transparent;color:var(--bs-secondary-color);padding:.4rem}.credit-card-values{margin:1.15rem 0 .7rem;align-items:flex-end}.credit-card-values>div{display:grid;gap:.2rem}.credit-card-values strong{font-size:1.1rem;white-space:nowrap;font-variant-numeric:tabular-nums}.credit-card-progress{height:8px;border-radius:99px;background:var(--bs-tertiary-bg);overflow:hidden}.credit-card-progress span{display:block;height:100%;border-radius:inherit;background:var(--app-primary)}.credit-card-usage{margin-top:.4rem}.credit-card-cycle{justify-content:flex-start;gap:1.5rem;margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--app-border);font-size:.85rem;color:var(--bs-secondary-color)}.credit-card-cycle strong{color:var(--bs-body-color)}.credit-card-debt-summary{display:grid;gap:.25rem;padding:1rem;border-radius:.8rem;background:var(--bs-tertiary-bg)}.credit-card-debt-summary small{color:var(--bs-secondary-color)}.credit-card-debt-summary strong{font-size:1.25rem}@media(max-width:640px){.credit-cards-heading{align-items:flex-start}.credit-cards-heading .btn{white-space:nowrap;padding:.55rem .7rem}.credit-card-item{padding:1rem}.credit-card-values strong{font-size:1rem}}
 .accounts-toolbar { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.25rem; }
 .accounts-list { display:grid; gap:.75rem; }
 .account-card { display:grid; grid-template-columns:48px minmax(0,1fr) minmax(180px,auto) 100px; align-items:center; gap:1rem; padding:1.15rem 1.25rem; border:1px solid var(--app-border); border-radius:1rem; background:var(--bs-body-bg); box-shadow:var(--app-shadow); }
@@ -473,6 +498,9 @@
         catch (error) { showFeedback(error.message, true, event.currentTarget); }
     });
 
+    document.querySelectorAll('.js-edit-credit-card').forEach((button) => button.addEventListener('click', () => { const form=document.getElementById('creditCardEditForm'); form.dataset.updateUrl=button.dataset.updateUrl; form.dataset.settingsUrl=button.dataset.settingsUrl; form.elements.name.value=button.dataset.name; form.elements.credit_limit.value=button.dataset.limit||''; form.elements.closing_day.value=button.dataset.closing||''; form.elements.due_day.value=button.dataset.due||''; document.getElementById('editCardUsed').textContent=Number(button.dataset.used||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; form.querySelector('.account-form-feedback').textContent=''; }));
+    document.getElementById('creditCardEditForm')?.addEventListener('submit',async(event)=>{event.preventDefault();const form=event.currentTarget,submit=form.querySelector('[type="submit"]');submit.disabled=true;const headers={'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token};try{let response=await fetch(form.dataset.settingsUrl,{method:'PUT',credentials:'same-origin',headers,body:JSON.stringify({credit_limit:form.elements.credit_limit.value,closing_day:form.elements.closing_day.value,due_day:form.elements.due_day.value})});let result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível atualizar o cartão.');response=await fetch(form.dataset.updateUrl,{method:'PUT',credentials:'same-origin',headers,body:JSON.stringify({name:form.elements.name.value})});result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível atualizar o nome.');window.location.reload();}catch(error){form.querySelector('.account-form-feedback').textContent=error.message;submit.disabled=false;}});
+    document.querySelectorAll('.js-close-credit-card').forEach((button)=>button.addEventListener('click',async()=>{if(!window.confirm('Encerrar o cartão '+button.dataset.name+'? O histórico será preservado.'))return;button.disabled=true;try{const response=await fetch(button.dataset.closeUrl,{method:'POST',credentials:'same-origin',headers:{'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({})});const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.message||'Não foi possível encerrar o cartão.');window.location.reload();}catch(error){showFeedback(error.message,true);button.disabled=false;}}));
     document.querySelectorAll('.js-edit-account').forEach((button) => {
         button.addEventListener('click', () => {
             const form = document.getElementById('accountNameForm');

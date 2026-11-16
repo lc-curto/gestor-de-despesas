@@ -27,13 +27,14 @@ class FinancialAccountsPageController extends Controller
             ->get();
         $accounts->each(function (ContaFinanceira $account) use ($balances): void {
             $account->current_balance = null;
-
-            if ($account->is_operational && $account->opening_balance !== null ) {
+            if ($account->is_operational && $account->opening_balance !== null) {
                 $account->current_balance = $balances->balance($account);
             }
         });
+        $cards = $accounts->where('type', 'credit_card')->values();
+        $accounts = $accounts->where('type', '!=', 'credit_card')->values();
 
-        return view('financial.accounts', compact('accounts', 'transferTargets'));
+        return view('financial.accounts', compact('accounts', 'cards', 'transferTargets'));
     }
 
     public function show(Request $request, string $id, AccountBalanceService $balances)
