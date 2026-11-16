@@ -72,7 +72,7 @@ class FinancialRecurrenceTest extends TestCase
 
         $this->getJson(route('dashboard.movimentos.data', ['mes' => '2026-11', 'limit' => 50]))
             ->assertOk()->assertJsonPath('data.0.recurrence_id', $user->recorrencias()->firstOrFail()->id);
-        $this->get('/recorrencias')->assertNotFound();
+        $this->get('/recorrencias')->assertOk()->assertSee('Recorrências')->assertSee('Pausar recorrência');
         $this->get(route('despesas.create'))->assertOk()->assertSee('Repetir esta despesa');
         $this->get(route('despesas.index'))->assertOk()->assertSee('Previsão recorrente');
 
@@ -141,4 +141,60 @@ class FinancialRecurrenceTest extends TestCase
         $this->assertSame(1, $user->movimentos()->where('recurrence_id', $movement->recurrence_id)->where('recurrence_occurrence_date', '2026-11-15')->count());
         $this->assertSame(1, $user->despesas()->whereKey($movement->legacy_id)->count());
     }
+
+    public function test_pausing_recurrence_removes_future_forecasts_and_resume_recreates_them(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user)->postJson('/api/financial/recurrences', $this->createRule($user))
+            ->assertCreated();
+
+        $rule = $user->recorrencias()->firstOrFail();
+        $this->assertSame(3, $user->movimentos()->where('recurrence_id', $rule->id)->count());
+
+        $this->patchJson('/api/financial/recurrences/'.$rule->id.'/status', ['is_active' => false])
+            ->assertOk()->assertJsonPath('data.is_active', false);
+
+        $this->assertSame(0, $user->movimentos()->where('recurrence_id', $rule->id)->count());
+        $this->assertSame(0, $user->despesas()->count());
+        $this->assertSame('2026-11-15', $rule->fresh()->next_occurrence->toDateString());
+
+        $this->patchJson('/api/financial/recurrences/'.$rule->id.'/status', ['is_active' => true])
+            ->assertOk()->assertJsonPath('data.is_active', true);
+
+        $this->assertSame(3, $user->movimentos()->where('recurrence_id', $rule->id)->count());
+        $this->assertSame(3, $user->despesas()->count());
+    }
+
+    public function test_editing_recurring_expense_without_repeat_keeps_rule_link_until_it_is_cancelled(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->account($user);
+        $category = $user->categorias()->where('type', 'despesa')->firstOrFail();
+        $this->actingAs($user)->postJson('/api/financial/recurrences', $this->createRule($user, $account->id))
+            ->assertCreated();
+
+        $movement = $user->movimentos()->where('recurrence_occurrence_date', '2026-11-15')->firstOrFail();
+        $this->putJson('/api/financial/movements/'.$movement->id.'/confirm', ['source_account_id' => $account->id])->assertOk();
+        $this->putJson('/api/financial/movements/'.$movement->id.'/settle', ['source_account_id' => $account->id])->assertOk();
+
+        $this->put(route('despesas.update', $movement->legacy_id), [
+            'description' => 'Internet atualizada',
+            'amount' => '35.00',
+            'account_id' => $account->id,
+            'category_id' => $category->id,
+            'expense_date' => '2026-11-15',
+            'expense_behavior' => 'fixed',
+        ])->assertRedirect(route('despesas.index'));
+
+        $this->assertDatabaseHas('recorrencias', ['id' => $movement->recurrence_id, 'is_active' => false]);
+        $this->assertSame(1, $user->movimentos()->where('recurrence_id', $movement->recurrence_id)->count());
+        $this->assertSame(0, $user->movimentos()->where('recurrence_id', $movement->recurrence_id)->where('status', 'pending')->count());
+        $this->assertDatabaseHas('movimentos', [
+            'legacy_type' => 'despesa',
+            'legacy_id' => $movement->legacy_id,
+            'recurrence_id' => $movement->recurrence_id,
+            'expense_behavior' => 'fixed',
+        ]);
+    }
+
 }

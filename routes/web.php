@@ -42,6 +42,8 @@ Route::middleware(['auth', 'financial.review'])->group(function(){
  Route::get('/dashboard/movimentos/dados', [DashboardController::class, 'movimentos'])->middleware('throttle:60,1')->name('dashboard.movimentos.data');
  Route::post('/session/activity',fn()=>response()->noContent())->name('session.activity');
 
+ Route::get('/recorrencias', [FinancialCoreController::class, 'recurrencesPage'])->name('financial.recurrences.page');
+
  // Núcleo financeiro: endpoints JSON, sem alterar a interface existente.
  Route::prefix('api/financial')->name('financial.')->group(function () {
   Route::get('/accounts', [FinancialCoreController::class, 'accounts'])->name('accounts.index');

@@ -227,6 +227,7 @@
         article.dataset.currency = item.currency || cfg.currency || 'EUR';
         article.dataset.categoryId = item.category;
         article.dataset.accountId = item.account_id || '';
+        article.dataset.expenseBehavior = item.expense_behavior || 'variable';
         article.dataset.movementStatus = item.movement_status || '';
         article.dataset.recurrenceId = item.recurrence_id || '';
         article.dataset.recurrenceFrequency = item.recurrence_frequency || '';
@@ -559,6 +560,11 @@
         date.value = row.dataset.date;
         category.value = row.dataset.categoryId;
         if (account) account.value = row.dataset.accountId || '';
+        if (type === 'despesa') {
+            form.querySelectorAll('[name="expense_behavior"]').forEach((input) => {
+                input.checked = input.value === (row.dataset.expenseBehavior || 'variable');
+            });
+        }
         const repeat = document.getElementById('dashboardRecurrenceEnabled');
         const repeatFields = document.getElementById('dashboardRecurrenceFields');
         if (repeat) {

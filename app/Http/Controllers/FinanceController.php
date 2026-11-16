@@ -352,13 +352,24 @@ class FinanceController extends Controller
                 && ($tipo !== 'despesa' || $movement->expense_behavior === $payload['expense_behavior'])) {
                 $service->assignLegacyAccount($request->user(), $movement, $accountId);
             } else {
-                // Sem estorno: a edição substitui o movimento canónico numa só transação.
-                // Assim valor, data, conta e categoria ficam sempre sincronizados.
+                // Preserva a regra e a data original da ocorrência ao substituir o movimento.
+                // Caso contrário, desmarcar a repetição não encontra a regra para a desativar.
+                $recurrenceId = $movement->recurrence_id;
+                $occurrenceDate = $movement->recurrence_occurrence_date;
+
                 $cutoff = $request->user()->financial_cutoff_date?->toDateString();
                 $payload['is_historical'] = (bool) $movement->is_historical || ($cutoff !== null && $date <= $cutoff);
                 $movement->historico()->delete();
                 $movement->delete();
                 $this->createLinkedMovement($request, $payload, $service, $invoices);
+
+                if ($recurrenceId) {
+                    $replacement = $this->linkedMovement($request, $tipo, $legacy->id);
+                    $replacement?->update([
+                        'recurrence_id' => $recurrenceId,
+                        'recurrence_occurrence_date' => $occurrenceDate ?: $date,
+                    ]);
+                }
             }
 
             $legacy->update($data);
