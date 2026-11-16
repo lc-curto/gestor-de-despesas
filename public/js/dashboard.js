@@ -681,12 +681,26 @@
             let payload;
             const commitment = !editing && movementType === 'despesa' && values.payment_condition && values.payment_condition !== 'cash';
             if (commitment) {
-                response = await fetch(cfg.commitmentStore, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf }, body: JSON.stringify({ name: values.description, total_amount: values.amount, start_date: values.expense_date, due_date: values.due_date, payment_condition: values.payment_condition, payment_method: values.payment_method, installments_count: values.installments_count }) });
+                response = await fetch(cfg.commitmentStore, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf }, body: JSON.stringify({ name: values.description, total_amount: values.amount, start_date: values.expense_date, due_date: values.due_date, payment_condition: values.payment_condition, payment_method: values.payment_method, installments_count: values.installments_count, installment_frequency: values.installment_frequency }) });
                 payload = await response.json().catch(() => ({}));
                 if (response.ok && values.paid_now === '1') {
-                    const installment = payload.data?.parcelas?.[0];
-                    const paid = await fetch(cfg.commitmentBase + '/' + payload.data.id + '/installments/' + installment.id + '/pay', { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf }, body: JSON.stringify({ account_id: values.payment_account_id, amount: values.payment_amount || values.amount, payment_date: values.payment_date }) });
-                    if (!paid.ok) { payload = await paid.json().catch(() => ({})); response = paid; }
+                    let remainingCents = Math.round(Number(values.payment_amount || values.amount) * 100);
+                    for (const installment of (payload.data?.parcelas || [])) {
+                        if (remainingCents <= 0) break;
+                        const outstandingCents = Math.round((Number(installment.amount) - Number(installment.paid_amount || 0)) * 100);
+                        const paymentCents = Math.min(remainingCents, outstandingCents);
+                        if (paymentCents <= 0) continue;
+                        const paid = await fetch(cfg.commitmentBase + '/' + payload.data.id + '/installments/' + installment.id + '/pay', {
+                            method: 'POST', credentials: 'same-origin',
+                            headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                            body: JSON.stringify({ account_id: values.payment_account_id, amount: (paymentCents / 100).toFixed(2), payment_date: values.payment_date })
+                        });
+                        if (!paid.ok) { payload = await paid.json().catch(() => ({})); response = paid; break; }
+                        remainingCents -= paymentCents;
+                    }
+                    if (response.ok && remainingCents > 0) {
+                        throw new Error('O valor pago excede o total ainda em dívida.');
+                    }
                 }
                 if (response.ok) payload.ok = true;
             } else {
