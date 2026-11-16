@@ -194,6 +194,8 @@
 </div>
 @endif
 
+@endsection
+
 
 
 @push('styles')
