@@ -62,7 +62,7 @@
                                 $dayItems = $values['items']->map(fn ($item) => [
                                     'id' => $item->financial_movement_id, 'type' => $item->tipo === 'receita' ? 'income' : 'expense', 'status' => $item->movement_status ?? 'legacy',
                                     'description' => $item->description, 'amount' => (float) $item->amount,
-                                    'date' => \\Illuminate\\Support\\Carbon::parse($item->data_movimento)->toDateString(),
+                                    'date' => \Illuminate\Support\Carbon::parse($item->data_movimento)->toDateString(),
                                     'expense_behavior' => $item->expense_behavior,
                                     'category' => $item->category_label ?? 'Sem categoria', 'category_id' => $item->category,
                                     'account_id' => $item->account_id,
