@@ -50,11 +50,13 @@ class FinancialCommitmentService
         return DB::transaction(function () use ($user, $debt, $data): Divida {
             $locked = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
             if (in_array($locked->status, ['cancelled', 'paid'], true)) throw ValidationException::withMessages(['commitment' => 'Este compromisso já está encerrado.']);
-            $oldDue = Carbon::parse($locked->due_date);
+            $firstPending = $locked->parcelas()->whereIn('status', ['pending', 'partial'])->orderBy('installment_number')->first();
+            $oldDue = $firstPending ? Carbon::parse($firstPending->due_date) : Carbon::parse($locked->due_date);
+            $firstNumber = $firstPending?->installment_number ?? 1;
             $newDue = Carbon::parse($data['due_date']);
             $locked->update(['name' => $data['name'], 'due_date' => $newDue->toDateString()]);
             foreach ($locked->parcelas()->whereIn('status', ['pending', 'partial'])->get() as $part) {
-                $part->update(['due_date' => $newDue->copy()->addMonthsNoOverflow(max(0, $part->installment_number - 1))->toDateString()]);
+                $part->update(['due_date' => $newDue->copy()->addMonthsNoOverflow(max(0, $part->installment_number - $firstNumber))->toDateString()]);
             }
             return $locked->refresh()->load('parcelas');
         });
