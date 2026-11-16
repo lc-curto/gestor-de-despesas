@@ -1,1 +1,212 @@
-{"name":"main","commit":{"sha":"ecd4ef40b76db6230c90a86670763f4731bee695","node_id":"C_kwDOVgc32toAKGVjZDRlZjQwYjc2ZGI2MjMwYzkwYTg2NjcwNzYzZjQ3MzFiZWU2OTU","commit":{"author":{"name":"Lucas Curto","email":"lucas.scurto@gmail.com","date":"2026-11-16T10:53:16Z"},"committer":{"name":"Lucas Curto","email":"lucas.scurto@gmail.com","date":"2026-11-16T10:53:16Z"},"message":"Add commitment filters, payment history and management actions","tree":{"sha":"f2e51ba2f7a545e7aec14dc12b8fb1d86304106b","url":"https://api.github.com/repos/lc-curto/gestor-de-despesas/git/trees/f2e51ba2f7a545e7aec14dc12b8fb1d86304106b"},"url":"https://api.github.com/repos/lc-curto/gestor-de-despesas/git/commits/ecd4ef40b76db6230c90a86670763f4731bee695","comment_count":0,"verification":{"verified":false,"reason":"unsigned","signature":null,"payload":null,"verified_at":null}},"url":"https://api.github.com/repos/lc-curto/gestor-de-despesas/commits/ecd4ef40b76db6230c90a86670763f4731bee695","html_url":"https://github.com/lc-curto/gestor-de-despesas/commit/ecd4ef40b76db6230c90a86670763f4731bee695","comments_url":"https://api.github.com/repos/lc-curto/gestor-de-despesas/commits/ecd4ef40b76db6230c90a86670763f4731bee695/comments","author":{"login":"lc-curto","id":280770135,"node_id":"U_kgDOELw2Vw","avatar_url":"https://avatars.githubusercontent.com/u/280770135?v=4","gravatar_id":"","url":"https://api.github.com/users/lc-curto","html_url":"https://github.com/lc-curto","followers_url":"https://api.github.com/users/lc-curto/followers","following_url":"https://api.github.com/users/lc-curto/following{/other_user}","gists_url":"https://api.github.com/users/lc-curto/gists{/gist_id}","starred_url":"https://api.github.com/users/lc-curto/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/lc-curto/subscriptions","organizations_url":"https://api.github.com/users/lc-curto/orgs","repos_url":"https://api.github.com/users/lc-curto/repos","events_url":"https://api.github.com/users/lc-curto/events{/privacy}","received_events_url":"https://api.github.com/users/lc-curto/received_events","type":"User","user_view_type":"public","site_admin":false},"committer":{"login":"lc-curto","id":280770135,"node_id":"U_kgDOELw2Vw","avatar_url":"https://avatars.githubusercontent.com/u/280770135?v=4","gravatar_id":"","url":"https://api.github.com/users/lc-curto","html_url":"https://github.com/lc-curto","followers_url":"https://api.github.com/users/lc-curto/followers","following_url":"https://api.github.com/users/lc-curto/following{/other_user}","gists_url":"https://api.github.com/users/lc-curto/gists{/gist_id}","starred_url":"https://api.github.com/users/lc-curto/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/lc-curto/subscriptions","organizations_url":"https://api.github.com/users/lc-curto/orgs","repos_url":"https://api.github.com/users/lc-curto/repos","events_url":"https://api.github.com/users/lc-curto/events{/privacy}","received_events_url":"https://api.github.com/users/lc-curto/received_events","type":"User","user_view_type":"public","site_admin":false},"parents":[{"sha":"cb2b943dafabdd5b03ebc9f83e8af622895aeb60","url":"https://api.github.com/repos/lc-curto/gestor-de-despesas/commits/cb2b943dafabdd5b03ebc9f83e8af622895aeb60","html_url":"https://github.com/lc-curto/gestor-de-despesas/commit/cb2b943dafabdd5b03ebc9f83e8af622895aeb60"}]},"_links":{"self":"https://api.github.com/repos/lc-curto/gestor-de-despesas/branches/main","html":"https://github.com/lc-curto/gestor-de-despesas/tree/main"},"protected":false,"protection":{"enabled":false,"required_status_checks":{"enforcement_level":"off","contexts":[],"checks":[]}},"protection_url":"https://api.github.com/repos/lc-curto/gestor-de-despesas/branches/main/protection"}
+@extends('layouts.app')
+
+@section('title', 'Compromissos')
+
+@section('content')
+<div class="app-content commitments-page">
+    <header class="page-heading commitments-heading mb-4 d-flex flex-wrap justify-content-between align-items-end gap-3">
+        <div>
+            <h1 class="h2 fw-bold mb-1">Compromissos</h1>
+            <p class="text-secondary mb-0">Acompanha prestações, faturas e próximos vencimentos.</p>
+        </div>
+    </header>
+
+    <div id="commitmentFeedback" class="alert d-none" role="status" aria-live="polite"></div>
+
+    <section class="row g-3 mb-3 commitment-summary" aria-label="Resumo financeiro">
+        <div class="col-md-4"><article class="card border-0 rounded-4 h-100 commitment-summary-card"><div class="card-body p-3 p-md-4">
+            <p class="text-secondary small mb-1">Em aberto</p>
+            <p class="h3 fw-bold mb-0">{{ number_format($summary['open'], 2, ',', '.') }} {{ auth()->user()->currency }}</p>
+        </div></article></div>
+        <div class="col-md-4"><article class="card border-0 rounded-4 h-100 commitment-summary-card"><div class="card-body p-3 p-md-4">
+            <p class="text-secondary small mb-1">A vencer</p>
+            <p class="h3 fw-bold mb-0">{{ number_format($summary['upcoming'], 2, ',', '.') }} {{ auth()->user()->currency }}</p>
+        </div></article></div>
+        <div class="col-md-4"><article class="card border-0 rounded-4 h-100 commitment-summary-card"><div class="card-body p-3 p-md-4">
+            <p class="text-secondary small mb-1">Em atraso</p>
+            <p class="h3 fw-bold mb-0 {{ $summary['overdue'] > 0 ? 'text-danger' : '' }}">{{ number_format($summary['overdue'], 2, ',', '.') }} {{ auth()->user()->currency }}</p>
+        </div></article></div>
+    </section>
+
+    @php
+        $paymentItems = collect();
+        foreach ($invoicePage as $invoice) {
+            if ((float) $invoice->remaining_amount > 0) {
+                $paymentItems->push((object) ['kind' => 'invoice', 'due_date' => $invoice->due_date, 'record' => $invoice]);
+            }
+        }
+        foreach ($commitments as $commitment) {
+            foreach ($commitment->parcelas as $installment) {
+                $remaining = max(0, (float) $installment->amount - (float) $installment->paid_amount);
+                if ($remaining > 0) {
+                    $paymentItems->push((object) ['kind' => 'installment', 'due_date' => $installment->due_date, 'record' => $installment, 'commitment' => $commitment, 'remaining' => $remaining]);
+                }
+            }
+        }
+        $paymentItems = $paymentItems->sortBy('due_date')->values();
+        $filter = request('filter', 'all');
+        if ($filter === 'overdue') $paymentItems = $paymentItems->filter(fn ($item) => \Illuminate\Support\Carbon::parse($item->due_date)->lt(today()))->values();
+        if ($filter === 'upcoming') $paymentItems = $paymentItems->filter(fn ($item) => !\Illuminate\Support\Carbon::parse($item->due_date)->lt(today()))->values();
+        if ($filter === 'paid') $paymentItems = collect();
+        $historyItems = collect();
+        foreach ($invoicePage as $invoice) if ((float) ($invoice->paid_amount ?? 0) > 0) $historyItems->push((object) ['name' => ($invoice->conta->name ?? 'Cartão').' · '.$invoice->reference_month->format('m/Y'), 'date' => $invoice->updated_at, 'amount' => (float) $invoice->paid_amount, 'detail' => 'Pagamento de fatura']);
+        foreach ($commitments as $commitment) foreach ($commitment->parcelas as $part) if ((float) $part->paid_amount > 0) $historyItems->push((object) ['name' => $commitment->name.' · Parcela '.$part->installment_number, 'date' => $part->updated_at, 'amount' => (float) $part->paid_amount, 'detail' => 'Pagamento de prestação']);
+        $historyItems = $historyItems->sortByDesc('date')->values();
+        $statusLabels = ['open' => 'Aberta', 'closed' => 'Fechada', 'partial' => 'Parcialmente paga', 'paid' => 'Paga', 'overdue' => 'Em atraso'];
+        $statusClasses = ['open' => 'text-bg-info', 'closed' => 'text-bg-secondary', 'partial' => 'text-bg-warning', 'paid' => 'text-bg-success', 'overdue' => 'text-bg-danger'];
+    @endphp
+
+    <section class="commitment-section commitment-payments-section mb-4" aria-labelledby="paymentsSectionTitle">
+        <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+            <div>
+                <h2 class="h5 fw-bold mb-1" id="paymentsSectionTitle">Próximos pagamentos</h2>
+                <p class="small text-secondary mb-0">Faturas e prestações ordenadas por vencimento.</p>
+            </div>
+            <span class="badge text-bg-secondary">{{ $paymentItems->count() }}</span>
+        </div>
+
+        <nav class="d-flex flex-wrap gap-2 mb-3" aria-label="Filtrar compromissos">
+            @foreach (['all'=>'Todos','upcoming'=>'A vencer','overdue'=>'Em atraso','paid'=>'Pagos'] as $key=>$label)
+                <a class="btn btn-sm {{ $filter === $key ? 'btn-primary' : 'btn-outline-secondary' }}" href="{{ route('financial.commitments.page',['filter'=>$key]) }}">{{ $label }}</a>
+            @endforeach
+        </nav>
+        @forelse ($paymentItems as $item)
+            @if ($item->kind === 'invoice')
+                @php $invoice = $item->record; @endphp
+                <article class="commitment-payment-item border rounded-4 p-3 mb-2">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div class="min-w-0">
+                            <h3 class="h6 fw-bold mb-1">{{ $invoice->conta->name ?? 'Cartão' }} · {{ $invoice->reference_month->format('m/Y') }}</h3>
+                            <span class="small text-secondary">Fatura · Vencimento {{ $invoice->due_date->format('d/m/Y') }}</span>
+                        </div>
+                        <div class="text-end flex-shrink-0">
+                            <strong class="d-block">{{ number_format((float) $invoice->remaining_amount, 2, ',', '.') }} {{ $invoice->conta->currency ?? auth()->user()->currency }}</strong>
+                            <span class="badge {{ $statusClasses[$invoice->display_status] ?? 'text-bg-secondary' }}">{{ $statusLabels[$invoice->display_status] ?? $invoice->display_status }}</span>
+                        </div>
+                    </div>
+                    @if ((float) $invoice->remaining_amount > 0 && $paymentAccounts->isNotEmpty() && $invoice->display_status !== 'open')
+                        <form class="js-api-form row g-2 align-items-end mt-2" data-endpoint="{{ route('financial.invoices.pay', $invoice->id) }}" data-success="Pagamento da fatura registado.">
+                            <div class="col-12 col-md-4"><label class="form-label small">Valor a pagar</label><input class="form-control form-control-sm" type="number" name="amount" min="0.01" max="{{ $invoice->remaining_amount }}" step="0.01" value="{{ $invoice->remaining_amount }}" required></div>
+                            <div class="col-12 col-md-4"><label class="form-label small">Conta de origem</label><select class="form-select form-select-sm" name="account_id" required><option value="">Selecionar conta</option>@foreach ($paymentAccounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select></div>
+                            <div class="col-12 col-md-2"><label class="form-label small">Data</label><input class="form-control form-control-sm" type="date" name="payment_date" value="{{ now()->toDateString() }}" required></div>
+                            <div class="col-12 col-md-2"><button class="btn btn-primary btn-sm w-100" type="submit">Pagar</button></div>
+                        </form>
+                    @elseif ((float) $invoice->remaining_amount > 0 && $invoice->display_status === 'open')
+                        <p class="small text-secondary mt-2 mb-0">Fatura ainda aberta. O pagamento estará disponível após o fecho.</p>
+                    @elseif ((float) $invoice->remaining_amount > 0)
+                        <p class="small text-secondary mt-2 mb-0">Adiciona uma conta bancária ou de dinheiro para pagar.</p>
+                    @endif
+                    <details class="mt-2"><summary class="small text-secondary">Ver compras e pagamentos</summary>
+                        <div class="table-responsive mt-2"><table class="table table-sm align-middle mb-0">
+                            <thead><tr><th>Compra</th><th>Data</th><th class="text-end">Valor</th></tr></thead>
+                            <tbody>@foreach ($invoice->movimentos as $purchase)<tr><td>{{ $purchase->description }}</td><td>{{ $purchase->movement_date->format('d/m/Y') }}</td><td class="text-end">{{ number_format((float) $purchase->amount, 2, ',', '.') }}</td></tr>@endforeach</tbody>
+                            <tfoot><tr><th colspan="2">Total pago</th><th class="text-end">{{ number_format((float) ($invoice->paid_amount ?? 0), 2, ',', '.') }}</th></tr></tfoot>
+                        </table></div>
+                    </details>
+                </article>
+            @else
+                @php $installment = $item->record; $remaining = $item->remaining; $commitment = $item->commitment; @endphp
+                <article class="commitment-payment-item border rounded-4 p-3 mb-2">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div class="min-w-0">
+                            <h3 class="h6 fw-bold mb-1">{{ $commitment->name }}</h3>
+                            <span class="small text-secondary">Parcela {{ $installment->installment_number }} de {{ $commitment->installments_count }} · {{ $installment->due_date->format('d/m/Y') }}</span>
+                        </div>
+                        <div class="text-end flex-shrink-0">
+                            <strong class="d-block">{{ number_format($remaining, 2, ',', '.') }} {{ auth()->user()->currency }}</strong>
+                            <span class="badge {{ $installment->due_date->isPast() ? 'text-bg-danger' : 'text-bg-warning' }}">{{ $installment->due_date->isPast() ? 'Em atraso' : 'A vencer' }}</span>
+                        </div>
+                    </div>
+                    <details class="mt-2"><summary class="small text-secondary">Ver detalhe da prestação</summary><p class="small text-secondary mt-2 mb-0">Original: {{ number_format((float)$installment->amount,2,',','.') }} · Pago: {{ number_format((float)$installment->paid_amount,2,',','.') }} · Em falta: {{ number_format($remaining,2,',','.') }} {{ auth()->user()->currency }}</p><p class="small text-secondary mb-0">{{ $commitment->installments_count }} prestações no total</p></details>
+                    @if ($remaining > 0 && $paymentAccounts->isNotEmpty())
+                        <form class="js-api-form row g-2 align-items-end mt-2" data-endpoint="{{ route('financial.commitments.installments.pay', [$commitment->id, $installment->id]) }}" data-success="Pagamento da parcela registado.">
+                            <div class="col-12 col-md-4"><label class="form-label small">Valor a pagar</label><input class="form-control form-control-sm" type="number" name="amount" min="0.01" max="{{ number_format($remaining, 2, '.', '') }}" step="0.01" value="{{ number_format($remaining, 2, '.', '') }}" required></div>
+                            <div class="col-12 col-md-4"><label class="form-label small">Conta de origem</label><select class="form-select form-select-sm" name="account_id" required><option value="">Selecionar conta</option>@foreach ($paymentAccounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select></div>
+                            <div class="col-12 col-md-2"><label class="form-label small">Data</label><input class="form-control form-control-sm" type="date" name="payment_date" value="{{ now()->toDateString() }}" required></div>
+                            <div class="col-12 col-md-2"><button class="btn btn-outline-primary btn-sm w-100" type="submit">Pagar</button></div>
+                        </form>
+                    @elseif ($remaining > 0)
+                        <p class="small text-secondary mt-2 mb-0">Adiciona uma conta bancária ou de dinheiro para pagar.</p>
+                    @endif
+                </article>
+            @endif
+        @empty
+            <div class="commitment-empty-state d-flex align-items-center justify-content-between gap-3">
+                <div class="min-w-0"><strong class="d-block small">Não existem pagamentos pendentes</strong><span class="small text-secondary">As novas faturas e prestações aparecerão aqui.</span></div>
+            </div>
+        @endforelse
+        <div class="d-flex flex-wrap gap-3 mt-2 small">
+            {{ $invoicePage->links() }}
+            {{ $commitments->links() }}
+        </div>
+    </section>
+
+    <section class="commitment-section mb-4" aria-labelledby="historySectionTitle">
+        <div class="d-flex justify-content-between align-items-center mb-2"><div><h2 class="h5 fw-bold mb-1" id="historySectionTitle">Histórico de pagamentos</h2><p class="small text-secondary mb-0">Pagamentos já registados.</p></div><span class="badge text-bg-secondary">{{ $historyItems->count() }}</span></div>
+        @forelse($historyItems as $history)
+            <article class="d-flex justify-content-between align-items-center gap-3 border-bottom py-3"><div><strong class="d-block">{{ $history->name }}</strong><span class="small text-secondary">{{ $history->detail }} · {{ \Illuminate\Support\Carbon::parse($history->date)->format('d/m/Y') }}</span></div><strong class="text-success text-nowrap">{{ number_format($history->amount,2,',','.') }} {{ auth()->user()->currency }}</strong></article>
+        @empty <p class="small text-secondary">Ainda não existem pagamentos no histórico.</p> @endforelse
+    </section>
+
+    <section class="commitment-section mb-4" aria-labelledby="manageSectionTitle">
+        <h2 class="h5 fw-bold mb-1" id="manageSectionTitle">Gerir compromissos</h2><p class="small text-secondary">Editar descrição e próximo vencimento ou encerrar, mantendo os pagamentos registados.</p>
+        @foreach($commitments as $commitment)
+            @if(!in_array($commitment->status,['paid','cancelled'],true))
+                <article class="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom py-3"><div><strong>{{ $commitment->name }}</strong><div class="small text-secondary">{{ $commitment->installments_count }} prestações · {{ number_format((float)$commitment->total_amount,2,',','.') }} {{ auth()->user()->currency }}</div></div>
+                    <div class="d-flex gap-2"><button class="btn btn-sm btn-outline-secondary js-edit-commitment" data-url="{{ route('financial.commitments.update',$commitment->id) }}" data-name="{{ $commitment->name }}" data-due="{{ optional($commitment->due_date)->format('Y-m-d') }}">Editar</button><button class="btn btn-sm btn-outline-danger js-cancel-commitment" data-url="{{ route('financial.commitments.cancel',$commitment->id) }}" data-name="{{ $commitment->name }}">Encerrar</button></div>
+                </article>
+            @endif
+        @endforeach
+    </section>
+</div>
+
+<div class="modal fade" id="editCommitmentModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content rounded-4 border-0"><form id="editCommitmentForm">
+    <div class="modal-header border-0"><h2 class="modal-title h5 fw-bold">Editar compromisso</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+    <div class="modal-body"><label class="form-label" for="editCommitmentName">Descrição</label><input class="form-control mb-3" id="editCommitmentName" name="name" required maxlength="160"><label class="form-label" for="editCommitmentDue">Próximo vencimento</label><input class="form-control" id="editCommitmentDue" name="due_date" type="date" required><div id="editCommitmentError" class="small text-danger mt-2"></div></div>
+    <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
+</form></div></div></div>
+@endsection
+
+@push('scripts')
+<script>
+(() => {
+    const token = document.querySelector('meta[name="csrf-token"]')?.content;
+    const feedback = document.getElementById('commitmentFeedback');
+    const modal = (id) => bootstrap.Modal.getOrCreateInstance(document.getElementById(id));
+    const showError = (element, message) => { element.className = 'alert alert-danger'; element.textContent = message; };
+
+    document.querySelectorAll('.js-edit-commitment').forEach((button) => button.addEventListener('click', () => {
+        const form=document.getElementById('editCommitmentForm'); form.dataset.url=button.dataset.url; form.elements.name.value=button.dataset.name; form.elements.due_date.value=button.dataset.due||'';
+        document.getElementById('editCommitmentError').textContent=''; bootstrap.Modal.getOrCreateInstance(document.getElementById('editCommitmentModal')).show();
+    }));
+    document.getElementById('editCommitmentForm')?.addEventListener('submit',async(event)=>{
+        event.preventDefault();const form=event.currentTarget,button=form.querySelector('[type="submit"]');button.disabled=true;
+        try{const response=await fetch(form.dataset.url,{method:'PUT',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({name:form.elements.name.value,due_date:form.elements.due_date.value})});const result=await response.json().catch(()=>({}));
+            if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível atualizar.');window.location.reload();
+        }catch(error){document.getElementById('editCommitmentError').textContent=error.message;button.disabled=false;}
+    });
+    document.querySelectorAll('.js-cancel-commitment').forEach(button=>button.addEventListener('click',async()=>{
+        if(!window.confirm('Encerrar "'+button.dataset.name+'"? Os pagamentos já realizados serão preservados.'))return;button.disabled=true;
+        try{const response=await fetch(button.dataset.url,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({})});const result=await response.json().catch(()=>({}));
+            if(!response.ok)throw new Error(result.message||'Não foi possível encerrar.');window.location.reload();
+        }catch(error){showError(feedback,error.message);button.disabled=false;}
+    }));
+
+    document.querySelectorAll('.js-api-form').forEach((form) => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const button = form.querySelector('[type="submit"]'); button.disabled = true;
+            try {
+                const response = await fetch(form.dataset.endpoint, { method: form.dataset.method || 'POST', credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                    body: JSON.stringify(Object.fromEntries(new FormData(form).entries())) });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'Não foi possível guardar.');
+                window.location.reload();
+            } catch (error) { showError(feedback, error.message); feedback.scrollIntoView({behavior:'smooth',block:'center'}); button.disabled = false; }
+        });
+    });
+
+})();
+</script>
+@endpush

@@ -487,4 +487,28 @@ class FinanceFlowTest extends TestCase
         $this->assertDatabaseHas('historico_movimentos', ['action' => 'account_reassigned']);
     }
 
+
+    public function test_credit_cards_page_renders_for_authenticated_user(): void
+    {
+        $user = User::factory()->create();
+        $this->withoutMiddleware(\\App\\Http\\Middleware\\EnsureFinancialDataReviewed::class);
+
+        $this->actingAs($user)
+            ->get(route('financial.cards.page'))
+            ->assertOk()
+            ->assertSee('Cartões');
+    }
+
+    public function test_commitments_page_renders_for_authenticated_user(): void
+    {
+        $user = User::factory()->create();
+        $this->withoutMiddleware(\\App\\Http\\Middleware\\EnsureFinancialDataReviewed::class);
+
+        $this->actingAs($user)
+            ->get(route('financial.commitments.page'))
+            ->assertOk()
+            ->assertSee('Compromissos')
+            ->assertSee('Próximos pagamentos');
+    }
+
 }
