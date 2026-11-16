@@ -7,7 +7,7 @@
     <header class="page-heading commitments-heading mb-4 d-flex flex-wrap justify-content-between align-items-end gap-3">
         <div>
             <h1 class="h2 fw-bold mb-1">Compromissos</h1>
-            <p class="text-secondary mb-0">Acompanha prestações, faturas e próximos vencimentos.</p>
+            <p class="text-secondary mb-0">Acompanha faturas de cartões e compras parceladas.</p>
         </div>
     </header>
 
@@ -56,8 +56,8 @@
         $statusClasses = ['open' => 'text-bg-info', 'closed' => 'text-bg-secondary', 'partial' => 'text-bg-warning', 'paid' => 'text-bg-success', 'overdue' => 'text-bg-danger'];
     @endphp
 
-    <section class="commitment-section commitment-payments-section mb-4" aria-labelledby="paymentsSectionTitle">
-        <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+    <section class="commitment-section commitment-payments-section mb-4 commitment-compact-list" aria-labelledby="paymentsSectionTitle">
+        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
             <div>
                 <h2 class="h5 fw-bold mb-1" id="paymentsSectionTitle">Próximos pagamentos</h2>
                 <p class="small text-secondary mb-0">Faturas e prestações ordenadas por vencimento.</p>
@@ -65,7 +65,7 @@
             <span class="badge text-bg-secondary">{{ $paymentItems->count() }}</span>
         </div>
 
-        <nav class="d-flex flex-wrap gap-2 mb-3" aria-label="Filtrar compromissos">
+        <nav class="d-flex flex-wrap gap-2 mb-2" aria-label="Filtrar compromissos">
             @foreach (['all'=>'Todos','upcoming'=>'A vencer','overdue'=>'Em atraso','paid'=>'Pagos'] as $key=>$label)
                 <a class="btn btn-sm {{ $filter === $key ? 'btn-primary' : 'btn-outline-secondary' }}" href="{{ route('financial.commitments.page',['filter'=>$key]) }}">{{ $label }}</a>
             @endforeach
@@ -73,11 +73,11 @@
         @forelse ($paymentItems as $item)
             @if ($item->kind === 'invoice')
                 @php $invoice = $item->record; @endphp
-                <article class="commitment-payment-item border rounded-4 p-3 mb-2">
-                    <div class="d-flex justify-content-between align-items-start gap-2">
+                <article class="commitment-payment-item commitment-compact-row border-bottom py-2">
+                    <div class="d-flex justify-content-between align-items-center gap-2">
                         <div class="min-w-0">
-                            <h3 class="h6 fw-bold mb-1">{{ $invoice->conta->name ?? 'Cartão' }} · {{ $invoice->reference_month->format('m/Y') }}</h3>
-                            <span class="small text-secondary">Fatura · Vencimento {{ $invoice->due_date->format('d/m/Y') }}</span>
+                            <h3 class="small fw-semibold mb-0">{{ $invoice->conta->name ?? 'Cartão' }} · {{ $invoice->reference_month->format('m/Y') }}</h3>
+                            <span class="small text-secondary">Fatura · Vence {{ $invoice->due_date->format('d/m/Y') }}</span>
                         </div>
                         <div class="text-end flex-shrink-0">
                             <strong class="d-block">{{ number_format((float) $invoice->remaining_amount, 2, ',', '.') }} {{ $invoice->conta->currency ?? auth()->user()->currency }}</strong>
@@ -96,7 +96,7 @@
                     @elseif ((float) $invoice->remaining_amount > 0)
                         <p class="small text-secondary mt-2 mb-0">Adiciona uma conta bancária ou de dinheiro para pagar.</p>
                     @endif
-                    <details class="mt-2"><summary class="small text-secondary">Ver compras e pagamentos</summary>
+                    <details class="mt-1"><summary class="small text-secondary">Ver compras e pagamentos</summary>
                         <div class="table-responsive mt-2"><table class="table table-sm align-middle mb-0">
                             <thead><tr><th>Compra</th><th>Data</th><th class="text-end">Valor</th></tr></thead>
                             <tbody>@foreach ($invoice->movimentos as $purchase)<tr><td>{{ $purchase->description }}</td><td>{{ $purchase->movement_date->format('d/m/Y') }}</td><td class="text-end">{{ number_format((float) $purchase->amount, 2, ',', '.') }}</td></tr>@endforeach</tbody>
@@ -109,8 +109,8 @@
                 <article class="commitment-payment-item border rounded-4 p-3 mb-2">
                     <div class="d-flex justify-content-between align-items-start gap-2">
                         <div class="min-w-0">
-                            <h3 class="h6 fw-bold mb-1">{{ $commitment->name }}</h3>
-                            <span class="small text-secondary">Parcela {{ $installment->installment_number }} de {{ $commitment->installments_count }} · {{ $installment->due_date->format('d/m/Y') }}</span>
+                            <h3 class="small fw-semibold mb-0">{{ $commitment->name }}</h3>
+                            <span class="small text-secondary">Compra parcelada · {{ $installment->installment_number }}/{{ $commitment->installments_count }} · Vence {{ $installment->due_date->format('d/m/Y') }}</span>
                         </div>
                         <div class="text-end flex-shrink-0">
                             <strong class="d-block">{{ number_format($remaining, 2, ',', '.') }} {{ auth()->user()->currency }}</strong>
@@ -165,6 +165,20 @@
     <div class="modal-body"><label class="form-label" for="editCommitmentName">Descrição</label><input class="form-control mb-3" id="editCommitmentName" name="name" required maxlength="160"><label class="form-label" for="editCommitmentDue">Próximo vencimento</label><input class="form-control" id="editCommitmentDue" name="due_date" type="date" required><div id="editCommitmentError" class="small text-danger mt-2"></div></div>
     <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
 </form></div></div></div>
+
+@push('styles')
+<style>
+.commitments-page .commitment-summary-card .card-body{padding:1rem!important}
+.commitments-page .commitment-summary-card .h3{font-size:1.15rem;margin:0}
+.commitments-page .commitment-payment-item{border-left:0!important;border-right:0!important;border-top:0!important;border-radius:0!important;padding:.55rem .15rem!important;margin:0!important}
+.commitments-page .commitment-payment-item h3{font-size:.9rem}
+.commitments-page .commitment-payment-item .badge{font-size:.68rem;font-weight:500;padding:.28rem .45rem}
+.commitments-page .commitment-payment-item .form-control,.commitments-page .commitment-payment-item .form-select{min-height:34px}
+.commitments-page .commitment-payment-item details summary{font-size:.75rem}
+.commitments-page .commitment-section nav .btn{padding:.25rem .6rem;font-size:.78rem}
+.commitments-page .commitment-compact-list{max-width:100%}
+</style>
+@endpush
 @endsection
 
 @push('scripts')
