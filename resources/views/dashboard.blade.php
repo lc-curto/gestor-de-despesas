@@ -62,16 +62,6 @@
         </div>
     </section>
 
-    <section class="home-section-card mb-4" aria-labelledby="homePaymentsTitle">
-        <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
-            <h2 class="h6 fw-bold mb-0" id="homePaymentsTitle">A tua situação</h2>
-            <span class="badge text-bg-warning">{{ $pendingPaymentCount }}</span>
-        </div>
-        <div class="d-flex justify-content-between gap-2 py-1"><span class="small text-secondary">Pagamentos pendentes</span></div>
-        <div class="d-flex justify-content-between gap-2 py-1"><span class="small text-secondary">Total pendente</span><strong>{{ number_format($pendingPaymentTotal, 2, ',', '.') }} {{ $moeda }}</strong></div>
-        <a class="small text-decoration-none" href="{{ route('financial.commitments.page') }}">Consultar compromissos →</a>
-    </section>
-
     <section class="home-section-card" aria-labelledby="homeRecentTitle">
         <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
             <h2 class="h6 fw-bold mb-0" id="homeRecentTitle">Atividade recente</h2>
