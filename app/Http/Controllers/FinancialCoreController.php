@@ -47,7 +47,7 @@ class FinancialCoreController extends Controller
             'due_date' => 'nullable|date|after_or_equal:start_date',
             'payment_condition' => ['required', Rule::in(['cash', 'deferred', 'installments'])],
             'payment_method' => 'nullable|string|max:30',
-            'installments_count' => 'nullable|integer|min:2|max:120',
+            'installments_count' => [Rule::requiredIf($request->input('payment_condition') === 'installments'), 'nullable', 'integer', 'min:2', 'max:120'],
             'installment_frequency' => ['nullable', Rule::in(['weekly', 'biweekly', 'monthly'])],
             'account_id' => ['nullable', 'uuid', Rule::exists('contas_financeiras', 'id')->where('user_id', $request->user()->id)],
         ]);
