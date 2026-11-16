@@ -685,6 +685,12 @@
                 payload = await response.json().catch(() => ({}));
                 if (response.ok && values.paid_now === '1') {
                     let remainingCents = Math.round(Number(values.payment_amount || values.amount) * 100);
+                    const totalOutstandingCents = (payload.data?.parcelas || []).reduce((total, installment) => (
+                        total + Math.round((Number(installment.amount) - Number(installment.paid_amount || 0)) * 100)
+                    ), 0);
+                    if (remainingCents > totalOutstandingCents) {
+                        throw new Error('O valor pago excede o total da obrigação.');
+                    }
                     for (const installment of (payload.data?.parcelas || [])) {
                         if (remainingCents <= 0) break;
                         const outstandingCents = Math.round((Number(installment.amount) - Number(installment.paid_amount || 0)) * 100);
