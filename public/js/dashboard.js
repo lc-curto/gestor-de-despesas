@@ -108,15 +108,23 @@
             card.classList.toggle('is-selected', Boolean(radio?.checked));
         });
 
-        const paid = form.querySelector('[name="paid_now"]:checked')?.value === '1';
-        if (paidFields) paidFields.hidden = !isCommitment;
-        if (paymentDetails) paymentDetails.hidden = !paid || !isCommitment;
+        const paymentState = form.querySelector('[name="paid_now"]:checked')?.value || '0';
+        const hasPayment = paymentState === '1' || paymentState === 'partial';
+        if (paidFields) paidFields.hidden = !isExpense;
+        if (paymentDetails) paymentDetails.hidden = !hasPayment || !isExpense;
         const paymentAccount = document.getElementById('dashboardPaymentAccount');
         const paymentAmount = document.getElementById('dashboardPaymentAmount');
         const paymentDate = document.getElementById('dashboardPaymentDate');
-        if (paymentAccount) paymentAccount.required = paid && isCommitment;
-        if (paymentAmount) paymentAmount.required = paid && isCommitment;
-        if (paymentDate) paymentDate.required = paid && isCommitment;
+        const amountField = document.getElementById('dashboardPaymentAmountField');
+        if (paymentAccount) paymentAccount.required = hasPayment && isExpense;
+        if (paymentAmount) paymentAmount.required = paymentState === 'partial' && isExpense;
+        if (paymentDate) paymentDate.required = hasPayment && isExpense;
+        if (paymentAmount) {
+            paymentAmount.max = document.getElementById('movementAmount')?.value || '';
+            if (paymentState === '1') paymentAmount.value = document.getElementById('movementAmount')?.value || '';
+            if (paymentState !== 'partial' && paymentState !== '1') paymentAmount.value = '';
+        }
+        if (amountField) amountField.hidden = paymentState === '1';
 
         renderInstallmentSchedule();
     }
@@ -696,16 +704,17 @@
             const values = Object.fromEntries(new FormData(form).entries());
             let response;
             let payload;
-            const commitment = !editing && movementType === 'despesa' && values.payment_condition && values.payment_condition !== 'cash';
+            const commitment = !editing && movementType === 'despesa';
             if (commitment) {
-                response = await fetch(cfg.commitmentStore, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf }, body: JSON.stringify({ name: values.description, total_amount: values.amount, start_date: values.expense_date, due_date: values.due_date, payment_condition: values.payment_condition, payment_method: values.payment_method, installments_count: values.installments_count, installment_frequency: values.installment_frequency }) });
+                const condition = values.payment_condition || 'cash';
+                response = await fetch(cfg.commitmentStore, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf }, body: JSON.stringify({ name: values.description, total_amount: values.amount, start_date: values.expense_date, due_date: values.due_date || values.expense_date, payment_condition: condition, payment_method: values.payment_method || values.actual_payment_method || null, installments_count: condition === 'installments' ? values.installments_count : 1, installment_frequency: condition === 'installments' ? values.installment_frequency : 'monthly' }) });
                 payload = await response.json().catch(() => ({}));
-                if (response.ok && values.paid_now === '1') {
-                    let remainingCents = Math.round(Number(values.payment_amount || values.amount) * 100);
+                if (response.ok && (values.paid_now === '1' || values.paid_now === 'partial')) {
+                    let remainingCents = Math.round(Number(values.paid_now === '1' ? values.amount : values.payment_amount) * 100);
                     const totalOutstandingCents = (payload.data?.parcelas || []).reduce((total, installment) => (
                         total + Math.round((Number(installment.amount) - Number(installment.paid_amount || 0)) * 100)
                     ), 0);
-                    if (remainingCents > totalOutstandingCents) {
+                    if (remainingCents <= 0 || remainingCents > totalOutstandingCents) {
                         throw new Error('O valor pago excede o total da obrigação.');
                     }
                     for (const installment of (payload.data?.parcelas || [])) {
@@ -1004,6 +1013,8 @@
     });
 
     cancelButton?.addEventListener('click', cancelEdit);
+    form.querySelectorAll('[name="payment_condition"], [name="paid_now"]').forEach((input) => input.addEventListener('change', refreshPaymentFields));
+    document.getElementById('movementAmount')?.addEventListener('input', refreshPaymentFields);
     form.addEventListener('submit', submitMovement);
     settleForm?.addEventListener('submit', submitSettleMovement);
     deleteForm?.addEventListener('submit', submitDeleteMovement);
