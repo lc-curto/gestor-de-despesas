@@ -234,7 +234,7 @@
                             data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}"
                             data-amount="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}"
                             data-category-id="{{ $movimento->category }}" data-account-id="{{ $movimento->account_id }}"
-                            data-movement-status="{{ $movimento->movement_status }}" data-recurrence-id="{{ $movimento->recurrence_id }}">
+                            data-movement-status="{{ $movimento->movement_status }}" data-recurrence-id="{{ $movimento->recurrence_id }}" data-financial-movement-id="{{ $movimento->financial_movement_id }}">
                             <div class="d-flex align-items-center gap-3 min-w-0">
                                 <div class="expense-icon flex-shrink-0" style="--category-color: {{ $movimento->category_color ?? '#635BFF' }}" aria-hidden="true">
                                     <i data-lucide="{{ $movimento->category_icon ?? 'tag' }}"></i>
@@ -249,6 +249,9 @@
                                     data-value="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}">{{ $isExpense ? '−' : '+' }}{{ number_format((float) $movimento->amount, 2, ',', '.') }}</strong>
                                 <div class="btn-group btn-group-sm" role="group" aria-label="Ações de {{ $movimento->description }}">
                                     @if ($movimento->recurrence_id)
+                                        @if ($isExpense && $movimento->movement_status === 'pending' && $dataMovimento->lte(today()) && $movimento->financial_movement_id)
+                                            <button type="button" class="btn btn-outline-primary settle-recurring-movement" data-url="{{ route('financial.movements.settle', $movimento->financial_movement_id) }}" data-account-id="{{ $movimento->account_id }}" title="Liquidar ocorrência" aria-label="Liquidar {{ $movimento->description }}">Liquidar</button>
+                                        @endif
                                     @else
                                         <button type="button" class="btn btn-outline-secondary edit-movement" data-acao="editar" aria-label="Editar {{ $movimento->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></button>
                                         <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $movimento->id) }}" data-delete-type="{{ $movimento->tipo }}" onsubmit="return confirm('Remover este movimento? O sistema atualizará automaticamente os saldos e manterá o registo técnico de auditoria.')">
@@ -319,5 +322,31 @@ window.meuBolsoDashboard = {
 @if ($errors->any())
 <script>document.addEventListener('DOMContentLoaded', () => bootstrap.Modal.getOrCreateInstance(document.getElementById('movementEntryModal')).show());</script>
 @endif
+<script>
+document.addEventListener('click', async (event) => {
+    const button = event.target.closest('.settle-recurring-movement');
+    if (!button || button.disabled) return;
+    if (!confirm('Confirmas que esta despesa recorrente foi paga ou realizada?')) return;
+    button.disabled = true;
+    try {
+        const response = await fetch(button.dataset.url, {
+            method: 'PUT',
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            },
+            body: JSON.stringify({source_account_id: button.dataset.accountId || null})
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'Não foi possível liquidar a ocorrência.');
+        window.location.reload();
+    } catch (error) {
+        alert(error.message);
+        button.disabled = false;
+    }
+});
+</script>
 <script src="{{ asset('js/dashboard.js') }}?v={{ filemtime(public_path('js/dashboard.js')) }}" defer></script>
 @endpush

@@ -100,6 +100,16 @@ class RecurrenceService
             $rule = Recorrencia::query()->where('user_id', $user->id)->whereKey($recurrenceId)->lockForUpdate()->firstOrFail();
             if (!$rule->is_active) return 0;
 
+            if ($rule->account_id) {
+                $account = $user->contasFinanceiras()->whereKey($rule->account_id)->first();
+                if (!$account || !$account->is_operational || $account->status !== 'active'
+                    || $account->currency !== $user->currency
+                    || ($account->type === 'credit_card' && (!$account->closing_day || !$account->due_day))) {
+                    $rule->update(['is_active' => false]);
+                    return 0;
+                }
+            }
+
             $category = Categoria::query()->where('user_id', $user->id)->whereKey($rule->category_id)->firstOrFail();
             $cursor = Carbon::parse($rule->next_occurrence)->startOfDay();
             $through = today()->addDays(self::FORECAST_DAYS);
@@ -122,6 +132,8 @@ class RecurrenceService
                         'description' => $rule->description,
                         'amount' => (string) $rule->amount,
                         'movement_date' => $scheduledDate,
+                        'source_account_id' => $rule->type === 'expense' ? $rule->account_id : null,
+                        'destination_account_id' => $rule->type === 'income' ? $rule->account_id : null,
                         'category_id' => $rule->category_id,
                         'recurrence_id' => $rule->id,
                         'recurrence_occurrence_date' => $scheduledDate,
@@ -211,6 +223,9 @@ class RecurrenceService
         $allowedTypes = $type === 'expense' ? ['bank', 'cash', 'credit_card'] : ['bank', 'cash'];
         if (!$account || !$account->is_operational || $account->status !== 'active' || $account->currency !== $user->currency || !in_array($account->type, $allowedTypes, true)) {
             throw ValidationException::withMessages(['account_id' => 'A conta predefinida não pode ser usada neste tipo de movimento.']);
+        }
+        if ($account->type === 'credit_card' && (!$account->closing_day || !$account->due_day)) {
+            throw ValidationException::withMessages(['account_id' => 'Configura os dias de fecho e vencimento do cartão antes de criar uma recorrência.']);
         }
     }
 }

@@ -32,7 +32,9 @@ class FinanceController extends Controller
 
     private function availableAccounts(Request $request, string $tipo)
     {
-        $types = $tipo === 'despesa' ? ['bank', 'cash', 'credit_card'] : ['bank', 'cash'];
+        $types = $tipo === 'despesa'
+            ? ($request->boolean('card_only') ? ['credit_card'] : ['bank', 'cash', 'credit_card'])
+            : ['bank', 'cash'];
 
         return $request->user()->contasFinanceiras()
             ->whereIn('type', $types)
@@ -65,6 +67,10 @@ class FinanceController extends Controller
     private function validatedData(Request $request, ?string $movementId = null): array
     {
         [$tipo, , $dateField] = $this->config($request);
+        $accountExists = Rule::exists('contas_financeiras', 'id')->where('user_id', $request->user()->id);
+        if ($request->boolean('card_only')) {
+            $accountExists->where('type', 'credit_card');
+        }
 
         $data = $request->validate([
             'description' => 'required|string|max:255',
@@ -72,8 +78,9 @@ class FinanceController extends Controller
             'amount' => 'required|numeric|gt:0|decimal:0,2|max:9999999999.99',
             'account_id' => [
                 'required', 'uuid',
-                Rule::exists('contas_financeiras', 'id')->where('user_id', $request->user()->id),
+                $accountExists,
             ],
+            'card_only' => 'sometimes|boolean',
             'category_id' => [
                 'required_without:category',
                 'nullable',
@@ -97,7 +104,9 @@ class FinanceController extends Controller
 
         $account = $request->user()->contasFinanceiras()
             ->whereKey($data['account_id'])
-            ->whereIn('type', $tipo === 'despesa' ? ['bank', 'cash', 'credit_card'] : ['bank', 'cash'])
+            ->whereIn('type', $tipo === 'despesa'
+                ? ($request->boolean('card_only') ? ['credit_card'] : ['bank', 'cash', 'credit_card'])
+                : ['bank', 'cash'])
             ->where('is_operational', true)
             ->where('status', 'active')
             ->whereNotNull('opening_balance')
@@ -222,9 +231,10 @@ class FinanceController extends Controller
         $data = $dateField;
         $cats = $this->categoryOptions($request, $tipo);
         $accounts = $this->availableAccounts($request, $tipo);
+        $selectedAccountId = $request->query('account_id');
         $returnUrl = route($tipo === 'despesa' ? 'despesas.index' : 'receitas.index');
 
-        return view('finance.form', compact('tipo', 'data', 'cats', 'registo', 'accounts', 'financialMovement', 'returnUrl'));
+        return view('finance.form', compact('tipo', 'data', 'cats', 'registo', 'accounts', 'financialMovement', 'returnUrl', 'selectedAccountId'));
     }
 
     public function store(Request $request, FinancialMovementService $service, CardInvoiceService $invoices, RecurrenceService $recurrences)
@@ -254,7 +264,7 @@ class FinanceController extends Controller
                 ->with('success', ($tipo === 'despesa' ? 'Despesa' : 'Receita') . ' recorrente criada.');
         }
         $expenseBehavior = $data['expense_behavior'] ?? 'variable';
-        unset($data['expense_behavior'], $data['account_id'], $data['recurrence_enabled'], $data['recurrence_frequency'], $data['recurrence_interval'], $data['recurrence_ends_at']);
+        unset($data['expense_behavior'], $data['account_id'], $data['card_only'], $data['recurrence_enabled'], $data['recurrence_frequency'], $data['recurrence_interval'], $data['recurrence_ends_at']);
         $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
 
         DB::transaction(function () use ($request, $service, $invoices, $tipo, $data, $accountId, $legacyType, $expenseBehavior): void {

@@ -58,7 +58,9 @@
                 <h2 class="h5 fw-bold mb-1" id="cardsSectionTitle">Os meus cartões</h2>
                 <p class="small text-secondary mb-0">Limite, utilização e ciclo de pagamento.</p>
             </div>
-            <button class="btn btn-primary btn-sm" type="button" id="openExpenseModal">Nova despesa</button>
+            @if ($cards->isNotEmpty())
+                <button class="btn btn-primary btn-sm" type="button" id="openExpenseModal">Nova despesa</button>
+            @endif
         </div>
 
         @forelse ($cards as $card)
@@ -274,10 +276,10 @@
         }
     });
 
-    document.getElementById('openExpenseModal').addEventListener('click', async () => {
+    document.getElementById('openExpenseModal')?.addEventListener('click', async () => {
         const body=document.getElementById('expenseModalBody'); body.innerHTML='<p class="text-secondary">A carregar formulário…</p>'; modal('expenseModal').show();
         try {
-            const response=await fetch('{{ route('despesas.create') }}?modal=1',{credentials:'same-origin',headers:{Accept:'text/html'}});
+            const response=await fetch('{{ route('despesas.create') }}?modal=1&card_only=1',{credentials:'same-origin',headers:{Accept:'text/html'}});
             if(!response.ok) throw new Error('Não foi possível carregar o formulário de despesa.');
             const html=await response.text(), doc=new DOMParser().parseFromString(html,'text/html'), form=doc.querySelector('form[action*="/despesas"]');
             if(!form) throw new Error('O formulário de despesa não foi encontrado.');

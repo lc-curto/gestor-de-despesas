@@ -72,13 +72,15 @@ class FinancialMovementService
                 'notes' => $data['notes'] ?? null,
                 'amount' => $data['amount'],
                 'movement_date' => $data['movement_date'],
+                'source_account_id' => $data['source_account_id'] ?? null,
+                'destination_account_id' => $data['destination_account_id'] ?? null,
                 'category_id' => $data['category_id'] ?? null,
                 'recurrence_id' => $data['recurrence_id'] ?? null,
                 'recurrence_occurrence_date' => $data['recurrence_occurrence_date'] ?? null,
                 'legacy_type' => $data['legacy_type'] ?? null,
                 'legacy_id' => $data['legacy_id'] ?? null,
                 'is_historical' => false,
-                'requires_account_assignment' => true,
+                'requires_account_assignment' => empty($data['source_account_id']) && empty($data['destination_account_id']),
             ]);
 
             $this->audit($user, $movement, 'created_pending', null, $movement->getAttributes());

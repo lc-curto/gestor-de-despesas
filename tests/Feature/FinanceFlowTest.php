@@ -313,6 +313,58 @@ class FinanceFlowTest extends TestCase
         $this->assertSame('100.00', app(\App\Services\Financial\AccountBalanceService::class)->balance($account));
     }
 
+    public function test_recurring_credit_card_expense_is_forecast_and_settled_into_the_correct_invoice(): void
+    {
+        \Illuminate\Support\Carbon::setTestNow('2026-11-16 10:00:00');
+
+        try {
+            $user = User::factory()->create(['currency' => 'EUR']);
+            $card = app(FinancialAccountService::class)->create($user, [
+                'name' => 'Visa recorrente',
+                'type' => 'credit_card',
+                'opening_balance' => '0.00',
+                'opening_balance_date' => '2026-11-01',
+                'closing_day' => 25,
+                'due_day' => 5,
+                'credit_limit' => '1000.00',
+            ]);
+            $categoryId = $user->categorias()->where('slug', 'compras')->value('id');
+
+            $rule = app(\App\Services\Financial\RecurrenceService::class)->create($user, [
+                'type' => 'expense',
+                'description' => 'Subscrição mensal',
+                'amount' => '30.00',
+                'category_id' => $categoryId,
+                'account_id' => $card->id,
+                'frequency' => 'monthly',
+                'interval_value' => 1,
+                'start_date' => '2026-11-16',
+            ]);
+
+            $movement = $rule->movimentos()->whereDate('recurrence_occurrence_date', '2026-11-16')->firstOrFail();
+
+            $this->assertSame('pending', $movement->status);
+            $this->assertSame($card->id, $movement->source_account_id);
+            $this->assertNull($movement->invoice_id);
+            $this->assertSame('0.00', app(\App\Services\Financial\AccountBalanceService::class)->balance($card));
+
+            $this->actingAs($user)->putJson(route('financial.movements.settle', $movement->id), [
+                'source_account_id' => $card->id,
+            ])->assertOk();
+
+            $movement->refresh();
+            $this->assertSame('settled', $movement->status);
+            $this->assertNotNull($movement->invoice_id);
+            $this->assertDatabaseHas('faturas', [
+                'id' => $movement->invoice_id,
+                'account_id' => $card->id,
+                'reference_month' => '2026-11-01',
+            ]);
+        } finally {
+            \Illuminate\Support\Carbon::setTestNow();
+        }
+    }
+
     public function test_existing_pending_legacy_movement_can_be_associated_through_edit_form(): void
     {
         $user = User::factory()->create();

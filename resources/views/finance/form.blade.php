@@ -22,6 +22,7 @@
     @csrf
     @if ($registo) @method('PUT') @endif
     @if (request('return_to')) <input type="hidden" name="return_to" value="{{ request('return_to') }}"> @endif
+    @if (request()->boolean('card_only')) <input type="hidden" name="card_only" value="1"> @endif
     <div class="mb-3">
         <label for="description" class="form-label">Descrição</label>
         <input id="description" name="description" class="form-control" maxlength="255" value="{{ old('description', $registo?->description) }}" required>
@@ -41,7 +42,7 @@
             <select id="account_id" name="account_id" class="form-select" required>
                 <option value="">Selecionar conta</option>
                 @foreach ($accounts as $account)
-                    <option value="{{ $account->id }}" @selected(old('account_id', $selectedAccountId) === $account->id)>{{ $account->name }} · {{ $account->currency }}</option>
+                    <option value="{{ $account->id }}" @selected(old('account_id', $selectedAccountId) === $account->id) data-closing="{{ $account->closing_day }}" data-due="{{ $account->due_day }}" data-limit="{{ $account->credit_limit }}">{{ $account->name }} · {{ $account->currency }}</option>
                 @endforeach
             </select>
             @if ($tipo === 'despesa')
@@ -76,7 +77,13 @@
             <input id="{{ $data }}" name="{{ $data }}" type="date" class="form-control" value="{{ old($data, $registo?->{$data}?->format('Y-m-d') ?? now()->format('Y-m-d')) }}" required>
         </div>
     </div>
-    @if ($tipo === 'despesa' && !$registo)
+    @if ($tipo === 'despesa' && request()->boolean('card_only'))
+    <section class="alert alert-light border mt-3 mb-0" id="cardCycleInfo" aria-live="polite">
+        <strong>Faturação do cartão</strong>
+        <p class="small text-secondary mb-0" id="cardCycleDescription">A compra será integrada automaticamente na fatura do cartão selecionado.</p>
+    </section>
+    @endif
+    @if ($tipo === 'despesa' && !$registo && !request()->boolean('card_only'))
     <hr class="my-4">
     <section aria-labelledby="paymentConditionsTitle">
         <h2 id="paymentConditionsTitle" class="h6 fw-bold mb-3">Condições de pagamento</h2>
@@ -121,10 +128,31 @@
 <script>document.addEventListener('DOMContentLoaded',()=>{const c=document.getElementById('recurrence_enabled'),f=document.getElementById('recurrenceFields');if(c&&f){const sync=()=>f.hidden=!c.checked;c.addEventListener('change',sync);sync();}});</script>
 @endpush
 @endif
-@if ($tipo === 'despesa' && !$registo)
+@if ($tipo === 'despesa' && !$registo && !request()->boolean('card_only'))
 @push('scripts')
 <script>
 (() => { const form=document.querySelector('form[action="{{ route('despesas.store') }}"]'); if(!form)return; const get=()=>form.querySelector('[name="payment_condition"]:checked')?.value||'cash', commitments=document.getElementById('commitmentFields'), effective=document.getElementById('effectivePaymentFields'), inputs=document.getElementById('effectivePaymentInputs'), account=document.getElementById('account_id'); const refresh=()=>{const cash=get()==='cash'; commitments.hidden=cash; effective.hidden=cash; document.getElementById('installmentCountField').hidden=get()!=='installments'; account.required=cash||!inputs.hidden;}; form.querySelectorAll('[name="payment_condition"]').forEach(x=>x.addEventListener('change',refresh)); form.querySelectorAll('[name="paid_now"]').forEach(x=>x.addEventListener('change',()=>{inputs.hidden=x.value!=='1'||!x.checked;refresh()})); refresh(); form.addEventListener('submit',async e=>{if(get()==='cash')return;e.preventDefault();const d=Object.fromEntries(new FormData(form).entries()),t=document.querySelector('meta[name="csrf-token"]').content,r=await fetch('{{ route('financial.commitments.store') }}',{method:'POST',credentials:'same-origin',headers:{'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':t},body:JSON.stringify({name:d.description,total_amount:d.amount,start_date:d.expense_date,due_date:d.due_date,payment_condition:d.payment_condition,payment_method:d.payment_method,installments_count:d.installments_count})}),j=await r.json();if(!r.ok){alert(j.message||'Não foi possível criar o compromisso.');return;}if(d.paid_now==='1'){const i=j.data.parcelas[0];await fetch('{{ url('/api/financial/commitments') }}/'+j.data.id+'/installments/'+i.id+'/pay',{method:'POST',credentials:'same-origin',headers:{'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':t},body:JSON.stringify({account_id:d.payment_account_id,amount:d.payment_amount||d.amount,payment_date:d.payment_date})});}if(form.dataset.modal==='1'){window.location.reload();return;}window.location.href='{{ route('despesas.index') }}';});})();
+</script>
+@endpush
+@endif
+@if ($tipo === 'despesa' && request()->boolean('card_only'))
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const select = document.getElementById('account_id');
+    const info = document.getElementById('cardCycleDescription');
+    const sync = () => {
+        const option = select?.selectedOptions[0];
+        if (!option || !info) return;
+        const closing = option.dataset.closing;
+        const due = option.dataset.due;
+        info.textContent = closing && due
+            ? 'Fecho no dia ' + closing + ' · Vencimento no dia ' + due + '. As compras recorrentes serão lançadas em cada fatura correspondente.'
+            : 'Configura os dias de fecho e vencimento deste cartão antes de guardar.';
+    };
+    select?.addEventListener('change', sync);
+    sync();
+});
 </script>
 @endpush
 @endif
