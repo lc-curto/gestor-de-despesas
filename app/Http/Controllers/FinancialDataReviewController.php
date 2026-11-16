@@ -96,7 +96,6 @@ class FinancialDataReviewController extends Controller
         DB::table('financial_data_reviews')->where('id', $review->id)->update([
             'step_evidence' => json_encode($evidence),
             'completed_steps' => json_encode($completed),
-            'completed_at' => null,
             'updated_at' => now(),
         ]);
 
