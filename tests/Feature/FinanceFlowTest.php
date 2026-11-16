@@ -57,7 +57,7 @@ class FinanceFlowTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->postJson(route('accounts.store'), [
+        $response = $this->actingAs($user)->postJson(route('financial.accounts.store'), [
             'name' => 'Novo Banco Crédito',
             'type' => 'credit_card',
             'closing_day' => '10',
