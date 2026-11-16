@@ -36,7 +36,7 @@
                     @php $used=abs((float)($card->current_balance??0)); $limit=(float)($card->credit_limit??0); $available=max(0,$limit-$used); $usage=$limit>0?min(100,($used/$limit)*100):0; $movementCount=$card->movimentos_origem_count+$card->movimentos_destino_count; @endphp
                     <article class="credit-card-item">
                         <div class="credit-card-top"><a href="{{ route('financial.accounts.show',$card->id) }}" class="credit-card-title-link"><span class="credit-card-icon"><i data-lucide="credit-card" aria-hidden="true"></i></span><span><strong>{{ $card->name }}</strong><small>Cartão de crédito</small></span></a>
-                            <div class="dropdown"><button class="credit-card-more" type="button" data-bs-toggle="dropdown" aria-label="Ações do cartão"><i data-lucide="more-horizontal"></i></button><ul class="dropdown-menu dropdown-menu-end shadow-sm"><li><button class="dropdown-item js-edit-credit-card" type="button" data-bs-toggle="modal" data-bs-target="#editCreditCardModal" data-name="{{ $card->name }}" data-update-url="{{ route('financial.accounts.update',$card->id) }}" data-settings-url="{{ route('financial.cards.settings',$card->id) }}" data-close-url="{{ route('financial.accounts.close',$card->id) }}" data-limit="{{ $card->credit_limit }}" data-closing="{{ $card->closing_day }}" data-due="{{ $card->due_day }}" data-used="{{ number_format($used,2,'.','') }}">Editar cartão</button></li>
+                            <div class="dropdown"><button class="credit-card-more" type="button" data-bs-toggle="dropdown" aria-label="Ações do cartão"><i data-lucide="more-horizontal"></i></button><ul class="dropdown-menu dropdown-menu-end shadow-sm">@if($card->status==='active' && $card->is_operational)<li><button class="dropdown-item js-edit-credit-card" type="button" data-bs-toggle="modal" data-bs-target="#editCreditCardModal" data-name="{{ $card->name }}" data-update-url="{{ route('financial.accounts.update',$card->id) }}" data-settings-url="{{ route('financial.cards.settings',$card->id) }}" data-close-url="{{ route('financial.accounts.close',$card->id) }}" data-limit="{{ $card->credit_limit }}" data-closing="{{ $card->closing_day }}" data-due="{{ $card->due_day }}" data-used="{{ number_format($used,2,'.','') }}">Editar cartão</button></li>@endif
                             @if($card->status==='active' && $card->is_operational && $used<=0.00001)<li><button class="dropdown-item text-danger js-close-credit-card" type="button" data-close-url="{{ route('financial.accounts.close',$card->id) }}" data-name="{{ $card->name }}">Encerrar cartão</button></li>@endif
                             </ul></div>
                         </div>
@@ -149,7 +149,7 @@
                     <div id="cardBillingFields" class="row g-3 d-none card-billing-fields">
                         <div class="col-6"><label for="cardClosingDay" class="form-label">Dia de fecho</label><input id="cardClosingDay" name="closing_day" type="number" class="form-control" min="1" max="28" value="25" disabled></div>
                         <div class="col-6"><label for="cardDueDay" class="form-label">Dia de vencimento</label><input id="cardDueDay" name="due_day" type="number" class="form-control" min="1" max="28" value="5" disabled></div>
-                        <div class="col-12"><label for="cardCreditLimit" class="form-label">Limite total (€)</label><input id="cardCreditLimit" name="credit_limit" type="number" class="form-control" min="0.01" step="0.01" placeholder="Opcional" disabled></div>
+                        <div class="col-12"><label for="cardCreditLimit" class="form-label">Limite total (€)</label><input id="cardCreditLimit" name="credit_limit" type="number" class="form-control" min="0.01" step="0.01" placeholder="1.000,00" disabled></div>
                         <div class="col-12 form-text">Os dias 1–28 evitam datas inexistentes em meses curtos.</div>
                     </div>
                     <div class="row g-3">
@@ -475,6 +475,16 @@
         }
     }
 
+    document.querySelector('[data-create-card="1"]')?.addEventListener('click', () => {
+        if (accountType) { accountType.value = 'credit_card'; refreshCardFields(); }
+        document.getElementById('newAccountTitle').textContent = 'Novo cartão';
+        document.getElementById('accountName').placeholder = 'Ex.: Novo Banco Crédito';
+    });
+    document.getElementById('newAccountModal')?.addEventListener('hidden.bs.modal', () => {
+        document.getElementById('newAccountTitle').textContent = 'Nova conta';
+        document.getElementById('accountCreateForm')?.reset();
+        refreshCardFields();
+    });
     const accountType = document.getElementById('accountType');
     const cardBillingFields = document.getElementById('cardBillingFields');
     const refreshCardFields = () => {
@@ -485,6 +495,8 @@
         if (bankOpeningInput) bankOpeningInput.disabled = enabled;
         cardBillingFields?.classList.toggle('d-none', !enabled);
         cardBillingFields?.querySelectorAll('input').forEach((input) => { input.disabled = !enabled; });
+        const creditLimitInput = document.getElementById('cardCreditLimit');
+        if (creditLimitInput) creditLimitInput.required = enabled;
         const debtField = document.getElementById('cardOpeningDebtField');
         debtField?.classList.toggle('d-none', !enabled);
         const debtInput = document.getElementById('cardOpeningDebt');
