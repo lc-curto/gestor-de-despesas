@@ -119,18 +119,69 @@
                             <div class="form-text">Fixa é uma despesa estrutural ou regular, mesmo que o valor varie.</div>
                         </div>
                         <div id="dashboardPaymentFields" class="border-top pt-3 mb-3">
-                            <label class="form-label d-block">Condições de pagamento</label>
-                            <div class="d-flex flex-wrap gap-3 mb-3">
-                                <label class="form-check"><input class="form-check-input" type="radio" name="payment_condition" value="cash" checked> <span class="form-check-label">A pronto</span></label>
-                                <label class="form-check"><input class="form-check-input" type="radio" name="payment_condition" value="deferred"> <span class="form-check-label">A prazo</span></label>
-                                <label class="form-check"><input class="form-check-input" type="radio" name="payment_condition" value="installments"> <span class="form-check-label">Parcelado</span></label>
+                            <label class="form-label d-block fw-semibold mb-2">Modalidade de pagamento</label>
+                            <div class="payment-mode-grid mb-3" role="radiogroup" aria-label="Modalidade de pagamento">
+                                <label class="payment-mode-card">
+                                    <input class="visually-hidden" type="radio" name="payment_condition" value="cash" checked>
+                                    <span class="payment-mode-card-title">Pagamento único</span>
+                                    <span class="payment-mode-card-description">Pago numa única vez.</span>
+                                    <span class="payment-mode-card-selected" aria-hidden="true">Selecionado</span>
+                                </label>
+                                <label class="payment-mode-card">
+                                    <input class="visually-hidden" type="radio" name="payment_condition" value="deferred">
+                                    <span class="payment-mode-card-title">Pagamento com vencimento</span>
+                                    <span class="payment-mode-card-description">Tem uma data de vencimento.</span>
+                                    <span class="payment-mode-card-selected" aria-hidden="true">Selecionado</span>
+                                </label>
+                                <label class="payment-mode-card">
+                                    <input class="visually-hidden" type="radio" name="payment_condition" value="installments">
+                                    <span class="payment-mode-card-title">Pagamento parcelado</span>
+                                    <span class="payment-mode-card-description">Dividido em prestações.</span>
+                                    <span class="payment-mode-card-selected" aria-hidden="true">Selecionado</span>
+                                </label>
                             </div>
                             <div id="dashboardCommitmentOptions" class="row g-2" hidden>
-                                <div class="col-6"><label for="dashboardPaymentMethod" class="form-label">Método</label><select id="dashboardPaymentMethod" name="payment_method" class="form-select"><option value="">Selecionar</option><option value="cash">Dinheiro</option><option value="card">Cartão</option><option value="transfer">Transferência</option><option value="mbway">MB WAY</option><option value="other">Outro</option></select></div>
-                                <div class="col-6" id="dashboardInstallmentsField" hidden><label for="dashboardInstallments" class="form-label">Parcelas</label><input id="dashboardInstallments" name="installments_count" type="number" min="2" max="120" value="2" class="form-control"></div>
-                                <div class="col-6"><label for="dashboardDueDate" class="form-label">Primeiro vencimento</label><input id="dashboardDueDate" name="due_date" type="date" class="form-control" value="{{ now()->toDateString() }}"></div>
+                                <div class="col-12">
+                                    <label for="dashboardPaymentMethod" class="form-label">Método de pagamento previsto</label>
+                                    <select id="dashboardPaymentMethod" name="payment_method" class="form-select">
+                                        <option value="">Selecionar método</option>
+                                        <option value="cash">Dinheiro</option><option value="debit">Cartão de débito</option>
+                                        <option value="credit">Cartão de crédito</option><option value="transfer">Transferência bancária</option>
+                                        <option value="mbway">MB WAY</option><option value="direct_debit">Débito direto</option>
+                                    </select>
+                                </div>
+                                <div class="col-12" id="dashboardDueDateField">
+                                    <label for="dashboardDueDate" class="form-label">Data de vencimento</label>
+                                    <input id="dashboardDueDate" name="due_date" type="date" class="form-control" value="{{ now()->toDateString() }}">
+                                </div>
+                                <div class="col-6" id="dashboardInstallmentsField" hidden>
+                                    <label for="dashboardInstallments" class="form-label">Número de prestações</label>
+                                    <input id="dashboardInstallments" name="installments_count" type="number" min="2" max="120" value="2" class="form-control">
+                                </div>
+                                <div class="col-6" id="dashboardInstallmentFrequencyField" hidden>
+                                    <label for="dashboardInstallmentFrequency" class="form-label">Periodicidade</label>
+                                    <select id="dashboardInstallmentFrequency" name="installment_frequency" class="form-select">
+                                        <option value="weekly">Semanal</option><option value="biweekly">Quinzenal</option><option value="monthly" selected>Mensal</option>
+                                    </select>
+                                </div>
+                                <div class="col-12" id="dashboardInstallmentSchedule" hidden>
+                                    <div class="small fw-semibold mb-2">Calendário de vencimentos</div>
+                                    <div class="list-group list-group-flush" id="dashboardInstallmentScheduleList" aria-live="polite"></div>
+                                </div>
                             </div>
-                            <div id="dashboardPaidFields" class="mt-3" hidden><label class="form-label d-block">Já foi pago?</label><div class="d-flex gap-3"><label class="form-check"><input class="form-check-input" type="radio" name="paid_now" value="1"> <span class="form-check-label">Sim</span></label><label class="form-check"><input class="form-check-input" type="radio" name="paid_now" value="0" checked> <span class="form-check-label">Ainda não</span></label></div><div id="dashboardPaymentDetails" class="row g-2 mt-1" hidden><div class="col-6"><label for="dashboardPaymentAmount" class="form-label">Valor pago</label><input id="dashboardPaymentAmount" name="payment_amount" type="number" min="0.01" step="0.01" class="form-control"></div><div class="col-6"><label for="dashboardPaymentDate" class="form-label">Data</label><input id="dashboardPaymentDate" name="payment_date" type="date" class="form-control" value="{{ now()->toDateString() }}"></div><div class="col-12"><label for="dashboardPaymentAccount" class="form-label">Conta do pagamento</label><select id="dashboardPaymentAccount" name="payment_account_id" class="form-select"><option value="">Selecionar conta</option>@foreach ($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }} · {{ $account->currency }}</option>@endforeach</select></div></div></div>
+                            <div id="dashboardPaidFields" class="mt-3" hidden>
+                                <label class="form-label d-block">Já aconteceu?</label>
+                                <div class="d-flex gap-3">
+                                    <label class="form-check"><input class="form-check-input" type="radio" name="paid_now" value="1"> <span class="form-check-label">Sim</span></label>
+                                    <label class="form-check"><input class="form-check-input" type="radio" name="paid_now" value="0" checked> <span class="form-check-label">Ainda não</span></label>
+                                </div>
+                                <div id="dashboardPaymentDetails" class="row g-2 mt-1" hidden>
+                                    <div class="col-6"><label for="dashboardPaymentAmount" class="form-label">Valor pago</label><input id="dashboardPaymentAmount" name="payment_amount" type="number" min="0.01" step="0.01" class="form-control"></div>
+                                    <div class="col-6"><label for="dashboardPaymentDate" class="form-label">Data do pagamento</label><input id="dashboardPaymentDate" name="payment_date" type="date" class="form-control" value="{{ now()->toDateString() }}"></div>
+                                    <div class="col-12"><label for="dashboardPaymentAccount" class="form-label">Conta utilizada</label><select id="dashboardPaymentAccount" name="payment_account_id" class="form-select"><option value="">Selecionar conta</option>@foreach ($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }} · {{ $account->currency }}</option>@endforeach</select></div>
+                                </div>
+                            </div>
+                            <p class="form-text mb-0 mt-2">A recorrência cria novas obrigações. O parcelamento divide o valor desta obrigação em prestações.</p>
                         </div>
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-danger w-100" id="saveMovementButton" @disabled($accounts->isEmpty())>Guardar despesa</button>
