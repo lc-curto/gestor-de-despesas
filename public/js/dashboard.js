@@ -330,8 +330,25 @@
         name.textContent = item.description;
         const metadata = document.createElement('p');
         metadata.className = 'small text-secondary mb-0';
-        metadata.textContent = categoryName(item) + ' · ' + displayDate + (item.recurrence_id ? ' · Recorrente' : '') + (item.movement_status === 'pending' ? ' · Pendente' : '');
-        details.append(name, metadata);
+        metadata.textContent = categoryName(item) + ' · ' + displayDate;
+        const badges = document.createElement('div');
+        badges.className = 'movement-badges d-flex flex-wrap align-items-center gap-1 mt-1';
+        const statusBadge = document.createElement('span');
+        statusBadge.className = 'badge rounded-pill ' + (
+            item.movement_status === 'settled' ? 'text-bg-success' :
+            (item.movement_status === 'partial' || item.movement_status === 'partially_settled') ? 'text-bg-info' :
+            'text-bg-warning'
+        );
+        statusBadge.textContent = item.movement_status === 'settled' ? 'Pago' :
+            (item.movement_status === 'partial' || item.movement_status === 'partially_settled') ? 'Parcialmente pago' : 'Pendente';
+        badges.append(statusBadge);
+        if (item.recurrence_id) {
+            const recurrenceBadge = document.createElement('span');
+            recurrenceBadge.className = 'badge rounded-pill text-bg-light border text-secondary';
+            recurrenceBadge.textContent = 'Recorrente';
+            badges.append(recurrenceBadge);
+        }
+        details.append(name, metadata, badges);
         info.append(icon, details);
 
         const actions = document.createElement('div');
