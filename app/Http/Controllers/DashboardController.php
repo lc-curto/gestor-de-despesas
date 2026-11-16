@@ -36,21 +36,19 @@ class DashboardController extends Controller
 
         $totalDespesas = (float) $user->despesas()
             ->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()])
-            ->where(function ($query) {
-                $query->whereNotExists(function ($subquery) {
-                    $subquery->selectRaw('1')->from('movimentos')->where('movimentos.legacy_type', 'despesa')->whereColumn('movimentos.legacy_id', 'despesas.id');
-                })->orWhereExists(function ($subquery) {
-                    $subquery->selectRaw('1')->from('movimentos')->where('movimentos.legacy_type', 'despesa')->whereColumn('movimentos.legacy_id', 'despesas.id')->where('movimentos.status', 'settled');
-                });
+            ->whereNotExists(function ($subquery) {
+                $subquery->selectRaw('1')->from('movimentos')
+                    ->where('movimentos.legacy_type', 'despesa')
+                    ->whereColumn('movimentos.legacy_id', 'despesas.id')
+                    ->where('movimentos.status', 'void');
             })->sum('amount');
         $totalReceitas = (float) $user->receitas()
             ->whereBetween('income_date', [$inicio->toDateString(), $fim->toDateString()])
-            ->where(function ($query) {
-                $query->whereNotExists(function ($subquery) {
-                    $subquery->selectRaw('1')->from('movimentos')->where('movimentos.legacy_type', 'receita')->whereColumn('movimentos.legacy_id', 'receitas.id');
-                })->orWhereExists(function ($subquery) {
-                    $subquery->selectRaw('1')->from('movimentos')->where('movimentos.legacy_type', 'receita')->whereColumn('movimentos.legacy_id', 'receitas.id')->where('movimentos.status', 'settled');
-                });
+            ->whereNotExists(function ($subquery) {
+                $subquery->selectRaw('1')->from('movimentos')
+                    ->where('movimentos.legacy_type', 'receita')
+                    ->whereColumn('movimentos.legacy_id', 'receitas.id')
+                    ->where('movimentos.status', 'void');
             })->sum('amount');
 
         $operationalAccounts = $user->contasFinanceiras()
@@ -179,21 +177,19 @@ class DashboardController extends Controller
 
         $totalDespesas = (float) $user->despesas()
             ->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()])
-            ->where(function ($query) {
-                $query->whereNotExists(function ($subquery) {
-                    $subquery->selectRaw('1')->from('movimentos')->where('movimentos.legacy_type', 'despesa')->whereColumn('movimentos.legacy_id', 'despesas.id');
-                })->orWhereExists(function ($subquery) {
-                    $subquery->selectRaw('1')->from('movimentos')->where('movimentos.legacy_type', 'despesa')->whereColumn('movimentos.legacy_id', 'despesas.id')->where('movimentos.status', 'settled');
-                });
+            ->whereNotExists(function ($subquery) {
+                $subquery->selectRaw('1')->from('movimentos')
+                    ->where('movimentos.legacy_type', 'despesa')
+                    ->whereColumn('movimentos.legacy_id', 'despesas.id')
+                    ->where('movimentos.status', 'void');
             })->sum('amount');
         $totalReceitas = (float) $user->receitas()
             ->whereBetween('income_date', [$inicio->toDateString(), $fim->toDateString()])
-            ->where(function ($query) {
-                $query->whereNotExists(function ($subquery) {
-                    $subquery->selectRaw('1')->from('movimentos')->where('movimentos.legacy_type', 'receita')->whereColumn('movimentos.legacy_id', 'receitas.id');
-                })->orWhereExists(function ($subquery) {
-                    $subquery->selectRaw('1')->from('movimentos')->where('movimentos.legacy_type', 'receita')->whereColumn('movimentos.legacy_id', 'receitas.id')->where('movimentos.status', 'settled');
-                });
+            ->whereNotExists(function ($subquery) {
+                $subquery->selectRaw('1')->from('movimentos')
+                    ->where('movimentos.legacy_type', 'receita')
+                    ->whereColumn('movimentos.legacy_id', 'receitas.id')
+                    ->where('movimentos.status', 'void');
             })->sum('amount');
 
         return response()->json([
