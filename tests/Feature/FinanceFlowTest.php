@@ -529,7 +529,7 @@ class FinanceFlowTest extends TestCase
         ]);
         $response->assertCreated();
         $account = ContaFinanceira::query()->where('name', 'Conta principal')->firstOrFail();
-        $this->assertSame('1250.50', app(\\App\\Services\\Financial\\AccountBalanceService::class)->balance($account));
+        $this->assertSame('1250.50', app(\App\\Services\\Financial\\AccountBalanceService::class)->balance($account));
     }
 
     public function test_transfer_form_uses_transfer_movement_and_moves_balance_between_accounts(): void
@@ -552,7 +552,7 @@ class FinanceFlowTest extends TestCase
             'destination_account_id' => $destinationId,
         ])->assertCreated();
 
-        $balances = app(\\App\\Services\\Financial\\AccountBalanceService::class);
+        $balances = app(\App\\Services\\Financial\\AccountBalanceService::class);
         $this->assertSame('425.00', $balances->balance(ContaFinanceira::query()->findOrFail($sourceId)));
         $this->assertSame('175.00', $balances->balance(ContaFinanceira::query()->findOrFail($destinationId)));
         $this->assertDatabaseHas('movimentos', [
