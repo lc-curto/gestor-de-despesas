@@ -81,14 +81,87 @@
         const isExpense = movementType === 'despesa';
         const behaviorField = document.getElementById('dashboardExpenseBehaviorField');
         if (behaviorField) behaviorField.hidden = !isExpense;
+
         const condition = form.querySelector('[name="payment_condition"]:checked')?.value || 'cash';
+        const isCommitment = isExpense && condition !== 'cash';
         if (paymentFields) paymentFields.hidden = !isExpense;
-        if (commitmentOptions) commitmentOptions.hidden = !isExpense || condition === 'cash';
-        if (paidFields) paidFields.hidden = !isExpense || condition === 'cash';
-        const count = document.getElementById('dashboardInstallmentsField');
-        if (count) count.hidden = condition !== 'installments';
+        if (commitmentOptions) commitmentOptions.hidden = !isCommitment;
+
+        const dueDateField = document.getElementById('dashboardDueDateField');
+        const installmentsField = document.getElementById('dashboardInstallmentsField');
+        const frequencyField = document.getElementById('dashboardInstallmentFrequencyField');
+        const schedule = document.getElementById('dashboardInstallmentSchedule');
+        const installments = condition === 'installments';
+        if (dueDateField) dueDateField.hidden = !isCommitment;
+        if (installmentsField) installmentsField.hidden = !installments;
+        if (frequencyField) frequencyField.hidden = !installments;
+        if (schedule) schedule.hidden = !installments;
+
+        const countInput = document.getElementById('dashboardInstallments');
+        if (countInput) countInput.required = installments;
+        const dueInput = document.getElementById('dashboardDueDate');
+        if (dueInput) dueInput.required = isCommitment;
+
+        const cards = form.querySelectorAll('.payment-mode-card');
+        cards.forEach((card) => {
+            const radio = card.querySelector('[name="payment_condition"]');
+            card.classList.toggle('is-selected', Boolean(radio?.checked));
+        });
+
         const paid = form.querySelector('[name="paid_now"]:checked')?.value === '1';
-        if (paymentDetails) paymentDetails.hidden = !paid || !isExpense || condition === 'cash';
+        if (paidFields) paidFields.hidden = !isCommitment;
+        if (paymentDetails) paymentDetails.hidden = !paid || !isCommitment;
+        const paymentAccount = document.getElementById('dashboardPaymentAccount');
+        const paymentAmount = document.getElementById('dashboardPaymentAmount');
+        const paymentDate = document.getElementById('dashboardPaymentDate');
+        if (paymentAccount) paymentAccount.required = paid && isCommitment;
+        if (paymentAmount) paymentAmount.required = paid && isCommitment;
+        if (paymentDate) paymentDate.required = paid && isCommitment;
+
+        renderInstallmentSchedule();
+    }
+
+    function renderInstallmentSchedule() {
+        const list = document.getElementById('dashboardInstallmentScheduleList');
+        if (!list) return;
+        const count = Math.min(120, Math.max(2, Number(document.getElementById('dashboardInstallments')?.value || 2)));
+        const amount = Math.round((Number(document.getElementById('movementAmount')?.value || 0) * 100));
+        const dueValue = document.getElementById('dashboardDueDate')?.value;
+        const frequency = document.getElementById('dashboardInstallmentFrequency')?.value || 'monthly';
+        if (!dueValue || !amount) {
+            list.replaceChildren();
+            return;
+        }
+
+        const base = Math.floor(amount / count);
+        const remainder = amount % count;
+        const start = new Date(dueValue + 'T12:00:00');
+        const formatter = new Intl.DateTimeFormat('pt-PT');
+        const rows = [];
+        for (let index = 0; index < count; index++) {
+            const due = new Date(start);
+            if (frequency === 'weekly') due.setDate(due.getDate() + index * 7);
+            else if (frequency === 'biweekly') due.setDate(due.getDate() + index * 14);
+            else {
+                const day = due.getDate();
+                due.setDate(1);
+                due.setMonth(due.getMonth() + index);
+                const lastDay = new Date(due.getFullYear(), due.getMonth() + 1, 0).getDate();
+                due.setDate(Math.min(day, lastDay));
+            }
+            const cents = base + (index < remainder ? 1 : 0);
+            const row = document.createElement('div');
+            row.className = 'list-group-item d-flex justify-content-between align-items-center px-0 py-2 bg-transparent';
+            const label = document.createElement('span');
+            label.className = 'small';
+            label.textContent = 'Prestação ' + (index + 1) + ' · ' + formatter.format(due);
+            const value = document.createElement('strong');
+            value.className = 'small';
+            value.textContent = formatCurrency(cents / 100, cfg.currency || 'EUR');
+            row.append(label, value);
+            rows.push(row);
+        }
+        list.replaceChildren(...rows);
     }
 
     try {
@@ -948,6 +1021,10 @@
         incomeButton?.setAttribute('aria-expanded', 'false');
     });
     form.querySelectorAll('[name="payment_condition"], [name="paid_now"]').forEach((input) => input.addEventListener('change', refreshPaymentFields));
+    ['dashboardInstallments', 'dashboardInstallmentFrequency', 'dashboardDueDate', 'movementAmount'].forEach((id) => {
+        document.getElementById(id)?.addEventListener('input', refreshPaymentFields);
+        document.getElementById(id)?.addEventListener('change', refreshPaymentFields);
+    });
 
     const currencyFrom = document.getElementById('conversionFrom');
     const currencyTo = document.getElementById('conversionTo');
