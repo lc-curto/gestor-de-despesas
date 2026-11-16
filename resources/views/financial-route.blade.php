@@ -60,7 +60,7 @@
                                 $running += $values['account_opening'] + $values['income'] - $values['variable'] - $values['fixed'];
                                 $status = $running <= 0 ? 'risk' : ($running <= $fixedTotal ? 'attention' : ($running < ($fixedTotal + $variableTotal) ? 'protected' : 'comfortable'));
                                 $dayItems = $values['items']->map(fn ($item) => [
-                                    'id' => $item->financial_movement_id ?? $item->id, 'type' => $item->tipo === 'receita' ? 'income' : 'expense', 'status' => $item->movement_status ?? 'settled',
+                                    'id' => $item->financial_movement_id, 'type' => $item->tipo === 'receita' ? 'income' : 'expense', 'status' => $item->movement_status ?? 'legacy',
                                     'description' => $item->description, 'amount' => (float) $item->amount,
                                     'date' => \\Illuminate\\Support\\Carbon::parse($item->data_movimento)->toDateString(),
                                     'expense_behavior' => $item->expense_behavior,
