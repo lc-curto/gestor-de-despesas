@@ -163,6 +163,7 @@ class FinancialCoreController extends Controller
             'name' => 'required|string|max:120',
             'type' => ['required', Rule::in(['bank', 'cash', 'credit_card'])],
             'opening_balance' => 'nullable|numeric|decimal:0,2|between:-9999999999.99,9999999999.99',
+            'opening_debt_amount' => 'nullable|numeric|min:0|decimal:0,2|max:9999999999.99',
             'opening_balance_date' => 'required_with:opening_balance|date|before_or_equal:today',
             'allow_negative_balance' => 'sometimes|boolean',
             'closing_day' => 'required_if:type,credit_card|nullable|integer|between:1,28',
@@ -188,6 +189,17 @@ class FinancialCoreController extends Controller
         $updated = $service->setNegativeBalancePermission($request->user(), $account, (bool) $data['allow_negative_balance']);
 
         return response()->json(['data' => $updated]);
+    }
+
+    public function payOpeningCardDebt(Request $request, string $id, CardInvoiceService $service): JsonResponse
+    {
+        $data = $request->validate([
+            'account_id' => ['required', 'uuid', Rule::exists('contas_financeiras', 'id')->where('user_id', $request->user()->id)->whereIn('type', ['bank', 'cash'])],
+            'amount' => 'required|numeric|gt:0|decimal:0,2|max:9999999999.99',
+            'payment_date' => 'required|date|before_or_equal:today',
+        ]);
+        $movement = $service->payOpeningDebt($request->user(), $id, $data['account_id'], $data['payment_date'], (string) $data['amount']);
+        return response()->json(['data' => $movement, 'message' => 'Pagamento da dívida inicial registado.']);
     }
 
     public function setOpeningBalance(Request $request, string $id, FinancialAccountService $service): JsonResponse

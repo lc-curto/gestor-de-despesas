@@ -18,7 +18,8 @@ class FinancialAccountService
         return DB::transaction(function () use ($user, $data) {
             // Toda conta começa utilizável com saldo zero. O saldo real pode
             // ser corrigido mais tarde, inclusive depois de lançamentos.
-            $openingBalance = $data['opening_balance'] ?? '0.00';
+            $openingDebt = $data['type'] === 'credit_card' ? (string) ($data['opening_debt_amount'] ?? '0.00') : '0.00';
+            $openingBalance = $data['type'] === 'credit_card' ? '-' . ltrim($openingDebt, '-') : ($data['opening_balance'] ?? '0.00');
             $allowNegative = true;
             if (($data['opening_balance_date'] ?? now()->toDateString()) > now()->toDateString()) {
                 throw ValidationException::withMessages(['opening_balance_date' => 'A data do saldo inicial não pode ser futura.']);
@@ -37,6 +38,8 @@ class FinancialAccountService
                 'closing_day' => $data['type'] === 'credit_card' ? ($data['closing_day'] ?? null) : null,
                 'due_day' => $data['type'] === 'credit_card' ? ($data['due_day'] ?? null) : null,
                 'credit_limit' => $data['type'] === 'credit_card' ? ($data['credit_limit'] ?? null) : null,
+                'opening_debt_amount' => $data['type'] === 'credit_card' ? $openingDebt : '0.00',
+                'opening_debt_paid' => '0.00',
                 'status' => 'active',
             ]);
         });

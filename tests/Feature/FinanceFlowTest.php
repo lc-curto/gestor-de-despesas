@@ -37,6 +37,22 @@ class FinanceFlowTest extends TestCase
         ]);
     }
 
+    public function test_credit_card_opening_debt_reduces_available_limit_and_can_be_paid_without_historical_purchases(): void
+    {
+        $user = User::factory()->create(['currency' => 'EUR']);
+        $bank = app(FinancialAccountService::class)->create($user, ['name'=>'Conta à ordem','type'=>'bank','opening_balance'=>'1000.00','opening_balance_date'=>'2026-11-01']);
+        $card = app(FinancialAccountService::class)->create($user, ['name'=>'Cartão','type'=>'credit_card','opening_debt_amount'=>'350.00','opening_balance_date'=>'2026-11-16','closing_day'=>10,'due_day'=>1,'credit_limit'=>'1000.00']);
+        $balances = app(\App\Services\Financial\AccountBalanceService::class);
+        $this->assertSame('-350.00', $balances->balance($card));
+        $this->actingAs($user)->postJson(route('financial.cards.pay-opening-debt',$card->id), ['account_id'=>$bank->id,'amount'=>'200.00','payment_date'=>'2026-11-16'])->assertOk();
+        $card->refresh(); $bank->refresh();
+        $this->assertSame('200.00',(string)$card->opening_debt_paid);
+        $this->assertSame('-150.00',$balances->balance($card));
+        $this->assertSame('800.00',$balances->balance($bank));
+        $this->assertDatabaseCount('despesas',0);
+        $this->assertDatabaseCount('movimentos',1);
+    }
+
     public function test_credit_card_creation_accepts_zero_padded_billing_days(): void
     {
         $user = User::factory()->create();

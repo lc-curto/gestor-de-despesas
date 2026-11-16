@@ -56,8 +56,13 @@
                     </div>
                     <div class="account-balance">
                         @if ($account->current_balance !== null)
-                            <strong>{{ number_format((float) $account->current_balance, 2, ',', '.') }} <small>{{ $account->currency }}</small></strong>
-                            <span>{{ $account->type === 'credit_card' ? 'Utilização atual' : 'Saldo atual' }}</span>
+                            @if ($account->type === 'credit_card' && $account->credit_limit !== null)
+                                <strong>{{ number_format(max(0, (float) $account->credit_limit - abs((float) $account->current_balance)), 2, ',', '.') }} <small>{{ $account->currency }}</small></strong>
+                                <span>Crédito disponível</span>
+                            @else
+                                <strong>{{ number_format((float) $account->current_balance, 2, ',', '.') }} <small>{{ $account->currency }}</small></strong>
+                                <span>{{ $account->type === 'credit_card' ? 'Dívida utilizada' : 'Saldo atual' }}</span>
+                            @endif
                         @elseif ($account->type === 'credit_card')
                             <strong>—</strong><span>Cartão</span>
                         @else
@@ -114,6 +119,11 @@
                             <option value="cash">Dinheiro</option>
                             <option value="credit_card">Cartão de crédito</option>
                         </select>
+                    </div>
+                    <div id="cardOpeningDebtField" class="mb-3 d-none">
+                        <label for="cardOpeningDebt" class="form-label">Dívida anterior ainda por pagar</label>
+                        <input id="cardOpeningDebt" name="opening_debt_amount" type="number" class="form-control" min="0" max="9999999999.99" step="0.01" inputmode="decimal" placeholder="0,00" disabled>
+                        <div class="form-text">Indica o total de compras anteriores que ainda deves. Não precisas de lançar cada compra.</div>
                     </div>
                     <div id="cardBillingFields" class="row g-3 d-none">
                         <div class="col-4"><label for="cardClosingDay" class="form-label">Dia de fecho</label><input id="cardClosingDay" name="closing_day" type="number" class="form-control" min="1" max="28" value="25" disabled></div>
@@ -406,6 +416,11 @@
     async function submitJsonForm(form, method = 'POST', reload = true) {
         form.querySelector('.account-form-feedback')?.remove();
         const data = Object.fromEntries(new FormData(form).entries());
+        if (form.id === 'accountCreateForm' && data.type === 'credit_card') {
+            data.opening_balance = '-' + (data.opening_debt_amount || '0');
+            data.opening_balance_date = document.getElementById('openingBalanceDate')?.value || new Date().toISOString().slice(0, 10);
+            delete data.opening_debt_amount;
+        }
         if (!data.opening_balance) {
             delete data.opening_balance;
             delete data.opening_balance_date;
@@ -441,6 +456,10 @@
         const enabled = accountType?.value === 'credit_card';
         cardBillingFields?.classList.toggle('d-none', !enabled);
         cardBillingFields?.querySelectorAll('input').forEach((input) => { input.disabled = !enabled; });
+        const debtField = document.getElementById('cardOpeningDebtField');
+        debtField?.classList.toggle('d-none', !enabled);
+        const debtInput = document.getElementById('cardOpeningDebt');
+        if (debtInput) debtInput.disabled = !enabled;
     };
     accountType?.addEventListener('change', refreshCardFields);
     refreshCardFields();

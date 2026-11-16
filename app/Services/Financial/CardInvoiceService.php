@@ -115,6 +115,35 @@ class CardInvoiceService
         });
     }
 
+    public function payOpeningDebt(User $user, string $cardId, string $sourceAccountId, string $date, string $requestedAmount): Movimento
+    {
+        return DB::transaction(function () use ($user, $cardId, $sourceAccountId, $date, $requestedAmount): Movimento {
+            $card = $user->contasFinanceiras()->whereKey($cardId)->lockForUpdate()->firstOrFail();
+            $source = $user->contasFinanceiras()->whereKey($sourceAccountId)->lockForUpdate()->firstOrFail();
+            if ($card->type !== 'credit_card' || !$card->is_operational || $card->status !== 'active') {
+                throw ValidationException::withMessages(['card' => 'Cartão não disponível.']);
+            }
+            if ($source->id === $card->id || !in_array($source->type, ['bank', 'cash'], true) || !$source->is_operational || $source->status !== 'active') {
+                throw ValidationException::withMessages(['account_id' => 'Seleciona uma conta bancária ou de dinheiro ativa.']);
+            }
+            $balances = app(AccountBalanceService::class);
+            $remaining = $balances->toCents((string) ($card->opening_debt_amount ?? '0.00')) - $balances->toCents((string) ($card->opening_debt_paid ?? '0.00'));
+            $payment = $balances->toCents($requestedAmount);
+            if ($remaining <= 0 || $payment <= 0 || $payment > $remaining) {
+                throw ValidationException::withMessages(['amount' => 'O pagamento não pode exceder a dívida inicial ainda por pagar.']);
+            }
+            $movement = $this->movements->transfer($user, [
+                'description' => 'Pagamento de dívida inicial · ' . $card->name,
+                'amount' => number_format($payment / 100, 2, '.', ''),
+                'movement_date' => $date,
+                'source_account_id' => $source->id,
+                'destination_account_id' => $card->id,
+            ]);
+            $card->update(['opening_debt_paid' => number_format(($balances->toCents((string) ($card->opening_debt_paid ?? '0.00')) + $payment) / 100, 2, '.', '')]);
+            return $movement;
+        });
+    }
+
     public function listInvoices(User $user)
     {
         return Fatura::query()->where('user_id', $user->id)

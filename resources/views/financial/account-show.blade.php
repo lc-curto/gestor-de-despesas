@@ -20,11 +20,35 @@
                 <p class="text-secondary mb-0">{{ $typeLabels[$account->type] ?? $account->type }} · {{ $account->currency }}</p>
             </div>
             <div class="account-history-balance">
-                <span>Saldo atual</span>
-                <strong>{{ $account->current_balance !== null ? number_format((float) $account->current_balance, 2, ',', '.') . ' ' . $account->currency : '—' }}</strong>
+                @if ($account->type === 'credit_card')
+                    <span>Crédito disponível</span>
+                    <strong>{{ $account->credit_limit !== null && $account->current_balance !== null ? number_format(max(0, (float) $account->credit_limit - abs((float) $account->current_balance)), 2, ',', '.') . ' ' . $account->currency : '—' }}</strong>
+                    <small class="text-secondary">Dívida utilizada: {{ number_format(abs((float) ($account->current_balance ?? 0)), 2, ',', '.') }} {{ $account->currency }}</small>
+                @else
+                    <span>Saldo atual</span>
+                    <strong>{{ $account->current_balance !== null ? number_format((float) $account->current_balance, 2, ',', '.') . ' ' . $account->currency : '—' }}</strong>
+                @endif
             </div>
         </div>
     </header>
+
+    @if ($account->type === 'credit_card' && $openingDebtRemaining > 0)
+    <section class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-3 p-sm-4">
+            <h2 class="h5 fw-bold mb-1">Dívida anterior à aplicação</h2>
+            <p class="small text-secondary mb-3">Ainda por pagar: <strong>{{ number_format($openingDebtRemaining, 2, ',', '.') }} {{ $account->currency }}</strong>. Regista pagamentos sem criar compras históricas.</p>
+            <form id="openingDebtPaymentForm" data-endpoint="{{ route('financial.cards.pay-opening-debt', $account->id) }}">
+                <div class="row g-2">
+                    <div class="col-md-5"><label class="form-label" for="openingDebtPaymentAccount">Pagar a partir de</label><select id="openingDebtPaymentAccount" name="account_id" class="form-select" required><option value="">Selecionar conta</option>@foreach ($paymentAccounts as $paymentAccount)<option value="{{ $paymentAccount->id }}">{{ $paymentAccount->name }}</option>@endforeach</select></div>
+                    <div class="col-md-3"><label class="form-label" for="openingDebtPaymentAmount">Valor</label><input id="openingDebtPaymentAmount" name="amount" type="number" min="0.01" max="{{ number_format($openingDebtRemaining, 2, '.', '') }}" step="0.01" class="form-control" required></div>
+                    <div class="col-md-3"><label class="form-label" for="openingDebtPaymentDate">Data</label><input id="openingDebtPaymentDate" name="payment_date" type="date" value="{{ now()->toDateString() }}" max="{{ now()->toDateString() }}" class="form-control" required></div>
+                    <div class="col-md-1 d-flex align-items-end"><button class="btn btn-primary w-100" type="submit" title="Registar pagamento"><i data-lucide="check" aria-hidden="true"></i></button></div>
+                </div>
+                <div class="small mt-2" id="openingDebtPaymentFeedback" role="status"></div>
+            </form>
+        </div>
+    </section>
+    @endif
 
     <section class="card border-0 shadow-sm rounded-4 history-card account-history-card" aria-labelledby="accountMovementsTitle">
         <div class="card-body p-0 history-card-body">
@@ -116,6 +140,22 @@
     </section>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget, button = form.querySelector('[type="submit"]'), feedback = document.getElementById('openingDebtPaymentFeedback');
+    button.disabled = true;
+    try {
+        const response = await fetch(form.dataset.endpoint, {method:'POST',credentials:'same-origin',headers:{'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]')?.content || ''},body:JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'Não foi possível registar o pagamento.');
+        window.location.reload();
+    } catch (error) { feedback.className='small mt-2 text-danger'; feedback.textContent=error.message; button.disabled=false; }
+});
+</script>
+@endpush
 
 @push('styles')
 <style>

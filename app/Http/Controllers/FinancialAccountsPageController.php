@@ -46,6 +46,8 @@ class FinancialAccountsPageController extends Controller
         $account->current_balance = $account->is_operational && $account->opening_balance !== null
             ? $balances->balance($account)
             : null;
+        $paymentAccounts = $request->user()->contasFinanceiras()->whereIn('type', ['bank', 'cash'])->where('is_operational', true)->where('status', 'active')->whereNotNull('opening_balance')->orderBy('name')->get();
+        $openingDebtRemaining = max(0, (float) ($account->opening_debt_amount ?? 0) - (float) ($account->opening_debt_paid ?? 0));
 
         $movements = $request->user()->movimentos()
             ->with(['contaOrigem:id,name', 'contaDestino:id,name', 'categoria:id,name,icon,color'])
@@ -58,7 +60,7 @@ class FinancialAccountsPageController extends Controller
             ->paginate(30)
             ->withQueryString();
 
-        return view('financial.account-show', compact('account', 'movements'));
+        return view('financial.account-show', compact('account', 'movements', 'paymentAccounts', 'openingDebtRemaining'));
     }
 
     public function destroyMovement(Request $request, string $id)

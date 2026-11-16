@@ -15,7 +15,7 @@ class ContaFinanceira extends Model
 
     protected $fillable = ['user_id',
         'name', 'type', 'currency', 'opening_balance', 'opening_balance_date',
-        'is_operational', 'allow_negative_balance', 'status', 'closing_day', 'due_day', 'credit_limit',
+        'is_operational', 'allow_negative_balance', 'status', 'closing_day', 'due_day', 'credit_limit', 'opening_debt_amount', 'opening_debt_paid',
     ];
 
     protected function casts(): array
@@ -28,6 +28,8 @@ class ContaFinanceira extends Model
             'closing_day' => 'integer',
             'due_day' => 'integer',
             'credit_limit' => 'decimal:2',
+            'opening_debt_amount' => 'decimal:2',
+            'opening_debt_paid' => 'decimal:2',
         ];
     }
 
