@@ -266,3 +266,21 @@ body { color: var(--mb-text); background: var(--mb-page); -webkit-font-smoothing
     .accounts-page .account-menu { grid-column:2; grid-row:1; align-self:start; }
     .accounts-page .account-balance { display:flex !important; grid-column:1 / -1; grid-row:2; align-items:baseline; justify-content:space-between; gap:.6rem; padding-top:.6rem; border-top:1px solid var(--mb-border); text-align:left !important; }
 }
+
+/* Contas: conteúdo textual e identidade nunca podem colapsar por herança de layout. */
+.accounts-page .accounts-toolbar > div:first-child,
+.accounts-page .account-card-link,
+.accounts-page .account-card-link > .account-icon,
+.accounts-page .account-card-link > .account-main,
+.accounts-page .account-card-link .account-title-row,
+.accounts-page .account-card-link .account-name,
+.accounts-page .account-card-link .account-subtitle {
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+.accounts-page .accounts-toolbar > div:first-child { flex: 1 1 auto !important; }
+.accounts-page .account-card-link > .account-icon { display: grid !important; flex: 0 0 2.8rem !important; }
+.accounts-page .account-card-link > .account-main { display: block !important; flex: 1 1 auto !important; }
+.accounts-page .account-card-link .account-title-row { display: flex !important; }
+.accounts-page .account-card-link .account-name { display: block !important; }
+.accounts-page .account-card-link .account-subtitle { display: block !important; }
