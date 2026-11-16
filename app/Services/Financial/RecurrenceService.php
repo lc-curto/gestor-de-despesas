@@ -58,8 +58,9 @@ class RecurrenceService
                 if ($rule) {
                     $rule->update(['is_active' => false]);
                     $date = Carbon::parse($movement->movement_date)->toDateString();
-                    $forecasts = $user->movimentos()->where('recurrence_id', $rule->id)->where('requires_account_assignment', true)
-                        ->where('status', 'pending')->whereDate('recurrence_occurrence_date', '>', $date)->lockForUpdate()->get();
+                    $forecasts = $user->movimentos()->where('recurrence_id', $rule->id)
+                        ->where('status', 'pending')->whereDate('recurrence_occurrence_date', '>', $date)->lockForUpdate()->get()
+                        ->filter(fn ($forecast) => !$forecast->historico()->where('action', 'confirmed')->exists());
                     foreach ($forecasts as $forecast) {
                         if ($forecast->legacy_type === 'despesa') Despesa::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
                         if ($forecast->legacy_type === 'receita') Receita::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
@@ -82,7 +83,8 @@ class RecurrenceService
                 $movement->recurrence_occurrence_date = $date;
                 $movement->save();
             } else {
-                $forecasts = $user->movimentos()->where('recurrence_id', $rule->id)->where('requires_account_assignment', true)->where('status', 'pending')->whereDate('recurrence_occurrence_date', '>', $date)->lockForUpdate()->get();
+                $forecasts = $user->movimentos()->where('recurrence_id', $rule->id)->where('status', 'pending')->whereDate('recurrence_occurrence_date', '>', $date)->lockForUpdate()->get()
+                    ->filter(fn ($forecast) => !$forecast->historico()->where('action', 'confirmed')->exists());
                 foreach ($forecasts as $forecast) {
                     if ($forecast->legacy_type === 'despesa') Despesa::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
                     if ($forecast->legacy_type === 'receita') Receita::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
