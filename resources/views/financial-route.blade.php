@@ -6,7 +6,7 @@
 @php
     $symbols = ['EUR' => '€', 'USD' => '$', 'GBP' => '£', 'BRL' => 'R$'];
     $symbol = $symbols[$currency] ?? $currency;
-    $format = fn ($value) => number_format($value, $mode === 1 ? 2 : 0, ',', '.');
+    $format = fn ($value) => number_format($value, 2, ',', '.');
     $today = now()->format('Y-m-d');
 @endphp
 
@@ -53,7 +53,7 @@
                 <h2>{{ mb_strtoupper($monthDate->locale('pt_PT')->translatedFormat('F Y')) }}</h2>
                 <div class="financial-route-table-wrap">
                     <table class="financial-route-table">
-                        <thead><tr><th>Data</th><th><span class="route-desktop-label">{{ $mode === 1 ? 'Entradas' : 'Entr.' }}</span><span class="route-mobile-label">Entr.</span></th><th><span class="route-desktop-label">{{ $mode === 1 ? 'Gasto fixo' : 'Fixo' }}</span><span class="route-mobile-label">Fixo</span></th><th><span class="route-desktop-label">{{ $mode === 1 ? 'Variável' : 'Var.' }}</span><span class="route-mobile-label">Var.</span></th><th>Saldo</th></tr></thead>
+                        <thead><tr><th>Data</th><th><span class="route-desktop-label">{{ $mode === 1 ? 'Entradas' : 'Entr.' }}</span><span class="route-mobile-label">Entr.</span></th><th><span class="route-desktop-label">{{ $mode === 1 ? 'Gasto fixo' : 'Fixo' }}</span><span class="route-mobile-label">Fixo</span></th><th><span class="route-desktop-label">{{ $mode === 1 ? 'Variável' : 'Var.' }}</span><span class="route-mobile-label">Variável</span></th><th>Saldo</th></tr></thead>
                         <tbody>
                         @foreach ($monthDays as $date => $values)
                             @php
@@ -71,7 +71,7 @@
                                 ])->values();
                             @endphp
                             <tr>
-                                <th scope="row"><button type="button" class="route-cell route-date" data-date="{{ $date }}">{{ \Illuminate\Support\Carbon::parse($date)->format('d/m') }}</button></th>
+                                <th scope="row"><button type="button" class="route-cell route-date" data-date="{{ $date }}">{{ \Illuminate\Support\Carbon::parse($date)->format('d') }}</button></th>
                                 <td><button type="button" class="route-cell" data-date="{{ $date }}" data-filter="income">{{ $values['income'] > 0 ? $format($values['income']) : '—' }}</button></td>
                                 <td><button type="button" class="route-cell" data-date="{{ $date }}" data-filter="fixed">{{ $values['fixed'] > 0 ? $format($values['fixed']) : '—' }}</button></td>
                                 <td><button type="button" class="route-cell" data-date="{{ $date }}" data-filter="variable">{{ $values['variable'] > 0 ? $format($values['variable']) : '—' }}</button></td>
@@ -154,14 +154,18 @@
  #routeToday{width:auto;padding:0 .65rem;font-size:.72rem;border-radius:.6rem;white-space:nowrap}
  .financial-route-months{gap:.75rem}
  .financial-route-month h2{display:flex;align-items:center;justify-content:space-between;font-size:.75rem;letter-spacing:.075em;margin:0;padding:.85rem .9rem .65rem}
- .financial-route-month h2:after{content:"SALDO ACUMULADO";font-size:.58rem;letter-spacing:.035em;font-weight:600;color:var(--bs-secondary-color)}
+
  .financial-route-table-wrap{border:1px solid var(--bs-border-color);border-radius:.85rem;box-shadow:0 2px 10px rgba(25,25,45,.035)}
- .financial-route-table{font-size:.69rem;line-height:1.2}
- .financial-route-table th,.financial-route-table td{padding:.34rem .2rem;border-bottom:1px solid rgba(120,120,140,.13)}
- .financial-route-table thead th{padding:.58rem .2rem;background:#f5f4fa;color:#666579;font-size:.62rem;letter-spacing:.01em}
- .financial-route-table th:first-child{width:18%;padding-left:.65rem}
- .financial-route-table th:nth-child(2),.financial-route-table th:nth-child(3),.financial-route-table th:nth-child(4){width:17%}
- .financial-route-table th:last-child{width:31%;padding-right:.65rem}
+ .financial-route-table{width:100%;table-layout:fixed;font-size:clamp(.56rem,2.2vw,.68rem);line-height:1.2;font-variant-numeric:tabular-nums}
+ .financial-route-table th,.financial-route-table td{padding:.38rem .12rem;border-bottom:1px solid rgba(120,120,140,.13);white-space:nowrap;overflow:visible;text-overflow:clip}
+ .financial-route-table thead th{padding:.58rem .08rem;background:#f5f4fa;color:#666579;font-size:clamp(.52rem,2vw,.63rem);letter-spacing:0;white-space:nowrap}
+ .financial-route-table th:first-child{width:9%;padding-left:.45rem}
+ .financial-route-table th:nth-child(2){width:21%}
+ .financial-route-table th:nth-child(3){width:19%}
+ .financial-route-table th:nth-child(4){width:23%}
+ .financial-route-table th:last-child{width:28%;padding-right:.45rem}
+ .route-cell{white-space:nowrap;overflow:visible;text-overflow:clip;font-variant-numeric:tabular-nums;letter-spacing:-.025em}
+ .route-date{padding-left:0!important}
  .route-cell{min-height:24px;font-size:inherit;letter-spacing:-.015em}
  .route-date{font-weight:650;color:var(--bs-emphasis-color)}
  .route-balance{display:block;margin-left:auto;width:100%;padding:.31rem .25rem;border-radius:.35rem;background:transparent!important;font-weight:750}
@@ -180,11 +184,11 @@
  .financial-route-header h1{font-size:1.16rem}
  .financial-route-eyebrow{font-size:.57rem}
  .financial-route-actions .btn{padding:.48rem .62rem;font-size:.76rem}
- .financial-route-table{font-size:.63rem}
- .financial-route-table th,.financial-route-table td{padding-left:.12rem;padding-right:.12rem}
- .financial-route-table th:first-child{padding-left:.45rem}
- .financial-route-table th:last-child{padding-right:.45rem}
- .financial-route-table thead th{font-size:.57rem}
+ .financial-route-table{font-size:clamp(.54rem,2vw,.62rem)}
+ .financial-route-table th,.financial-route-table td{padding-left:.08rem;padding-right:.08rem}
+ .financial-route-table th:first-child{padding-left:.35rem}
+ .financial-route-table th:last-child{padding-right:.35rem}
+ .financial-route-table thead th{font-size:clamp(.49rem,1.8vw,.56rem)}
 }
 
 </style>
