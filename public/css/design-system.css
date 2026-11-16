@@ -128,3 +128,33 @@ body { color: var(--mb-text); background: var(--mb-page); -webkit-font-smoothing
     html { scroll-behavior: auto; }
     *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+/* Cartões de conta: identidade, saldo e menu mantêm colunas previsíveis. */
+.accounts-list { display: grid; gap: .85rem; }
+.accounts-list .account-card {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(9.5rem, auto) auto !important;
+    grid-template-rows: minmax(3.5rem, auto) !important;
+    align-items: center !important;
+    gap: .85rem 1rem !important;
+    min-width: 0;
+}
+.accounts-list .account-card-link { grid-column: 1 !important; grid-row: 1 !important; }
+.accounts-list .account-balance { grid-column: 2 !important; grid-row: 1 !important; min-width: 0; text-align: right; }
+.accounts-list .account-menu { grid-column: 3 !important; grid-row: 1 !important; }
+.accounts-list .account-name { overflow-wrap: anywhere; }
+.accounts-list .account-balance strong { display: block; font-size: clamp(.95rem, 1.5vw, 1.15rem); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.accounts-list .account-balance span { display: block; color: var(--mb-muted); font-size: .72rem; }
+.accounts-list .account-menu-button { display: inline-flex; min-height: 2.45rem; align-items: center; gap: .35rem; padding: .45rem .65rem; border: 1px solid var(--mb-border); border-radius: .65rem; background: var(--mb-surface); color: var(--mb-text); }
+@media (max-width: 767.98px) {
+    .accounts-list .account-card {
+        grid-template-columns: minmax(0, 1fr) auto !important;
+        grid-template-rows: auto auto !important;
+        gap: .55rem .65rem !important;
+        padding: .85rem !important;
+    }
+    .accounts-list .account-card-link { grid-column: 1 !important; grid-row: 1 !important; }
+    .accounts-list .account-menu { grid-column: 2 !important; grid-row: 1 !important; justify-self: end; }
+    .accounts-list .account-balance { grid-column: 1 / -1 !important; grid-row: 2 !important; display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; padding-top: .55rem; border-top: 1px solid var(--mb-border); text-align: left; }
+    .accounts-list .account-balance strong { font-size: 1rem; }
+}
