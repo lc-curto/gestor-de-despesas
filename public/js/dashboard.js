@@ -49,6 +49,13 @@
     const accountFilter = document.getElementById('accountFilter');
     const periodCaption = document.getElementById('periodCaption');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+    const settleModalElement = document.getElementById('settleMovementModal');
+    const settleModal = settleModalElement ? bootstrap.Modal.getOrCreateInstance(settleModalElement) : null;
+    const settleForm = document.getElementById('settleMovementForm');
+    const deleteModalElement = document.getElementById('deleteMovementModal');
+    const deleteModal = deleteModalElement ? bootstrap.Modal.getOrCreateInstance(deleteModalElement) : null;
+    const deleteForm = document.getElementById('deleteMovementForm');
+    let actionMovement = null;
     document.getElementById('dashboardRecurrenceEnabled')?.addEventListener('change', function () {
         const fields = document.getElementById('dashboardRecurrenceFields');
         if (fields) fields.hidden = !this.checked;
@@ -219,6 +226,7 @@
         const article = document.createElement('article');
         article.className = 'expense-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom';
         article.dataset.movementId = item.id;
+        article.dataset.financialMovementId = item.financial_movement_id || '';
         article.dataset.movementType = item.tipo;
         article.dataset.editUrl = (isExpense ? cfg.expenseUpdateBase : cfg.incomeUpdateBase) + '/' + encodeURIComponent(item.id);
         article.dataset.date = normalizedDate;
@@ -249,7 +257,7 @@
         name.textContent = item.description;
         const metadata = document.createElement('p');
         metadata.className = 'small text-secondary mb-0';
-        metadata.textContent = categoryName(item) + ' · ' + displayDate + (item.recurrence_id ? ' · Previsão' : '');
+        metadata.textContent = categoryName(item) + ' · ' + displayDate + (item.recurrence_id ? ' · Recorrente' : '') + (item.movement_status === 'pending' ? ' · Pendente' : '');
         details.append(name, metadata);
         info.append(icon, details);
 
@@ -270,37 +278,25 @@
         edit.title = 'Editar';
         edit.innerHTML = '<i data-lucide="pencil" aria-hidden="true"></i>';
         actions.append(edit);
-        if (item.recurrence_id) {
-            const manage = document.createElement('a');
-            manage.className = 'btn btn-outline-primary';
-            manage.href = cfg.recurrencesUrl;
-            manage.title = 'Gerir recorrência';
-            manage.setAttribute('aria-label', 'Gerir recorrência de ' + item.description);
-            manage.innerHTML = '<i data-lucide="repeat-2" aria-hidden="true"></i>';
-            actions.append(manage);
+        if (item.movement_status === 'pending' && item.financial_movement_id) {
+            const settle = document.createElement('button');
+            settle.type = 'button';
+            settle.className = 'btn btn-outline-success';
+            settle.dataset.movementAction = 'settle';
+            settle.title = isExpense ? 'Efetivar despesa' : 'Efetivar receita';
+            settle.setAttribute('aria-label', settle.title + ': ' + item.description);
+            settle.innerHTML = '<i data-lucide="check-circle" aria-hidden="true"></i>';
+            actions.append(settle);
         }
-        if (item.id && !item.recurrence_id) {
-            const deleteForm = document.createElement('form');
-            deleteForm.method = 'POST';
-            deleteForm.action = article.dataset.editUrl;
-            deleteForm.dataset.deleteType = item.tipo;
-            const token = document.createElement('input');
-            token.type = 'hidden';
-            token.name = '_token';
-            token.value = csrf || '';
-            const verb = document.createElement('input');
-            verb.type = 'hidden';
-            verb.name = '_method';
-            verb.value = 'DELETE';
-            const remove = document.createElement('button');
-            remove.type = 'submit';
-            remove.className = 'btn btn-outline-danger';
-            remove.setAttribute('aria-label', 'Eliminar ' + item.description);
-            remove.title = 'Eliminar';
-            remove.innerHTML = '<i data-lucide="trash-2" aria-hidden="true"></i>';
-            deleteForm.append(token, verb, remove);
-            actions.append(deleteForm);
-        }
+
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'btn btn-outline-danger';
+        remove.dataset.movementAction = 'delete';
+        remove.title = 'Excluir';
+        remove.setAttribute('aria-label', 'Excluir ' + item.description);
+        remove.innerHTML = '<i data-lucide="trash-2" aria-hidden="true"></i>';
+        actions.append(remove);
         article.append(info, actions);
         return article;
     }
@@ -657,29 +653,112 @@
         }
     }
 
-    async function deleteMovement(deleteForm) {
-        if (!navigator.onLine) {
-            alert('Não é possível eliminar movimentos sem ligação à internet.');
-            return;
-        }
-        const type = deleteForm.dataset.deleteType;
-        const name = type === 'receita' ? 'receita' : 'despesa';
-        if (!window.confirm('Tens a certeza de que queres eliminar esta ' + name + '?')) return;
+    function openSettleModal(row) {
+        actionMovement = row;
+        const isExpense = row.dataset.movementType === 'despesa';
+        document.getElementById('settleMovementTitle').textContent = isExpense ? 'Confirmar despesa' : 'Confirmar receita';
+        document.getElementById('settleMovementDescription').textContent = row.dataset.description || '';
+        document.getElementById('settleMovementAmount').value = row.dataset.amount || '';
+        document.getElementById('settleMovementDate').value = row.dataset.date || localDate();
+        document.getElementById('settleMovementAccountLabel').textContent = isExpense ? 'Conta de saída' : 'Conta de destino';
+        document.getElementById('settleMovementAccount').value = row.dataset.accountId || '';
+        const submit = document.getElementById('settleMovementSubmit');
+        submit.textContent = isExpense ? 'Confirmar despesa' : 'Confirmar receita';
+        submit.className = 'btn w-100 ' + (isExpense ? 'btn-danger' : 'btn-success');
+        settleModal?.show();
+    }
 
+    function openDeleteModal(row) {
+        actionMovement = row;
+        const recurring = Boolean(row.dataset.recurrenceId);
+        document.getElementById('deleteMovementDescription').textContent = row.dataset.description || '';
+        document.getElementById('deleteRecurringOptions').hidden = !recurring;
+        document.getElementById('deleteSingleOption').hidden = recurring;
+        document.getElementById('deleteMovementTitle').textContent = recurring ? 'Excluir movimento recorrente' : 'Excluir movimento';
+        const settled = row.dataset.movementStatus === 'settled';
+        const note = document.getElementById('deleteMovementNote');
+        note.hidden = !(recurring && settled);
+        note.textContent = 'Esta ocorrência já foi efetivada e será preservada no histórico financeiro. Podes interromper as previsões futuras.';
+        document.getElementById('deleteScopeOnly').disabled = recurring && settled;
+        document.getElementById('deleteScopeOnly').checked = recurring && !settled;
+        document.getElementById('deleteScopeOnlySingle').checked = !recurring;
+        deleteModal?.show();
+    }
+
+    async function submitSettleMovement(event) {
+        event.preventDefault();
+        if (!actionMovement || !navigator.onLine || !settleForm.reportValidity()) return;
+        const submit = document.getElementById('settleMovementSubmit');
+        const original = submit.textContent;
+        submit.disabled = true;
+        submit.textContent = 'A confirmar...';
+        const isExpense = actionMovement.dataset.movementType === 'despesa';
+        const accountId = document.getElementById('settleMovementAccount').value;
+        const payload = {
+            amount: document.getElementById('settleMovementAmount').value,
+            movement_date: document.getElementById('settleMovementDate').value,
+            source_account_id: isExpense ? accountId : null,
+            destination_account_id: isExpense ? null : accountId
+        };
         try {
-            const response = await fetch(deleteForm.action, {
-                method: 'POST',
-                body: new FormData(deleteForm),
-                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                credentials: 'same-origin'
+            const response = await fetch(cfg.financialMovementBase + '/' + encodeURIComponent(actionMovement.dataset.financialMovementId) + '/settle', {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf || '' },
+                body: JSON.stringify(payload)
             });
-            const payload = await response.json().catch(() => ({}));
-            if (!response.ok || !payload.ok) {
-                throw new Error(payload.message || 'Não foi possível eliminar a ' + name + '.');
-            }
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'Não foi possível efetivar o movimento.');
+            settleModal?.hide();
             await refreshDashboard();
         } catch (error) {
-            alert(error.message || 'Ocorreu um erro ao eliminar a ' + name + '.');
+            alert(error.message);
+        } finally {
+            submit.disabled = false;
+            submit.textContent = original;
+        }
+    }
+
+    async function submitDeleteMovement(event) {
+        event.preventDefault();
+        if (!actionMovement || !navigator.onLine) return;
+        const submit = document.getElementById('deleteMovementSubmit');
+        const original = submit.textContent;
+        submit.disabled = true;
+        submit.textContent = 'A excluir...';
+        try {
+            let response;
+            if (actionMovement.dataset.recurrenceId && actionMovement.dataset.financialMovementId) {
+                const scope = document.querySelector('input[name="delete_scope"]:checked')?.value || 'only';
+                response = await fetch(cfg.financialMovementBase + '/' + encodeURIComponent(actionMovement.dataset.financialMovementId) + '/recurrence-scope', {
+                    method: 'DELETE',
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf || '' },
+                    body: JSON.stringify({ scope })
+                });
+            } else if (actionMovement.dataset.financialMovementId) {
+                response = await fetch(cfg.financialMovementBase + '/' + encodeURIComponent(actionMovement.dataset.financialMovementId), {
+                    method: 'DELETE',
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf || '' }
+                });
+            } else {
+                response = await fetch(actionMovement.dataset.editUrl, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf || '' },
+                    body: new URLSearchParams({ _method: 'DELETE', _token: csrf || '' })
+                });
+            }
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || result.ok === false) throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'Não foi possível excluir o movimento.');
+            deleteModal?.hide();
+            await refreshDashboard();
+        } catch (error) {
+            alert(error.message);
+        } finally {
+            submit.disabled = false;
+            submit.textContent = original;
         }
     }
 
@@ -816,9 +895,18 @@
 
     cancelButton?.addEventListener('click', cancelEdit);
     form.addEventListener('submit', submitMovement);
+    settleForm?.addEventListener('submit', submitSettleMovement);
+    deleteForm?.addEventListener('submit', submitDeleteMovement);
     list.addEventListener('click', (event) => {
         if (event.target.closest('#loadMoreMovements')) {
             loadMore();
+            return;
+        }
+        const actionButton = event.target.closest('[data-movement-action]');
+        if (actionButton) {
+            const row = actionButton.closest('[data-movement-id]');
+            if (row && actionButton.dataset.movementAction === 'settle') openSettleModal(row);
+            if (row && actionButton.dataset.movementAction === 'delete') openDeleteModal(row);
             return;
         }
         const editButton = event.target.closest('[data-acao="editar"], .edit-movement');
@@ -827,13 +915,6 @@
             if (row) startEdit(row);
         }
     });
-    list.addEventListener('submit', (event) => {
-        const deleteForm = event.target.closest('form[data-delete-type]');
-        if (!deleteForm) return;
-        event.preventDefault();
-        deleteMovement(deleteForm);
-    });
-
     document.querySelector('.transaction-filters')?.addEventListener('submit', applyFilters);
     document.getElementById('categoryFilter')?.addEventListener('change', () => applyFilters());
     document.getElementById('clearMovementFilters')?.addEventListener('click', () => {

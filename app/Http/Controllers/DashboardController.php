@@ -100,6 +100,7 @@ class DashboardController extends Controller
         $movimentosIniciais = $movimentos->map(function ($item) {
             return [
                 'id' => $item->id,
+                'financial_movement_id' => $item->financial_movement_id,
                 'tipo' => $item->tipo,
                 'description' => $item->description,
                 'amount' => $item->amount,
