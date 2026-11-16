@@ -797,17 +797,35 @@
     function openDeleteModal(row) {
         actionMovement = row;
         const recurring = Boolean(row.dataset.recurrenceId);
+        const settled = row.dataset.movementStatus === 'settled';
+        const onlyOption = document.getElementById('deleteScopeOnly');
+        const futureOption = document.getElementById('deleteScopeFuture');
+        const allOption = document.getElementById('deleteScopeAll');
+        const note = document.getElementById('deleteMovementNote');
+
         document.getElementById('deleteMovementDescription').textContent = row.dataset.description || '';
         document.getElementById('deleteRecurringOptions').hidden = !recurring;
         document.getElementById('deleteSingleOption').hidden = recurring;
-        document.getElementById('deleteMovementTitle').textContent = recurring ? 'Excluir movimento recorrente' : 'Excluir movimento';
-        const settled = row.dataset.movementStatus === 'settled';
-        const note = document.getElementById('deleteMovementNote');
+        document.getElementById('deleteMovementTitle').textContent = recurring ? 'Excluir recorrência' : 'Excluir movimento';
+
+        // Reinicia sempre a seleção: o estado anterior do modal não pode influenciar esta exclusão.
+        [onlyOption, futureOption, allOption, document.getElementById('deleteScopeOnlySingle')].forEach((input) => {
+            if (input) input.checked = false;
+        });
+
+        if (recurring) {
+            // Ocorrências já pagas são preservadas; nesse caso só se pode interromper esta e/ou as seguintes.
+            onlyOption.closest('label').hidden = settled;
+            onlyOption.disabled = settled;
+            futureOption.checked = settled;
+            onlyOption.checked = !settled;
+            allOption.checked = false;
+        } else {
+            document.getElementById('deleteScopeOnlySingle').checked = true;
+        }
+
         note.hidden = !(recurring && settled);
-        note.textContent = 'Esta ocorrência já foi efetivada e será preservada no histórico financeiro. Podes interromper as previsões futuras.';
-        document.getElementById('deleteScopeOnly').disabled = recurring && settled;
-        document.getElementById('deleteScopeOnly').checked = recurring && !settled;
-        document.getElementById('deleteScopeOnlySingle').checked = !recurring;
+        note.textContent = 'Este movimento já foi pago e fica no histórico.';
         deleteModal?.show();
     }
 
