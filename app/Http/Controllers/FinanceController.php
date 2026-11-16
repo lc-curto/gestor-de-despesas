@@ -321,12 +321,17 @@ class FinanceController extends Controller
         unset($data['recurrence_enabled'], $data['recurrence_frequency'], $data['recurrence_interval'], $data['recurrence_ends_at']);
         $expenseBehavior = $data['expense_behavior'] ?? 'variable';
         unset($data['expense_behavior']);
-        $accountId = $data['account_id'];
-        unset($data['account_id']);
+        $isPendingExpense = $tipo === 'despesa'
+            && !$recurrenceEnabled
+            && ($data['paid_now'] ?? '0') === '0'
+            && empty($data['payment_account_id'])
+            && empty($data['account_id']);
+        $accountId = $data['account_id'] ?? null;
+        unset($data['account_id'], $data['payment_account_id'], $data['paid_now'], $data['payment_amount'], $data['payment_date'], $data['actual_payment_method'], $data['payment_condition'], $data['payment_method'], $data['installments_count'], $data['installment_frequency'], $data['card_only']);
         $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
         $date = $data[$dateField];
 
-        DB::transaction(function () use ($request, $service, $invoices, $tipo, $id, $data, $accountId, $legacyType, $dateField, $date, $expenseBehavior): void {
+        DB::transaction(function () use ($request, $service, $invoices, $tipo, $id, $data, $accountId, $legacyType, $dateField, $date, $expenseBehavior, $isPendingExpense): void {
             $legacy = $this->query($request)->whereKey($id)->lockForUpdate()->firstOrFail();
             $movement = $this->linkedMovement($request, $tipo, $legacy->id);
             if ($movement?->invoice_id) {
@@ -349,7 +354,9 @@ class FinanceController extends Controller
                     'category_id' => $payload['category_id'],
                     'expense_behavior' => $payload['expense_behavior'],
                 ]);
-                if ($movement->recurrence_id) {
+                if ($isPendingExpense) {
+                    // A edição de uma despesa que continua por pagar não pode liquidá-la.
+                } elseif ($movement->recurrence_id) {
                     $service->confirmPending($request->user(), $movement, [
                         ($tipo === 'despesa' ? 'source_account_id' : 'destination_account_id') => $accountId,
                     ]);
