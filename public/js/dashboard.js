@@ -325,6 +325,7 @@
         article.dataset.accountId = item.account_id || '';
         article.dataset.expenseBehavior = item.expense_behavior || 'variable';
         article.dataset.movementStatus = item.movement_status || '';
+        article.dataset.isInvoicePayment = item.is_invoice_payment ? '1' : '0';
         article.dataset.dueDate = item.due_date || '';
         article.dataset.recurrenceId = item.recurrence_id || '';
         article.dataset.recurrenceFrequency = item.recurrence_frequency || '';
@@ -391,33 +392,36 @@
         value.textContent = (isExpense ? '−' : '+') + formatCurrency(item.amount, item.currency);
 
         actions.append(value);
-        const edit = document.createElement('button');
-        edit.type = 'button';
-        edit.className = 'btn btn-outline-secondary';
-        edit.dataset.acao = 'editar';
-        edit.setAttribute('aria-label', 'Editar ' + item.description);
-        edit.title = 'Editar';
-        edit.innerHTML = '<i data-lucide="pencil" aria-hidden="true"></i>';
-        actions.append(edit);
-        if (item.movement_status === 'pending' && item.financial_movement_id) {
-            const settle = document.createElement('button');
-            settle.type = 'button';
-            settle.className = 'btn btn-outline-success';
-            settle.dataset.movementAction = 'settle';
-            settle.title = isExpense ? 'Efetivar despesa' : 'Efetivar receita';
-            settle.setAttribute('aria-label', settle.title + ': ' + item.description);
-            settle.innerHTML = '<i data-lucide="check-circle" aria-hidden="true"></i>';
-            actions.append(settle);
+        if (!item.is_invoice_payment) {
+            const edit = document.createElement('button');
+            edit.type = 'button';
+            edit.className = 'btn btn-outline-secondary';
+            edit.dataset.acao = 'editar';
+            edit.setAttribute('aria-label', 'Editar ' + item.description);
+            edit.title = 'Editar';
+            edit.innerHTML = '<i data-lucide="pencil" aria-hidden="true"></i>';
+            actions.append(edit);
+            if (item.movement_status === 'pending' && item.financial_movement_id) {
+                const settle = document.createElement('button');
+                settle.type = 'button';
+                settle.className = 'btn btn-outline-success';
+                settle.dataset.movementAction = 'settle';
+                settle.title = isExpense ? 'Efetivar despesa' : 'Efetivar receita';
+                settle.setAttribute('aria-label', settle.title + ': ' + item.description);
+                settle.innerHTML = '<i data-lucide="check-circle" aria-hidden="true"></i>';
+                actions.append(settle);
+            }
+    
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'btn btn-outline-danger';
+            remove.dataset.movementAction = 'delete';
+            remove.title = 'Excluir';
+            remove.setAttribute('aria-label', 'Excluir ' + item.description);
+            remove.innerHTML = '<i data-lucide="trash-2" aria-hidden="true"></i>';
+            actions.append(remove);
+    
         }
-
-        const remove = document.createElement('button');
-        remove.type = 'button';
-        remove.className = 'btn btn-outline-danger';
-        remove.dataset.movementAction = 'delete';
-        remove.title = 'Excluir';
-        remove.setAttribute('aria-label', 'Excluir ' + item.description);
-        remove.innerHTML = '<i data-lucide="trash-2" aria-hidden="true"></i>';
-        actions.append(remove);
         article.append(info, actions);
         return article;
     }
