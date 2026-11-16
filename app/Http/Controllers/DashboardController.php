@@ -6,12 +6,21 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Services\Financial\AccountBalanceService;
+use App\Services\Financial\CardInvoiceService;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request)
+    public function __invoke(Request $request, AccountBalanceService $balances, CardInvoiceService $invoices)
     {
         $user = $request->user();
+        $accounts = $user->contasFinanceiras()
+            ->whereIn('type', ['bank', 'cash', 'credit_card'])
+            ->where('is_operational', true)
+            ->where('status', 'active')
+            ->whereNotNull('opening_balance')
+            ->orderBy('name')
+            ->get();
         [$inicio, $mes] = $this->periodo($request->query('mes'));
         $fim = $inicio->copy()->endOfMonth();
 
@@ -26,16 +35,51 @@ class DashboardController extends Controller
             ? $requestedCategory : 'all';
 
         $totalDespesas = (float) $user->despesas()
-            ->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
+            ->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->where(function ($query) {
+                $query->whereNotExists(function ($subquery) {
+                    $subquery->selectRaw('1')->from('movimentos')->where('movimentos.legacy_type', 'despesa')->whereColumn('movimentos.legacy_id', 'despesas.id');
+                })->orWhereExists(function ($subquery) {
+                    $subquery->selectRaw('1')->from('movimentos')->where('movimentos.legacy_type', 'despesa')->whereColumn('movimentos.legacy_id', 'despesas.id')->where('movimentos.status', 'settled');
+                });
+            })->sum('amount');
         $totalReceitas = (float) $user->receitas()
-            ->whereBetween('income_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
+            ->whereBetween('income_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->where(function ($query) {
+                $query->whereNotExists(function ($subquery) {
+                    $subquery->selectRaw('1')->from('movimentos')->where('movimentos.legacy_type', 'receita')->whereColumn('movimentos.legacy_id', 'receitas.id');
+                })->orWhereExists(function ($subquery) {
+                    $subquery->selectRaw('1')->from('movimentos')->where('movimentos.legacy_type', 'receita')->whereColumn('movimentos.legacy_id', 'receitas.id')->where('movimentos.status', 'settled');
+                });
+            })->sum('amount');
+
+        $operationalAccounts = $user->contasFinanceiras()
+            ->whereIn('type', ['bank', 'cash'])
+            ->where('is_operational', true)
+            ->where('status', 'active')
+            ->whereNotNull('opening_balance')
+            ->whereNotNull('opening_balance_date')
+            ->get();
+        $availableBalance = $operationalAccounts->sum(fn ($account) => (float) $balances->balance($account));
+
+        $invoicePage = $invoices->listInvoices($user);
+        $openInvoiceTotal = (float) $invoicePage->getCollection()->sum('remaining_amount');
+        $openInstallmentTotal = (float) $user->parcelasDivida()
+            ->where('status', '!=', 'paid')
+            ->selectRaw('COALESCE(SUM(amount - paid_amount), 0) as remaining')
+            ->value('remaining');
+        $pendingPaymentTotal = $openInvoiceTotal + $openInstallmentTotal;
+        $pendingPaymentCount = $invoicePage->getCollection()->filter(fn ($invoice) => (float) $invoice->remaining_amount > 0)->count()
+            + $user->parcelasDivida()->where('status', '!=', 'paid')->count();
 
         // A primeira página carrega os dois tipos de movimento. O filtro de tipo é
         // aplicado no cliente sem uma segunda requisição ao abrir o Dashboard.
         $despesasFiltradas = $user->despesas()
-            ->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()]);
+            ->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('movimentos as cancelled')->where('cancelled.user_id', $user->id)->where('cancelled.legacy_type', 'despesa')->whereColumn('cancelled.legacy_id', 'despesas.id')->where('cancelled.status', 'void'));
         $receitasFiltradas = $user->receitas()
-            ->whereBetween('income_date', [$inicio->toDateString(), $fim->toDateString()]);
+            ->whereBetween('income_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('movimentos as cancelled')->where('cancelled.user_id', $user->id)->where('cancelled.legacy_type', 'receita')->whereColumn('cancelled.legacy_id', 'receitas.id')->where('cancelled.status', 'void'));
 
         if ($filtroCategoria !== 'all') {
             $despesasFiltradas->where('category_id', $filtroCategoria);
@@ -65,14 +109,29 @@ class DashboardController extends Controller
                 'category_icon' => $item->category_icon,
                 'category_color' => $item->category_color,
                 'data_movimento' => $item->data_movimento,
+                'account_id' => $item->account_id,
+                'movement_status' => $item->movement_status,
+                'is_historical' => (bool) ($item->is_historical ?? false),
+                'requires_account_assignment' => $item->requires_account_assignment,
+                'recurrence_id' => $item->recurrence_id,
             ];
         })->values();
 
         return view('dashboard', compact(
             'inicio', 'mes', 'movimentos', 'movimentosVisiveis', 'movimentosIniciais', 'categorias', 'categoriasDespesa',
             'categoriasReceita', 'filtroTipo', 'filtroCategoria',
-            'totalDespesas', 'totalReceitas', 'totalMovimentos', 'totalDespesasFiltradas', 'totalReceitasFiltradas', 'limit'
-        ))->with('moeda', $user->currency);
+            'totalDespesas', 'totalReceitas', 'availableBalance', 'pendingPaymentTotal', 'pendingPaymentCount', 'totalMovimentos', 'totalDespesasFiltradas', 'totalReceitasFiltradas', 'limit'
+        ))->with('moeda', $user->currency)->with('accounts', $accounts);
+    }
+
+    public function paginaMovimentos(Request $request, AccountBalanceService $balances, CardInvoiceService $invoices)
+    {
+        if ($request->expectsJson()) {
+            return $this->movimentos($request);
+        }
+        $dashboard = $this->__invoke($request, $balances, $invoices);
+
+        return view('movements', $dashboard->getData());
     }
 
     public function movimentos(Request $request)
@@ -91,8 +150,10 @@ class DashboardController extends Controller
         $page = min(100000, max(1, (int) $request->query('page', 1)));
         $offset = ($page - 1) * $limit;
 
-        $despesasQuery = $user->despesas()->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()]);
-        $receitasQuery = $user->receitas()->whereBetween('income_date', [$inicio->toDateString(), $fim->toDateString()]);
+        $despesasQuery = $user->despesas()->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('movimentos as cancelled')->where('cancelled.user_id', $user->id)->where('cancelled.legacy_type', 'despesa')->whereColumn('cancelled.legacy_id', 'despesas.id')->where('cancelled.status', 'void'));
+        $receitasQuery = $user->receitas()->whereBetween('income_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('movimentos as cancelled')->where('cancelled.user_id', $user->id)->where('cancelled.legacy_type', 'receita')->whereColumn('cancelled.legacy_id', 'receitas.id')->where('cancelled.status', 'void'));
         if ($categoria !== 'all') {
             $despesasQuery->where('category_id', $categoria);
             $receitasQuery->where('category_id', $categoria);
@@ -106,9 +167,23 @@ class DashboardController extends Controller
         $total = $totalDespesasFiltradas + $totalReceitasFiltradas;
 
         $totalDespesas = (float) $user->despesas()
-            ->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
+            ->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->where(function ($query) {
+                $query->whereNotExists(function ($subquery) {
+                    $subquery->selectRaw('1')->from('movimentos')->where('movimentos.legacy_type', 'despesa')->whereColumn('movimentos.legacy_id', 'despesas.id');
+                })->orWhereExists(function ($subquery) {
+                    $subquery->selectRaw('1')->from('movimentos')->where('movimentos.legacy_type', 'despesa')->whereColumn('movimentos.legacy_id', 'despesas.id')->where('movimentos.status', 'settled');
+                });
+            })->sum('amount');
         $totalReceitas = (float) $user->receitas()
-            ->whereBetween('income_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
+            ->whereBetween('income_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->where(function ($query) {
+                $query->whereNotExists(function ($subquery) {
+                    $subquery->selectRaw('1')->from('movimentos')->where('movimentos.legacy_type', 'receita')->whereColumn('movimentos.legacy_id', 'receitas.id');
+                })->orWhereExists(function ($subquery) {
+                    $subquery->selectRaw('1')->from('movimentos')->where('movimentos.legacy_type', 'receita')->whereColumn('movimentos.legacy_id', 'receitas.id')->where('movimentos.status', 'settled');
+                });
+            })->sum('amount');
 
         return response()->json([
             'data' => $items,
@@ -153,15 +228,27 @@ class DashboardController extends Controller
     ): Builder {
         $despesas = DB::table('despesas')
             ->join('categorias', 'categorias.id', '=', 'despesas.category_id')
+            ->leftJoin('movimentos as financial_movements', function ($join) use ($userId) {
+                $join->on('financial_movements.legacy_id', '=', 'despesas.id')
+                    ->where('financial_movements.legacy_type', '=', 'despesa')
+                    ->where('financial_movements.user_id', '=', $userId);
+            })
             ->where('despesas.user_id', $userId)
             ->whereBetween('despesas.expense_date', [$inicio->toDateString(), $fim->toDateString()])
-            ->selectRaw("despesas.id, 'despesa' AS tipo, despesas.description, despesas.amount, despesas.currency, categorias.id AS category, categorias.name AS category_label, categorias.icon AS category_icon, categorias.color AS category_color, despesas.expense_date AS data_movimento");
+            ->where(fn ($q) => $q->whereNull('financial_movements.status')->orWhere('financial_movements.status', '!=', 'void'))
+            ->selectRaw("despesas.id, 'despesa' AS tipo, despesas.description, despesas.amount, despesas.currency, categorias.id AS category, categorias.name AS category_label, categorias.icon AS category_icon, categorias.color AS category_color, despesas.expense_date AS data_movimento, financial_movements.source_account_id AS account_id, financial_movements.status AS movement_status, financial_movements.requires_account_assignment AS requires_account_assignment, financial_movements.is_historical AS is_historical, financial_movements.recurrence_id AS recurrence_id");
 
         $receitas = DB::table('receitas')
             ->join('categorias', 'categorias.id', '=', 'receitas.category_id')
+            ->leftJoin('movimentos as financial_movements', function ($join) use ($userId) {
+                $join->on('financial_movements.legacy_id', '=', 'receitas.id')
+                    ->where('financial_movements.legacy_type', '=', 'receita')
+                    ->where('financial_movements.user_id', '=', $userId);
+            })
             ->where('receitas.user_id', $userId)
             ->whereBetween('receitas.income_date', [$inicio->toDateString(), $fim->toDateString()])
-            ->selectRaw("receitas.id, 'receita' AS tipo, receitas.description, receitas.amount, receitas.currency, categorias.id AS category, categorias.name AS category_label, categorias.icon AS category_icon, categorias.color AS category_color, receitas.income_date AS data_movimento");
+            ->where(fn ($q) => $q->whereNull('financial_movements.status')->orWhere('financial_movements.status', '!=', 'void'))
+            ->selectRaw("receitas.id, 'receita' AS tipo, receitas.description, receitas.amount, receitas.currency, categorias.id AS category, categorias.name AS category_label, categorias.icon AS category_icon, categorias.color AS category_color, receitas.income_date AS data_movimento, financial_movements.destination_account_id AS account_id, financial_movements.status AS movement_status, financial_movements.requires_account_assignment AS requires_account_assignment, financial_movements.is_historical AS is_historical, financial_movements.recurrence_id AS recurrence_id");
 
         if ($tipo === 'despesa') {
             $query = $despesas;

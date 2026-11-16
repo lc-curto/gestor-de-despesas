@@ -10,7 +10,7 @@
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
     <link rel="stylesheet" href="{{ asset('css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/app-shell.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/app-shell.css') }}?v={{ filemtime(public_path('css/app-shell.css')) }}">
     @stack('styles')
 </head>
 <body>
@@ -92,6 +92,68 @@
         </main>
     </div>
 
+
+    <nav class="mobile-bottom-bar" aria-label="Navegação principal">
+        <a class="mobile-bottom-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}" @if(request()->routeIs('dashboard')) aria-current="page" @endif>
+            <i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Início</span>
+        </a>
+        <a class="mobile-bottom-link {{ request()->routeIs('dashboard.movimentos') ? 'active' : '' }}" href="{{ route('dashboard.movimentos') }}" @if(request()->routeIs('dashboard.movimentos')) aria-current="page" @endif>
+            <i data-lucide="arrow-left-right" aria-hidden="true"></i><span>Movimentos</span>
+        </a>
+        <button class="mobile-bottom-link mobile-bottom-new" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileNewMenu" aria-controls="mobileNewMenu">
+            <span class="mobile-bottom-new-icon"><i data-lucide="plus" aria-hidden="true"></i></span><span>Novo</span>
+        </button>
+        <a class="mobile-bottom-link {{ request()->routeIs('financial.accounts.*') ? 'active' : '' }}" href="{{ route('financial.accounts.page') }}" @if(request()->routeIs('financial.accounts.*')) aria-current="page" @endif>
+            <i data-lucide="wallet-cards" aria-hidden="true"></i><span>Contas</span>
+        </a>
+        <button class="mobile-bottom-link {{ request()->routeIs('categorias.*', 'financial.commitments.*') ? 'active' : '' }}" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileMoreMenu" aria-controls="mobileMoreMenu">
+            <i data-lucide="grid-2x2" aria-hidden="true"></i><span>Mais</span>
+        </button>
+    </nav>
+
+    <div class="offcanvas offcanvas-bottom mobile-action-sheet" tabindex="-1" id="mobileNewMenu" aria-labelledby="mobileNewMenuTitle">
+        <div class="offcanvas-header"><h2 class="offcanvas-title h5 fw-bold" id="mobileNewMenuTitle">Novo registo</h2><button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button></div>
+        <div class="offcanvas-body pt-0">
+            <a class="mobile-sheet-action" href="{{ route('despesas.create') }}"><i data-lucide="arrow-down-right" aria-hidden="true"></i><span><strong>Nova despesa</strong><small>Registar um pagamento ou compromisso</small></span></a>
+            <a class="mobile-sheet-action" href="{{ route('receitas.create') }}"><i data-lucide="arrow-up-right" aria-hidden="true"></i><span><strong>Nova receita</strong><small>Registar dinheiro recebido</small></span></a>
+        </div>
+    </div>
+
+    <div class="offcanvas offcanvas-bottom mobile-action-sheet mobile-more-sheet" tabindex="-1" id="mobileMoreMenu" aria-labelledby="mobileMoreMenuTitle">
+        <div class="mobile-sheet-handle" aria-hidden="true"></div>
+        <div class="offcanvas-header">
+            <h2 class="offcanvas-title h5 fw-bold" id="mobileMoreMenuTitle">Mais</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+        </div>
+        <div class="offcanvas-body pt-0">
+            <nav class="mobile-more-list" aria-label="Mais funcionalidades">
+                <a class="mobile-more-item" href="{{ route('financial.route') }}">
+                    <i data-lucide="calendar-range" aria-hidden="true"></i>
+                    <span><strong>Rota Financeira</strong><small>Planeamento diário do saldo</small></span>
+                    <i data-lucide="chevron-right" class="mobile-more-chevron" aria-hidden="true"></i>
+                </a>
+                <a class="mobile-more-item" href="{{ route('financial.commitments.page') }}">
+                    <i data-lucide="credit-card" aria-hidden="true"></i>
+                    <span><strong>Cartões e compromissos</strong><small>Gerir faturas e pagamentos</small></span>
+                    <i data-lucide="chevron-right" class="mobile-more-chevron" aria-hidden="true"></i>
+                </a>
+                <a class="mobile-more-item" href="{{ route('categorias.index') }}">
+                    <i data-lucide="tags" aria-hidden="true"></i>
+                    <span><strong>Categorias</strong><small>Gerir categorias</small></span>
+                    <i data-lucide="chevron-right" class="mobile-more-chevron" aria-hidden="true"></i>
+                </a>
+            </nav>
+            <div class="mobile-more-utilities">
+                <button type="button" class="mobile-more-utility" id="mobileThemeToggle">
+                    <i data-lucide="moon" aria-hidden="true"></i><span>Tema</span><i data-lucide="chevron-right" aria-hidden="true"></i>
+                </button>
+                <form method="POST" action="{{ route('logout') }}">@csrf
+                    <button type="submit" class="mobile-more-logout"><i data-lucide="log-out" aria-hidden="true"></i> Terminar sessão</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="inactivityModal" tabindex="-1" aria-labelledby="inactivityModalTitle"
         aria-describedby="inactivityModalDescription" aria-hidden="true"
         data-bs-backdrop="static" data-bs-keyboard="false">
@@ -110,7 +172,7 @@
 
     <script src="{{ asset('js/bootstrap.bundle.min.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js" async data-lucide-library></script>
-    <script src="{{ asset('js/app.js') }}" defer></script>
+    <script src="{{ asset('js/app.js') }}?v=theme-fix-1" defer></script>
     @stack('scripts')
 </body>
 </html>

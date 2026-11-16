@@ -131,6 +131,11 @@ jobs:
 
           cd "$RELEASE_PATH"
           composer check-platform-reqs --no-dev
+
+          # Aplicar alterações de esquema e importações antes de ativar o novo código.
+          # Se uma migration falhar, o deploy termina aqui e a release atual continua ativa.
+          php artisan migrate --force
+
           php artisan optimize
           REMOTE
 

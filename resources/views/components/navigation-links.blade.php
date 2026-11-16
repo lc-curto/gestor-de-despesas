@@ -1,29 +1,39 @@
 <nav class="app-navigation" aria-label="Navegação da aplicação">
     <div class="app-navigation-group">
-        <p class="app-navigation-label">Principal</p>
-        <a class="app-navigation-link {{ request()->routeIs('dashboard*') ? 'active' : '' }}"
-            href="{{ route('dashboard') }}" title="Dashboard" aria-label="Dashboard"
-            @if(request()->routeIs('dashboard*')) aria-current="page" @endif>
-            <i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Dashboard</span>
+        <p class="app-navigation-label">Visão geral</p>
+        <a class="app-navigation-link {{ request()->routeIs('dashboard') ? 'active' : '' }}"
+            href="{{ route('dashboard') }}" title="Início" aria-label="Início"
+            @if(request()->routeIs('dashboard')) aria-current="page" @endif>
+            <i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Início</span>
+        </a>
+        <a class="app-navigation-link {{ request()->routeIs('dashboard.movimentos') ? 'active' : '' }}"
+            href="{{ route('dashboard.movimentos') }}" title="Movimentos" aria-label="Movimentos"
+            @if(request()->routeIs('dashboard.movimentos')) aria-current="page" @endif>
+            <i data-lucide="arrow-left-right" aria-hidden="true"></i><span>Movimentos</span>
+        </a>
+        <a class="app-navigation-link {{ request()->routeIs('financial.route') ? 'active' : '' }}"
+            href="{{ route('financial.route') }}" title="Rota Financeira" aria-label="Rota Financeira"
+            @if(request()->routeIs('financial.route')) aria-current="page" @endif>
+            <i data-lucide="calendar-range" aria-hidden="true"></i><span>Rota Financeira</span>
         </a>
     </div>
 
     <div class="app-navigation-group">
-        <p class="app-navigation-label">Movimentos</p>
-        <a class="app-navigation-link {{ request()->routeIs('despesas.*') ? 'active' : '' }}"
-            href="{{ route('despesas.index') }}" title="Despesas" aria-label="Despesas"
-            @if(request()->routeIs('despesas.*')) aria-current="page" @endif>
-            <i data-lucide="arrow-down-circle" aria-hidden="true"></i><span>Despesas</span>
+        <p class="app-navigation-label">Finanças</p>
+        <a class="app-navigation-link {{ request()->routeIs('financial.accounts.*') ? 'active' : '' }}"
+            href="{{ route('financial.accounts.page') }}" title="Contas" aria-label="Contas"
+            @if(request()->routeIs('financial.accounts.*')) aria-current="page" @endif>
+            <i data-lucide="wallet-cards" aria-hidden="true"></i><span>Contas</span>
         </a>
-        <a class="app-navigation-link {{ request()->routeIs('receitas.*') ? 'active' : '' }}"
-            href="{{ route('receitas.index') }}" title="Receitas" aria-label="Receitas"
-            @if(request()->routeIs('receitas.*')) aria-current="page" @endif>
-            <i data-lucide="arrow-up-circle" aria-hidden="true"></i><span>Receitas</span>
+        <a class="app-navigation-link {{ request()->routeIs('financial.commitments.*') ? 'active' : '' }}"
+            href="{{ route('financial.commitments.page') }}" title="Cartões e compromissos" aria-label="Cartões e compromissos"
+            @if(request()->routeIs('financial.commitments.*')) aria-current="page" @endif>
+            <i data-lucide="credit-card" aria-hidden="true"></i><span>Cartões e compromissos</span>
         </a>
     </div>
 
     <div class="app-navigation-group">
-        <p class="app-navigation-label">Organização</p>
+        <p class="app-navigation-label">Configuração</p>
         <a class="app-navigation-link {{ request()->routeIs('categorias.*') ? 'active' : '' }}"
             href="{{ route('categorias.index') }}" title="Categorias" aria-label="Categorias"
             @if(request()->routeIs('categorias.*')) aria-current="page" @endif>
