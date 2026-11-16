@@ -44,6 +44,14 @@
             }
         }
         $paymentItems = $paymentItems->sortBy('due_date')->values();
+        $filter = request('filter', 'all');
+        if ($filter === 'overdue') $paymentItems = $paymentItems->filter(fn ($item) => \Illuminate\Support\Carbon::parse($item->due_date)->lt(today()))->values();
+        if ($filter === 'upcoming') $paymentItems = $paymentItems->filter(fn ($item) => !\Illuminate\Support\Carbon::parse($item->due_date)->lt(today()))->values();
+        if ($filter === 'paid') $paymentItems = collect();
+        $historyItems = collect();
+        foreach ($invoicePage as $invoice) if ((float) ($invoice->paid_amount ?? 0) > 0) $historyItems->push((object) ['name' => ($invoice->conta->name ?? 'Cartão').' · '.$invoice->reference_month->format('m/Y'), 'date' => $invoice->updated_at, 'amount' => (float) $invoice->paid_amount, 'detail' => 'Pagamento de fatura']);
+        foreach ($commitments as $commitment) foreach ($commitment->parcelas as $part) if ((float) $part->paid_amount > 0) $historyItems->push((object) ['name' => $commitment->name.' · Parcela '.$part->installment_number, 'date' => $part->updated_at, 'amount' => (float) $part->paid_amount, 'detail' => 'Pagamento de prestação']);
+        $historyItems = $historyItems->sortByDesc('date')->values();
         $statusLabels = ['open' => 'Aberta', 'closed' => 'Fechada', 'partial' => 'Parcialmente paga', 'paid' => 'Paga', 'overdue' => 'Em atraso'];
         $statusClasses = ['open' => 'text-bg-info', 'closed' => 'text-bg-secondary', 'partial' => 'text-bg-warning', 'paid' => 'text-bg-success', 'overdue' => 'text-bg-danger'];
     @endphp
@@ -57,6 +65,11 @@
             <span class="badge text-bg-secondary">{{ $paymentItems->count() }}</span>
         </div>
 
+        <nav class="d-flex flex-wrap gap-2 mb-3" aria-label="Filtrar compromissos">
+            @foreach (['all'=>'Todos','upcoming'=>'A vencer','overdue'=>'Em atraso','paid'=>'Pagos'] as $key=>$label)
+                <a class="btn btn-sm {{ $filter === $key ? 'btn-primary' : 'btn-outline-secondary' }}" href="{{ route('financial.commitments.page',['filter'=>$key]) }}">{{ $label }}</a>
+            @endforeach
+        </nav>
         @forelse ($paymentItems as $item)
             @if ($item->kind === 'invoice')
                 @php $invoice = $item->record; @endphp
@@ -104,6 +117,7 @@
                             <span class="badge {{ $installment->due_date->isPast() ? 'text-bg-danger' : 'text-bg-warning' }}">{{ $installment->due_date->isPast() ? 'Em atraso' : 'A vencer' }}</span>
                         </div>
                     </div>
+                    <details class="mt-2"><summary class="small text-secondary">Ver detalhe da prestação</summary><p class="small text-secondary mt-2 mb-0">Original: {{ number_format((float)$installment->amount,2,',','.') }} · Pago: {{ number_format((float)$installment->paid_amount,2,',','.') }} · Em falta: {{ number_format($remaining,2,',','.') }} {{ auth()->user()->currency }}</p><p class="small text-secondary mb-0">{{ $commitment->installments_count }} prestações no total</p></details>
                     @if ($remaining > 0 && $paymentAccounts->isNotEmpty())
                         <form class="js-api-form row g-2 align-items-end mt-2" data-endpoint="{{ route('financial.commitments.installments.pay', [$commitment->id, $installment->id]) }}" data-success="Pagamento da parcela registado.">
                             <div class="col-12 col-md-4"><label class="form-label small">Valor a pagar</label><input class="form-control form-control-sm" type="number" name="amount" min="0.01" max="{{ number_format($remaining, 2, '.', '') }}" step="0.01" value="{{ number_format($remaining, 2, '.', '') }}" required></div>
@@ -127,7 +141,30 @@
         </div>
     </section>
 
+    <section class="commitment-section mb-4" aria-labelledby="historySectionTitle">
+        <div class="d-flex justify-content-between align-items-center mb-2"><div><h2 class="h5 fw-bold mb-1" id="historySectionTitle">Histórico de pagamentos</h2><p class="small text-secondary mb-0">Pagamentos já registados.</p></div><span class="badge text-bg-secondary">{{ $historyItems->count() }}</span></div>
+        @forelse($historyItems as $history)
+            <article class="d-flex justify-content-between align-items-center gap-3 border-bottom py-3"><div><strong class="d-block">{{ $history->name }}</strong><span class="small text-secondary">{{ $history->detail }} · {{ \Illuminate\Support\Carbon::parse($history->date)->format('d/m/Y') }}</span></div><strong class="text-success text-nowrap">{{ number_format($history->amount,2,',','.') }} {{ auth()->user()->currency }}</strong></article>
+        @empty <p class="small text-secondary">Ainda não existem pagamentos no histórico.</p> @endforelse
+    </section>
+
+    <section class="commitment-section mb-4" aria-labelledby="manageSectionTitle">
+        <h2 class="h5 fw-bold mb-1" id="manageSectionTitle">Gerir compromissos</h2><p class="small text-secondary">Editar descrição e próximo vencimento ou encerrar, mantendo os pagamentos registados.</p>
+        @foreach($commitments as $commitment)
+            @if(!in_array($commitment->status,['paid','cancelled'],true))
+                <article class="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom py-3"><div><strong>{{ $commitment->name }}</strong><div class="small text-secondary">{{ $commitment->installments_count }} prestações · {{ number_format((float)$commitment->total_amount,2,',','.') }} {{ auth()->user()->currency }}</div></div>
+                    <div class="d-flex gap-2"><button class="btn btn-sm btn-outline-secondary js-edit-commitment" data-url="{{ route('financial.commitments.update',$commitment->id) }}" data-name="{{ $commitment->name }}" data-due="{{ optional($commitment->due_date)->format('Y-m-d') }}">Editar</button><button class="btn btn-sm btn-outline-danger js-cancel-commitment" data-url="{{ route('financial.commitments.cancel',$commitment->id) }}" data-name="{{ $commitment->name }}">Encerrar</button></div>
+                </article>
+            @endif
+        @endforeach
+    </section>
 </div>
+
+<div class="modal fade" id="editCommitmentModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content rounded-4 border-0"><form id="editCommitmentForm">
+    <div class="modal-header border-0"><h2 class="modal-title h5 fw-bold">Editar compromisso</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+    <div class="modal-body"><label class="form-label" for="editCommitmentName">Descrição</label><input class="form-control mb-3" id="editCommitmentName" name="name" required maxlength="160"><label class="form-label" for="editCommitmentDue">Próximo vencimento</label><input class="form-control" id="editCommitmentDue" name="due_date" type="date" required><div id="editCommitmentError" class="small text-danger mt-2"></div></div>
+    <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
+</form></div></div></div>
 @endsection
 
 @push('scripts')
@@ -137,6 +174,23 @@
     const feedback = document.getElementById('commitmentFeedback');
     const modal = (id) => bootstrap.Modal.getOrCreateInstance(document.getElementById(id));
     const showError = (element, message) => { element.className = 'alert alert-danger'; element.textContent = message; };
+
+    document.querySelectorAll('.js-edit-commitment').forEach((button) => button.addEventListener('click', () => {
+        const form=document.getElementById('editCommitmentForm'); form.dataset.url=button.dataset.url; form.elements.name.value=button.dataset.name; form.elements.due_date.value=button.dataset.due||'';
+        document.getElementById('editCommitmentError').textContent=''; bootstrap.Modal.getOrCreateInstance(document.getElementById('editCommitmentModal')).show();
+    }));
+    document.getElementById('editCommitmentForm')?.addEventListener('submit',async(event)=>{
+        event.preventDefault();const form=event.currentTarget,button=form.querySelector('[type="submit"]');button.disabled=true;
+        try{const response=await fetch(form.dataset.url,{method:'PUT',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({name:form.elements.name.value,due_date:form.elements.due_date.value})});const result=await response.json().catch(()=>({}));
+            if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível atualizar.');window.location.reload();
+        }catch(error){document.getElementById('editCommitmentError').textContent=error.message;button.disabled=false;}
+    });
+    document.querySelectorAll('.js-cancel-commitment').forEach(button=>button.addEventListener('click',async()=>{
+        if(!window.confirm('Encerrar "'+button.dataset.name+'"? Os pagamentos já realizados serão preservados.'))return;button.disabled=true;
+        try{const response=await fetch(button.dataset.url,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({})});const result=await response.json().catch(()=>({}));
+            if(!response.ok)throw new Error(result.message||'Não foi possível encerrar.');window.location.reload();
+        }catch(error){showError(feedback,error.message);button.disabled=false;}
+    }));
 
     document.querySelectorAll('.js-api-form').forEach((form) => {
         form.addEventListener('submit', async (event) => {

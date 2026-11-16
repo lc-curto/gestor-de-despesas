@@ -39,8 +39,8 @@ class FinancialCommitmentsPageController extends Controller
 
         $invoicePage = $invoices->listInvoices($user);
         $commitments = $user->dividas()
-            ->where('status', '!=', 'paid')
-            ->with(['parcelas' => fn ($query) => $query->where('status', '!=', 'paid')->orderBy('due_date')])
+            ->where('status', '!=', 'cancelled')
+            ->with(['parcelas' => fn ($query) => $query->orderBy('due_date')])
             ->orderBy('due_date')
             ->paginate(20, ['*'], 'commitments');
 

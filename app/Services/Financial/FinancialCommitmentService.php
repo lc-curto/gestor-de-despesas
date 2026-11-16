@@ -45,6 +45,32 @@ class FinancialCommitmentService
         });
     }
 
+    public function update(User $user, Divida $debt, array $data): Divida
+    {
+        return DB::transaction(function () use ($user, $debt, $data): Divida {
+            $locked = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
+            if (in_array($locked->status, ['cancelled', 'paid'], true)) throw ValidationException::withMessages(['commitment' => 'Este compromisso já está encerrado.']);
+            $oldDue = Carbon::parse($locked->due_date);
+            $newDue = Carbon::parse($data['due_date']);
+            $locked->update(['name' => $data['name'], 'due_date' => $newDue->toDateString()]);
+            foreach ($locked->parcelas()->whereIn('status', ['pending', 'partial'])->get() as $part) {
+                $part->update(['due_date' => $newDue->copy()->addMonthsNoOverflow(max(0, $part->installment_number - 1))->toDateString()]);
+            }
+            return $locked->refresh()->load('parcelas');
+        });
+    }
+
+    public function cancel(User $user, Divida $debt): Divida
+    {
+        return DB::transaction(function () use ($user, $debt): Divida {
+            $locked = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
+            if (in_array($locked->status, ['cancelled', 'paid'], true)) throw ValidationException::withMessages(['commitment' => 'Este compromisso já está encerrado.']);
+            $locked->parcelas()->whereIn('status', ['pending', 'partial'])->update(['status' => 'cancelled']);
+            $locked->update(['status' => 'cancelled']);
+            return $locked->refresh();
+        });
+    }
+
     public function payInstallment(User $user, Divida $debt, ParcelaDivida $installment, array $data): ParcelaDivida
     {
         return DB::transaction(function () use ($user, $debt, $installment, $data): ParcelaDivida {

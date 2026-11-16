@@ -52,6 +52,19 @@ class FinancialCoreController extends Controller
         return response()->json(['data' => $service->create($request->user(), $data)], 201);
     }
 
+    public function updateCommitment(Request $request, string $id, FinancialCommitmentService $service): JsonResponse
+    {
+        $data = $request->validate(['name' => 'required|string|max:160', 'due_date' => 'required|date']);
+        $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();
+        return response()->json(['data' => $service->update($request->user(), $debt, $data)]);
+    }
+
+    public function cancelCommitment(Request $request, string $id, FinancialCommitmentService $service): JsonResponse
+    {
+        $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();
+        return response()->json(['data' => $service->cancel($request->user(), $debt)]);
+    }
+
     public function storeRecurrence(Request $request, RecurrenceService $service): JsonResponse
     {
         $data = $request->validate([

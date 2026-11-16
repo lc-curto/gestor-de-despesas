@@ -55,6 +55,8 @@ Route::middleware(['auth', 'financial.review'])->group(function(){
   Route::get('/movements', [FinancialCoreController::class, 'movements'])->name('movements.index');
   Route::post('/movements', [FinancialCoreController::class, 'storeMovement'])->name('movements.store');
   Route::post('/commitments', [FinancialCoreController::class, 'storeCommitment'])->name('commitments.store');
+  Route::put('/commitments/{id}', [FinancialCoreController::class, 'updateCommitment'])->name('commitments.update');
+  Route::post('/commitments/{id}/cancel', [FinancialCoreController::class, 'cancelCommitment'])->name('commitments.cancel');
   Route::post('/recurrences', [FinancialCoreController::class, 'storeRecurrence'])->name('recurrences.store');
   Route::patch('/recurrences/{id}/status', [FinancialCoreController::class, 'setRecurrenceStatus'])->name('recurrences.status');
   Route::post('/cards/purchases', [FinancialCoreController::class, 'storeCardPurchase'])->name('cards.purchase');
