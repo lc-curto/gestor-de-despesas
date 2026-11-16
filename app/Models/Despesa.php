@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['user_id', 'description', 'amount', 'currency', 'category', 'category_id', 'expense_date'])]
+#[Fillable(['user_id', 'description', 'amount', 'currency', 'category', 'category_id', 'expense_date', 'due_date'])]
 class Despesa extends Model
 {
     use HasUuids;
@@ -21,6 +21,7 @@ class Despesa extends Model
         return [
             'amount' => 'decimal:2',
             'expense_date' => 'date',
+            'due_date' => 'date',
             'created_at' => 'datetime',
         ];
     }
