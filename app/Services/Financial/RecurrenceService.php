@@ -61,11 +61,22 @@ class RecurrenceService
                     $forecasts = $user->movimentos()->where('recurrence_id', $rule->id)
                         ->where('status', 'pending')->whereDate('recurrence_occurrence_date', '>', $date)->lockForUpdate()->get()
                         ->filter(fn ($forecast) => !$forecast->historico()->where('action', 'confirmed')->exists());
+                    $firstCancelledDate = $forecasts->pluck('recurrence_occurrence_date')
+                        ->filter()
+                        ->map(fn ($date) => Carbon::parse($date)->toDateString())
+                        ->sort()
+                        ->first();
+
                     foreach ($forecasts as $forecast) {
                         if ($forecast->legacy_type === 'despesa') Despesa::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
                         if ($forecast->legacy_type === 'receita') Receita::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
                         $forecast->historico()->delete();
                         $forecast->delete();
+                    }
+
+                    // Se a regra for retomada depois, recomeça na primeira ocorrência cancelada.
+                    if ($firstCancelledDate) {
+                        $rule->update(['next_occurrence' => $firstCancelledDate]);
                     }
                 }
                 return;
@@ -148,6 +159,12 @@ class RecurrenceService
                     ->get()
                     ->filter(fn ($forecast) => !$forecast->historico()->where('action', 'confirmed')->exists());
 
+                $firstCancelledDate = $forecasts->pluck('recurrence_occurrence_date')
+                    ->filter()
+                    ->map(fn ($date) => Carbon::parse($date)->toDateString())
+                    ->sort()
+                    ->first();
+
                 foreach ($forecasts as $forecast) {
                     if ($forecast->legacy_type === 'despesa') {
                         Despesa::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
@@ -157,6 +174,12 @@ class RecurrenceService
                     }
                     $forecast->historico()->delete();
                     $forecast->delete();
+                }
+
+                // Retomar a regra deve recriar a primeira previsão que foi removida.
+                if ($firstCancelledDate) {
+                    $rule->next_occurrence = $firstCancelledDate;
+                    $rule->save();
                 }
             }
         });
