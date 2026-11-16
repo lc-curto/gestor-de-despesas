@@ -49,6 +49,10 @@
     const accountFilter = document.getElementById('accountFilter');
     const periodCaption = document.getElementById('periodCaption');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+    document.getElementById('dashboardRecurrenceEnabled')?.addEventListener('change', function () {
+        const fields = document.getElementById('dashboardRecurrenceFields');
+        if (fields) fields.hidden = !this.checked;
+    });
 
     const pageSize = () => window.matchMedia('(max-width: 991.98px)').matches ? 6 : 10;
     let page = 1;
@@ -225,6 +229,9 @@
         article.dataset.accountId = item.account_id || '';
         article.dataset.movementStatus = item.movement_status || '';
         article.dataset.recurrenceId = item.recurrence_id || '';
+        article.dataset.recurrenceFrequency = item.recurrence_frequency || '';
+        article.dataset.recurrenceInterval = item.recurrence_interval || '';
+        article.dataset.recurrenceEndsAt = item.recurrence_ends_at || '';
 
         const info = document.createElement('div');
         info.className = 'd-flex align-items-center gap-3 min-w-0';
@@ -254,6 +261,14 @@
         value.textContent = (isExpense ? '−' : '+') + formatCurrency(item.amount, item.currency);
 
         actions.append(value);
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'btn btn-outline-secondary';
+        edit.dataset.acao = 'editar';
+        edit.setAttribute('aria-label', 'Editar ' + item.description);
+        edit.title = 'Editar';
+        edit.innerHTML = '<i data-lucide="pencil" aria-hidden="true"></i>';
+        actions.append(edit);
         if (item.recurrence_id) {
             const manage = document.createElement('a');
             manage.className = 'btn btn-outline-primary';
@@ -262,15 +277,6 @@
             manage.setAttribute('aria-label', 'Gerir recorrência de ' + item.description);
             manage.innerHTML = '<i data-lucide="repeat-2" aria-hidden="true"></i>';
             actions.append(manage);
-        } else {
-            const edit = document.createElement('button');
-            edit.type = 'button';
-            edit.className = 'btn btn-outline-secondary';
-            edit.dataset.acao = 'editar';
-            edit.setAttribute('aria-label', 'Editar ' + item.description);
-            edit.title = 'Editar';
-            edit.innerHTML = '<i data-lucide="pencil" aria-hidden="true"></i>';
-            actions.append(edit);
         }
         if (item.id && !item.recurrence_id) {
             const deleteForm = document.createElement('form');
@@ -553,6 +559,18 @@
         date.value = row.dataset.date;
         category.value = row.dataset.categoryId;
         if (account) account.value = row.dataset.accountId || '';
+        const repeat = document.getElementById('dashboardRecurrenceEnabled');
+        const repeatFields = document.getElementById('dashboardRecurrenceFields');
+        if (repeat) {
+            repeat.checked = Boolean(row.dataset.recurrenceId);
+            const frequency = document.getElementById('dashboardRecurrenceFrequency');
+            const interval = document.getElementById('dashboardRecurrenceInterval');
+            const ends = document.getElementById('dashboardRecurrenceEnds');
+            if (frequency) frequency.value = row.dataset.recurrenceFrequency || 'monthly';
+            if (interval) interval.value = row.dataset.recurrenceInterval || '1';
+            if (ends) ends.value = row.dataset.recurrenceEndsAt || '';
+            if (repeatFields) repeatFields.hidden = !repeat.checked;
+        }
         // A edição substitui o movimento canónico no backend; todos os campos
         // permanecem editáveis, inclusive em movimentos liquidados.
         amount.readOnly = false;

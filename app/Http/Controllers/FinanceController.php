@@ -297,10 +297,12 @@ class FinanceController extends Controller
         return view('finance.form', compact('tipo', 'data', 'cats', 'registo', 'accounts', 'financialMovement', 'returnUrl'));
     }
 
-    public function update(Request $request, string $id, FinancialMovementService $service, CardInvoiceService $invoices)
+    public function update(Request $request, string $id, FinancialMovementService $service, CardInvoiceService $invoices, RecurrenceService $recurrences)
     {
         [$tipo, , $dateField] = $this->config($request);
         $data = $this->validatedData($request, $id);
+        $recurrenceEnabled = (bool) ($data['recurrence_enabled'] ?? false);
+        $recurrenceData = ['frequency' => $data['recurrence_frequency'] ?? 'monthly', 'interval_value' => $data['recurrence_interval'] ?? 1, 'ends_at' => $data['recurrence_ends_at'] ?? null];
         unset($data['recurrence_enabled'], $data['recurrence_frequency'], $data['recurrence_interval'], $data['recurrence_ends_at']);
         $expenseBehavior = $data['expense_behavior'] ?? 'variable';
         unset($data['expense_behavior']);
@@ -361,6 +363,15 @@ class FinanceController extends Controller
 
             $legacy->update($data);
         });
+
+        $updatedMovement = $this->linkedMovement($request, $tipo, $id);
+        if ($updatedMovement) {
+            $recurrences->syncEditedMovement($request->user(), $updatedMovement, array_merge([
+                'description' => $data['description'], 'amount' => $data['amount'],
+                'category_id' => $data['category_id'], 'account_id' => $accountId,
+                'expense_behavior' => $expenseBehavior,
+            ], $recurrenceData), $recurrenceEnabled);
+        }
 
         if ($request->expectsJson()) {
             return response()->json(['ok' => true, 'message' => 'Registo atualizado.']);

@@ -114,6 +114,9 @@ class DashboardController extends Controller
                 'is_historical' => (bool) ($item->is_historical ?? false),
                 'requires_account_assignment' => $item->requires_account_assignment,
                 'recurrence_id' => $item->recurrence_id,
+                'recurrence_frequency' => $item->recurrence_frequency,
+                'recurrence_interval' => $item->recurrence_interval,
+                'recurrence_ends_at' => $item->recurrence_ends_at,
             ];
         })->values();
 
@@ -233,10 +236,11 @@ class DashboardController extends Controller
                     ->where('financial_movements.legacy_type', '=', 'despesa')
                     ->where('financial_movements.user_id', '=', $userId);
             })
+            ->leftJoin('recorrencias as recurrence_rules', 'recurrence_rules.id', '=', 'financial_movements.recurrence_id')
             ->where('despesas.user_id', $userId)
             ->whereBetween('despesas.expense_date', [$inicio->toDateString(), $fim->toDateString()])
             ->where(fn ($q) => $q->whereNull('financial_movements.status')->orWhere('financial_movements.status', '!=', 'void'))
-            ->selectRaw("despesas.id, financial_movements.id AS financial_movement_id, 'despesa' AS tipo, despesas.description, despesas.amount, despesas.currency, categorias.id AS category, categorias.name AS category_label, categorias.icon AS category_icon, categorias.color AS category_color, despesas.expense_date AS data_movimento, financial_movements.source_account_id AS account_id, financial_movements.status AS movement_status, financial_movements.requires_account_assignment AS requires_account_assignment, financial_movements.is_historical AS is_historical, financial_movements.recurrence_id AS recurrence_id");
+            ->selectRaw("despesas.id, financial_movements.id AS financial_movement_id, 'despesa' AS tipo, despesas.description, despesas.amount, despesas.currency, categorias.id AS category, categorias.name AS category_label, categorias.icon AS category_icon, categorias.color AS category_color, despesas.expense_date AS data_movimento, financial_movements.source_account_id AS account_id, financial_movements.status AS movement_status, financial_movements.requires_account_assignment AS requires_account_assignment, financial_movements.is_historical AS is_historical, financial_movements.recurrence_id AS recurrence_id, recurrence_rules.frequency AS recurrence_frequency, recurrence_rules.interval_value AS recurrence_interval, recurrence_rules.ends_at AS recurrence_ends_at");
 
         $receitas = DB::table('receitas')
             ->join('categorias', 'categorias.id', '=', 'receitas.category_id')
@@ -245,6 +249,7 @@ class DashboardController extends Controller
                     ->where('financial_movements.legacy_type', '=', 'receita')
                     ->where('financial_movements.user_id', '=', $userId);
             })
+            ->leftJoin('recorrencias as recurrence_rules', 'recurrence_rules.id', '=', 'financial_movements.recurrence_id')
             ->where('receitas.user_id', $userId)
             ->whereBetween('receitas.income_date', [$inicio->toDateString(), $fim->toDateString()])
             ->where(fn ($q) => $q->whereNull('financial_movements.status')->orWhere('financial_movements.status', '!=', 'void'))

@@ -48,6 +48,55 @@ class RecurrenceService
         return $rule;
     }
 
+
+    public function syncEditedMovement(User $user, \App\Models\Movimento $movement, array $data, bool $enabled): void
+    {
+        DB::transaction(function () use ($user, $movement, $data, $enabled): void {
+            $movement = $user->movimentos()->whereKey($movement->id)->lockForUpdate()->firstOrFail();
+            $rule = $movement->recurrence_id ? $user->recorrencias()->whereKey($movement->recurrence_id)->lockForUpdate()->first() : null;
+            if (!$enabled) {
+                if ($rule) {
+                    $rule->update(['is_active' => false]);
+                    $date = Carbon::parse($movement->movement_date)->toDateString();
+                    $forecasts = $user->movimentos()->where('recurrence_id', $rule->id)->where('requires_account_assignment', true)
+                        ->where('status', 'pending')->whereDate('recurrence_occurrence_date', '>', $date)->lockForUpdate()->get();
+                    foreach ($forecasts as $forecast) {
+                        if ($forecast->legacy_type === 'despesa') Despesa::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
+                        if ($forecast->legacy_type === 'receita') Receita::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
+                        $forecast->historico()->delete();
+                        $forecast->delete();
+                    }
+                }
+                return;
+            }
+            $category = Categoria::query()->where('user_id', $user->id)->whereKey($data['category_id'])->first();
+            if (!$category || !$category->is_active || $category->type !== ($movement->type === 'expense' ? 'despesa' : 'receita')) {
+                throw ValidationException::withMessages(['category_id' => 'A categoria não corresponde ao tipo de movimento.']);
+            }
+            $this->assertDefaultAccount($user, $movement->type, $data['account_id'] ?? null);
+            $date = Carbon::parse($movement->movement_date)->toDateString();
+            $values = ['type' => $movement->type, 'expense_behavior' => $movement->type === 'expense' ? ($data['expense_behavior'] ?? 'variable') : 'variable', 'description' => $data['description'], 'amount' => $data['amount'], 'category_id' => $data['category_id'], 'account_id' => $data['account_id'] ?? null, 'frequency' => $data['frequency'], 'interval_value' => (int) $data['interval_value'], 'anchor_date' => $date, 'ends_at' => $data['ends_at'] ?? null, 'is_active' => true];
+            if (!$rule) {
+                $rule = $user->recorrencias()->create($values + ['next_occurrence' => $date]);
+                $movement->recurrence_id = $rule->id;
+                $movement->recurrence_occurrence_date = $date;
+                $movement->save();
+            } else {
+                $forecasts = $user->movimentos()->where('recurrence_id', $rule->id)->where('requires_account_assignment', true)->where('status', 'pending')->whereDate('recurrence_occurrence_date', '>', $date)->lockForUpdate()->get();
+                foreach ($forecasts as $forecast) {
+                    if ($forecast->legacy_type === 'despesa') Despesa::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
+                    if ($forecast->legacy_type === 'receita') Receita::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
+                    $forecast->historico()->delete(); $forecast->delete();
+                }
+                $rule->fill($values); $rule->next_occurrence = $date; $rule->save();
+                $movement->recurrence_occurrence_date = $date; $movement->save();
+            }
+            $rule->next_occurrence = $this->nextDate($rule, Carbon::parse($date))->toDateString(); $rule->save();
+        });
+        $ruleId = $user->movimentos()->whereKey($movement->id)->value('recurrence_id');
+        if ($enabled && $ruleId) $this->generateRule($user, (string) $ruleId);
+    }
+
     public function generateForUser(User $user): int
     {
         $created = 0;
