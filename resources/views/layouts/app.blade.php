@@ -115,8 +115,8 @@
     <div class="offcanvas offcanvas-bottom mobile-action-sheet" tabindex="-1" id="mobileNewMenu" aria-labelledby="mobileNewMenuTitle">
         <div class="offcanvas-header"><h2 class="offcanvas-title h5 fw-bold" id="mobileNewMenuTitle">Novo registo</h2><button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button></div>
         <div class="offcanvas-body pt-0">
-            <a class="mobile-sheet-action" href="{{ route('despesas.create') }}"><i data-lucide="arrow-down-right" aria-hidden="true"></i><span><strong>Nova despesa</strong><small>Registar um pagamento ou compromisso</small></span></a>
-            <a class="mobile-sheet-action" href="{{ route('receitas.create') }}"><i data-lucide="arrow-up-right" aria-hidden="true"></i><span><strong>Nova receita</strong><small>Registar dinheiro recebido</small></span></a>
+            <a class="mobile-sheet-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'despesa']) }}"><i data-lucide="arrow-down-right" aria-hidden="true"></i><span><strong>Nova despesa</strong><small>Registar um pagamento ou compromisso</small></span></a>
+            <a class="mobile-sheet-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'receita']) }}"><i data-lucide="arrow-up-right" aria-hidden="true"></i><span><strong>Nova receita</strong><small>Registar dinheiro recebido</small></span></a>
         </div>
     </div>
 
