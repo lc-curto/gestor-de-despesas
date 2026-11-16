@@ -91,7 +91,8 @@
         if (accountField) {
             accountField.required = !isExpense || editing;
             const accountContainer = accountField.closest('.mb-3');
-            if (accountContainer) accountContainer.hidden = isExpense && !editing;
+            if (accountContainer) accountContainer.hidden = isExpense;
+            accountField.required = !isExpense;
         }
 
         const dueDateField = document.getElementById('dashboardDueDateField');
@@ -686,6 +687,18 @@
         category.value = row.dataset.categoryId;
         if (account) account.value = row.dataset.accountId || '';
         if (type === 'despesa') {
+            const settled = row.dataset.movementStatus === 'settled';
+            form.querySelectorAll('[name="paid_now"]').forEach((input) => {
+                input.checked = input.value === (settled ? '1' : '0');
+            });
+            const paymentAccount = document.getElementById('dashboardPaymentAccount');
+            const paymentDate = document.getElementById('dashboardPaymentDate');
+            const paymentAmount = document.getElementById('dashboardPaymentAmount');
+            if (paymentAccount) paymentAccount.value = row.dataset.accountId || '';
+            if (paymentDate) paymentDate.value = row.dataset.date || localDate();
+            if (paymentAmount) paymentAmount.value = settled ? row.dataset.amount : '';
+        }
+        if (type === 'despesa') {
             form.querySelectorAll('[name="expense_behavior"]').forEach((input) => {
                 input.checked = input.value === (row.dataset.expenseBehavior || 'variable');
             });
@@ -706,6 +719,7 @@
         // permanecem editáveis, inclusive em movimentos liquidados.
         amount.readOnly = false;
         date.readOnly = false;
+        refreshPaymentFields();
         cancelButton?.classList.remove('d-none');
         openEditor();
         form.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1128,7 +1142,10 @@
 
     cancelButton?.addEventListener('click', cancelEdit);
     form.querySelectorAll('[name="payment_condition"], [name="paid_now"]').forEach((input) => input.addEventListener('change', refreshPaymentFields));
-    document.getElementById('movementAmount')?.addEventListener('input', refreshPaymentFields);
+    ['movementAmount', 'dashboardDueDate', 'dashboardInstallments', 'dashboardInstallmentFrequency'].forEach((id) => {
+        document.getElementById(id)?.addEventListener('input', refreshPaymentFields);
+        document.getElementById(id)?.addEventListener('change', refreshPaymentFields);
+    });
     form.addEventListener('submit', submitMovement);
     settleForm?.addEventListener('submit', submitSettleMovement);
     deleteForm?.addEventListener('submit', submitDeleteMovement);
