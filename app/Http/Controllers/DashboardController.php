@@ -87,7 +87,8 @@ class DashboardController extends Controller
             $receitasFiltradas->where('category_id', $filtroCategoria);
         }
 
-        $totalDespesasFiltradas = (clone $despesasFiltradas)->count();
+        $totalDespesasFiltradas = (clone $despesasFiltradas)->count()
+            + $user->movimentos()->where('type', 'transfer')->where('status', 'settled')->whereNotNull('invoice_id')->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->count();
         $totalReceitasFiltradas = (clone $receitasFiltradas)->count();
         $totalMovimentos = $totalDespesasFiltradas + $totalReceitasFiltradas;
 
@@ -167,7 +168,8 @@ class DashboardController extends Controller
             $receitasQuery->where('category_id', $categoria);
         }
 
-        $totalDespesasFiltradas = (clone $despesasQuery)->count();
+        $totalDespesasFiltradas = (clone $despesasQuery)->count()
+            + $user->movimentos()->where('type', 'transfer')->where('status', 'settled')->whereNotNull('invoice_id')->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->count();
         $totalReceitasFiltradas = (clone $receitasQuery)->count();
 
         $query = $this->movimentosQuery($user->id, $inicio, $fim, 'todos', $categoria);
