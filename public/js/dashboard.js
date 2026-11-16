@@ -865,7 +865,14 @@
 
     async function submitDeleteMovement(event) {
         event.preventDefault();
-        if (!actionMovement || !navigator.onLine) return;
+        if (!actionMovement) {
+            alert('Seleciona um movimento para excluir.');
+            return;
+        }
+        if (!navigator.onLine) {
+            alert('Sem ligação à internet. Liga-te à internet e tenta novamente.');
+            return;
+        }
         const submit = document.getElementById('deleteMovementSubmit');
         const original = submit.textContent;
         submit.disabled = true;
@@ -894,10 +901,25 @@
                     body: new URLSearchParams({ _method: 'DELETE', _token: csrf || '' })
                 });
             }
-            const result = await response.json().catch(() => ({}));
-            if (!response.ok || result.ok === false) throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'Não foi possível excluir o movimento.');
-            deleteModal?.hide();
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                throw new Error(response.redirected
+                    ? 'A sessão pode ter expirado. Atualiza a página e tenta novamente.'
+                    : 'O servidor devolveu uma resposta inesperada. A exclusão não foi confirmada.');
+            }
+            const result = await response.json();
+            if (!response.ok || result.ok !== true) {
+                throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'O servidor não confirmou a exclusão.');
+            }
+
             await refreshDashboard();
+            const stillVisible = loadedMovements.some((item) =>
+                String(item.financial_movement_id || '') === String(actionMovement.dataset.financialMovementId || '')
+            );
+            if (stillVisible) {
+                throw new Error('O servidor confirmou a operação, mas o movimento continua na lista. Atualiza a página; se persistir, verifica a recorrência na base de dados.');
+            }
+            deleteModal?.hide();
         } catch (error) {
             alert(error.message);
         } finally {
