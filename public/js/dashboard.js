@@ -675,7 +675,12 @@
         document.getElementById('deleteRecurringOptions').hidden = !recurring;
         document.getElementById('deleteSingleOption').hidden = recurring;
         document.getElementById('deleteMovementTitle').textContent = recurring ? 'Excluir movimento recorrente' : 'Excluir movimento';
-        document.getElementById('deleteScopeOnly').checked = recurring;
+        const settled = row.dataset.movementStatus === 'settled';
+        const note = document.getElementById('deleteMovementNote');
+        note.hidden = !(recurring && settled);
+        note.textContent = 'Esta ocorrência já foi efetivada e será preservada no histórico financeiro. Podes interromper as previsões futuras.';
+        document.getElementById('deleteScopeOnly').disabled = recurring && settled;
+        document.getElementById('deleteScopeOnly').checked = recurring && !settled;
         document.getElementById('deleteScopeOnlySingle').checked = !recurring;
         deleteModal?.show();
     }
