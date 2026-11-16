@@ -278,6 +278,37 @@ class FinanceFlowTest extends TestCase
         $this->assertDatabaseHas('despesas', ['id' => $expense->id]);
     }
 
+    public function test_deleting_a_settled_legacy_expense_automatically_removes_its_balance_impact_and_keeps_audit(): void
+    {
+        $user = User::factory()->create();
+        $accountId = $this->account($user, '100.00');
+
+        $this->actingAs($user)->post(route('despesas.store'), [
+            'description' => 'Compra lançada por engano',
+            'amount' => '15.00',
+            'category' => 'compras',
+            'expense_date' => '2026-11-15',
+            'account_id' => $accountId,
+        ])->assertRedirect(route('despesas.index'));
+
+        $legacy = $user->despesas()->where('description', 'Compra lançada por engano')->firstOrFail();
+        $movement = $user->movimentos()->where('legacy_type', 'despesa')->where('legacy_id', $legacy->id)->firstOrFail();
+        $account = ContaFinanceira::query()->findOrFail($accountId);
+
+        $this->assertSame('85.00', app(\App\Services\Financial\AccountBalanceService::class)->balance($account));
+
+        $this->delete(route('despesas.destroy', $legacy->id))
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('despesas', ['id' => $legacy->id]);
+        $this->assertDatabaseHas('movimentos', ['id' => $movement->id, 'status' => 'void']);
+        $this->assertDatabaseHas('historico_movimentos', [
+            'movement_id' => $movement->id,
+            'action' => 'deleted_as_correction',
+        ]);
+        $this->assertSame('100.00', app(\App\Services\Financial\AccountBalanceService::class)->balance($account));
+    }
+
     public function test_existing_pending_legacy_movement_can_be_associated_through_edit_form(): void
     {
         $user = User::factory()->create();

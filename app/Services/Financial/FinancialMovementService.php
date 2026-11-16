@@ -217,6 +217,54 @@ class FinancialMovementService
         });
     }
 
+    /**
+     * Trata o comando "eliminar" como correção do lançamento.
+     * O movimento canónico permanece auditável, mas deixa de produzir impacto financeiro.
+     */
+    public function deleteAsCorrection(User $user, Movimento $movement, ?string $reason = null): Movimento
+    {
+        return DB::transaction(function () use ($user, $movement, $reason) {
+            $locked = Movimento::query()
+                ->where('user_id', $user->id)
+                ->whereKey($movement->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($locked->status === 'void') {
+                throw ValidationException::withMessages(['movement' => 'Este movimento já foi removido ou estornado.']);
+            }
+
+            // Uma compra de cartão ligada a uma fatura parcialmente paga ou paga
+            // não pode ser removida isoladamente sem redistribuir pagamentos.
+            if ($locked->invoice_id) {
+                $invoice = $user->faturas()->whereKey($locked->invoice_id)->lockForUpdate()->firstOrFail();
+                $hasPayments = $invoice->movimentos()
+                    ->where('type', 'transfer')
+                    ->where('status', 'settled')
+                    ->exists();
+
+                if ($invoice->status === 'paid' || $hasPayments) {
+                    throw ValidationException::withMessages([
+                        'movement' => 'Esta compra pertence a uma fatura com pagamentos registados. Corrige primeiro a fatura para manter os saldos coerentes.',
+                    ]);
+                }
+            }
+
+            $before = $locked->getAttributes();
+            $locked->update(['status' => 'void']);
+            $this->audit(
+                $user,
+                $locked,
+                'deleted_as_correction',
+                $before,
+                $locked->getAttributes(),
+                $reason ?? 'Removido pelo utilizador como correção de lançamento.'
+            );
+
+            return $locked->refresh();
+        });
+    }
+
     public function reverse(User $user, Movimento $movement, ?string $reason = null): Movimento
     {
         return DB::transaction(function () use ($user, $movement, $reason) {

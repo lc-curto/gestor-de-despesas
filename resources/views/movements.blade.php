@@ -251,7 +251,7 @@
                                     @if ($movimento->recurrence_id)
                                     @else
                                         <button type="button" class="btn btn-outline-secondary edit-movement" data-acao="editar" aria-label="Editar {{ $movimento->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></button>
-                                        <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $movimento->id) }}" data-delete-type="{{ $movimento->tipo }}" onsubmit="return confirm('Eliminar definitivamente este registo?')">
+                                        <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $movimento->id) }}" data-delete-type="{{ $movimento->tipo }}" onsubmit="return confirm('Remover este movimento? O sistema atualizará automaticamente os saldos e manterá o registo técnico de auditoria.')">
                                             @csrf @method('DELETE')
                                             <button type="submit" class="btn btn-outline-danger" aria-label="Eliminar {{ $movimento->description }}" title="Eliminar"><i data-lucide="trash-2" aria-hidden="true"></i></button>
                                         </form>

@@ -367,35 +367,36 @@ class FinanceController extends Controller
             ->with('success', 'Registo atualizado.');
     }
 
-    public function destroy(Request $request, string $id)
+    public function destroy(Request $request, string $id, FinancialMovementService $service)
     {
         [$tipo] = $this->config($request);
-        DB::transaction(function () use ($request, $tipo, $id): void {
+
+        DB::transaction(function () use ($request, $tipo, $id, $service): void {
             $legacy = $this->query($request)->whereKey($id)->lockForUpdate()->firstOrFail();
             $movement = $this->linkedMovement($request, $tipo, $legacy->id);
+
             if ($movement) {
-                if ($movement->recurrence_id) {
-                    throw ValidationException::withMessages(['movement' => 'Anule esta ocorrência através do histórico de movimentos para preservar o histórico.']);
-                }
-                if ($movement->status === 'settled') {
-                    throw ValidationException::withMessages(['movement' => 'Movimentos liquidados devem ser estornados, não eliminados.']);
-                }
-                // Exclusão direta: remove o histórico técnico antes da FK restritiva.
-                $movement->historico()->delete();
-                $movement->delete();
+                $service->deleteAsCorrection(
+                    $request->user(),
+                    $movement,
+                    'Registo legado eliminado pelo utilizador.'
+                );
             }
+
+            // O movimento canónico é mantido como void para auditoria.
+            // A representação legada deixa de aparecer nas páginas antigas.
             $legacy->delete();
         });
 
         if ($request->expectsJson()) {
-            return response()->json(['ok' => true, 'message' => 'Registo eliminado.']);
+            return response()->json(['ok' => true, 'message' => 'Registo removido e saldos atualizados.']);
         }
         if ($request->filled('return_to')) {
             return redirect($this->accountReturnUrl($request, $tipo === 'despesa' ? 'despesas.index' : 'receitas.index'))
-                ->with('success', 'Registo eliminado.');
+                ->with('success', 'Registo removido e saldos atualizados.');
         }
 
-        return back()->with('success', 'Registo eliminado.');
+        return back()->with('success', 'Registo removido e saldos atualizados.');
     }
 
     private function accountReturnUrl(Request $request, string $fallbackRoute): string
