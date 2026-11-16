@@ -366,17 +366,41 @@ class FinancialCoreController extends Controller
         $data = $request->validate([
             'source_account_id' => 'nullable|uuid',
             'destination_account_id' => 'nullable|uuid',
+            'amount' => 'sometimes|required|numeric|gt:0|decimal:0,2|max:9999999999.99',
+            'movement_date' => 'sometimes|required|date',
         ]);
+
         $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
-        if ($movement->type === 'expense') {
-            $accountId = $data['source_account_id'] ?? $movement->source_account_id;
-            $account = $accountId ? $request->user()->contasFinanceiras()->whereKey($accountId)->first() : null;
-            if ($account?->type === 'credit_card') {
-                return response()->json(['data' => $invoices->settlePendingPurchase($request->user(), $movement, $account->id)]);
+
+        return DB::transaction(function () use ($request, $movement, $data, $service, $invoices): JsonResponse {
+            // A confirmação permite corrigir o valor e a data efetivos antes de atualizar o saldo.
+            $changes = array_intersect_key($data, array_flip(['amount', 'movement_date']));
+            if ($changes) {
+                $movement = $service->updatePending($request->user(), $movement, $changes);
+                if ($movement->legacy_type && $movement->legacy_id) {
+                    $table = $movement->legacy_type === 'despesa' ? 'despesas' : ($movement->legacy_type === 'receita' ? 'receitas' : null);
+                    if ($table) {
+                        $dateColumn = $movement->legacy_type === 'despesa' ? 'expense_date' : 'income_date';
+                        DB::table($table)->where('user_id', $request->user()->id)->where('id', $movement->legacy_id)->update([
+                            'amount' => $movement->amount,
+                            $dateColumn => $movement->movement_date->toDateString(),
+                        ]);
+                    }
+                }
             }
-        }
-        return response()->json(['data' => $service->settle($request->user(), $movement, $data)]);
+
+            if ($movement->type === 'expense') {
+                $accountId = $data['source_account_id'] ?? $movement->source_account_id;
+                $account = $accountId ? $request->user()->contasFinanceiras()->whereKey($accountId)->first() : null;
+                if ($account?->type === 'credit_card') {
+                    return response()->json(['data' => $invoices->settlePendingPurchase($request->user(), $movement, $account->id)]);
+                }
+            }
+
+            return response()->json(['data' => $service->settle($request->user(), $movement, $data)]);
+        });
     }
+
 
     public function confirmMovement(Request $request, string $id, FinancialMovementService $service): JsonResponse
     {
@@ -400,6 +424,43 @@ class FinancialCoreController extends Controller
         $data = $request->validate(['reason' => 'nullable|string|max:1000']);
         $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
         return response()->json(['data' => $service->reverse($request->user(), $movement, $data['reason'] ?? null)]);
+    }
+
+    public function destroyRecurringOccurrence(Request $request, string $id, FinancialMovementService $service): JsonResponse
+    {
+        $data = $request->validate([
+            'scope' => ['required', Rule::in(['only', 'this_and_future', 'all'])],
+        ]);
+
+        $user = $request->user();
+        $movement = $user->movimentos()->whereKey($id)->firstOrFail();
+        if (!$movement->recurrence_id) {
+            return response()->json(['message' => 'Este movimento não pertence a uma recorrência.'], 422);
+        }
+
+        DB::transaction(function () use ($user, $movement, $data, $service): void {
+            $rule = $user->recorrencias()->whereKey($movement->recurrence_id)->lockForUpdate()->firstOrFail();
+            $targets = $user->movimentos()->where('recurrence_id', $rule->id)->where('status', 'pending');
+
+            if ($data['scope'] === 'only') {
+                $targets->whereKey($movement->id);
+            } elseif ($data['scope'] === 'this_and_future') {
+                $rule->update(['is_active' => false]);
+                $targets->whereDate('recurrence_occurrence_date', '>=', ($movement->recurrence_occurrence_date ?: $movement->movement_date)->toDateString());
+            } else {
+                $rule->update(['is_active' => false]);
+            }
+
+            foreach ($targets->lockForUpdate()->get() as $target) {
+                $service->deleteAsCorrection(
+                    $user,
+                    $target,
+                    'Ocorrência removida pelo utilizador na gestão de movimentos.'
+                );
+            }
+        });
+
+        return response()->json(['ok' => true, 'message' => 'Movimento atualizado.']);
     }
 
     public function destroyMovement(Request $request, string $id, FinancialMovementService $service): JsonResponse
