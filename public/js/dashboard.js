@@ -709,48 +709,88 @@
         saveButton.textContent = 'A guardar...';
         try {
             const values = Object.fromEntries(new FormData(form).entries());
+            const condition = values.payment_condition || 'cash';
+            const paidState = values.paid_now || '0';
+            const isNewExpense = !editing && movementType === 'despesa';
+            const isInstallment = isNewExpense && condition === 'installments';
+
+            // A estrutura atual do motor não possui registo de pagamentos parciais
+            // para despesas comuns. Não aceitar silenciosamente um pagamento total.
+            if (isNewExpense && paidState === 'partial' && !isInstallment) {
+                throw new Error('O registo de pagamentos parciais para despesas sem parcelamento ainda não está disponível. Seleciona “Ainda não paguei” ou “Já paguei tudo”.');
+            }
+
             let response;
             let payload;
-            const commitment = !editing && movementType === 'despesa';
-            if (commitment) {
-                const condition = values.payment_condition || 'cash';
-                response = await fetch(cfg.commitmentStore, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf }, body: JSON.stringify({ name: values.description, total_amount: values.amount, start_date: values.expense_date, due_date: condition === 'cash' ? values.expense_date : (values.due_date || values.expense_date), payment_condition: condition, payment_method: values.payment_method || values.actual_payment_method || null, installments_count: condition === 'installments' ? values.installments_count : null, installment_frequency: condition === 'installments' ? values.installment_frequency : 'monthly' }) });
+
+            if (isInstallment) {
+                // Só compras parceladas criam um Compromisso.
+                const commitmentResponse = await fetch(cfg.commitmentStore, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    body: JSON.stringify({
+                        name: values.description,
+                        total_amount: values.amount,
+                        start_date: values.expense_date,
+                        due_date: values.due_date || values.expense_date,
+                        payment_condition: 'installments',
+                        payment_method: values.payment_method || null,
+                        installments_count: values.installments_count,
+                        installment_frequency: values.installment_frequency || 'monthly'
+                    })
+                });
+                const commitmentPayload = await commitmentResponse.json().catch(() => ({}));
+                if (!commitmentResponse.ok || !commitmentPayload.data?.id) {
+                    throw new Error(commitmentPayload.message || 'Não foi possível criar o parcelamento.');
+                }
+
+                // O movimento principal é registado no histórico tradicional e ligado
+                // ao motor financeiro como pendente, sem criar um segundo débito.
+                const movementData = new FormData(form);
+                movementData.set('paid_now', '0');
+                movementData.delete('account_id');
+                movementData.delete('payment_account_id');
+                response = await fetch(form.action, {
+                    method: 'POST',
+                    body: movementData,
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin'
+                });
                 payload = await response.json().catch(() => ({}));
-                if (response.ok && (values.paid_now === '1' || values.paid_now === 'partial')) {
-                    let remainingCents = Math.round(Number(values.paid_now === '1' ? values.amount : values.payment_amount) * 100);
-                    const totalOutstandingCents = (payload.data?.parcelas || []).reduce((total, installment) => (
-                        total + Math.round((Number(installment.amount) - Number(installment.paid_amount || 0)) * 100)
-                    ), 0);
-                    if (remainingCents <= 0 || remainingCents > totalOutstandingCents) {
-                        throw new Error('O valor pago excede o total da obrigação.');
-                    }
-                    for (const installment of (payload.data?.parcelas || [])) {
-                        if (remainingCents <= 0) break;
-                        const outstandingCents = Math.round((Number(installment.amount) - Number(installment.paid_amount || 0)) * 100);
-                        const paymentCents = Math.min(remainingCents, outstandingCents);
-                        if (paymentCents <= 0) continue;
-                        const paid = await fetch(cfg.commitmentBase + '/' + payload.data.id + '/installments/' + installment.id + '/pay', {
-                            method: 'POST', credentials: 'same-origin',
-                            headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
-                            body: JSON.stringify({ account_id: values.payment_account_id, amount: (paymentCents / 100).toFixed(2), payment_date: values.payment_date })
-                        });
-                        if (!paid.ok) { payload = await paid.json().catch(() => ({})); response = paid; break; }
-                        remainingCents -= paymentCents;
-                    }
-                    if (response.ok && remainingCents > 0) {
-                        throw new Error('O valor pago excede o total ainda em dívida.');
+                if (!response.ok || !payload.ok) {
+                    await fetch(cfg.commitmentBase + '/' + commitmentPayload.data.id + '/cancel', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf }
+                    }).catch(() => null);
+                    throw new Error(payload.message || 'O parcelamento foi criado, mas o movimento não foi registado. A obrigação foi cancelada automaticamente; confirma a lista de Compromissos.');
+                }
+            } else {
+                const movementData = new FormData(form);
+                if (isNewExpense) {
+                    if (paidState === '0') {
+                        // Despesa pendente: não associa conta nem movimenta saldo.
+                        movementData.delete('account_id');
+                        movementData.delete('payment_account_id');
+                    } else {
+                        // Despesa liquidada: usa a conta efetivamente selecionada no pagamento.
+                        movementData.set('payment_account_id', values.payment_account_id || '');
+                        movementData.delete('account_id');
                     }
                 }
-                if (response.ok) payload.ok = true;
-            } else {
-                response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+                response = await fetch(form.action, {
+                    method: 'POST',
+                    body: movementData,
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin'
+                });
                 payload = await response.json().catch(() => ({}));
             }
+
             if (response.status === 422) {
                 const errors = payload.errors || {};
-                const firstError = Object.values(errors).flat()[0] || payload.message || 'Não foi possível guardar as alterações.';
-                alert(firstError);
-                return;
+                throw new Error(Object.values(errors).flat()[0] || payload.message || 'Não foi possível guardar as alterações.');
             }
             if (!response.ok || !payload.ok) {
                 throw new Error(payload.message || 'Não foi possível guardar as alterações.');
