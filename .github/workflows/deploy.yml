@@ -212,16 +212,67 @@ jobs:
           API="https://api.alwaysdata.com/v1/site/${SITE_ID}/"
           AUTH="${API_TOKEN} account=${API_ACCOUNT}:"
 
+          # A API do Alwaysdata espera um caminho relativo à raiz da conta,
+          # sem a barra final (ex.: releases/release-xxxxxxx/public).
           OLD_PATH=$(curl --fail --silent --show-error --basic --user "$AUTH" "$API" | jq -er '.path')
-          NEW_PATH="releases/release-${DEPLOY_SHA:0:7}/public/"
-          test "$OLD_PATH" != "$NEW_PATH"
+          NEW_PATH="releases/release-\${DEPLOY_SHA:0:7}/public"
+          NORMALIZED_OLD_PATH="\${OLD_PATH%/}"
+          test "$NORMALIZED_OLD_PATH" != "$NEW_PATH"
+
+          # Guardar o caminho anterior para permitir rollback se o restart ou smoke test falhar.
           printf 'old_path=%s\n' "$OLD_PATH" >> "$GITHUB_OUTPUT"
 
-          curl --fail --silent --show-error --basic --user "$AUTH" \
-            --request PATCH \
-            --header 'Content-Type: application/json' \
-            --data "$(jq -n --arg path "$NEW_PATH" '{path: $path}')" \
-            "$API"
+          RESPONSE_FILE=$(mktemp)
+          trap 'rm -f "$RESPONSE_FILE"' EXIT
+          ACTIVATED=false
+
+          # Confirmar o estado antes de repetir: a API pode ter aplicado o PATCH
+          # mesmo que a resposta tenha sido perdida ou devolvida com erro.
+          for attempt in 1 2 3; do
+            CURRENT_PATH=$(curl --fail --silent --show-error --basic --user "$AUTH" "$API" | jq -er '.path')
+            if [ "\${CURRENT_PATH%/}" = "$NEW_PATH" ]; then
+              ACTIVATED=true
+              break
+            fi
+
+            HTTP_STATUS=$(curl --silent --show-error --basic --user "$AUTH" \
+              --request PATCH \
+              --header 'Content-Type: application/json' \
+              --data "$(jq -n --arg path "$NEW_PATH" '{path: $path}')" \
+              --output "$RESPONSE_FILE" \
+              --write-out '%{http_code}' \
+              "$API" || true)
+
+            case "$HTTP_STATUS" in
+              2??)
+                CURRENT_PATH=$(curl --fail --silent --show-error --basic --user "$AUTH" "$API" | jq -er '.path')
+                if [ "\${CURRENT_PATH%/}" = "$NEW_PATH" ]; then
+                  ACTIVATED=true
+                  break
+                fi
+                echo "PATCH respondeu HTTP $HTTP_STATUS, mas o caminho não foi atualizado."
+                cat "$RESPONSE_FILE"
+                exit 1
+                ;;
+              5??)
+                echo "Alwaysdata respondeu HTTP $HTTP_STATUS ao ativar a release (tentativa $attempt/3)."
+                cat "$RESPONSE_FILE"
+                sleep $((attempt * 3))
+                ;;
+              *)
+                echo "Falha ao ativar release: HTTP $HTTP_STATUS."
+                cat "$RESPONSE_FILE"
+                exit 1
+                ;;
+            esac
+          done
+
+          if [ "$ACTIVATED" != true ]; then
+            echo "Não foi possível confirmar a ativação da release após 3 tentativas."
+            exit 1
+          fi
+
+          echo "Release ativada e confirmada pela API: $NEW_PATH"
 
       - name: Reiniciar, smoke test e rollback automático
         if: github.event_name != 'pull_request'
