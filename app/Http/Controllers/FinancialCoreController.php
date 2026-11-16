@@ -427,6 +427,9 @@ class FinancialCoreController extends Controller
         if (!$movement->recurrence_id) {
             return response()->json(['message' => 'Este movimento não pertence a uma recorrência.'], 422);
         }
+        if ($data['scope'] === 'only' && $movement->status !== 'pending') {
+            return response()->json(['message' => 'Este movimento já foi efetivado e será preservado no histórico financeiro. Podes interromper as ocorrências futuras.'], 422);
+        }
 
         DB::transaction(function () use ($user, $movement, $data, $service): void {
             $rule = $user->recorrencias()->whereKey($movement->recurrence_id)->lockForUpdate()->firstOrFail();
@@ -441,7 +444,7 @@ class FinancialCoreController extends Controller
                 $rule->update(['is_active' => false]);
             }
 
-            foreach ($targets->lockForUpdate()->get() as $target) {
+            foreach ($targets->lockForUpdate()->get()->filter(fn ($target) => !$target->historico()->where('action', 'confirmed')->exists()) as $target) {
                 $service->deleteAsCorrection(
                     $user,
                     $target,
