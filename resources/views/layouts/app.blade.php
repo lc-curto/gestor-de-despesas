@@ -106,7 +106,7 @@
         <a class="mobile-bottom-link {{ request()->routeIs('financial.accounts.*') ? 'active' : '' }}" href="{{ route('financial.accounts.page') }}" @if(request()->routeIs('financial.accounts.*')) aria-current="page" @endif>
             <i data-lucide="wallet-cards" aria-hidden="true"></i><span>Contas</span>
         </a>
-        <button class="mobile-bottom-link {{ request()->routeIs('categorias.*', 'financial.commitments.*') ? 'active' : '' }}" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileMoreMenu" aria-controls="mobileMoreMenu">
+        <button class="mobile-bottom-link {{ request()->routeIs('categorias.*', 'financial.commitments.*', 'financial.cards.*') ? 'active' : '' }}" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileMoreMenu" aria-controls="mobileMoreMenu">
             <i data-lucide="grid-2x2" aria-hidden="true"></i><span>Mais</span>
         </button>
     </nav>
@@ -132,9 +132,14 @@
                     <span><strong>Rota Financeira</strong><small>Planeamento diário do saldo</small></span>
                     <i data-lucide="chevron-right" class="mobile-more-chevron" aria-hidden="true"></i>
                 </a>
-                <a class="mobile-more-item" href="{{ route('financial.commitments.page') }}">
+                <a class="mobile-more-item {{ request()->routeIs('financial.cards.*') ? 'active' : '' }}" href="{{ route('financial.cards.page') }}">
                     <i data-lucide="credit-card" aria-hidden="true"></i>
-                    <span><strong>Cartões e compromissos</strong><small>Gerir faturas e pagamentos</small></span>
+                    <span><strong>Cartões</strong><small>Limites e utilização de crédito</small></span>
+                    <i data-lucide="chevron-right" class="mobile-more-chevron" aria-hidden="true"></i>
+                </a>
+                <a class="mobile-more-item {{ request()->routeIs('financial.commitments.*') ? 'active' : '' }}" href="{{ route('financial.commitments.page') }}">
+                    <i data-lucide="calendar-clock" aria-hidden="true"></i>
+                    <span><strong>Compromissos</strong><small>Gerir faturas e pagamentos</small></span>
                     <i data-lucide="chevron-right" class="mobile-more-chevron" aria-hidden="true"></i>
                 </a>
                 <a class="mobile-more-item" href="{{ route('categorias.index') }}">
