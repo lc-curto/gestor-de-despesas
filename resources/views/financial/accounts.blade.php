@@ -44,16 +44,17 @@
                 @endphp
                 <article class="account-card">
                     <a class="account-card-link" href="{{ route('financial.accounts.show', $account->id) }}" aria-label="Ver histórico de {{ $account->name }}">
-                    <span class="account-icon"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></span>
-                    <div class="account-main">
-                        <div class="account-title-row">
-                            <h2 class="account-name">{{ $account->name }}</h2>
-                            <span class="account-status {{ $account->status === 'active' ? 'is-active' : ($account->status === 'closed' ? 'is-closed' : 'is-pending') }}">
-                                {{ $statusLabels[$account->status] ?? $account->status }}
-                            </span>
+                        <span class="account-icon"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></span>
+                        <div class="account-main">
+                            <div class="account-title-row">
+                                <h2 class="account-name">{{ $account->name }}</h2>
+                                <span class="account-status {{ $account->status === 'active' ? 'is-active' : ($account->status === 'closed' ? 'is-closed' : 'is-pending') }}">
+                                    {{ $statusLabels[$account->status] ?? $account->status }}
+                                </span>
+                            </div>
+                            <div class="account-subtitle">{{ $typeLabels[$account->type] ?? $account->type }} <span aria-hidden="true">·</span> {{ $account->currency }}</div>
                         </div>
-                        <div class="account-subtitle">{{ $typeLabels[$account->type] ?? $account->type }} <span aria-hidden="true">·</span> {{ $account->currency }}</div>
-                    </div>
+                    </a>
                     <div class="account-balance">
                         @if ($account->current_balance !== null)
                             @if ($account->type === 'credit_card' && $account->credit_limit !== null)
@@ -69,7 +70,6 @@
                             <strong>—</strong><span>Saldo por configurar</span>
                         @endif
                     </div>
-                    </a>
                     @if ($account->is_operational && $account->status !== 'closed')
                         <div class="dropdown account-menu">
                             <button class="account-menu-button" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações para {{ $account->name }}">
@@ -200,9 +200,12 @@
 .credit-cards-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem}.credit-cards-heading p{font-size:.9rem}.credit-cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,19rem),1fr));gap:1rem}.credit-card-item{min-width:0;padding:1.15rem;border:1px solid var(--app-border);border-radius:1rem;background:var(--bs-body-bg);box-shadow:var(--app-shadow)}.credit-card-top,.credit-card-title-link,.credit-card-values,.credit-card-usage,.credit-card-cycle{display:flex;align-items:center;justify-content:space-between;gap:.75rem}.credit-card-title-link{justify-content:flex-start;min-width:0;color:inherit;text-decoration:none}.credit-card-title-link>span:last-child{display:grid;gap:.2rem;min-width:0}.credit-card-title-link strong{overflow-wrap:anywhere}.credit-card-title-link small,.credit-card-values small,.credit-card-usage small{color:var(--bs-secondary-color);font-size:.78rem}.credit-card-icon{display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;border-radius:.8rem;background:rgba(99,91,255,.1);color:var(--app-primary)}.credit-card-icon svg{width:20px}.credit-card-more{border:0;background:transparent;color:var(--bs-secondary-color);padding:.4rem}.credit-card-values{margin:1.15rem 0 .7rem;align-items:flex-end}.credit-card-values>div{display:grid;gap:.2rem}.credit-card-values strong{font-size:1.1rem;white-space:nowrap;font-variant-numeric:tabular-nums}.credit-card-progress{height:8px;border-radius:99px;background:var(--bs-tertiary-bg);overflow:hidden}.credit-card-progress span{display:block;height:100%;border-radius:inherit;background:var(--app-primary)}.credit-card-usage{margin-top:.4rem}.credit-card-cycle{justify-content:flex-start;gap:1.5rem;margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--app-border);font-size:.85rem;color:var(--bs-secondary-color)}.credit-card-cycle strong{color:var(--bs-body-color)}.credit-card-debt-summary{display:grid;gap:.25rem;padding:1rem;border-radius:.8rem;background:var(--bs-tertiary-bg)}.credit-card-debt-summary small{color:var(--bs-secondary-color)}.credit-card-debt-summary strong{font-size:1.25rem}@media(max-width:640px){.credit-cards-heading{align-items:flex-start}.credit-cards-heading .btn{white-space:nowrap;padding:.55rem .7rem}.credit-card-item{padding:1rem}.credit-card-values strong{font-size:1rem}}
 .accounts-toolbar { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.25rem; }
 .accounts-list { display:grid; gap:.75rem; }
-.account-card { display:grid; grid-template-columns:minmax(0,1fr) 100px; align-items:center; gap:1rem; padding:1.15rem 1.25rem; border:1px solid var(--app-border); border-radius:1rem; background:var(--bs-body-bg); box-shadow:var(--app-shadow); }
-.account-card-link { display:grid; grid-template-columns:48px minmax(0,1fr) minmax(180px,auto); align-items:center; gap:1rem; min-width:0; color:inherit; text-decoration:none; }
+.account-card { display:grid; grid-template-columns:48px minmax(0,1fr) minmax(180px,auto) 100px; align-items:center; gap:1rem; padding:1.15rem 1.25rem; border:1px solid var(--app-border); border-radius:1rem; background:var(--bs-body-bg); box-shadow:var(--app-shadow); }
+.account-card-link { grid-column:1 / 3; display:grid; grid-template-columns:48px minmax(0,1fr); align-items:center; gap:1rem; min-width:0; color:var(--bs-body-color); text-decoration:none; }
 .account-card-link:hover .account-name { color:var(--app-primary); }
+.account-card-link, .account-card-link * { visibility:visible; opacity:1; }
+.account-balance { grid-column:3; grid-row:1; text-align:right; min-width:0; }
+.account-menu { grid-column:4; grid-row:1; justify-self:end; }
 .account-icon { display:grid; place-items:center; width:46px; height:46px; border-radius:.85rem; background:rgba(99,91,255,.1); color:var(--app-primary); }
 .account-icon svg { width:21px; height:21px; }
 .account-main { min-width:0; }
@@ -241,11 +244,11 @@
 #accountFeedback:not(.d-none) { margin-bottom:1rem; }
 @media (max-width:640px) {
     .accounts-toolbar { align-items:flex-start; flex-direction:column; }
-    .account-card { grid-template-columns:minmax(0,1fr) 5.5rem; gap:.7rem; padding:.85rem; }
-    .account-card-link { grid-template-columns:40px minmax(0,1fr); grid-template-rows:auto auto; column-gap:.7rem; row-gap:.35rem; }
+    .account-card { grid-template-columns:40px minmax(0,1fr) 5.25rem; gap:.65rem; padding:.9rem; }
+    .account-card-link { grid-column:1 / 3; grid-row:1; grid-template-columns:40px minmax(0,1fr); column-gap:.7rem; }
     .account-icon { width:40px; height:40px; }
     .account-balance { grid-column:2; grid-row:2; text-align:left; }
-    .account-menu { grid-column:2; grid-row:1; }
+    .account-menu { grid-column:3; grid-row:1; justify-self:end; }
     .transfer-row { align-items:flex-start; }
 }
 </style>
