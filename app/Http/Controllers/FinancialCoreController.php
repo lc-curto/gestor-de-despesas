@@ -440,12 +440,21 @@ class FinancialCoreController extends Controller
                 $targets->whereKey($movement->id);
             } elseif ($data['scope'] === 'this_and_future') {
                 $rule->update(['is_active' => false]);
-                $targets->whereDate('recurrence_occurrence_date', '>=', ($movement->recurrence_occurrence_date ?: $movement->movement_date)->toDateString());
+                $occurrenceDate = ($movement->recurrence_occurrence_date ?: $movement->movement_date)->toDateString();
+                $targets->where(function ($query) use ($occurrenceDate) {
+                    $query->whereDate('recurrence_occurrence_date', '>=', $occurrenceDate)
+                        ->orWhere(function ($fallback) use ($occurrenceDate) {
+                            $fallback->whereNull('recurrence_occurrence_date')
+                                ->whereDate('movement_date', '>=', $occurrenceDate);
+                        });
+                });
             } else {
                 $rule->update(['is_active' => false]);
             }
 
-            foreach ($targets->lockForUpdate()->get()->filter(fn ($target) => !$target->historico()->where('action', 'confirmed')->exists()) as $target) {
+            // O estado pendente é o critério de exclusão. Um registo de auditoria
+            // anterior não deve impedir a remoção de uma previsão ainda não liquidada.
+            foreach ($targets->lockForUpdate()->get() as $target) {
                 $service->deleteAsCorrection(
                     $user,
                     $target,
