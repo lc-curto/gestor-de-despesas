@@ -241,24 +241,18 @@
                                 </div>
                                 <div class="min-w-0">
                                     <h3 class="h6 fw-semibold mb-1 text-break">{{ $movimento->description }}</h3>
-                                    <p class="small text-secondary mb-0">{{ $categoriaLabel }} · {{ $dataMovimento->format('d/m/Y') }} @if($movimento->recurrence_id)<span class="badge text-bg-warning">Previsão</span>@endif</p>
+                                    <p class="small text-secondary mb-0">{{ $categoriaLabel }} · {{ $dataMovimento->format('d/m/Y') }} @if($movimento->recurrence_id)<span class="badge text-bg-warning">Previsão</span>@endif @if($movimento->movement_status === 'pending')<span class="badge text-bg-warning">Pendente</span>@endif</p>
                                 </div>
                             </div>
                             <div class="expense-actions d-flex align-items-center justify-content-end gap-2">
                                 <strong class="{{ $isExpense ? 'text-danger' : 'text-success' }} text-nowrap movement-value"
                                     data-value="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}">{{ $isExpense ? '−' : '+' }}{{ number_format((float) $movimento->amount, 2, ',', '.') }}</strong>
                                 <div class="btn-group btn-group-sm" role="group" aria-label="Ações de {{ $movimento->description }}">
-                                    @if ($movimento->recurrence_id)
-                                        @if ($isExpense && $movimento->movement_status === 'pending' && $dataMovimento->lte(today()) && $movimento->financial_movement_id)
-                                            <button type="button" class="btn btn-outline-primary settle-recurring-movement" data-url="{{ route('financial.movements.settle', $movimento->financial_movement_id) }}" data-account-id="{{ $movimento->account_id }}" title="Liquidar ocorrência" aria-label="Liquidar {{ $movimento->description }}">Liquidar</button>
-                                        @endif
-                                    @else
-                                        <button type="button" class="btn btn-outline-secondary edit-movement" data-acao="editar" aria-label="Editar {{ $movimento->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></button>
-                                        <form method="POST" action="{{ route($isExpense ? 'despesas.destroy' : 'receitas.destroy', $movimento->id) }}" data-delete-type="{{ $movimento->tipo }}" onsubmit="return confirm('Remover este movimento? O sistema atualizará automaticamente os saldos e manterá o registo técnico de auditoria.')">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="btn btn-outline-danger" aria-label="Eliminar {{ $movimento->description }}" title="Eliminar"><i data-lucide="trash-2" aria-hidden="true"></i></button>
-                                        </form>
+                                    <button type="button" class="btn btn-outline-secondary edit-movement" data-acao="editar" aria-label="Editar {{ $movimento->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></button>
+                                    @if ($movimento->movement_status === 'pending' && $movimento->financial_movement_id)
+                                        <button type="button" class="btn btn-outline-success" data-movement-action="settle" title="Efetivar" aria-label="Efetivar {{ $movimento->description }}"><i data-lucide="check-circle" aria-hidden="true"></i></button>
                                     @endif
+                                    <button type="button" class="btn btn-outline-danger" data-movement-action="delete" aria-label="Excluir {{ $movimento->description }}" title="Excluir"><i data-lucide="trash-2" aria-hidden="true"></i></button>
                                 </div>
                             </div>
                         </article>
