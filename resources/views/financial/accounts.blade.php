@@ -8,7 +8,7 @@
     $statusLabels = ['active' => 'Ativa', 'setup_pending' => 'Por configurar', 'closed' => 'Encerrada'];
 @endphp
 
-<div class="accounts-page">
+<div class="accounts-page" id="accountsPage">
     <header class="accounts-toolbar">
         <div>
             <h1 class="h2 fw-bold mb-0">Contas</h1>
@@ -249,6 +249,53 @@
     .account-balance { grid-column:1; grid-row:2; padding-left:calc(40px + .7rem); text-align:left; }
     .account-menu { grid-column:2; grid-row:1; justify-self:end; align-self:start; }
     .transfer-row { align-items:flex-start; }
+}
+</style>
+<style>
+/* Correção estrutural da listagem de contas: layout flex evita sobreposição de colunas. */
+#accountsPage .accounts-toolbar {
+    display:flex !important; align-items:center !important; justify-content:space-between !important;
+    gap:1rem !important; margin:0 0 1.25rem !important; min-height:3.5rem;
+}
+#accountsPage .accounts-toolbar > div:first-child { display:block !important; min-width:0; color:var(--bs-body-color) !important; }
+#accountsPage .accounts-toolbar h1 { display:block !important; margin:0 !important; color:var(--bs-body-color) !important; font-size:1.75rem; line-height:1.2; }
+#accountsPage .accounts-toolbar .small { display:block !important; color:var(--bs-secondary-color) !important; }
+#accountsPage .accounts-toolbar > div:last-child { display:flex !important; flex:0 0 auto; flex-wrap:wrap; gap:.5rem !important; }
+#accountsPage .accounts-list { display:grid !important; grid-template-columns:minmax(0,1fr); gap:.8rem !important; }
+#accountsPage .account-card {
+    display:flex !important; flex-flow:row nowrap !important; align-items:center !important;
+    gap:1rem !important; width:100%; min-height:6rem !important; padding:1rem 1.15rem !important;
+    border:1px solid var(--app-border) !important; border-radius:1rem !important;
+    background:var(--bs-body-bg) !important; box-shadow:var(--app-shadow) !important;
+}
+#accountsPage .account-card-link {
+    display:flex !important; flex:1 1 auto !important; min-width:0 !important;
+    align-items:center !important; gap:.85rem !important; color:var(--bs-body-color) !important;
+    text-decoration:none !important; visibility:visible !important; opacity:1 !important;
+}
+#accountsPage .account-icon { display:grid !important; place-items:center; width:2.8rem; height:2.8rem; flex:0 0 2.8rem; border-radius:.85rem; background:rgba(99,91,255,.1); color:var(--app-primary); }
+#accountsPage .account-main { display:block !important; min-width:0 !important; }
+#accountsPage .account-title-row { display:flex !important; flex-wrap:wrap; align-items:center; gap:.5rem; }
+#accountsPage .account-name { display:block !important; margin:0; color:var(--bs-body-color) !important; font-size:1rem; font-weight:750; }
+#accountsPage .account-subtitle { display:block !important; margin-top:.2rem; color:var(--bs-secondary-color) !important; font-size:.82rem; }
+#accountsPage .account-balance {
+    display:block !important; flex:0 0 11rem !important; min-width:0; margin-left:auto;
+    text-align:right !important; color:var(--bs-body-color) !important;
+}
+#accountsPage .account-balance strong { display:block !important; color:var(--bs-body-color) !important; font-size:1.05rem; white-space:nowrap; }
+#accountsPage .account-balance span { display:block !important; color:var(--bs-secondary-color) !important; font-size:.75rem; }
+#accountsPage .account-menu { display:block !important; position:relative; flex:0 0 auto !important; grid-column:auto !important; grid-row:auto !important; justify-self:auto !important; }
+#accountsPage .account-menu-button { display:inline-flex !important; align-items:center; justify-content:center; gap:.35rem; min-width:5rem; min-height:2.4rem; padding:.4rem .65rem; border:1px solid var(--app-border); border-radius:.7rem; background:var(--bs-body-bg); color:var(--bs-body-color); }
+#accountsPage .account-menu .dropdown-menu { z-index:1080; }
+@media (max-width:767.98px) {
+    #accountsPage .accounts-toolbar { align-items:flex-start !important; flex-direction:column !important; }
+    #accountsPage .accounts-toolbar > div:last-child { width:100%; }
+    #accountsPage .accounts-toolbar > div:last-child .btn { flex:1 1 auto; }
+    #accountsPage .account-card { display:grid !important; grid-template-columns:minmax(0,1fr) auto !important; grid-template-rows:auto auto !important; gap:.6rem .7rem !important; padding:.85rem !important; }
+    #accountsPage .account-card-link { grid-column:1 !important; grid-row:1 !important; }
+    #accountsPage .account-menu { grid-column:2 !important; grid-row:1 !important; align-self:start; }
+    #accountsPage .account-balance { grid-column:1 / -1 !important; grid-row:2 !important; display:flex !important; flex-direction:row; align-items:baseline; justify-content:space-between; gap:.5rem; width:100%; padding-top:.55rem; border-top:1px solid var(--app-border); text-align:left !important; }
+    #accountsPage .account-balance strong { font-size:.98rem; }
 }
 </style>
 @endpush
