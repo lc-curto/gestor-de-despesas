@@ -1,10 +1,10 @@
 <?php
 
-namespace App\\Services\\Financial;
+namespace App\Services\Financial;
 
-use Illuminate\\Database\\Query\\Builder;
-use Illuminate\\Support\\Carbon;
-use Illuminate\\Support\\Facades\\DB;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Fonte única de leitura para os movimentos tradicionais (receitas e despesas).
