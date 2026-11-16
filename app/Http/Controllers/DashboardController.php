@@ -76,7 +76,8 @@ class DashboardController extends Controller
         // aplicado no cliente sem uma segunda requisição ao abrir o Dashboard.
         $despesasFiltradas = $user->despesas()
             ->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()])
-            ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('movimentos as cancelled')->where('cancelled.user_id', $user->id)->where('cancelled.legacy_type', 'despesa')->whereColumn('cancelled.legacy_id', 'despesas.id')->where('cancelled.status', 'void'));
+            ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('movimentos as cancelled')->where('cancelled.user_id', $user->id)->where('cancelled.legacy_type', 'despesa')->whereColumn('cancelled.legacy_id', 'despesas.id')->where('cancelled.status', 'void'))
+            ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('movimentos as card_purchases')->where('card_purchases.user_id', $user->id)->where('card_purchases.legacy_type', 'despesa')->whereColumn('card_purchases.legacy_id', 'despesas.id')->whereNotNull('card_purchases.invoice_id'));
         $receitasFiltradas = $user->receitas()
             ->whereBetween('income_date', [$inicio->toDateString(), $fim->toDateString()])
             ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('movimentos as cancelled')->where('cancelled.user_id', $user->id)->where('cancelled.legacy_type', 'receita')->whereColumn('cancelled.legacy_id', 'receitas.id')->where('cancelled.status', 'void'));
@@ -157,7 +158,8 @@ class DashboardController extends Controller
         $offset = ($page - 1) * $limit;
 
         $despesasQuery = $user->despesas()->whereBetween('expense_date', [$inicio->toDateString(), $fim->toDateString()])
-            ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('movimentos as cancelled')->where('cancelled.user_id', $user->id)->where('cancelled.legacy_type', 'despesa')->whereColumn('cancelled.legacy_id', 'despesas.id')->where('cancelled.status', 'void'));
+            ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('movimentos as cancelled')->where('cancelled.user_id', $user->id)->where('cancelled.legacy_type', 'despesa')->whereColumn('cancelled.legacy_id', 'despesas.id')->where('cancelled.status', 'void'))
+            ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('movimentos as card_purchases')->where('card_purchases.user_id', $user->id)->where('card_purchases.legacy_type', 'despesa')->whereColumn('card_purchases.legacy_id', 'despesas.id')->whereNotNull('card_purchases.invoice_id'));
         $receitasQuery = $user->receitas()->whereBetween('income_date', [$inicio->toDateString(), $fim->toDateString()])
             ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('movimentos as cancelled')->where('cancelled.user_id', $user->id)->where('cancelled.legacy_type', 'receita')->whereColumn('cancelled.legacy_id', 'receitas.id')->where('cancelled.status', 'void'));
         if ($categoria !== 'all') {
