@@ -8,8 +8,8 @@
     $statusLabels = ['active' => 'Ativa', 'setup_pending' => 'Por configurar', 'closed' => 'Encerrada'];
 @endphp
 
-<div class="app-content accounts-page" id="accountsPage">
-    <header class="accounts-toolbar">
+<div class="app-content accounts-rebuilt" id="accountsPage">
+    <header class="accounts-header-v2">
         <div>
             <h1 class="h2 fw-bold mb-0">Contas</h1>
             <span class="small text-secondary">{{ $accounts->count() }} {{ $accounts->count() === 1 ? 'conta' : 'contas' }}</span>
@@ -37,25 +37,25 @@
             </div>
         </section>
     @else
-        <section class="accounts-list" aria-label="As minhas contas">
+        <section class="accounts-list-v2" aria-label="As minhas contas">
             @foreach ($accounts as $account)
                 @php
                     $icon = $account->type === 'cash' ? 'wallet' : ($account->type === 'credit_card' ? 'credit-card' : 'landmark');
                 @endphp
-                <article class="account-card">
-                    <a class="account-card-link" href="{{ route('financial.accounts.show', $account->id) }}" aria-label="Ver histórico de {{ $account->name }}">
-                        <span class="account-icon"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></span>
-                        <div class="account-main">
-                            <div class="account-title-row">
-                                <h2 class="account-name">{{ $account->name }}</h2>
-                                <span class="account-status {{ $account->status === 'active' ? 'is-active' : ($account->status === 'closed' ? 'is-closed' : 'is-pending') }}">
+                <article class="account-row-v2">
+                    <a class="account-row-link-v2" href="{{ route('financial.accounts.show', $account->id) }}" aria-label="Ver histórico de {{ $account->name }}">
+                        <span class="account-row-icon-v2"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></span>
+                        <div class="account-row-main-v2">
+                            <div class="account-row-title-v2">
+                                <h2 class="account-row-name-v2">{{ $account->name }}</h2>
+                                <span class="account-row-status-v2 {{ $account->status === 'active' ? 'is-active' : ($account->status === 'closed' ? 'is-closed' : 'is-pending') }}">
                                     {{ $statusLabels[$account->status] ?? $account->status }}
                                 </span>
                             </div>
-                            <div class="account-subtitle">{{ $typeLabels[$account->type] ?? $account->type }} <span aria-hidden="true">·</span> {{ $account->currency }}</div>
+                            <div class="account-row-subtitle-v2">{{ $typeLabels[$account->type] ?? $account->type }} <span aria-hidden="true">·</span> {{ $account->currency }}</div>
                         </div>
                     </a>
-                    <div class="account-balance">
+                    <div class="account-row-balance-v2">
                         @if ($account->current_balance !== null)
                             @if ($account->type === 'credit_card' && $account->credit_limit !== null)
                                 <strong>{{ number_format(max(0, (float) $account->credit_limit - abs((float) $account->current_balance)), 2, ',', '.') }} <small>{{ $account->currency }}</small></strong>
@@ -71,8 +71,8 @@
                         @endif
                     </div>
                     @if ($account->is_operational && $account->status !== 'closed')
-                        <div class="dropdown account-menu">
-                            <button class="account-menu-button" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações para {{ $account->name }}">
+                        <div class="dropdown account-row-menu-v2">
+                            <button class="account-row-menu-v2-button" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações para {{ $account->name }}">
                                 <span>Ações</span><i data-lucide="chevron-down" aria-hidden="true"></i>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-sm">
@@ -199,34 +199,44 @@
 @push('styles')
 <style>
 /* A página segue a mesma hierarquia de Cartões, sem depender de regras globais. */
-.accounts-page { width: 100%; min-width: 0; }
-.accounts-page .accounts-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 0 0 1.25rem; }
-.accounts-page .accounts-toolbar > :first-child { min-width: 0; flex: 1 1 auto; }
-.accounts-page .accounts-toolbar h1 { display: block; margin: 0 0 .25rem; color: var(--mb-text); font-size: clamp(1.45rem, 2.2vw, 1.9rem); line-height: 1.2; }
-.accounts-page .accounts-toolbar .small { display: block; color: var(--mb-muted) !important; }
-.accounts-page .accounts-toolbar > :last-child { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: .5rem; }
-.accounts-page .accounts-list { display: grid; gap: .85rem; min-width: 0; }
-.accounts-page .account-card { display: flex; align-items: center; gap: 1rem; min-width: 0; min-height: 6.25rem; padding: 1.1rem 1.25rem; border: 1px solid var(--mb-border); border-radius: var(--mb-radius-lg); background: var(--mb-surface); box-shadow: var(--mb-shadow); }
-.accounts-page .account-card-link { display: flex; flex: 1 1 auto; min-width: 0; align-items: center; gap: .85rem; color: var(--mb-text); text-decoration: none; }
-.accounts-page .account-icon { display: grid; width: 2.8rem; height: 2.8rem; flex: 0 0 2.8rem; place-items: center; border-radius: .85rem; background: rgba(99,91,255,.1); color: var(--mb-primary); }
-.accounts-page .account-icon svg { width: 1.3rem; height: 1.3rem; }
-.accounts-page .account-main { min-width: 0; }
-.accounts-page .account-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
-.accounts-page .account-name { margin: 0; color: var(--mb-text); font-size: 1rem; font-weight: 750; overflow-wrap: anywhere; }
-.accounts-page .account-status { display: inline-flex; align-items: center; padding: .22rem .55rem; border-radius: 999px; font-size: .7rem; font-weight: 700; }
-.accounts-page .account-subtitle { margin-top: .2rem; color: var(--mb-muted); font-size: .82rem; }
-.accounts-page .account-balance { flex: 0 0 11rem; min-width: 0; margin-left: auto; color: var(--mb-text); text-align: right; }
-.accounts-page .account-balance strong { display: block; color: var(--mb-text); white-space: nowrap; }
-.accounts-page .account-balance span { display: block; color: var(--mb-muted); font-size: .75rem; }
-.accounts-page .account-menu { flex: 0 0 auto; }
+.accounts-rebuilt { width: 100%; min-width: 0; }
+.accounts-rebuilt .accounts-header-v2 { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 0 0 1.25rem; }
+.accounts-rebuilt .accounts-header-v2 > :first-child { min-width: 0; flex: 1 1 auto; }
+.accounts-rebuilt .accounts-header-v2 h1 { display: block; margin: 0 0 .25rem; color: var(--mb-text); font-size: clamp(1.45rem, 2.2vw, 1.9rem); line-height: 1.2; }
+.accounts-rebuilt .accounts-header-v2 .small { display: block; color: var(--mb-muted) !important; }
+.accounts-rebuilt .accounts-header-v2 > :last-child { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: .5rem; }
+.accounts-rebuilt .accounts-list-v2 { display: grid; gap: .85rem; min-width: 0; }
+.accounts-rebuilt .account-row-v2 { display: flex; align-items: center; gap: 1rem; min-width: 0; min-height: 6.25rem; padding: 1.1rem 1.25rem; border: 1px solid var(--mb-border); border-radius: var(--mb-radius-lg); background: var(--mb-surface); box-shadow: var(--mb-shadow); }
+.accounts-rebuilt .account-row-link-v2 { display: flex; flex: 1 1 auto; min-width: 0; align-items: center; gap: .85rem; color: var(--mb-text); text-decoration: none; }
+.accounts-rebuilt .account-row-icon-v2 { display: grid; width: 2.8rem; height: 2.8rem; flex: 0 0 2.8rem; place-items: center; border-radius: .85rem; background: rgba(99,91,255,.1); color: var(--mb-primary); }
+.accounts-rebuilt .account-row-icon-v2 svg { width: 1.3rem; height: 1.3rem; }
+.accounts-rebuilt .account-row-main-v2 { min-width: 0; }
+.accounts-rebuilt .account-row-title-v2 { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.accounts-rebuilt .account-row-name-v2 { margin: 0; color: var(--mb-text); font-size: 1rem; font-weight: 750; overflow-wrap: anywhere; }
+.accounts-rebuilt .account-row-status-v2 { display: inline-flex; align-items: center; padding: .22rem .55rem; border-radius: 999px; font-size: .7rem; font-weight: 700; }
+.accounts-rebuilt .account-row-subtitle-v2 { margin-top: .2rem; color: var(--mb-muted); font-size: .82rem; }
+.accounts-rebuilt .account-row-balance-v2 { flex: 0 0 11rem; min-width: 0; margin-left: auto; color: var(--mb-text); text-align: right; }
+.accounts-rebuilt .account-row-balance-v2 strong { display: block; color: var(--mb-text); white-space: nowrap; }
+.accounts-rebuilt .account-row-balance-v2 span { display: block; color: var(--mb-muted); font-size: .75rem; }
+
+.accounts-rebuilt .account-row-menu-v2 { flex: 0 0 auto; }
+.accounts-rebuilt .account-row-menu-v2-button { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.4rem; padding: .45rem .7rem; border: 1px solid var(--mb-border); border-radius: .6rem; background: var(--mb-surface); color: var(--mb-text); font-size: .82rem; white-space: nowrap; }
+.accounts-rebuilt .account-row-menu-v2-button:hover { border-color: var(--mb-primary); color: var(--mb-primary); }
+.accounts-rebuilt .account-row-menu-v2-button svg { width: 1rem; height: 1rem; }
+.accounts-rebuilt .account-row-status-v2.is-active { background: rgba(33,132,91,.1); color: var(--mb-positive); }
+.accounts-rebuilt .account-row-status-v2.is-pending { background: rgba(220,150,35,.13); color: #93620b; }
+.accounts-rebuilt .account-row-status-v2.is-closed { background: var(--mb-page); color: var(--mb-muted); }
+.accounts-rebuilt .accounts-empty { border: 1px dashed var(--mb-border); background: var(--mb-surface); }
+.accounts-rebuilt .accounts-empty-icon { display: inline-grid; place-items: center; width: 3.4rem; height: 3.4rem; border-radius: 1rem; background: rgba(99,91,255,.1); color: var(--mb-primary); }
+.accounts-rebuilt .accounts-empty-icon svg { width: 1.5rem; height: 1.5rem; }
 @media (max-width: 767.98px) {
-    .accounts-page .accounts-toolbar { align-items: flex-start; flex-direction: column; }
-    .accounts-page .accounts-toolbar > :last-child { width: 100%; }
-    .accounts-page .accounts-toolbar > :last-child .btn { flex: 1 1 auto; }
-    .accounts-page .account-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; gap: .6rem .7rem; min-height: 0; padding: .9rem; }
-    .accounts-page .account-card-link { grid-column: 1; grid-row: 1; }
-    .accounts-page .account-menu { grid-column: 2; grid-row: 1; align-self: start; }
-    .accounts-page .account-balance { display: flex; grid-column: 1 / -1; grid-row: 2; align-items: baseline; justify-content: space-between; gap: .6rem; padding-top: .6rem; border-top: 1px solid var(--mb-border); text-align: left; }
+    .accounts-rebuilt .accounts-header-v2 { align-items: flex-start; flex-direction: column; }
+    .accounts-rebuilt .accounts-header-v2 > :last-child { width: 100%; }
+    .accounts-rebuilt .accounts-header-v2 > :last-child .btn { flex: 1 1 auto; }
+    .accounts-rebuilt .account-row-v2 { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; gap: .6rem .7rem; min-height: 0; padding: .9rem; }
+    .accounts-rebuilt .account-row-link-v2 { grid-column: 1; grid-row: 1; }
+    .accounts-rebuilt .account-row-menu-v2 { grid-column: 2; grid-row: 1; align-self: start; }
+    .accounts-rebuilt .account-row-balance-v2 { display: flex; grid-column: 1 / -1; grid-row: 2; align-items: baseline; justify-content: space-between; gap: .6rem; padding-top: .6rem; border-top: 1px solid var(--mb-border); text-align: left; }
 }
 </style>
 @endpush
