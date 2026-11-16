@@ -135,10 +135,19 @@ class FinancialAccountService
             $hasInvoiceMovements = DB::table('movimentos')->where('user_id', $user->id)
                 ->whereIn('invoice_id', DB::table('faturas')->select('id')->where('user_id', $user->id)->where('account_id', $locked->id))->exists();
 
+            // Cartões encerrados não podem passar pelo cálculo de saldo operacional.
+            // Sem configuração de saldo inicial, o saldo contabilístico de referência é zero.
+            $balanceCents = 0;
+            if ($locked->is_operational && $locked->opening_balance !== null && $locked->opening_balance_date) {
+                $balanceCents = $this->balances->toCents($this->balances->balance($locked));
+            } elseif ($locked->opening_balance !== null) {
+                $balanceCents = $this->balances->toCents((string) $locked->opening_balance);
+            }
+
             if ($hasMovements || $hasDebt || $hasRecurrence || $hasInvoiceMovements
                 || (float) $locked->opening_debt_amount > 0
                 || (float) $locked->opening_debt_paid > 0
-                || $this->balances->toCents($this->balances->balance($locked)) !== 0) {
+                || $balanceCents !== 0) {
                 throw ValidationException::withMessages(['card' => 'Este cartão tem movimentos, dívida ou registos associados e não pode ser eliminado. Podes encerrá-lo ou mantê-lo arquivado.']);
             }
 
