@@ -248,6 +248,16 @@ class DashboardController extends Controller
             ->whereNull('financial_movements.invoice_id')
             ->selectRaw("despesas.id, financial_movements.id AS financial_movement_id, 'despesa' AS tipo, despesas.description, despesas.amount, despesas.currency, categorias.id AS category, categorias.name AS category_label, categorias.icon AS category_icon, categorias.color AS category_color, despesas.expense_date AS data_movimento, financial_movements.source_account_id AS account_id, financial_movements.status AS movement_status, financial_movements.requires_account_assignment AS requires_account_assignment, financial_movements.is_historical AS is_historical, financial_movements.expense_behavior AS expense_behavior, despesas.due_date AS due_date, financial_movements.recurrence_id AS recurrence_id, recurrence_rules.frequency AS recurrence_frequency, recurrence_rules.interval_value AS recurrence_interval, recurrence_rules.ends_at AS recurrence_ends_at");
 
+        $cardPayments = DB::table('movimentos as card_payments')
+            ->join('contas_financeiras as source_accounts', 'source_accounts.id', '=', 'card_payments.source_account_id')
+            ->join('users as movement_users', 'movement_users.id', '=', 'card_payments.user_id')
+            ->where('card_payments.user_id', $userId)
+            ->where('card_payments.type', 'transfer')
+            ->where('card_payments.status', 'settled')
+            ->whereNotNull('card_payments.invoice_id')
+            ->whereBetween('card_payments.movement_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->selectRaw("card_payments.id, card_payments.id AS financial_movement_id, 'despesa' AS tipo, card_payments.description, card_payments.amount, movement_users.currency, NULL AS category, 'Pagamento de fatura' AS category_label, 'credit-card' AS category_icon, '#64748b' AS category_color, card_payments.movement_date AS data_movimento, card_payments.source_account_id AS account_id, card_payments.status AS movement_status, 0 AS requires_account_assignment, 0 AS is_historical, 'variable' AS expense_behavior, NULL AS due_date, NULL AS recurrence_id, NULL AS recurrence_frequency, NULL AS recurrence_interval, NULL AS recurrence_ends_at");
+
         $receitas = DB::table('receitas')
             ->join('categorias', 'categorias.id', '=', 'receitas.category_id')
             ->leftJoin('movimentos as financial_movements', function ($join) use ($userId) {
@@ -262,11 +272,11 @@ class DashboardController extends Controller
             ->selectRaw("receitas.id, financial_movements.id AS financial_movement_id, 'receita' AS tipo, receitas.description, receitas.amount, receitas.currency, categorias.id AS category, categorias.name AS category_label, categorias.icon AS category_icon, categorias.color AS category_color, receitas.income_date AS data_movimento, financial_movements.destination_account_id AS account_id, financial_movements.status AS movement_status, financial_movements.requires_account_assignment AS requires_account_assignment, financial_movements.is_historical AS is_historical, financial_movements.expense_behavior AS expense_behavior, financial_movements.recurrence_id AS recurrence_id, recurrence_rules.frequency AS recurrence_frequency, recurrence_rules.interval_value AS recurrence_interval, recurrence_rules.ends_at AS recurrence_ends_at");
 
         if ($tipo === 'despesa') {
-            $query = $despesas;
+            $query = $despesas->unionAll($cardPayments);
         } elseif ($tipo === 'receita') {
             $query = $receitas;
         } else {
-            $query = $despesas->unionAll($receitas);
+            $query = $despesas->unionAll($receitas)->unionAll($cardPayments);
         }
 
         $wrapped = DB::query()->fromSub($query, 'movimentos');
