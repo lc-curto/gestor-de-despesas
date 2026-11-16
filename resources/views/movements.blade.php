@@ -394,27 +394,27 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-secondary small mb-3" id="deleteMovementDescription"></p>
-                    <p class="alert alert-info small py-2" id="deleteMovementNote" hidden></p>
+                    <p class="text-secondary small mb-2" id="deleteMovementDescription"></p>
+                    <p class="alert alert-info small py-2 mb-2" id="deleteMovementNote" hidden></p>
                     <div id="deleteSingleOption" class="form-check border rounded-3 p-3">
                         <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeOnlySingle" value="only" checked>
-                        <label class="form-check-label fw-semibold" for="deleteScopeOnlySingle">Apenas este movimento</label>
+                        <label class="form-check-label fw-semibold" for="deleteScopeOnlySingle">Só este movimento</label>
                     </div>
-                    <div id="deleteRecurringOptions" hidden>
-                        <label class="form-check border rounded-3 p-3 mb-2" for="deleteScopeOnly">
-                            <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeOnly" value="only" checked>
-                            <span class="fw-semibold">Apenas este movimento</span>
-                            <span class="d-block small text-secondary mt-1">Os meses seguintes permanecem.</span>
+                    <div id="deleteRecurringOptions" class="d-grid gap-2" hidden>
+                        <label class="form-check border rounded-3 p-3 mb-0" for="deleteScopeOnly">
+                            <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeOnly" value="only">
+                            <span class="fw-semibold">Só este</span>
+                            <span class="d-block small text-secondary">Mantém os seguintes.</span>
                         </label>
-                        <label class="form-check border rounded-3 p-3 mb-2" for="deleteScopeFuture">
+                        <label class="form-check border rounded-3 p-3 mb-0" for="deleteScopeFuture">
                             <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeFuture" value="this_and_future">
-                            <span class="fw-semibold">Este e os próximos movimentos</span>
-                            <span class="d-block small text-secondary mt-1">Interrompe a recorrência e remove as previsões pendentes a partir desta ocorrência.</span>
+                            <span class="fw-semibold">Este e os seguintes</span>
+                            <span class="d-block small text-secondary">Para a recorrência a partir daqui.</span>
                         </label>
-                        <label class="form-check border rounded-3 p-3" for="deleteScopeAll">
+                        <label class="form-check border rounded-3 p-3 mb-0" for="deleteScopeAll">
                             <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeAll" value="all">
-                            <span class="fw-semibold">Todos os movimentos</span>
-                            <span class="d-block small text-secondary mt-1">Interrompe a recorrência e remove todas as ocorrências pendentes. Movimentos efetivados permanecem no histórico.</span>
+                            <span class="fw-semibold">Toda a recorrência</span>
+                            <span class="d-block small text-secondary">Remove previsões pendentes.</span>
                         </label>
                     </div>
                 </div>
