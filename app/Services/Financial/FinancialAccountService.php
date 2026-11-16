@@ -111,6 +111,42 @@ class FinancialAccountService
         });
     }
 
+    public function reopenCard(User $user, ContaFinanceira $account): ContaFinanceira
+    {
+        return DB::transaction(function () use ($user, $account): ContaFinanceira {
+            $locked = ContaFinanceira::query()->where('user_id', $user->id)->whereKey($account->id)->where('type', 'credit_card')->lockForUpdate()->firstOrFail();
+            if ($locked->status !== 'closed' || $locked->is_operational) {
+                throw ValidationException::withMessages(['card' => 'Este cartão não está encerrado.']);
+            }
+            $locked->update(['status' => 'active', 'is_operational' => true]);
+            return $locked->refresh();
+        });
+    }
+
+    public function deleteUnusedCard(User $user, ContaFinanceira $account): void
+    {
+        DB::transaction(function () use ($user, $account): void {
+            $locked = ContaFinanceira::query()->where('user_id', $user->id)->whereKey($account->id)->where('type', 'credit_card')->lockForUpdate()->firstOrFail();
+            $hasMovements = $user->movimentos()->where(function ($query) use ($locked) {
+                $query->where('source_account_id', $locked->id)->orWhere('destination_account_id', $locked->id);
+            })->exists();
+            $hasDebt = $user->dividas()->where('account_id', $locked->id)->exists();
+            $hasRecurrence = $user->recorrencias()->where('account_id', $locked->id)->exists();
+            $hasInvoiceMovements = DB::table('movimentos')->where('user_id', $user->id)
+                ->whereIn('invoice_id', DB::table('faturas')->select('id')->where('user_id', $user->id)->where('account_id', $locked->id))->exists();
+
+            if ($hasMovements || $hasDebt || $hasRecurrence || $hasInvoiceMovements
+                || (float) $locked->opening_debt_amount > 0
+                || (float) $locked->opening_debt_paid > 0
+                || $this->balances->toCents($this->balances->balance($locked)) !== 0) {
+                throw ValidationException::withMessages(['card' => 'Este cartão tem movimentos, dívida ou registos associados e não pode ser eliminado. Podes encerrá-lo ou mantê-lo arquivado.']);
+            }
+
+            DB::table('faturas')->where('user_id', $user->id)->where('account_id', $locked->id)->delete();
+            $locked->delete();
+        });
+    }
+
     public function close(User $user, ContaFinanceira $account, ?string $transferToAccountId = null): void
     {
         DB::transaction(function () use ($user, $account, $transferToAccountId) {

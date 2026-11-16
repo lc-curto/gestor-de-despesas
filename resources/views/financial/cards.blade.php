@@ -23,6 +23,8 @@
                     <div class="dropdown"><button class="credit-card-more" type="button" data-bs-toggle="dropdown" aria-label="Ações do cartão"><i data-lucide="more-horizontal"></i></button><ul class="dropdown-menu dropdown-menu-end shadow-sm">
                         @if($card->status!=='closed' && $card->is_operational)<li><button class="dropdown-item js-edit-card" type="button" data-bs-toggle="modal" data-bs-target="#editCardModal" data-name="{{ $card->name }}" data-update-url="{{ route('financial.accounts.update',$card->id) }}" data-settings-url="{{ route('financial.cards.settings',$card->id) }}" data-close-url="{{ route('financial.accounts.close',$card->id) }}" data-limit="{{ $card->credit_limit }}" data-closing="{{ $card->closing_day }}" data-due="{{ $card->due_day }}" data-used="{{ number_format($card->used_limit,2,'.','') }}">Editar cartão</button></li>@endif
                         @if($card->status==='active' && $card->is_operational)<li><button class="dropdown-item js-card-status" data-status="suspended" data-status-url="{{ route('financial.cards.status',$card->id) }}" data-name="{{ $card->name }}">Suspender cartão</button></li>@elseif($card->status==='suspended' && $card->is_operational)<li><button class="dropdown-item js-card-status" data-status="active" data-status-url="{{ route('financial.cards.status',$card->id) }}" data-name="{{ $card->name }}">Reativar cartão</button></li>@endif
+                        @if($card->status==='closed' || !$card->is_operational)<li><button class="dropdown-item js-reopen-card" data-url="{{ route('financial.cards.reopen',$card->id) }}" data-name="{{ $card->name }}">Reabrir cartão</button></li>@endif
+                        @if($card->can_delete)<li><button class="dropdown-item text-danger js-delete-card" data-url="{{ route('financial.cards.destroy',$card->id) }}" data-name="{{ $card->name }}">Excluir definitivamente</button></li>@endif
                         @if($card->status==='active' && $card->is_operational && $card->used_limit<=0.00001)<li><button class="dropdown-item text-danger js-close-card" type="button" data-close-url="{{ route('financial.accounts.close',$card->id) }}" data-name="{{ $card->name }}">Encerrar cartão</button></li>@endif
                     </ul></div>
                 </div>
@@ -132,6 +134,20 @@
             if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível alterar o estado.');
             window.location.reload();
         }catch(error){feedback.className='alert alert-danger';feedback.textContent=error.message;button.disabled=false;}
+    }));
+    document.querySelectorAll('.js-reopen-card').forEach(button=>button.addEventListener('click',async()=>{
+        if(!window.confirm('Reabrir o cartão '+button.dataset.name+'? O limite, a dívida e o histórico serão preservados.'))return;
+        button.disabled=true;
+        try{const response=await fetch(button.dataset.url,{method:'POST',credentials:'same-origin',headers,body:JSON.stringify({})});const result=await response.json().catch(()=>({}));
+            if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível reabrir o cartão.');window.location.reload();
+        }catch(error){feedback.className='alert alert-danger';feedback.textContent=error.message;button.disabled=false;}
+    }));
+    document.querySelectorAll('.js-delete-card').forEach(button=>button.addEventListener('click',async()=>{
+        if(!window.confirm('Excluir definitivamente '+button.dataset.name+'? Esta ação não pode ser desfeita.'))return;
+        button.disabled=true;
+        try{const response=await fetch(button.dataset.url,{method:'DELETE',credentials:'same-origin',headers});const result=await response.json().catch(()=>({}));
+            if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível excluir o cartão.');window.location.reload();
+        }catch(error){feedback.className='alert alert-danger';feedback.textContent=error.message;feedback.classList.remove('d-none');button.disabled=false;}
     }));
     document.querySelectorAll('.js-close-card').forEach(button=>button.addEventListener('click',async()=>{
         if(!window.confirm('Encerrar o cartão '+button.dataset.name+'? O histórico será preservado.'))return;button.disabled=true;

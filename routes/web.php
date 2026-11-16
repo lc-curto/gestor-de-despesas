@@ -52,6 +52,8 @@ Route::middleware(['auth', 'financial.review'])->group(function(){
   Route::post('/accounts/{id}/close', [FinancialCoreController::class, 'closeAccount'])->name('accounts.close');
   Route::put('/accounts/{id}/card-settings', [FinancialCoreController::class, 'updateCardSettings'])->name('cards.settings');
   Route::post('/cards/{id}/status', [FinancialCoreController::class, 'setCardStatus'])->name('cards.status');
+  Route::post('/cards/{id}/reopen', [FinancialCoreController::class, 'reopenCard'])->name('cards.reopen');
+  Route::delete('/cards/{id}', [FinancialCoreController::class, 'deleteUnusedCard'])->name('cards.destroy');
   Route::post('/cards/{id}/pay-opening-debt', [FinancialCoreController::class, 'payOpeningCardDebt'])->name('cards.pay-opening-debt');
   Route::get('/movements', [FinancialCoreController::class, 'movements'])->name('movements.index');
   Route::post('/movements', [FinancialCoreController::class, 'storeMovement'])->name('movements.store');

@@ -251,6 +251,19 @@ class FinancialCoreController extends Controller
         return response()->json(['data' => $updated, 'message' => $data['status'] === 'active' ? 'Cartão reativado.' : 'Cartão suspenso.']);
     }
 
+    public function reopenCard(Request $request, string $id, FinancialAccountService $service): JsonResponse
+    {
+        $card = $request->user()->contasFinanceiras()->whereKey($id)->where('type', 'credit_card')->firstOrFail();
+        return response()->json(['data' => $service->reopenCard($request->user(), $card), 'message' => 'Cartão reaberto.']);
+    }
+
+    public function deleteUnusedCard(Request $request, string $id, FinancialAccountService $service): JsonResponse
+    {
+        $card = $request->user()->contasFinanceiras()->whereKey($id)->where('type', 'credit_card')->firstOrFail();
+        $service->deleteUnusedCard($request->user(), $card);
+        return response()->json(['message' => 'Cartão eliminado.']);
+    }
+
     public function closeAccount(Request $request, string $id, FinancialAccountService $service): JsonResponse
     {
         $data = $request->validate(['transfer_to_account_id' => 'nullable|uuid']);

@@ -20,6 +20,10 @@ class FinancialCardsPageController extends Controller
             $card->current_balance = $card->opening_balance !== null ? $balances->balance($card) : '0.00';
             $card->used_limit = max(0, -(float) $card->current_balance);
             $card->available_limit = max(0, (float) ($card->credit_limit ?? 0) - $card->used_limit);
+            $card->can_delete = $card->movimentos_origem_count === 0
+                && $card->movimentos_destino_count === 0
+                && (float) ($card->opening_debt_amount ?? 0) === 0.0
+                && (float) ($card->opening_debt_paid ?? 0) === 0.0;
             $card->usage_percent = (float) ($card->credit_limit ?? 0) > 0
                 ? min(100, ($card->used_limit / (float) $card->credit_limit) * 100)
                 : 0;
