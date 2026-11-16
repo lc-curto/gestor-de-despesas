@@ -57,15 +57,15 @@
                         <tbody>
                         @foreach ($monthDays as $date => $values)
                             @php
-                                $running += $values['income'] - $values['variable'] - $values['fixed'];
+                                $running += $values['account_opening'] + $values['income'] - $values['variable'] - $values['fixed'];
                                 $status = $running <= 0 ? 'risk' : ($running <= $fixedTotal ? 'attention' : ($running < ($fixedTotal + $variableTotal) ? 'protected' : 'comfortable'));
                                 $dayItems = $values['items']->map(fn ($item) => [
-                                    'id' => $item->id, 'type' => $item->type, 'status' => $item->status,
+                                    'id' => $item->financial_movement_id ?? $item->id, 'type' => $item->tipo === 'receita' ? 'income' : 'expense', 'status' => $item->movement_status ?? 'settled',
                                     'description' => $item->description, 'amount' => (float) $item->amount,
-                                    'date' => $item->movement_date->toDateString(),
+                                    'date' => \\Illuminate\\Support\\Carbon::parse($item->data_movimento)->toDateString(),
                                     'expense_behavior' => $item->expense_behavior,
-                                    'category' => $item->categoria?->name ?? 'Sem categoria', 'category_id' => $item->category_id,
-                                    'account_id' => $item->type === 'expense' ? $item->source_account_id : $item->destination_account_id,
+                                    'category' => $item->category_label ?? 'Sem categoria', 'category_id' => $item->category,
+                                    'account_id' => $item->account_id,
                                     'recurrence_id' => $item->recurrence_id,
                                     'notes' => $item->notes ?? '',
                                 ])->values();
