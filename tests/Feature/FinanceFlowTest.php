@@ -564,4 +564,27 @@ class FinanceFlowTest extends TestCase
         ]);
     }
 
+
+    public function test_credit_cards_page_handles_closed_cards_without_calling_operational_balance_service(): void
+    {
+        $user = User::factory()->create(['currency' => 'EUR']);
+        $card = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Cartão encerrado',
+            'type' => 'credit_card',
+            'opening_debt_amount' => '125.00',
+            'opening_balance_date' => '2026-11-16',
+            'closing_day' => 10,
+            'due_day' => 1,
+            'credit_limit' => '1000.00',
+        ]);
+        $card->update(['status' => 'closed', 'is_operational' => false]);
+
+        $this->actingAs($user)
+            ->get(route('financial.cards.page'))
+            ->assertOk()
+            ->assertSee('Cartão encerrado')
+            ->assertSee('125,00');
+    }
+
+
 }

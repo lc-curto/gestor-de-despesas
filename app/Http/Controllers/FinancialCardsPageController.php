@@ -17,7 +17,9 @@ class FinancialCardsPageController extends Controller
             ->get();
 
         $cards->each(function (ContaFinanceira $card) use ($balances): void {
-            $card->current_balance = $card->opening_balance !== null ? $balances->balance($card) : '0.00';
+            $card->current_balance = ($card->is_operational && $card->opening_balance !== null && $card->opening_balance_date)
+                ? $balances->balance($card)
+                : (string) ($card->opening_balance ?? '0.00');
             $card->used_limit = max(0, -(float) $card->current_balance);
             $card->available_limit = max(0, (float) ($card->credit_limit ?? 0) - $card->used_limit);
             $card->can_delete = $card->movimentos_origem_count === 0
