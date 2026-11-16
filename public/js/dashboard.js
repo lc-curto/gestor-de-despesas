@@ -368,7 +368,7 @@
         }
         details.append(name, metadata);
         if (isExpense && item.due_date) {
-            const due = String(item.due_date).slice(0, 10).match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+            const due = String(item.due_date).slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
             if (due) {
                 const dueDate = new Date(Number(due[1]), Number(due[2]) - 1, Number(due[3]));
                 const dueLine = document.createElement('p');
