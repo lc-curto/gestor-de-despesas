@@ -59,7 +59,6 @@ class AccountBalanceService
             ->where('user_id', $account->user_id)
             ->where('status', 'settled')
             ->where('is_historical', false)
-            ->whereDate('movement_date', '>=', $account->opening_balance_date->toDateString())
             ->whereDate('movement_date', '<=', $date)
             ->where(function ($query) use ($account) {
                 $query->where('source_account_id', $account->id)
