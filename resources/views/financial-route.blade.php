@@ -70,7 +70,7 @@
                                     'notes' => $item->notes ?? '',
                                 ])->values();
                             @endphp
-                            <tr>
+                            <tr class="{{ $date === $today ? 'is-today' : '' }}">
                                 <th scope="row"><button type="button" class="route-cell route-date" data-date="{{ $date }}">{{ \Illuminate\Support\Carbon::parse($date)->format('d') }}</button></th>
                                 <td><button type="button" class="route-cell" data-date="{{ $date }}" data-filter="income">{{ $values['income'] > 0 ? $format($values['income']) : '—' }}</button></td>
                                 <td><button type="button" class="route-cell" data-date="{{ $date }}" data-filter="fixed">{{ $values['fixed'] > 0 ? $format($values['fixed']) : '—' }}</button></td>
@@ -80,7 +80,7 @@
                             <script type="application/json" id="route-day-{{ $date }}">{!! json_encode(['items' => $dayItems, 'balance' => $running, 'status' => $status], JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) !!}</script>
                         @endforeach
                         </tbody>
-                        <tfoot><tr><th colspan="4">Saldo final</th><td class="route-balance {{ $running <= 0 ? 'risk' : ($running <= $fixedTotal ? 'attention' : ($running < ($fixedTotal + $variableTotal) ? 'protected' : 'comfortable')) }}">{{ $format($running) }} {{ $symbol }}</td></tr></tfoot>
+                        <tfoot><tr><th colspan="4">Saldo final</th><td class="route-balance {{ $running <= 0 ? 'risk' : ($running <= $fixedTotal ? 'attention' : ($running < ($fixedTotal + $variableTotal) ? 'protected' : 'comfortable')) }}"><span>{{ $format($running) }}</span><span>{{ $symbol }}</span></td></tr></tfoot>
                     </table>
                 </div>
             </section>
@@ -156,9 +156,9 @@
  .financial-route-month h2{display:flex;align-items:center;justify-content:space-between;font-size:.75rem;letter-spacing:.075em;margin:0;padding:.85rem .9rem .65rem}
 
  .financial-route-table-wrap{border:1px solid var(--bs-border-color);border-radius:.85rem;box-shadow:0 2px 10px rgba(25,25,45,.035)}
- .financial-route-table{width:100%;table-layout:fixed;font-size:clamp(.56rem,2.2vw,.68rem);line-height:1.2;font-variant-numeric:tabular-nums}
+ .financial-route-table{width:100%;table-layout:fixed;font-size:clamp(.62rem,2.55vw,.76rem);line-height:1.25;font-variant-numeric:tabular-nums}
  .financial-route-table th,.financial-route-table td{padding:.38rem .12rem;border-bottom:1px solid rgba(120,120,140,.13);white-space:nowrap;overflow:visible;text-overflow:clip}
- .financial-route-table thead th{padding:.58rem .08rem;background:#f5f4fa;color:#666579;font-size:clamp(.52rem,2vw,.63rem);letter-spacing:0;white-space:nowrap}
+ .financial-route-table thead th{padding:.62rem .08rem;background:#f5f4fa;color:#666579;font-size:clamp(.57rem,2.25vw,.68rem);letter-spacing:0;white-space:nowrap}
  .financial-route-table th:first-child{width:9%;padding-left:.45rem}
  .financial-route-table th:nth-child(2){width:21%}
  .financial-route-table th:nth-child(3){width:19%}
@@ -174,17 +174,18 @@
  .route-balance.protected{color:#397b56}
  .route-balance.comfortable{color:#267348}
  .financial-route-table tbody tr:last-child th,.financial-route-table tbody tr:last-child td{border-bottom:1px solid rgba(120,120,140,.13)}
- .financial-route-table tfoot th,.financial-route-table tfoot td{padding:.8rem .65rem;background:#f7f6fb;border-top:1px solid var(--bs-border-color);font-size:.76rem}
- .financial-route-table tfoot th{border-radius:0 0 0 .75rem}
- .financial-route-table tfoot td{border-radius:0 0 .75rem 0}
- .financial-route-table tfoot .route-balance{background:transparent!important;padding:0;font-size:.9rem}
+ .financial-route-table tbody tr.is-today>th,.financial-route-table tbody tr.is-today>td{background:#e9e9eb!important}
+ .financial-route-table tfoot th,.financial-route-table tfoot td{padding:.8rem .65rem;background:#f7f6fb;border-top:1px solid var(--bs-border-color);font-size:.82rem}
+ .financial-route-table tfoot th{border-radius:0 0 0 .75rem;text-align:left}
+ .financial-route-table tfoot td{display:flex;align-items:center;justify-content:flex-end;gap:.22rem;flex-wrap:nowrap;white-space:nowrap;border-radius:0 0 .75rem 0;font-size:.96rem;font-variant-numeric:tabular-nums}
+ .financial-route-table tfoot .route-balance{background:transparent!important;padding:0;white-space:nowrap}
  .route-sheet-content{box-shadow:0 -8px 30px rgba(20,20,40,.12)}
 }
 @media(max-width:380px){
  .financial-route-header h1{font-size:1.16rem}
  .financial-route-eyebrow{font-size:.57rem}
  .financial-route-actions .btn{padding:.48rem .62rem;font-size:.76rem}
- .financial-route-table{font-size:clamp(.54rem,2vw,.62rem)}
+ .financial-route-table{font-size:clamp(.59rem,2.3vw,.69rem)}
  .financial-route-table th,.financial-route-table td{padding-left:.08rem;padding-right:.08rem}
  .financial-route-table th:first-child{padding-left:.35rem}
  .financial-route-table th:last-child{padding-right:.35rem}
