@@ -98,6 +98,65 @@ jobs:
           chmod 600 ~/.ssh/known_hosts
           test -s ~/.ssh/known_hosts
 
+      - name: Libertar espaço antes do deploy (preservar release ativa)
+        if: github.event_name != 'pull_request'
+        env:
+          API_TOKEN: ${{ secrets.ALWAYSDATA_API_TOKEN }}
+          API_ACCOUNT: meu-bolso
+          SITE_ID: '1102810'
+          SSH_HOST: ${{ secrets.ALWAYSDATA_HOST }}
+          SSH_USER: ${{ secrets.ALWAYSDATA_USER }}
+        run: |
+          set -euo pipefail
+          API="https://api.alwaysdata.com/v1/site/${SITE_ID}/"
+          AUTH="${API_TOKEN} account=${API_ACCOUNT}:"
+          ACTIVE_PATH=$(curl --fail --silent --show-error --basic --user "$AUTH" "$API" | jq -er '.path')
+          ACTIVE_NAME=$(printf '%s' "$ACTIVE_PATH" | sed -nE 's#^releases/(release-[0-9a-f]{7})/public/?$#\1#p')
+          test -n "$ACTIVE_NAME"
+          ssh -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ecdsa-sha2-nistp256 "${SSH_USER}@${SSH_HOST}" "bash -s -- '$ACTIVE_NAME'" <<'REMOTE'
+          set -euo pipefail
+          RELEASES_DIR="$HOME/releases"
+          ACTIVE_NAME="$1"
+          ACTIVE_PATH="$RELEASES_DIR/$ACTIVE_NAME"
+
+          # Não limpar nada se não for possível confirmar a release atualmente servida.
+          test -d "$ACTIVE_PATH"
+          test -f "$ACTIVE_PATH/artisan"
+          test -f "$ACTIVE_PATH/public/build/manifest.json"
+          test -L "$ACTIVE_PATH/.env"
+          test -L "$ACTIVE_PATH/storage"
+
+          previous_kept=0
+          while IFS= read -r candidate; do
+            [ -n "$candidate" ] || continue
+            name="${candidate##*/}"
+            [ "$name" = "$ACTIVE_NAME" ] && continue
+
+            case "$name" in
+              release-???????)
+                [[ "$name" =~ ^release-[0-9a-f]{7}$ ]] || continue
+                ;;
+              *) continue ;;
+            esac
+
+            # Preservar uma release anterior completa para rollback.
+            if [ -f "$candidate/artisan" ] &&
+               [ -f "$candidate/public/build/manifest.json" ] &&
+               [ -L "$candidate/.env" ] &&
+               [ -L "$candidate/storage" ] &&
+               [ "$previous_kept" -lt 1 ]; then
+              previous_kept=$((previous_kept + 1))
+              echo "Preservando rollback: $name"
+              continue
+            fi
+
+            echo "Removendo release antiga/incompleta: $name"
+            rm -rf -- "$candidate"
+          done < <(find "$RELEASES_DIR" -mindepth 1 -maxdepth 1 -type d -regextype posix-extended -regex '.*/release-[0-9a-f]{7}' -printf '%T@ %p\\n' | sort -rn | cut -d' ' -f2-)
+
+          echo "Espaço libertado. Release ativa e uma release de rollback preservadas."
+          REMOTE
+
       - name: Criar nova release no servidor
         if: github.event_name != 'pull_request'
         env:
