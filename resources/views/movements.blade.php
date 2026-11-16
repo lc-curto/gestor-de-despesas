@@ -287,6 +287,89 @@
 
 
 
+
+<div class="modal fade" id="settleMovementModal" tabindex="-1" aria-labelledby="settleMovementTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <form id="settleMovementForm">
+                <div class="modal-header border-0 pb-0">
+                    <h2 class="modal-title h5 fw-bold" id="settleMovementTitle">Confirmar movimento</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-secondary small mb-3" id="settleMovementDescription"></p>
+                    <div class="mb-3">
+                        <label for="settleMovementAmount" class="form-label fw-semibold">Valor efetivo</label>
+                        <div class="input-group">
+                            <input id="settleMovementAmount" name="amount" type="number" min="0.01" step="0.01" class="form-control" required>
+                            <span class="input-group-text">{{ $moeda }}</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="settleMovementDate" class="form-label fw-semibold">Data de realização</label>
+                        <input id="settleMovementDate" name="movement_date" type="date" class="form-control" required>
+                    </div>
+                    <div>
+                        <label for="settleMovementAccount" class="form-label fw-semibold" id="settleMovementAccountLabel">Conta</label>
+                        <select id="settleMovementAccount" name="account_id" class="form-select" required>
+                            <option value="">Selecionar conta</option>
+                            @foreach ($accounts as $account)
+                                <option value="{{ $account->id }}">{{ $account->name }} · {{ $account->currency }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 d-grid gap-2">
+                    <button type="submit" class="btn btn-success w-100" id="settleMovementSubmit">Confirmar movimento</button>
+                    <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteMovementModal" tabindex="-1" aria-labelledby="deleteMovementTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <form id="deleteMovementForm">
+                <div class="modal-header border-0 pb-0">
+                    <h2 class="modal-title h5 fw-bold" id="deleteMovementTitle">Excluir movimento</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-secondary small mb-3" id="deleteMovementDescription"></p>
+                    <div id="deleteSingleOption" class="form-check border rounded-3 p-3">
+                        <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeOnlySingle" value="only" checked>
+                        <label class="form-check-label fw-semibold" for="deleteScopeOnlySingle">Apenas este movimento</label>
+                    </div>
+                    <div id="deleteRecurringOptions" hidden>
+                        <label class="form-check border rounded-3 p-3 mb-2" for="deleteScopeOnly">
+                            <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeOnly" value="only" checked>
+                            <span class="fw-semibold">Apenas este movimento</span>
+                            <span class="d-block small text-secondary mt-1">Os meses seguintes permanecem.</span>
+                        </label>
+                        <label class="form-check border rounded-3 p-3 mb-2" for="deleteScopeFuture">
+                            <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeFuture" value="this_and_future">
+                            <span class="fw-semibold">Este e os próximos movimentos</span>
+                            <span class="d-block small text-secondary mt-1">Interrompe a recorrência e remove as previsões pendentes a partir desta ocorrência.</span>
+                        </label>
+                        <label class="form-check border rounded-3 p-3" for="deleteScopeAll">
+                            <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeAll" value="all">
+                            <span class="fw-semibold">Todos os movimentos</span>
+                            <span class="d-block small text-secondary mt-1">Interrompe a recorrência e remove todas as ocorrências pendentes. Movimentos efetivados permanecem no histórico.</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 d-grid gap-2">
+                    <button type="submit" class="btn btn-danger w-100" id="deleteMovementSubmit">Confirmar exclusão</button>
+                    <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
 @endsection
 
 @push('scripts')
@@ -316,38 +399,12 @@ window.meuBolsoDashboard = {
     expenseCategories: @json($categoriasDespesa),
     incomeCategories: @json($categoriasReceita),
     categories: @json($categorias),
-    recurrencesUrl: @json(route('financial.recurrences.page'))
+    financialMovementBase: @json(url('/api/financial/movements'))
 };
 </script>
 
 @if ($errors->any())
 <script>document.addEventListener('DOMContentLoaded', () => bootstrap.Modal.getOrCreateInstance(document.getElementById('movementEntryModal')).show());</script>
 @endif
-<script>
-document.addEventListener('click', async (event) => {
-    const button = event.target.closest('.settle-recurring-movement');
-    if (!button || button.disabled) return;
-    if (!confirm('Confirmas que esta despesa recorrente foi paga ou realizada?')) return;
-    button.disabled = true;
-    try {
-        const response = await fetch(button.dataset.url, {
-            method: 'PUT',
-            credentials: 'same-origin',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-            },
-            body: JSON.stringify({source_account_id: button.dataset.accountId || null})
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'Não foi possível liquidar a ocorrência.');
-        window.location.reload();
-    } catch (error) {
-        alert(error.message);
-        button.disabled = false;
-    }
-});
-</script>
 <script src="{{ asset('js/dashboard.js') }}?v={{ filemtime(public_path('js/dashboard.js')) }}" defer></script>
 @endpush
