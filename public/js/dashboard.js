@@ -325,6 +325,7 @@
         article.dataset.accountId = item.account_id || '';
         article.dataset.expenseBehavior = item.expense_behavior || 'variable';
         article.dataset.movementStatus = item.movement_status || '';
+        article.dataset.dueDate = item.due_date || '';
         article.dataset.recurrenceId = item.recurrence_id || '';
         article.dataset.recurrenceFrequency = item.recurrence_frequency || '';
         article.dataset.recurrenceInterval = item.recurrence_interval || '';
@@ -363,7 +364,22 @@
             recurrenceBadge.textContent = 'Recorrente';
             badges.append(recurrenceBadge);
         }
-        details.append(name, metadata, badges);
+        details.append(name, metadata);
+        if (isExpense && item.due_date) {
+            const due = String(item.due_date).slice(0, 10).match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+            if (due) {
+                const dueDate = new Date(Number(due[1]), Number(due[2]) - 1, Number(due[3]));
+                const dueLine = document.createElement('p');
+                dueLine.className = 'small text-body-tertiary mb-0';
+                const dueLabel = new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: 'short' }).format(dueDate);
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                dueDate.setHours(0, 0, 0, 0);
+                const daysLate = Math.floor((today - dueDate) / 86400000);
+                dueLine.textContent = daysLate > 0 && item.movement_status !== 'settled' ? 'Vencido há ' + daysLate + (daysLate === 1 ? ' dia' : ' dias') : 'Vence em ' + dueLabel;
+                details.append(dueLine);
+            }
+        }
+        details.append(badges);
         info.append(icon, details);
 
         const actions = document.createElement('div');
@@ -439,13 +455,17 @@
                 if (day !== currentDay) {
                     currentDay = day;
                     const heading = document.createElement('div');
-                    heading.className = 'movement-day-heading';
+                    heading.className = 'movement-day-heading d-flex justify-content-between align-items-center';
                     const match = day.match(/^(\d{4})-(\d{2})-(\d{2})$/);
                     if (match) {
                         const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-                        heading.textContent = new Intl.DateTimeFormat('pt-PT', {
-                            weekday: 'long', day: '2-digit', month: 'long'
-                        }).format(date);
+                        const dateLabel = document.createElement('span');
+                        dateLabel.className = 'fw-semibold';
+                        dateLabel.textContent = new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: 'long' }).format(date);
+                        const weekdayLabel = document.createElement('span');
+                        weekdayLabel.className = 'small text-secondary fw-normal';
+                        weekdayLabel.textContent = new Intl.DateTimeFormat('pt-PT', { weekday: 'long' }).format(date);
+                        heading.append(dateLabel, weekdayLabel);
                     } else {
                         heading.textContent = 'Data não disponível';
                     }
