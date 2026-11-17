@@ -55,6 +55,7 @@ class FinancialCoreController extends Controller
             'installment_frequency' => ['nullable', Rule::in(['weekly', 'biweekly', 'monthly'])],
             'account_id' => ['nullable', 'uuid', Rule::exists('contas_financeiras', 'id')->where('user_id', $request->user()->id)],
             'category_id' => ['nullable', 'uuid', Rule::exists('categorias', 'id')->where('user_id', $request->user()->id)->where('type', 'despesa')],
+            'origin_invoice_id' => ['nullable', 'uuid', Rule::exists('faturas', 'id')->where('user_id', $request->user()->id)],
             'initial_payment' => ['sometimes', 'array'],
             'initial_payment.account_id' => ['required_with:initial_payment', 'uuid', Rule::exists('contas_financeiras', 'id')->where('user_id', $request->user()->id)->whereIn('type', ['bank', 'cash'])->where('status', 'active')->where('is_operational', true)],
             'initial_payment.amount' => 'required_with:initial_payment|numeric|gt:0|decimal:0,2|max:9999999999.99',
