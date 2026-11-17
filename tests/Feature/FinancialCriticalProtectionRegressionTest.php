@@ -203,6 +203,35 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
         ]);
     }
 
+
+    public function test_deleting_fully_paid_commitment_preserves_payment_event_and_detaches_all_aggregate_links(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->bank($user);
+        $debt = $this->debt($user, $bank);
+        $part = $debt->parcelas->sortBy('installment_number')->first();
+        $forecast = $user->movimentos()->where('installment_id', $part->id)->firstOrFail();
+
+        $this->actingAs($user)->postJson(route('financial.commitments.installments.pay', [$debt->id, $part->id]), [
+            'account_id' => $bank->id, 'amount' => '30.00', 'payment_date' => '2026-11-17',
+        ])->assertOk();
+        $payment = $forecast->settlements()->where('status', 'settled')->firstOrFail();
+
+        $this->deleteJson(route('financial.commitments.destroy', $debt->id))->assertOk();
+
+        $this->assertSoftDeleted('dividas', ['id' => $debt->id]);
+        $this->assertSame('cancelled', $part->fresh()->status);
+        $this->assertSame('30.00', $part->fresh()->paid_amount);
+        $this->assertSame('void', $forecast->fresh()->status);
+        $this->assertNull($forecast->fresh()->debt_id);
+        $this->assertNull($forecast->fresh()->installment_id);
+        $this->assertSame('settled', $payment->fresh()->status);
+        $this->assertNull($payment->fresh()->settles_movement_id);
+        $this->assertSame('170.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+        $this->assertSame(0, $user->movimentos()->where('debt_id', $debt->id)->count());
+        $this->assertSame(0, $user->movimentos()->where('installment_id', $part->id)->count());
+    }
+
     public function test_commitment_edit_updates_the_forecast_without_exposing_generic_amount_changes(): void
     {
         $user = User::factory()->create();
