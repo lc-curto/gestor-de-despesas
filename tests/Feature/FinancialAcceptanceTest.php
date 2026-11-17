@@ -270,15 +270,28 @@ class FinancialAcceptanceTest extends TestCase
                 'total_amount' => '10.00',
                 'start_date' => '2026-11-01',
                 'due_date' => '2026-12-01',
-                'payment_condition' => 'deferred',
+                'payment_condition' => 'installments',
+                'installments_count' => 2,
             ]);
         }
 
+        // Uma obrigação única com vencimento futuro não integra os indicadores de parcelamentos.
+        $service->create($user, [
+            'name' => 'Despesa única futura',
+            'total_amount' => '75.00',
+            'start_date' => '2026-11-01',
+            'due_date' => '2026-12-01',
+            'payment_condition' => 'deferred',
+        ]);
+
         $this->withoutMiddleware(\App\Http\Middleware\EnsureFinancialDataReviewed::class);
-        $this->actingAs($user)
+        $response = $this->actingAs($user)
             ->get(route('financial.commitments.page'))
             ->assertOk()
-            ->assertSee('210,00');
+            ->assertSee('210,00')
+            ->assertDontSee('Despesa única futura');
+
+        $this->assertSame(210.0, $response->viewData('summary')['open']);
     }
 
     public function test_acceptance_financial_route_excludes_card_balance_and_projects_future_obligations(): void
