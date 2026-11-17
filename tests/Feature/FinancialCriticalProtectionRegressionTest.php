@@ -97,7 +97,7 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
         $this->assertSame(0, $user->movimentos()->whereNotNull('reversal_of_id')->count());
     }
 
-    public function test_partial_payment_can_be_reversed_through_the_common_engine_and_cancellation_keeps_audit_history(): void
+    public function test_deleting_partial_payment_recalculates_installment_without_creating_an_inverse_movement(): void
     {
         $user = User::factory()->create();
         $bank = $this->bank($user);
@@ -109,8 +109,8 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
         ])->assertOk();
         $payment = $forecast->settlements()->where('status', 'settled')->firstOrFail();
 
-        $this->deleteJson(route('financial.movements.destroy', $payment->id))->assertUnprocessable()->assertJsonValidationErrors('movement');
-        $this->postJson(route('financial.movements.reverse', $payment->id))->assertOk();
+        $this->deleteJson(route('financial.movements.destroy', $payment->id))->assertOk();
+        $this->assertSame('void', $payment->fresh()->status);
         $this->assertSame('0.00', $part->fresh()->paid_amount);
         $this->assertSame('pending', $forecast->fresh()->status);
         $this->assertSame('200.00', app(AccountBalanceService::class)->balance($bank->fresh()));
@@ -120,9 +120,9 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
         $this->assertSame('0.00', $part->fresh()->paid_amount);
         $this->assertSame('void', $forecast->fresh()->status);
         $this->assertSame(0, $user->movimentos()->where('debt_id', $debt->id)->where('status', 'pending')->count());
-        $this->assertSame('settled', $payment->fresh()->status);
+        $this->assertSame('void', $payment->fresh()->status);
         $this->assertSame('200.00', app(AccountBalanceService::class)->balance($bank->fresh()));
-        $this->assertSame(1, $user->movimentos()->where('reversal_of_id', $payment->id)->count());
+        $this->assertSame(0, $user->movimentos()->whereNotNull('reversal_of_id')->count());
         $this->assertDatabaseHas('historico_movimentos', ['movement_id' => $forecast->id, 'action' => 'voided']);
     }
 
@@ -253,7 +253,7 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
         $this->assertSame('120.00', app(AccountBalanceService::class)->balance($bank->fresh()));
     }
 
-    public function test_legacy_income_cannot_be_reassigned_to_card_but_proven_legacy_expense_reversal_is_allowed(): void
+    public function test_legacy_income_cannot_be_reassigned_to_card_and_settled_expense_can_be_deleted(): void
     {
         $user = User::factory()->create();
         $bank = $this->bank($user);
@@ -276,10 +276,9 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
             'type' => 'expense', 'status' => 'settled', 'description' => 'Despesa antiga sem fatura',
             'amount' => '20.00', 'movement_date' => '2026-11-17', 'source_account_id' => $card->id,
         ]);
-        $reversal = $service->reverse($user, $oldExpense);
-        $this->assertSame('income', $reversal->type);
-        $this->assertSame($oldExpense->id, $reversal->reversal_of_id);
-        $this->assertSame($card->id, $reversal->destination_account_id);
+        $deleted = $service->deleteAsCorrection($user, $oldExpense);
+        $this->assertSame('void', $deleted->status);
+        $this->assertNull($deleted->reversal_of_id);
         $this->assertSame('0.00', app(AccountBalanceService::class)->balance($card->fresh()));
     }
 }
