@@ -210,7 +210,7 @@ class FinancialCommitmentService
                 $part->update(['status' => 'cancelled']);
                 Movimento::query()->where('user_id', $user->id)->where('debt_id', $locked->id)
                     ->where('installment_id', $part->id)->where('status', 'pending')->get()
-                    ->each(fn (Movimento $forecast) => $this->movements->voidCancelledCommitmentForecast($user, $locked, $forecast));
+                    ->each(fn (Movimento $forecast) => $this->movements->voidRenegotiatedCommitmentForecast($user, $locked, $forecast));
             }
 
             $base = intdiv($remainingCents, $count);
