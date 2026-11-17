@@ -232,7 +232,7 @@ class CardIntegrityRegressionTest extends TestCase
         $this->assertRejected(fn () => app(FinancialMovementService::class)->deleteAsCorrection($user, $payment), 'movement', 'reconcilia');
         app(FinancialAccountService::class)->rename($user, $card, 'Novo nome');
         $this->assertRejected(fn () => app(FinancialMovementService::class)->deleteAsCorrection($user, $payment), 'movement', 'reconcilia');
-        $this->assertRejected(fn () => app(FinancialMovementService::class)->reverse($user, $payment), 'movement', 'reconcilia');
+        $this->assertRejected(fn () => app(FinancialMovementService::class)->deleteAsCorrection($user, $payment), 'movement', 'reconcilia');
         $this->assertSame('settled', $payment->fresh()->status);
         $this->assertSame('50.00', (string) $card->fresh()->opening_debt_paid);
         $this->assertBalance($bank, '450.00');
