@@ -52,6 +52,8 @@ class FinancialMovementService
                 'destination_account_id' => $destination?->id,
                 'category_id' => $data['category_id'] ?? null,
                 'invoice_id' => $data['invoice_id'] ?? null,
+                'invoice_charge_type' => $data['invoice_charge_type'] ?? null,
+                'origin_invoice_id' => $data['origin_invoice_id'] ?? null,
                 'opening_debt_card_id' => $data['opening_debt_card_id'] ?? null,
                 'adjustment_direction' => $data['adjustment_direction'] ?? null,
                 'is_historical' => $isHistorical,
