@@ -79,8 +79,16 @@ class FinancialProjectionRegressionTest extends TestCase
             'type' => 'income', 'description' => 'Receita histórica', 'amount' => '40.00',
             'movement_date' => '2026-12-04', 'destination_account_id' => $bank->id, 'is_historical' => true,
         ]);
-        $this->adjust($user, $card, 'increase', '200.00', '2026-12-05');
-        $this->adjust($user, $card, 'decrease', '50.00', '2026-12-06');
+        // Ajustes antigos de cartão podem existir apesar de novos ajustes genéricos serem agora bloqueados.
+        foreach ([['increase', '200.00', '2026-12-05'], ['decrease', '50.00', '2026-12-06']] as [$direction, $amount, $date]) {
+            $user->movimentos()->create([
+                'type' => 'adjustment', 'status' => 'settled', 'adjustment_direction' => $direction,
+                'description' => 'Ajuste antigo de cartão', 'amount' => $amount, 'movement_date' => $date,
+                'source_account_id' => $direction === 'decrease' ? $card->id : null,
+                'destination_account_id' => $direction === 'increase' ? $card->id : null,
+                'is_historical' => false, 'settled_at' => now(),
+            ]);
+        }
         $service->create($user, [
             'type' => 'income', 'description' => 'Entrada', 'amount' => '13.00',
             'movement_date' => '2026-12-07', 'destination_account_id' => $bank->id,
