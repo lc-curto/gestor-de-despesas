@@ -416,4 +416,90 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('85.00', app(AccountBalanceService::class)->balance($account));
     }
 
+
+    public function test_expense_supports_multiple_partial_settlements_across_accounts_without_mutating_original(): void
+    {
+        $user = User::factory()->create();
+        $first = $this->account($user, 'Banco A', '100.00');
+        $second = $this->account($user, 'Banco B', '50.00');
+        $original = app(FinancialMovementService::class)->createPending($user, [
+            'type' => 'expense', 'description' => 'Fatura de eletricidade',
+            'amount' => '80.00', 'movement_date' => '2026-11-30',
+        ]);
+        $service = app(FinancialMovementService::class);
+
+        $partial = $service->settle($user, $original, [
+            'source_account_id' => $first->id, 'amount' => '25.00', 'movement_date' => '2026-11-18',
+        ]);
+        $this->assertSame('partial', $partial->status);
+        $this->assertSame('80.00', (string) $partial->amount);
+        $this->assertSame('75.00', app(AccountBalanceService::class)->balance($first));
+
+        $complete = $service->settle($user, $original, [
+            'source_account_id' => $second->id, 'amount' => '55.00', 'movement_date' => '2026-11-20',
+        ]);
+        $this->assertSame('settled', $complete->status);
+        $this->assertSame('80.00', (string) $complete->amount);
+        $this->assertSame('75.00', app(AccountBalanceService::class)->balance($first));
+        $this->assertSame('-5.00', app(AccountBalanceService::class)->balance($second));
+        $this->assertSame(2, $original->settlements()->where('status', 'settled')->count());
+        $this->assertDatabaseHas('movimentos', [
+            'id' => $original->id, 'amount' => '80.00', 'status' => 'settled', 'is_settlement_parent' => true,
+        ]);
+    }
+
+    public function test_income_supports_partial_receipts_and_rejects_amount_above_remaining_balance(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->account($user, 'Banco', '20.00');
+        $original = app(FinancialMovementService::class)->createPending($user, [
+            'type' => 'income', 'description' => 'Serviço prestado',
+            'amount' => '100.00', 'movement_date' => '2026-11-30',
+        ]);
+        $service = app(FinancialMovementService::class);
+
+        $partial = $service->settle($user, $original, [
+            'destination_account_id' => $account->id, 'amount' => '35.50', 'movement_date' => '2026-11-18',
+        ]);
+        $this->assertSame('partial', $partial->status);
+        $this->assertSame('55.50', app(AccountBalanceService::class)->balance($account));
+
+        try {
+            $service->settle($user, $original, [
+                'destination_account_id' => $account->id, 'amount' => '64.51', 'movement_date' => '2026-11-19',
+            ]);
+            $this->fail('Não deve aceitar recebimento superior ao saldo pendente.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('amount', $exception->errors());
+        }
+
+        $this->assertSame('partial', $original->fresh()->status);
+        $this->assertSame('55.50', app(AccountBalanceService::class)->balance($account));
+    }
+
+    public function test_reversing_a_settlement_restores_the_original_pending_balance(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->account($user, 'Banco', '100.00');
+        $service = app(FinancialMovementService::class);
+        $original = $service->createPending($user, [
+            'type' => 'expense', 'description' => 'Seguro',
+            'amount' => '60.00', 'movement_date' => '2026-11-30',
+        ]);
+        $service->settle($user, $original, [
+            'source_account_id' => $account->id, 'amount' => '20.00', 'movement_date' => '2026-11-18',
+        ]);
+        $event = $original->settlements()->where('status', 'settled')->firstOrFail();
+
+        $service->reverse($user, $event, 'Pagamento efetuado por engano');
+
+        $this->assertSame('pending', $original->fresh()->status);
+        $this->assertSame('100.00', app(AccountBalanceService::class)->balance($account));
+        $this->assertDatabaseHas('movimentos', ['id' => $event->id, 'status' => 'settled']);
+        $this->assertDatabaseHas('movimentos', [
+            'reversal_of_id' => $event->id, 'settles_movement_id' => $original->id, 'status' => 'settled',
+        ]);
+    }
+
+
 }

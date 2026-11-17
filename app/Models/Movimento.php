@@ -17,7 +17,7 @@ class Movimento extends Model
         'type', 'expense_behavior', 'status', 'description', 'notes', 'payment_method', 'amount', 'movement_date',
         'source_account_id', 'destination_account_id', 'category_id',
         'invoice_id', 'opening_debt_card_id', 'recurrence_id', 'recurrence_occurrence_date', 'debt_id', 'installment_id',
-        'adjustment_direction', 'is_historical', 'requires_account_assignment', 'legacy_type', 'legacy_id', 'reversal_of_id', 'settled_at',
+        'adjustment_direction', 'is_historical', 'requires_account_assignment', 'legacy_type', 'legacy_id', 'reversal_of_id', 'settles_movement_id', 'is_settlement_parent', 'settled_at',
     ];
 
     protected function casts(): array
@@ -29,6 +29,7 @@ class Movimento extends Model
             'settled_at' => 'datetime',
             'is_historical' => 'boolean',
             'requires_account_assignment' => 'boolean',
+            'is_settlement_parent' => 'boolean',
         ];
     }
 
@@ -38,4 +39,6 @@ class Movimento extends Model
     public function categoria(): BelongsTo { return $this->belongsTo(Categoria::class, 'category_id'); }
     public function recorrencia(): BelongsTo { return $this->belongsTo(Recorrencia::class, 'recurrence_id'); }
     public function historico(): HasMany { return $this->hasMany(HistoricoMovimento::class, 'movement_id'); }
+    public function settlementParent(): BelongsTo { return $this->belongsTo(self::class, 'settles_movement_id'); }
+    public function settlements(): HasMany { return $this->hasMany(self::class, 'settles_movement_id'); }
 }

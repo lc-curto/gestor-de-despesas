@@ -22,6 +22,7 @@ class AccountBalanceService
             ->where('user_id', $account->user_id)
             ->where('status', 'settled')
             ->where('is_historical', false)
+            ->where('is_settlement_parent', false)
             ->where(function ($query) use ($account) {
                 $query->where('source_account_id', $account->id)
                     ->orWhere('destination_account_id', $account->id);

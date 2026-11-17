@@ -40,8 +40,9 @@ class FinancialProjectionService
         $items = $user->movimentos()
             ->with('categoria:id,name')
             ->whereIn('type', ['income', 'expense', 'transfer', 'adjustment'])
-            ->whereIn('status', ['pending', 'settled'])
+            ->whereIn('status', ['pending', 'partial', 'settled'])
             ->where('is_historical', false)
+            ->where('is_settlement_parent', false)
             ->where('movement_date', '>=', $rangeStart->toDateString())
             ->where('movement_date', '<', $rangeEndExclusive)
             ->orderBy('movement_date')
@@ -51,6 +52,36 @@ class FinancialProjectionService
             $movement->setAttribute('projection_delta', $this->cashDelta($movement, $accountTypes));
             return $movement;
         })->filter(fn (Movimento $movement) => (float) $movement->projection_delta !== 0.0)->values();
+
+        // Uma obrigação parcialmente liquidada projeta apenas o saldo não pago.
+        $partiallySettled = $user->movimentos()
+            ->where('is_settlement_parent', true)
+            ->where('status', 'partial')
+            ->where('is_historical', false)
+            ->whereIn('type', ['expense', 'income'])
+            ->where('movement_date', '>=', $rangeStart->toDateString())
+            ->where('movement_date', '<', $rangeEndExclusive)
+            ->get();
+        foreach ($partiallySettled as $original) {
+            $netSettled = $original->settlements()
+                ->where('status', 'settled')
+                ->get(['amount', 'reversal_of_id'])
+                ->sum(fn (Movimento $event) => ($event->reversal_of_id ? -1 : 1) * (float) $event->amount);
+            $remaining = round((float) $original->amount - $netSettled, 2);
+            if ($remaining <= 0) continue;
+            $synthetic = $this->syntheticExpense(
+                'settlement-'.$original->id,
+                $original->description.' · Saldo pendente',
+                $remaining,
+                $original->movement_date,
+                $original->expense_behavior ?? 'variable'
+            );
+            $synthetic->type = $original->type;
+            $synthetic->source_account_id = $original->source_account_id;
+            $synthetic->destination_account_id = $original->destination_account_id;
+            $synthetic->setAttribute('projection_delta', $original->type === 'income' ? $remaining : -$remaining);
+            $items->push($synthetic);
+        }
 
         $installments = $user->parcelasDivida()
             ->with('divida')

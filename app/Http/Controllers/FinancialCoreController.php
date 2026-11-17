@@ -342,7 +342,7 @@ class FinancialCoreController extends Controller
     {
         $data = $request->validate([
             'month' => 'nullable|date_format:Y-m',
-            'status' => ['nullable', Rule::in(['pending', 'settled', 'void'])],
+            'status' => ['nullable', Rule::in(['pending', 'partial', 'settled', 'void'])],
             'type' => ['nullable', Rule::in(['income', 'expense', 'transfer', 'adjustment'])],
             'account_id' => 'nullable|uuid',
         ]);
@@ -432,22 +432,7 @@ class FinancialCoreController extends Controller
                 return response()->json(['data' => $result['movement'], 'installment' => $result['installment']]);
             }
 
-            // A confirmação permite corrigir o valor e a data efetivos antes de atualizar o saldo.
-            $changes = array_intersect_key($data, array_flip(['amount', 'movement_date']));
-            if ($changes) {
-                $movement = $service->updatePending($request->user(), $movement, $changes);
-                if ($movement->legacy_type && $movement->legacy_id) {
-                    $table = $movement->legacy_type === 'despesa' ? 'despesas' : ($movement->legacy_type === 'receita' ? 'receitas' : null);
-                    if ($table) {
-                        $dateColumn = $movement->legacy_type === 'despesa' ? 'expense_date' : 'income_date';
-                        DB::table($table)->where('user_id', $request->user()->id)->where('id', $movement->legacy_id)->update([
-                            'amount' => $movement->amount,
-                            $dateColumn => $movement->movement_date->toDateString(),
-                        ]);
-                    }
-                }
-            }
-
+            // Valor e data são atributos do evento de liquidação; o original permanece intacto.
             if ($movement->type === 'expense') {
                 $accountId = $data['source_account_id'] ?? $movement->source_account_id;
                 $account = $accountId ? $request->user()->contasFinanceiras()->whereKey($accountId)->first() : null;

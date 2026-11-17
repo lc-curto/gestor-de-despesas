@@ -60,6 +60,8 @@ class FinancialMovementService
                 'reversal_of_id' => $data['reversal_of_id'] ?? null,
                 'debt_id' => $data['debt_id'] ?? null,
                 'installment_id' => $data['installment_id'] ?? null,
+                'settles_movement_id' => $data['settles_movement_id'] ?? null,
+                'is_settlement_parent' => (bool) ($data['is_settlement_parent'] ?? false),
                 'settled_at' => now(),
             ]);
 
@@ -96,6 +98,8 @@ class FinancialMovementService
                 'recurrence_occurrence_date' => $data['recurrence_occurrence_date'] ?? null,
                 'debt_id' => $data['debt_id'] ?? null,
                 'installment_id' => $data['installment_id'] ?? null,
+                'settles_movement_id' => null,
+                'is_settlement_parent' => false,
                 'legacy_type' => $data['legacy_type'] ?? null,
                 'legacy_id' => $data['legacy_id'] ?? null,
                 'is_historical' => false,
@@ -201,36 +205,137 @@ class FinancialMovementService
         });
     }
 
+    /**
+     * Regista cada liquidação como um movimento efetivo associado à obrigação original.
+     * O original conserva o valor contratado; os eventos associados determinam o saldo.
+     */
     public function settle(User $user, Movimento $movement, array $accounts): Movimento
     {
-        return DB::transaction(function () use ($user, $movement, $accounts) {
+        return DB::transaction(function () use ($user, $movement, $accounts): Movimento {
             $locked = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
-            if ($locked->status !== 'pending') {
-                throw ValidationException::withMessages(['movement' => 'Só é possível liquidar movimentos pendentes.']);
+
+            // Mantém o comportamento histórico de liquidação de previsões de prestações.
+            if ($locked->installment_id || $locked->debt_id) {
+                if ($locked->status !== 'pending') {
+                    throw ValidationException::withMessages(['movement' => 'Só é possível liquidar previsões pendentes de prestações.']);
+                }
+                $source = $this->account($user, $accounts['source_account_id'] ?? $locked->source_account_id);
+                $destination = $this->account($user, $accounts['destination_account_id'] ?? $locked->destination_account_id);
+                $this->assertShape($locked->type, $source, $destination, $locked->adjustment_direction);
+                $this->assertNoGenericCardMovement($locked->type, $source, $destination);
+                if ($source) $this->balances->assertCanDebit($source, (string) $locked->amount);
+                $before = $locked->getAttributes();
+                $locked->update([
+                    'source_account_id' => $source?->id,
+                    'destination_account_id' => $destination?->id,
+                    'movement_date' => $accounts['movement_date'] ?? $locked->movement_date,
+                    'requires_account_assignment' => false,
+                    'status' => 'settled',
+                    'settled_at' => now(),
+                ]);
+                $this->audit($user, $locked, 'settled', $before, $locked->getAttributes());
+                return $locked->refresh();
             }
 
-            $source = $this->account($user, $accounts['source_account_id'] ?? $locked->source_account_id);
-            $destination = $this->account($user, $accounts['destination_account_id'] ?? $locked->destination_account_id);
-            $this->assertShape($locked->type, $source, $destination, $locked->adjustment_direction);
-            $this->assertNoGenericCardMovement($locked->type, $source, $destination);
-
-            if ($source) {
-                $this->balances->assertCanDebit($source, (string) $locked->amount);
+            if ($locked->is_settlement_parent) {
+                if ($locked->status !== 'partial') {
+                    throw ValidationException::withMessages(['movement' => 'Esta obrigação já está totalmente liquidada ou encerrada.']);
+                }
+            } elseif ($locked->status !== 'pending') {
+                throw ValidationException::withMessages(['movement' => 'Só é possível liquidar movimentos pendentes ou parcialmente liquidados.']);
+            }
+            if (!in_array($locked->type, ['expense', 'income'], true)) {
+                throw ValidationException::withMessages(['movement' => 'A liquidação parcial aplica-se a despesas e receitas.']);
             }
 
-            $before = $locked->getAttributes();
-            $locked->update([
+            $source = $locked->type === 'expense'
+                ? $this->account($user, $accounts['source_account_id'] ?? $locked->source_account_id)
+                : null;
+            $destination = $locked->type === 'income'
+                ? $this->account($user, $accounts['destination_account_id'] ?? $locked->destination_account_id)
+                : null;
+            $this->assertShape($locked->type, $source, $destination, null);
+            $account = $locked->type === 'expense' ? $source : $destination;
+            if (!$account || !in_array($account->type, ['bank', 'cash'], true) || !$account->is_operational || $account->status !== 'active') {
+                throw ValidationException::withMessages(['account_id' => 'Seleciona uma conta bancária ou de dinheiro ativa para registar a liquidação.']);
+            }
+
+            $alreadySettled = $locked->is_settlement_parent ? $this->netSettledCents($user, $locked) : 0;
+            $originalCents = $this->balances->toCents((string) $locked->amount);
+            $remainingCents = $originalCents - $alreadySettled;
+            $paymentCents = isset($accounts['amount'])
+                ? $this->balances->toCents((string) $accounts['amount'])
+                : $remainingCents;
+            if ($remainingCents <= 0 || $paymentCents <= 0 || $paymentCents > $remainingCents) {
+                throw ValidationException::withMessages(['amount' => 'O valor da liquidação deve ser positivo e não pode exceder o saldo pendente.']);
+            }
+
+            $event = $this->createMovement($user, [
+                'type' => $locked->type,
+                'description' => 'Liquidação: '.$locked->description,
+                'amount' => number_format($paymentCents / 100, 2, '.', ''),
+                'movement_date' => $accounts['movement_date'] ?? now()->toDateString(),
                 'source_account_id' => $source?->id,
                 'destination_account_id' => $destination?->id,
-                'invoice_id' => $accounts['invoice_id'] ?? $locked->invoice_id,
-                'movement_date' => $accounts['movement_date'] ?? $locked->movement_date,
-                'requires_account_assignment' => false,
-                'status' => 'settled',
-                'settled_at' => now(),
+                'category_id' => $locked->category_id,
+                'expense_behavior' => $locked->expense_behavior,
+                'settles_movement_id' => $locked->id,
             ]);
-            $this->audit($user, $locked, 'settled', $before, $locked->getAttributes());
-            return $locked->refresh();
+
+            $before = $locked->getAttributes();
+            $newSettledCents = $alreadySettled + $paymentCents;
+            $locked->update([
+                'status' => $newSettledCents >= $originalCents ? 'settled' : 'partial',
+                'is_settlement_parent' => true,
+                'requires_account_assignment' => false,
+                'settled_at' => $newSettledCents >= $originalCents ? now() : null,
+            ]);
+            $this->audit(
+                $user,
+                $locked,
+                $newSettledCents >= $originalCents ? 'settled' : 'partially_settled',
+                $before,
+                $locked->getAttributes(),
+                'Liquidação '.$event->id.' registada por '.number_format($paymentCents / 100, 2, '.', '').'.'
+            );
+
+            $result = $locked->refresh();
+            $result->setAttribute('last_settlement', $event);
+            return $result;
         });
+    }
+
+    /** Total líquido liquidado, descontando os eventos de estorno correspondentes. */
+    private function netSettledCents(User $user, Movimento $original): int
+    {
+        $events = Movimento::query()
+            ->where('user_id', $user->id)
+            ->where('settles_movement_id', $original->id)
+            ->where('status', 'settled')
+            ->get(['amount', 'reversal_of_id']);
+
+        $net = 0;
+        foreach ($events as $event) {
+            $cents = $this->balances->toCents((string) $event->amount);
+            $net += $event->reversal_of_id ? -$cents : $cents;
+        }
+        return $net;
+    }
+
+    /** Recalcula a obrigação quando uma liquidação associada é estornada. */
+    private function refreshSettlementParent(User $user, string $originalId): void
+    {
+        $parent = Movimento::query()->where('user_id', $user->id)->whereKey($originalId)->lockForUpdate()->first();
+        if (!$parent || !$parent->is_settlement_parent) return;
+
+        $net = $this->netSettledCents($user, $parent);
+        $total = $this->balances->toCents((string) $parent->amount);
+        $parent->update([
+            'status' => $net <= 0 ? 'pending' : ($net >= $total ? 'settled' : 'partial'),
+            'is_settlement_parent' => $net > 0,
+            'settled_at' => $net >= $total ? now() : null,
+        ]);
+        $this->audit($user, $parent, 'settlement_recalculated', null, $parent->getAttributes(), 'Estado recalculado após estorno de liquidação.');
     }
 
     public function confirmPending(User $user, Movimento $movement, array $accounts): Movimento
@@ -394,7 +499,7 @@ class FinancialMovementService
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($locked->installment_id || ($locked->status === 'pending' && $locked->debt_id)) {
+            if ($locked->settles_movement_id || $locked->is_settlement_parent || $locked->installment_id || ($locked->status === 'pending' && $locked->debt_id)) {
                 throw ValidationException::withMessages(['movement' => 'Este movimento está ligado a uma prestação. Gere ou cancela o compromisso em Parcelamentos; não o elimines isoladamente.']);
             }
             if ($locked->status === 'void') {
@@ -446,6 +551,9 @@ class FinancialMovementService
     {
         return DB::transaction(function () use ($user, $movement, $reason) {
             $original = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
+            if ($original->is_settlement_parent) {
+                throw ValidationException::withMessages(['movement' => 'O movimento original não pode ser estornado enquanto obrigação. Estorna os eventos de liquidação associados.']);
+            }
             if ($original->installment_id) {
                 throw ValidationException::withMessages(['movement' => 'Este movimento está ligado a uma prestação e não pode ser estornado isoladamente. Revê o compromisso em Parcelamentos.']);
             }
@@ -490,6 +598,7 @@ class FinancialMovementService
                 'amount' => $original->amount,
                 'movement_date' => now()->toDateString(),
                 'reversal_of_id' => $original->id,
+                'settles_movement_id' => $original->settles_movement_id,
                 'is_historical' => (bool) $original->is_historical,
             ]), true);
             $before = $original->getAttributes();
@@ -500,6 +609,9 @@ class FinancialMovementService
                     $original->opening_debt_card_id = $openingDebtCard->id;
                     $original->save();
                 }
+            }
+            if ($original->settles_movement_id) {
+                $this->refreshSettlementParent($user, $original->settles_movement_id);
             }
             // Ambos os lançamentos ficam liquidados: os seus efeitos opostos cancelam-se
             // no saldo e a origem mantém-se auditável. O vínculo único impede novo estorno.
