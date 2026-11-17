@@ -236,7 +236,7 @@ class FinancialCommitmentsPageTest extends TestCase
         $secondXPath = $this->document($secondHistoryPage->getContent());
         $this->assertCount(6, $secondXPath->query('//div[contains(concat(" ", normalize-space(@class), " "), " commitment-installment ")]'));
         $this->assertSame('2', (string) $secondHistoryPage->viewData('commitments')->first()->installmentsPage->currentPage());
-        $this->assertSame('7', trim($secondXPath->query('//div[contains(@class,"commitment-installment")]/div/strong')->item(0)->textContent));
+        $this->assertSame('7/120', trim($secondXPath->query('//div[contains(@class,"commitment-installment")]/div/strong')->item(0)->textContent));
     }
 
     public function test_purchase_pagination_is_server_side_and_summary_uses_all_commitments(): void
