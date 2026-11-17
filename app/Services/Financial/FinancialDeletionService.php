@@ -427,8 +427,8 @@ class FinancialDeletionService
                 ]);
             }
 
-            $invoiceIds = $related->pluck('invoice_id')
-                ->merge($paymentEvents->pluck('invoice_id'))
+            $invoiceIds = $related->whereIn('status', ['pending', 'partial', 'settled'])->pluck('invoice_id')
+                ->merge($paymentEvents->whereIn('status', ['pending', 'partial', 'settled'])->pluck('invoice_id'))
                 ->filter()->unique()->sort()->values();
             $invoices = $invoiceIds->isNotEmpty()
                 ? Fatura::query()->where('user_id', $user->id)->whereIn('id', $invoiceIds)->orderBy('id')->lockForUpdate()->get()
