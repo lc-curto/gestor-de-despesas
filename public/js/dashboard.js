@@ -1378,6 +1378,7 @@
     movementType = cfg.initialType === 'receita' ? 'receita' : 'despesa';
     setMovementType(movementType);
     if (cfg.initialCategory) category.value = cfg.initialCategory;
+    syncExpenseBehaviorFromCategory();
 
     if (cfg.autoOpenEditor) openEditor();
 
