@@ -620,7 +620,7 @@
         category.disabled = false;
         if (account) account.disabled = false;
         syncExpenseBehaviorFromCategory();
-        cancelButton?.classList.toggle('d-none', !isEditing);
+        cancelButton?.classList.remove('d-none');
         refreshPaymentFields();
     }
 
@@ -1295,7 +1295,13 @@
         }
     });
 
-    cancelButton?.addEventListener('click', cancelEdit);
+    cancelButton?.addEventListener('click', () => {
+        if (editing) {
+            cancelEdit();
+            return;
+        }
+        resetEditor(true);
+    });
     form.querySelectorAll('[name="paid_now"]').forEach((input) => input.addEventListener('change', refreshPaymentFields));
     account?.addEventListener('change', refreshPaymentFields);
     ['dashboardDueDateEnabled', 'dashboardRecurrenceEnabled', 'dashboardInstallmentsEnabled'].forEach((id) => {
