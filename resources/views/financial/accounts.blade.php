@@ -122,8 +122,8 @@
                     <div class="row g-3">
                         <div class="col-sm-6">
                             <label for="openingBalance" class="form-label">Saldo inicial</label>
-                            <input id="openingBalance" name="opening_balance" type="number" class="form-control" min="-9999999999.99" max="9999999999.99" step="0.01" value="0.00" required>
-                            <div class="form-text">Saldo existente quando começas a controlar esta conta.</div>
+                            <input id="openingBalance" name="opening_balance" type="text" inputmode="decimal" class="form-control" min="-9999999999.99" max="9999999999.99" data-money="opening" value="0.00" required aria-describedby="openingBalanceHelp">
+                            <div class="form-text" id="openingBalanceHelp">Aceita 90,50, 1.000,00, inteiros e decimais com ponto. Pode ser negativo.</div>
                         </div>
                         <div class="col-sm-6">
                             <label for="openingBalanceDate" class="form-label">Data do saldo</label>
@@ -156,7 +156,8 @@
                     <input type="hidden" name="description" value="Transferência entre contas">
                     <div class="mb-3">
                         <label for="transferAmount" class="form-label">Valor</label>
-                        <input id="transferAmount" name="amount" type="number" class="form-control" min="0.01" max="9999999999.99" step="0.01" required placeholder="0,00">
+                        <input id="transferAmount" name="amount" type="text" inputmode="decimal" class="form-control" min="0.01" max="9999999999.99" data-money="positive" required placeholder="0,00" aria-describedby="transferAmountHelp">
+                        <div class="form-text" id="transferAmountHelp">Usa vírgula decimal (90,50), agrupamento (1.000,00) ou ponto decimal (90.50).</div>
                     </div>
                     <div class="row g-3 mb-3">
                         <div class="col-6">
@@ -267,8 +268,42 @@
         feedback.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
+    function parseMoney(value, allowNegative = false) {
+        let text = String(value ?? '').trim().replace(/[\u00a0\s]/g, '');
+        if (!text) throw new Error('Indica um valor.');
+        if (text.includes('-') && (!allowNegative || text.indexOf('-') !== 0)) throw new Error('Indica um valor monetário válido.');
+        const negative = text.startsWith('-');
+        if (negative) text = text.slice(1);
+        if (!text || !/^\d[\d.,]*$/.test(text)) throw new Error('Indica um valor monetário válido.');
+        let integerPart = text;
+        let decimalPart = '';
+        if (text.includes(',')) {
+            const parts = text.split(',');
+            if (parts.length !== 2 || !/^\d{1,2}$/.test(parts[1]) || !/^(?:\d+|\d{1,3}(?:\.\d{3})+)$/.test(parts[0])) throw new Error('Usa o formato 90,50 ou 1.000,00.');
+            integerPart = parts[0].replace(/\./g, '');
+            decimalPart = parts[1];
+        } else if (text.includes('.')) {
+            const parts = text.split('.');
+            if (parts.length !== 2 || !/^\d+$/.test(parts[0]) || !/^\d{1,2}$/.test(parts[1])) throw new Error('Usa no máximo duas casas decimais.');
+            integerPart = parts[0];
+            decimalPart = parts[1];
+        }
+        integerPart = integerPart.replace(/^0+(?=\d)/, '');
+        const canonical = `${negative ? '-' : ''}${integerPart}.${decimalPart.padEnd(2, '0')}`;
+        const number = Number(canonical);
+        if (!Number.isFinite(number) || Math.abs(number) > 9999999999.99 || (!allowNegative && number <= 0)) throw new Error(allowNegative ? 'O valor deve estar entre -9.999.999.999,99 e 9.999.999.999,99.' : 'O valor deve ser maior que zero.');
+        return canonical;
+    }
+
+    function normalizeMoneyFields(form) {
+        form.querySelectorAll('[data-money]').forEach((field) => {
+            field.value = parseMoney(field.value, field.dataset.money === 'opening');
+        });
+    }
+
     async function submitJsonForm(form, method = 'POST', reload = true) {
         form.querySelector('.account-form-feedback')?.remove();
+        normalizeMoneyFields(form);
         const data = Object.fromEntries(new FormData(form).entries());
         if (!data.opening_balance) {
             delete data.opening_balance;

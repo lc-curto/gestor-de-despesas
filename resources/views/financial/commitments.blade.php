@@ -80,10 +80,11 @@
                     </div>
                     @if ((float) $invoice->remaining_amount > 0 && $paymentAccounts->isNotEmpty() && $invoice->display_status !== 'open')
                         <form class="js-api-form row g-2 align-items-end mt-2" data-endpoint="{{ route('financial.invoices.pay', $invoice->id) }}" data-success="Pagamento da fatura registado.">
-                            <div class="col-12 col-md-4"><label class="form-label small">Valor a pagar</label><input class="form-control form-control-sm" type="number" name="amount" min="0.01" max="{{ $invoice->remaining_amount }}" step="0.01" value="{{ $invoice->remaining_amount }}" required></div>
-                            <div class="col-12 col-md-4"><label class="form-label small">Conta de origem</label><select class="form-select form-select-sm" name="account_id" required><option value="">Selecionar conta</option>@foreach ($paymentAccounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select></div>
-                            <div class="col-12 col-md-2"><label class="form-label small">Data</label><input class="form-control form-control-sm" type="date" name="payment_date" value="{{ now()->toDateString() }}" required></div>
-                            <div class="col-12 col-md-2"><button class="btn btn-primary btn-sm w-100" type="submit">Pagar</button></div>
+                            <div class="col-12 col-md-4"><label class="form-label small" for="invoice-amount-{{ $invoice->id }}">Valor a pagar</label><input class="form-control form-control-sm" id="invoice-amount-{{ $invoice->id }}" type="text" inputmode="decimal" name="amount" data-payment-amount data-max-amount="{{ number_format((float) $invoice->remaining_amount, 2, '.', '') }}" value="{{ number_format((float) $invoice->remaining_amount, 2, ',', '.') }}" aria-describedby="invoice-amount-help-{{ $invoice->id }} invoice-amount-error-{{ $invoice->id }}" required><div class="form-text" id="invoice-amount-help-{{ $invoice->id }}">Usa vírgula para os cêntimos, por exemplo 90,50.</div><div class="small text-danger" id="invoice-amount-error-{{ $invoice->id }}" data-payment-error role="alert"></div></div>
+                            <div class="col-12 col-md-4"><label class="form-label small" for="invoice-account-{{ $invoice->id }}">Conta de origem</label><select class="form-select form-select-sm" id="invoice-account-{{ $invoice->id }}" name="account_id" required><option value="">Selecionar conta</option>@foreach ($paymentAccounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select></div>
+                            <div class="col-12 col-md-2"><label class="form-label small" for="invoice-date-{{ $invoice->id }}">Data</label><input class="form-control form-control-sm" id="invoice-date-{{ $invoice->id }}" type="date" name="payment_date" value="{{ now()->toDateString() }}" required></div>
+                            <div class="col-12 col-md-2"><button class="btn btn-primary btn-sm w-100" type="submit" disabled>Pagar</button></div>
+                            <noscript><p class="small text-danger mb-0">Ativa o JavaScript para registar o pagamento.</p></noscript>
                         </form>
                     @elseif ((float) $invoice->remaining_amount > 0 && $invoice->display_status === 'open')
                         <p class="small text-secondary mt-2 mb-0">Fatura ainda aberta. O pagamento estará disponível após o fecho.</p>
@@ -99,29 +100,41 @@
                     </details>
                 </article>
             @else
-                @php $installment = $item->record; $remaining = $item->remaining; $commitment = $item->commitment; @endphp
+                @php $installment = $item->record; $remaining = $item->remaining; $commitment = $item->commitment; $isOverdue = $installment->due_date->lt(today()); @endphp
                 <article class="commitment-payment-item border rounded-4 p-3 mb-2">
                     <div class="d-flex justify-content-between align-items-start gap-2">
                         <div class="min-w-0">
                             <h3 class="small fw-semibold mb-0">{{ $commitment->name }}</h3>
                             <span class="small text-secondary">{{ $commitment->payment_condition === 'installments' ? 'Compra parcelada · '.$installment->installment_number.'/'.$commitment->installments_count : 'Compra a prazo' }} · Vence {{ $installment->due_date->format('d/m/Y') }}</span>
                         </div>
-                        <div class="text-end flex-shrink-0">
-                            <strong class="d-block">{{ number_format($remaining, 2, ',', '.') }} {{ auth()->user()->currency }}</strong>
-                            <span class="badge {{ $installment->due_date->isPast() ? 'text-bg-danger' : 'text-bg-warning' }}">{{ $installment->due_date->isPast() ? 'Em atraso' : 'A vencer' }}</span>
+                        <div class="text-end flex-shrink-0 commitment-installment-amount">
+                            <strong class="d-block"><span class="small text-secondary fw-normal">Em falta: </span>{{ number_format($remaining, 2, ',', '.') }} {{ auth()->user()->currency }}</strong>
+                            <span class="badge {{ $isOverdue ? 'text-bg-danger' : 'text-bg-warning' }}">{{ $isOverdue ? 'Em atraso' : 'A vencer' }}</span>
                         </div>
                     </div>
-                    <details class="mt-2"><summary class="small text-secondary">Ver detalhe da prestação</summary><p class="small text-secondary mt-2 mb-0">Original: {{ number_format((float)$installment->amount,2,',','.') }} · Pago: {{ number_format((float)$installment->paid_amount,2,',','.') }} · Em falta: {{ number_format($remaining,2,',','.') }} {{ auth()->user()->currency }}</p><p class="small text-secondary mb-0">{{ $commitment->installments_count }} prestações no total</p></details>
-                    @if ($remaining > 0 && $paymentAccounts->isNotEmpty())
-                        <form class="js-api-form row g-2 align-items-end mt-2" data-endpoint="{{ route('financial.commitments.installments.pay', [$commitment->id, $installment->id]) }}" data-success="Pagamento da parcela registado.">
-                            <div class="col-12 col-md-4"><label class="form-label small">Valor a pagar</label><input class="form-control form-control-sm" type="number" name="amount" min="0.01" max="{{ number_format($remaining, 2, '.', '') }}" step="0.01" value="{{ number_format($remaining, 2, '.', '') }}" required></div>
-                            <div class="col-12 col-md-4"><label class="form-label small">Conta de origem</label><select class="form-select form-select-sm" name="account_id" required><option value="">Selecionar conta</option>@foreach ($paymentAccounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select></div>
-                            <div class="col-12 col-md-2"><label class="form-label small">Data</label><input class="form-control form-control-sm" type="date" name="payment_date" value="{{ now()->toDateString() }}" required></div>
-                            <div class="col-12 col-md-2"><button class="btn btn-outline-primary btn-sm w-100" type="submit">Pagar</button></div>
-                        </form>
-                    @elseif ($remaining > 0)
-                        <p class="small text-secondary mt-2 mb-0">Adiciona uma conta bancária ou de dinheiro para pagar.</p>
-                    @endif
+                    <div class="commitment-item-actions mt-2">
+                        <details class="commitment-details-disclosure">
+                            <summary class="small text-secondary"><span class="commitment-disclosure-marker" aria-hidden="true">▸</span>Ver detalhe da prestação<span class="visually-hidden"> {{ $installment->installment_number }} de {{ $commitment->installments_count }} de {{ $commitment->name }}</span></summary>
+                            <p class="small text-secondary mt-2 mb-0">Original: {{ number_format((float)$installment->amount,2,',','.') }} · Pago: {{ number_format((float)$installment->paid_amount,2,',','.') }} · Em falta: {{ number_format($remaining,2,',','.') }} {{ auth()->user()->currency }}</p>
+                            <p class="small text-secondary mb-0">{{ $commitment->installments_count }} prestações no total</p>
+                        </details>
+                        @if ($remaining > 0 && $paymentAccounts->isNotEmpty())
+                            <details class="commitment-payment-disclosure">
+                                <summary class="btn btn-outline-primary btn-sm">
+                                    <span class="commitment-payment-open">Registar pagamento</span><span class="commitment-payment-close">Fechar formulário</span><span class="visually-hidden"> da prestação {{ $installment->installment_number }} de {{ $commitment->installments_count }} de {{ $commitment->name }}</span>
+                                </summary>
+                                <form class="js-api-form row g-2 align-items-end mt-2" aria-label="Pagamento da prestação {{ $installment->installment_number }} de {{ $commitment->installments_count }} de {{ $commitment->name }}" data-endpoint="{{ route('financial.commitments.installments.pay', [$commitment->id, $installment->id]) }}" data-success="Pagamento da parcela registado.">
+                                    <div class="col-12 col-md-4"><label class="form-label small" for="installment-amount-{{ $installment->id }}">Valor a pagar</label><input class="form-control form-control-sm" id="installment-amount-{{ $installment->id }}" type="text" inputmode="decimal" name="amount" data-payment-amount data-max-amount="{{ number_format($remaining, 2, '.', '') }}" value="{{ number_format($remaining, 2, ',', '.') }}" aria-describedby="installment-amount-help-{{ $installment->id }} installment-amount-error-{{ $installment->id }}" required><div class="form-text" id="installment-amount-help-{{ $installment->id }}">Usa vírgula para os cêntimos, por exemplo 90,50.</div><div class="small text-danger" id="installment-amount-error-{{ $installment->id }}" data-payment-error role="alert"></div></div>
+                                    <div class="col-12 col-md-4"><label class="form-label small" for="installment-account-{{ $installment->id }}">Conta de origem</label><select class="form-select form-select-sm" id="installment-account-{{ $installment->id }}" name="account_id" required><option value="">Selecionar conta</option>@foreach ($paymentAccounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select></div>
+                                    <div class="col-12 col-md-2"><label class="form-label small" for="installment-date-{{ $installment->id }}">Data</label><input class="form-control form-control-sm" id="installment-date-{{ $installment->id }}" type="date" name="payment_date" value="{{ now()->toDateString() }}" required></div>
+                                    <div class="col-12 col-md-2"><button class="btn btn-outline-primary btn-sm w-100" type="submit" disabled>Pagar<span class="visually-hidden"> prestação {{ $installment->installment_number }} de {{ $commitment->installments_count }} de {{ $commitment->name }}</span></button></div>
+                                    <noscript><p class="small text-danger mb-0">Ativa o JavaScript para registar o pagamento.</p></noscript>
+                                </form>
+                            </details>
+                        @elseif ($remaining > 0)
+                            <p class="small text-secondary mb-0">Adiciona uma conta bancária ou de dinheiro para pagar. <a href="{{ route('financial.accounts.page') }}">Ir para Contas</a></p>
+                        @endif
+                    </div>
                 </article>
             @endif
         @empty
@@ -164,10 +177,20 @@
 .commitments-page .commitment-summary-card .card-body{padding:1rem!important}
 .commitments-page .commitment-summary-card .h3{font-size:1.15rem;margin:0}
 .commitments-page .commitment-payment-item{border-left:0!important;border-right:0!important;border-top:0!important;border-radius:0!important;padding:.55rem .15rem!important;margin:0!important}
-.commitments-page .commitment-payment-item h3{font-size:.9rem}
+.commitments-page .commitment-payment-item h3{font-size:.9rem;overflow-wrap:anywhere}
+.commitments-page .commitment-installment-amount{max-width:50%;overflow-wrap:anywhere}
 .commitments-page .commitment-payment-item .badge{font-size:.68rem;font-weight:500;padding:.28rem .45rem}
 .commitments-page .commitment-payment-item .form-control,.commitments-page .commitment-payment-item .form-select{min-height:34px}
 .commitments-page .commitment-payment-item details summary{font-size:.75rem}
+.commitments-page .commitment-item-actions{display:flex;align-items:center;flex-wrap:wrap;gap:.35rem .85rem}
+.commitments-page .commitment-item-actions details{padding-top:0;border-top:0;min-width:0}
+.commitments-page .commitment-item-actions details[open]{flex:1 0 100%}
+.commitments-page .commitment-item-actions summary{display:inline-flex;align-items:center;gap:.3rem;max-width:100%}
+.commitments-page .commitment-item-actions summary:focus-visible{outline:3px solid var(--bs-primary);outline-offset:2px}
+.commitments-page .commitment-item-actions .commitment-disclosure-marker{display:inline-block;transition:transform .15s ease}
+.commitments-page .commitment-details-disclosure[open] .commitment-disclosure-marker{transform:rotate(90deg)}
+.commitments-page .commitment-payment-close,.commitments-page .commitment-payment-disclosure[open] .commitment-payment-open{display:none}
+.commitments-page .commitment-payment-disclosure[open] .commitment-payment-close{display:inline}
 .commitments-page .commitment-section nav .btn{padding:.25rem .6rem;font-size:.78rem}
 .commitments-page .commitment-compact-list{max-width:100%}
 </style>
@@ -175,6 +198,7 @@
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/commitments-payment.js') }}?v={{ filemtime(public_path('js/commitments-payment.js')) }}"></script>
 <script>
 (() => {
     const token = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -200,18 +224,9 @@
     }));
 
     document.querySelectorAll('.js-api-form').forEach((form) => {
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const button = form.querySelector('[type="submit"]'); button.disabled = true;
-            try {
-                const response = await fetch(form.dataset.endpoint, { method: form.dataset.method || 'POST', credentials: 'same-origin',
-                    headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
-                    body: JSON.stringify(Object.fromEntries(new FormData(form).entries())) });
-                const result = await response.json().catch(() => ({}));
-                if (!response.ok) throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'Não foi possível guardar.');
-                window.location.reload();
-            } catch (error) { showError(feedback, error.message); feedback.scrollIntoView({behavior:'smooth',block:'center'}); button.disabled = false; }
-        });
+        if (!window.CommitmentPayment || !window.CommitmentPayment.bind(form, token, feedback, showError)) {
+            showError(feedback, 'Não foi possível carregar a validação de valores. Atualiza a página antes de pagar.');
+        }
     });
 
 })();

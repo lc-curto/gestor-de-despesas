@@ -64,11 +64,14 @@ class FinancialAccountsPageController extends Controller
     public function destroyMovement(Request $request, string $id)
     {
         $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
-        if ($movement->status === 'settled') {
-            throw ValidationException::withMessages(['movement' => 'Movimentos liquidados devem ser estornados, não eliminados.']);
-        }
-
         DB::transaction(function () use ($movement): void {
+            $movement = $movement->newQuery()->where('user_id', $movement->user_id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
+            if ($movement->installment_id || ($movement->status === 'pending' && $movement->debt_id)) {
+                throw ValidationException::withMessages(['movement' => 'Este movimento está ligado a uma prestação. Gere ou cancela o compromisso em Parcelamentos; não o elimines isoladamente.']);
+            }
+            if ($movement->status === 'settled') {
+                throw ValidationException::withMessages(['movement' => 'Movimentos liquidados devem ser estornados, não eliminados.']);
+            }
             $movement->historico()->delete();
             $movement->delete();
         });

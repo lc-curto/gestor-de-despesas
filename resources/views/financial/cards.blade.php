@@ -54,8 +54,9 @@
     <div class="modal-header border-0 pb-0"><h2 class="modal-title h5 fw-bold" id="createCardTitle">Novo cartão</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
     <div class="modal-body p-4">
         <label class="form-label" for="newCardName">Nome</label><input class="form-control mb-3" id="newCardName" name="name" maxlength="120" placeholder="Ex.: Novo Banco Crédito" required>
-        <label class="form-label" for="newCardLimit">Limite total (€)</label><input class="form-control mb-3" id="newCardLimit" name="credit_limit" type="number" min="0.01" step="0.01" placeholder="1.000,00" required>
-        <div class="rounded-3 p-3 bg-body-tertiary mb-3"><label class="form-label" for="newCardUsed">Limite já utilizado (€)</label><input class="form-control" id="newCardUsed" name="opening_debt_amount" type="number" min="0" step="0.01" value="0.00" required><small class="text-secondary d-block mt-2">Valor já consumido. Não cria compras antigas.</small></div>
+        <label class="form-label" for="newCardLimit">Limite total (€)</label><input class="form-control" id="newCardLimit" name="credit_limit" type="text" inputmode="decimal" placeholder="1.000,00" aria-describedby="newCardLimitHelp" required>
+        <small class="text-secondary d-block mt-2 mb-3" id="newCardLimitHelp">Usa 1000, 1000,50 ou 1000.50. Com pontos de milhar, inclui a vírgula e os cêntimos: 1.000,00. Máximo: 9.999.999.999,99.</small>
+        <div class="rounded-3 p-3 bg-body-tertiary mb-3"><label class="form-label" for="newCardUsed">Limite já utilizado (€)</label><input class="form-control" id="newCardUsed" name="opening_debt_amount" type="text" inputmode="decimal" value="0,00" aria-describedby="newCardUsedHelp" required><small class="text-secondary d-block mt-2" id="newCardUsedHelp">Valor já consumido; não cria compras antigas. Usa 1000, 1000,50 ou 1000.50; com pontos de milhar, inclui a vírgula e os cêntimos: 1.000,00. Máximo: 9.999.999.999,99.</small></div>
         <div class="row g-3"><div class="col-6"><label class="form-label" for="newCardClosing">Dia de fecho</label><input class="form-control" id="newCardClosing" name="closing_day" type="number" min="1" max="31" value="10" required></div><div class="col-6"><label class="form-label" for="newCardDue">Dia de vencimento</label><input class="form-control" id="newCardDue" name="due_day" type="number" min="1" max="31" value="1" required></div></div>
         <div class="small text-danger mt-3" id="createCardError" role="alert"></div>
     </div>
@@ -67,9 +68,10 @@
     <div class="modal-header border-0 pb-0"><h2 class="modal-title h5 fw-bold" id="editCardTitle">Editar cartão</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
     <div class="modal-body p-4">
         <label class="form-label" for="editCardName">Nome</label><input class="form-control mb-3" id="editCardName" name="name" maxlength="120" required>
-        <label class="form-label" for="editCardLimit">Limite total (€)</label><input class="form-control mb-3" id="editCardLimit" name="credit_limit" type="number" min="0.01" step="0.01" required>
+        <label class="form-label" for="editCardLimit">Limite total (€)</label><input class="form-control" id="editCardLimit" name="credit_limit" type="text" inputmode="decimal" aria-describedby="editCardLimitHelp" required>
+        <small class="text-secondary d-block mt-2 mb-3" id="editCardLimitHelp">Usa 1000, 1000,50 ou 1000.50. Com pontos de milhar, inclui a vírgula e os cêntimos: 1.000,00. Máximo: 9.999.999.999,99.</small>
         <div class="row g-3"><div class="col-6"><label class="form-label" for="editCardClosing">Dia de fecho</label><input class="form-control" id="editCardClosing" name="closing_day" type="number" min="1" max="31" required></div><div class="col-6"><label class="form-label" for="editCardDue">Dia de vencimento</label><input class="form-control" id="editCardDue" name="due_day" type="number" min="1" max="31" required></div></div>
-        <div class="rounded-3 p-3 bg-body-tertiary mt-3"><label class="form-label" for="editCardOpeningDebt">Dívida inicial / limite já utilizado (€)</label><input class="form-control" id="editCardOpeningDebt" name="opening_debt_amount" type="number" min="0" step="0.01" required><small class="text-secondary d-block mt-2">Só pode ser corrigida enquanto o cartão ainda não tiver movimentos.</small></div><div class="small text-danger mt-3" id="editCardError" role="alert"></div>
+        <div class="rounded-3 p-3 bg-body-tertiary mt-3"><label class="form-label" for="editCardOpeningDebt">Dívida inicial / limite já utilizado (€)</label><input class="form-control" id="editCardOpeningDebt" name="opening_debt_amount" type="text" inputmode="decimal" aria-describedby="editCardOpeningDebtHelp" required><small class="text-secondary d-block mt-2" id="editCardOpeningDebtHelp">Só pode ser corrigida enquanto o cartão ainda não tiver movimentos. Usa 1000, 1000,50 ou 1000.50; com pontos de milhar, inclui a vírgula e os cêntimos: 1.000,00. Máximo: 9.999.999.999,99.</small></div><div class="small text-danger mt-3" id="editCardError" role="alert"></div>
     </div>
     <div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" type="submit">Guardar alterações</button></div>
 </form></div></div></div>
@@ -100,9 +102,45 @@
     const feedback=document.getElementById('cardsFeedback');
     const headers={'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token};
     const showError=(element,message)=>{element.textContent=message;};
+    // Do not use Number or type=number here: both can silently reinterpret a localized value.
+    const normalizeMoney=(value,allowZero)=>{
+        const text=value.trim();
+        let parts;
+        if (/^[0-9]{1,3}(?:\.[0-9]{3})+,[0-9]{1,2}$/.test(text)) {
+            parts=text.replace(/\./g,'').split(',');
+        } else if (/^[0-9]+(?:[.,][0-9]{1,2})?$/.test(text)) {
+            parts=text.split(/[.,]/);
+        } else return null;
+        const whole=parts[0].replace(/^0+(?=\d)/,'');
+        const fraction=(parts[1]||'').padEnd(2,'0');
+        if (whole.length>10 || (!allowZero && whole==='0' && fraction==='00')) return null;
+        return whole+'.'+fraction;
+    };
+    const moneyFields=['credit_limit','opening_debt_amount'];
+    const moneyValues=(form,errorElement)=>{
+        const result={};
+        for (const name of moneyFields) {
+            const input=form.elements[name];
+            const value=normalizeMoney(input.value,name==='opening_debt_amount');
+            if (value===null) {
+                const minimum=name==='credit_limit'?'O limite total deve ser superior a zero.':'O limite já utilizado pode ser zero, mas não negativo.';
+                const message=(name==='credit_limit'?'Limite total':'Limite já utilizado')+': valor inválido. Usa até duas casas decimais; para milhares escreve, por exemplo, 1.000,00. '+minimum+' O máximo é 9.999.999.999,99.';
+                input.setCustomValidity(message);showError(errorElement,message);input.reportValidity();return null;
+            }
+            result[name]=value;
+        }
+        return result;
+    };
+    for (const [formId,errorId] of [['createCardForm','createCardError'],['editCardForm','editCardError']]) {
+        const form=document.getElementById(formId);
+        moneyFields.forEach(name=>form.elements[name].addEventListener('input',()=>{
+            form.elements[name].setCustomValidity('');showError(document.getElementById(errorId),'');
+        }));
+    }
     document.getElementById('createCardForm')?.addEventListener('submit',async(event)=>{
-        event.preventDefault();const form=event.currentTarget,button=form.querySelector('[type="submit"]');button.disabled=true;showError(document.getElementById('createCardError'),'');
-        try{const payload=Object.fromEntries(new FormData(form).entries());payload.type='credit_card';
+        event.preventDefault();const form=event.currentTarget,button=form.querySelector('[type="submit"]'),errorElement=document.getElementById('createCardError');showError(errorElement,'');
+        const amounts=moneyValues(form,errorElement);if(!amounts)return;button.disabled=true;
+        try{const payload=Object.fromEntries(new FormData(form).entries());Object.assign(payload,amounts);payload.type='credit_card';
             const response=await fetch('{{ route('financial.accounts.store') }}',{method:'POST',credentials:'same-origin',headers,body:JSON.stringify(payload)});
             const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível criar o cartão.');window.location.reload();
         }catch(error){showError(document.getElementById('createCardError'),error.message);button.disabled=false;}
@@ -110,11 +148,13 @@
     document.querySelectorAll('.js-edit-card').forEach(button=>button.addEventListener('click',()=>{
         const form=document.getElementById('editCardForm');form.dataset.updateUrl=button.dataset.updateUrl;form.dataset.settingsUrl=button.dataset.settingsUrl;
         form.elements.name.value=button.dataset.name;form.elements.credit_limit.value=button.dataset.limit||'';form.elements.closing_day.value=button.dataset.closing||'';form.elements.due_day.value=button.dataset.due||'';form.elements.opening_debt_amount.value=button.dataset.openingDebt||'';
+        moneyFields.forEach(name=>form.elements[name].setCustomValidity(''));
         showError(document.getElementById('editCardError'),'');
     }));
     document.getElementById('editCardForm')?.addEventListener('submit',async(event)=>{
-        event.preventDefault();const form=event.currentTarget,button=form.querySelector('[type="submit"]');button.disabled=true;
-        try{let response=await fetch(form.dataset.settingsUrl,{method:'PUT',credentials:'same-origin',headers,body:JSON.stringify({credit_limit:form.elements.credit_limit.value,closing_day:form.elements.closing_day.value,due_day:form.elements.due_day.value,opening_debt_amount:form.elements.opening_debt_amount.value})});
+        event.preventDefault();const form=event.currentTarget,button=form.querySelector('[type="submit"]'),errorElement=document.getElementById('editCardError');showError(errorElement,'');
+        const amounts=moneyValues(form,errorElement);if(!amounts)return;button.disabled=true;
+        try{let response=await fetch(form.dataset.settingsUrl,{method:'PUT',credentials:'same-origin',headers,body:JSON.stringify({...amounts,closing_day:form.elements.closing_day.value,due_day:form.elements.due_day.value})});
             let result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível atualizar o cartão.');
             response=await fetch(form.dataset.updateUrl,{method:'PUT',credentials:'same-origin',headers,body:JSON.stringify({name:form.elements.name.value})});result=await response.json().catch(()=>({}));
             if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível atualizar o nome.');window.location.reload();

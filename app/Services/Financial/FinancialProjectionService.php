@@ -22,27 +22,30 @@ class FinancialProjectionService
             ->where('is_operational', true)
             ->where('status', 'active')
             ->get(['id', 'type', 'opening_balance']);
-        $cashAccountIds = $cashAccounts->pluck('id')->all();
         $accountTypes = $user->contasFinanceiras()
             ->where('is_operational', true)
             ->where('status', 'active')
             ->pluck('type', 'id');
+        // O limite exclusivo inclui também datas guardadas com hora pelo SQLite.
+        $rangeEndExclusive = $rangeEnd->copy()->addDay()->toDateString();
 
         $openingBalance = (float) $cashAccounts->sum('opening_balance');
         $prior = $user->movimentos()
             ->where('status', 'settled')
             ->where('is_historical', false)
             ->where('movement_date', '<', $rangeStart->toDateString())
-            ->get(['type', 'amount', 'source_account_id', 'destination_account_id']);
+            ->get(['type', 'status', 'amount', 'source_account_id', 'destination_account_id', 'adjustment_direction']);
         $openingBalance += $prior->sum(fn (Movimento $movement) => $this->cashDelta($movement, $accountTypes));
 
         $items = $user->movimentos()
             ->with('categoria:id,name')
-            ->whereIn('type', ['income', 'expense', 'transfer'])
+            ->whereIn('type', ['income', 'expense', 'transfer', 'adjustment'])
             ->whereIn('status', ['pending', 'settled'])
-            ->whereBetween('movement_date', [$rangeStart->toDateString(), $rangeEnd->toDateString()])
+            ->where('is_historical', false)
+            ->where('movement_date', '>=', $rangeStart->toDateString())
+            ->where('movement_date', '<', $rangeEndExclusive)
             ->orderBy('movement_date')
-            ->get(['id', 'type', 'status', 'description', 'notes', 'amount', 'movement_date', 'expense_behavior', 'category_id', 'source_account_id', 'destination_account_id', 'recurrence_id']);
+            ->get(['id', 'type', 'status', 'description', 'notes', 'amount', 'movement_date', 'expense_behavior', 'category_id', 'source_account_id', 'destination_account_id', 'recurrence_id', 'adjustment_direction']);
 
         $items = $items->map(function (Movimento $movement) use ($accountTypes): Movimento {
             $movement->setAttribute('projection_delta', $this->cashDelta($movement, $accountTypes));
@@ -58,8 +61,11 @@ class FinancialProjectionService
             ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('movimentos as linked_movements')
                 ->whereColumn('linked_movements.installment_id', 'parcelas_divida.id')
                 ->where('linked_movements.user_id', $user->id)
-                ->whereIn('linked_movements.status', ['pending', 'settled']))
-            ->whereBetween('due_date', [$rangeStart->toDateString(), $rangeEnd->toDateString()])
+                ->where('linked_movements.status', 'pending')
+                ->where('linked_movements.type', 'expense')
+                ->where('linked_movements.is_historical', false))
+            ->where('due_date', '>=', $rangeStart->toDateString())
+            ->where('due_date', '<', $rangeEndExclusive)
             ->get();
         foreach ($installments as $installment) {
             $remaining = round((float) $installment->amount - (float) $installment->paid_amount, 2);
@@ -77,7 +83,8 @@ class FinancialProjectionService
 
         $invoices = Fatura::query()
             ->where('user_id', $user->id)
-            ->whereBetween('due_date', [$rangeStart->toDateString(), $rangeEnd->toDateString()])
+            ->where('due_date', '>=', $rangeStart->toDateString())
+            ->where('due_date', '<', $rangeEndExclusive)
             ->with(['conta', 'movimentos' => fn ($query) => $query->where('status', 'settled')])
             ->get();
         foreach ($invoices as $invoice) {
@@ -116,6 +123,11 @@ class FinancialProjectionService
             if ($sourceIsCash) $delta -= (float) $movement->amount;
             if ($destinationIsCash) $delta += (float) $movement->amount;
         }
+        // Ajustes representam correções já liquidadas, não novas receitas ou despesas.
+        if ($movement->type === 'adjustment' && $movement->status === 'settled') {
+            if ($movement->adjustment_direction === 'increase' && $destinationIsCash) $delta += (float) $movement->amount;
+            if ($movement->adjustment_direction === 'decrease' && $sourceIsCash) $delta -= (float) $movement->amount;
+        }
 
         return round($delta, 2);
     }
@@ -123,7 +135,6 @@ class FinancialProjectionService
     private function syntheticExpense(string $id, string $description, float $amount, Carbon|string $date, string $behavior): Movimento
     {
         $movement = new Movimento([
-            'id' => $id,
             'type' => 'expense',
             'status' => 'pending',
             'description' => $description,
@@ -135,6 +146,8 @@ class FinancialProjectionService
             'category_id' => null,
             'recurrence_id' => null,
         ]);
+        // O id não é preenchível em massa no modelo, mas identifica eventos virtuais na rota.
+        $movement->setAttribute('id', $id);
         return $movement;
     }
 }
