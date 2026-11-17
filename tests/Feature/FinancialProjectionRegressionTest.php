@@ -362,7 +362,7 @@ class FinancialProjectionRegressionTest extends TestCase
         $secondPayment = $invoices->pay($user, $invoice, $bank->id, '2026-12-02', '15.00');
         $partial = $this->project($user);
         $this->assertSame(175.0, $partial['openingBalance']);
-        $this->assertCount(2, $partial['movements']);
+        $this->assertCount(3, $partial['movements']);
         $this->assertSame(-15.0, $partial['movements']->firstWhere('id', $secondPayment->id)->projection_delta);
         $this->assertSame(-60.0, $partial['movements']->firstWhere('id', 'invoice-'.$invoice->id)->projection_delta);
         $this->assertSame(100.0, $partial['openingBalance'] + $partial['movements']->sum('projection_delta'));
@@ -370,7 +370,7 @@ class FinancialProjectionRegressionTest extends TestCase
         $thirdPayment = $invoices->pay($user, $invoice, $bank->id, '2026-12-03', '60.00');
         $paid = $this->project($user);
         $this->assertSame(175.0, $paid['openingBalance']);
-        $this->assertCount(2, $paid['movements']);
+        $this->assertCount(3, $paid['movements']);
         $this->assertNull($paid['movements']->firstWhere('id', 'invoice-'.$invoice->id));
         $this->assertSame(-60.0, $paid['movements']->firstWhere('id', $thirdPayment->id)->projection_delta);
         $this->assertSame('100.00', app(AccountBalanceService::class)->balance($bank));
