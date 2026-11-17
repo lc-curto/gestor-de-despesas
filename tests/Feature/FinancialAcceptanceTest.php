@@ -23,10 +23,24 @@ class FinancialAcceptanceTest extends TestCase
 {
     use RefreshDatabase;
 
+    private int $initialOutputBufferLevel;
+
     protected function setUp(): void
     {
         parent::setUp();
+        $this->initialOutputBufferLevel = ob_get_level();
         $this->withoutMiddleware(PreventRequestForgery::class);
+    }
+
+    protected function tearDown(): void
+    {
+        parent::tearDown();
+
+        $this->assertSame(
+            $this->initialOutputBufferLevel,
+            ob_get_level(),
+            'O teste de aceitação deixou um output buffer aberto.'
+        );
     }
 
     public function test_acceptance_trusted_https_proxy_generates_secure_auth_actions_and_assets(): void
