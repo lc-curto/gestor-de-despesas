@@ -426,6 +426,18 @@ class FinanceController extends Controller
                         ($tipo === 'despesa' ? 'source_account_id' : 'destination_account_id') => $accountId,
                     ]);
                 }
+            } elseif ($movement->is_settlement_parent && in_array($movement->status, ['partial', 'settled'], true)) {
+                $movement = $service->updateSettlementParent($request->user(), $movement, [
+                    'description' => $payload['description'],
+                    'notes' => $payload['notes'],
+                    'amount' => $payload['amount'],
+                    'movement_date' => $payload['movement_date'],
+                    'category_id' => $payload['category_id'],
+                    'expense_behavior' => $payload['expense_behavior'],
+                    'payment_method' => $payload['payment_method'],
+                    'source_account_id' => $payload['source_account_id'],
+                    'destination_account_id' => $payload['destination_account_id'],
+                ]);
             } elseif ($movement->status === 'settled') {
                 $sameFinancialData = $movement->type === ($tipo === 'despesa' ? 'expense' : 'income')
                     && (string) $movement->description === (string) $payload['description']
