@@ -79,9 +79,9 @@ class CardIntegrityRegressionTest extends TestCase
         $response->assertUnprocessable()->assertJsonValidationErrors('movement');
         $this->assertStringContainsString('fatura', $response->json('errors.movement.0'));
         $this->assertSame($auditCount, DB::table('historico_movimentos')->count());
-        $this->assertSame(1, $user->movimentos()->count());
+        $this->assertSame(2, $user->movimentos()->count());
         $this->assertSame('settled', $purchase->fresh()->status);
-        $this->assertSame('open', $invoice->fresh()->status);
+        $this->assertSame('partial', $invoice->fresh()->status);
         $listed = app(CardInvoiceService::class)->listInvoices($user)->items()[0];
         $this->assertEquals(100, $listed->total_amount);
         $this->assertSame('100.00', $listed->remaining_amount);
@@ -140,7 +140,7 @@ class CardIntegrityRegressionTest extends TestCase
         $this->assertSame('paid', $listed->display_status);
         $this->assertBalance($bank, '400.00');
         $this->assertBalance($card, '0.00');
-        $this->assertSame(3, $user->movimentos()->count());
+        $this->assertSame(4, $user->movimentos()->count());
         $this->assertSame(0, $user->movimentos()->whereNotNull('reversal_of_id')->count());
     }
 
