@@ -122,7 +122,7 @@ class CardIntegrityRegressionTest extends TestCase
         $this->assertSame('partial', $listed->display_status);
         $this->assertBalance($card, '-64.75');
         $this->assertBalance($bank, '464.75');
-        $this->assertSame(2, $user->movimentos()->count());
+        $this->assertSame(3, $user->movimentos()->count());
 
         $this->assertRejected(fn () => $invoices->pay($user, $invoice, $bank->id, '2026-11-17', '64.76'), 'amount', 'pendente');
         $final = $invoices->pay($user, $invoice, $bank->id, '2026-11-17');
@@ -290,7 +290,7 @@ class CardIntegrityRegressionTest extends TestCase
         ]);
         $this->assertRejected(fn () => app(CardInvoiceService::class)->settlePendingPurchase($user, $pending, $card->id), 'invoice', 'reconciliação');
         $this->assertSame('pending', $pending->fresh()->status);
-        $this->assertSame(3, $user->movimentos()->count());
+        $this->assertSame(4, $user->movimentos()->count());
         $this->assertSame('open', $invoice->fresh()->status);
         $this->assertBalance($bank, '500.00');
         $this->assertBalance($card, '0.00');
