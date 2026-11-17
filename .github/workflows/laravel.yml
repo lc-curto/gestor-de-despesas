@@ -81,4 +81,4 @@ jobs:
           DB_DATABASE: meu_bolso_test
           DB_USERNAME: root
           DB_PASSWORD: root
-        run: php artisan test
+        run: php artisan test --display-all-issues
