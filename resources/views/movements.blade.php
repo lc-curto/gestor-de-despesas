@@ -71,51 +71,31 @@
                         <input type="hidden" name="_method" id="movementMethod" value="POST">
                         <div id="movementFormError" class="alert alert-danger d-none" role="alert" tabindex="-1"></div>
                         <div class="mb-3">
+                            <label for="movementAmount" class="form-label fw-semibold">Valor</label>
+                            <div class="input-group input-group-lg">
+                                <input type="text" inputmode="decimal" class="form-control fw-bold" id="movementAmount" name="amount" placeholder="0,00" aria-describedby="movementAmountHelp" value="{{ old('amount') }}" required>
+                                <span class="input-group-text" id="amountCurrencySymbol">{{ $simbolos[$moeda] ?? $moeda }}</span>
+                            </div>
+                            <div id="movementAmountHelp" class="form-text">Usa vírgula ou ponto para os cêntimos.</div>
+                        </div>
+                        <div class="mb-3">
                             <label for="movementDescription" class="form-label" id="descriptionLabel">Descrição</label>
                             <input type="text" class="form-control" id="movementDescription" name="description" placeholder="Ex.: Supermercado" value="{{ old('description') }}" maxlength="255" required>
                         </div>
                         <div class="row g-2 mb-3">
                             <div class="col-6">
-                                <label for="movementAmount" class="form-label">Valor</label>
-                                <div class="input-group">
-                                    <input type="text" inputmode="decimal" class="form-control" id="movementAmount" name="amount" placeholder="0,00" aria-describedby="movementAmountHelp" value="{{ old('amount') }}" required>
-                                    <span class="input-group-text" id="amountCurrencySymbol">{{ $simbolos[$moeda] ?? $moeda }}</span>
-                                </div>
-                                <div id="movementAmountHelp" class="form-text">Usa vírgula ou ponto para os cêntimos.</div>
-                            </div>
-                            <div class="col-6">
                                 <label for="movementDate" class="form-label">Data</label>
                                 <input type="date" class="form-control" id="movementDate" name="expense_date" value="{{ old('expense_date', old('income_date', now()->toDateString())) }}" required>
                             </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="movementAccount" class="form-label">Conta de saída</label>
-                            <select class="form-select" id="movementAccount" name="account_id" required>
-                                <option value="">Selecionar conta</option>
-                                @foreach ($accounts as $account)
-                                    <option value="{{ $account->id }}" @selected($accounts->count() === 1)>{{ $account->name }} · {{ $account->currency }}</option>
-                                @endforeach
-                            </select>
-                            @if ($accounts->isEmpty())
-                                <div class="form-text text-warning">Cria uma conta e configura o saldo inicial em <a href="{{ route('financial.accounts.page') }}">Contas</a> antes de registar.</div>
-                            @endif
-                        </div>
-                        <div class="border-top pt-3 mb-3">
-                            <label class="form-check mb-2"><input class="form-check-input" type="checkbox" name="recurrence_enabled" value="1" id="dashboardRecurrenceEnabled"> <span class="form-check-label">Repetir esta despesa/receita</span></label>
-                            <div id="dashboardRecurrenceFields" class="row g-2" hidden>
-                                <div class="col-4"><label for="dashboardRecurrenceInterval" class="form-label">A cada</label><input id="dashboardRecurrenceInterval" name="recurrence_interval" type="number" min="1" max="365" value="1" class="form-control"></div>
-                                <div class="col-4"><label for="dashboardRecurrenceFrequency" class="form-label">Frequência</label><select id="dashboardRecurrenceFrequency" name="recurrence_frequency" class="form-select"><option value="daily">Dia(s)</option><option value="weekly">Semana(s)</option><option value="monthly" selected>Mensal</option><option value="quarterly">Trimestral</option><option value="yearly">Anual</option><option value="custom">Dias</option></select></div>
-                                <div class="col-4"><label for="dashboardRecurrenceEnds" class="form-label">Termina em</label><input id="dashboardRecurrenceEnds" name="recurrence_ends_at" type="date" class="form-control"></div>
+                            <div class="col-6">
+                                <label for="movementCategory" class="form-label">Categoria</label>
+                                <select class="form-select" id="movementCategory" name="category_id" required>
+                                    <option value="" selected disabled>Seleciona</option>
+                                    @foreach ($categoriasDespesa as $id => $label)
+                                        <option value="{{ $id }}" @selected((string) old('category_id') === (string) $id)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
                             </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="movementCategory" class="form-label">Categoria</label>
-                            <select class="form-select" id="movementCategory" name="category_id" required>
-                                <option value="" selected disabled>Seleciona uma categoria</option>
-                                @foreach ($categoriasDespesa as $id => $label)
-                                    <option value="{{ $id }}" @selected((string) old('category_id') === (string) $id)>{{ $label }}</option>
-                                @endforeach
-                            </select>
                         </div>
                         <div id="dashboardExpenseBehaviorField" class="mb-3">
                             <label class="form-label d-block">Comportamento da despesa</label>
@@ -125,72 +105,71 @@
                             </div>
                             <div class="form-text">Fixa é uma despesa estrutural ou regular, mesmo que o valor varie.</div>
                         </div>
+                        <div class="mb-3">
+                            <label for="movementAccount" class="form-label" id="movementAccountLabel">De onde saiu o dinheiro?</label>
+                            <select class="form-select" id="movementAccount" name="account_id">
+                                <option value="">Selecionar conta</option>
+                                @foreach ($accounts as $account)
+                                    <option value="{{ $account->id }}" @selected($accounts->count() === 1)>{{ $account->name }} · {{ $account->currency }}</option>
+                                @endforeach
+                            </select>
+                            @if ($accounts->isEmpty())
+                                <div class="form-text text-warning">Cria uma conta e configura o saldo inicial em <a href="{{ route('financial.accounts.page') }}">Contas</a> antes de registar.</div>
+                            @endif
+                        </div>
                         <div id="dashboardPaymentFields" class="border-top pt-3 mb-3">
-                            <label class="form-label d-block fw-semibold mb-2">Modalidade de pagamento</label>
-                            <div class="payment-mode-grid mb-3" role="radiogroup" aria-label="Modalidade de pagamento">
-                                <label class="payment-mode-card">
-                                    <input class="visually-hidden" type="radio" name="payment_condition" value="cash" checked>
-                                    <span class="payment-mode-card-title">Pagamento único</span>
-                                    <span class="payment-mode-card-description">Pago numa única vez.</span>
-                                    <span class="payment-mode-card-selected" aria-hidden="true">Selecionado</span>
-                                </label>
-                                <label class="payment-mode-card">
-                                    <input class="visually-hidden" type="radio" name="payment_condition" value="deferred">
-                                    <span class="payment-mode-card-title">Pagamento com vencimento</span>
-                                    <span class="payment-mode-card-description">Tem uma data de vencimento.</span>
-                                    <span class="payment-mode-card-selected" aria-hidden="true">Selecionado</span>
-                                </label>
-                                <label class="payment-mode-card">
-                                    <input class="visually-hidden" type="radio" name="payment_condition" value="installments">
-                                    <span class="payment-mode-card-title">Pagamento parcelado</span>
-                                    <span class="payment-mode-card-description">Dividido em prestações.</span>
-                                    <span class="payment-mode-card-selected" aria-hidden="true">Selecionado</span>
-                                </label>
-                            </div>
-                            <div id="dashboardCommitmentOptions" class="row g-2" hidden>
-                                <div class="col-12">
-                                    <label for="dashboardPaymentMethod" class="form-label">Método de pagamento previsto</label>
-                                    <select id="dashboardPaymentMethod" name="payment_method" class="form-select">
-                                        <option value="">Selecionar método</option>
-                                        <option value="cash">Dinheiro</option><option value="debit">Cartão de débito</option>
-                                        <option value="credit">Cartão de crédito (regista em Cartões)</option><option value="transfer">Transferência bancária</option>
-                                        <option value="mbway">MB WAY</option><option value="direct_debit">Débito direto</option>
-                                    </select>
-                                </div>
-                                <div class="col-12" id="dashboardDueDateField">
-                                    <label for="dashboardDueDate" class="form-label">Data de vencimento</label>
-                                    <input id="dashboardDueDate" name="due_date" type="date" class="form-control" value="{{ now()->toDateString() }}">
-                                </div>
-                                <div class="col-6" id="dashboardInstallmentsField" hidden>
-                                    <label for="dashboardInstallments" class="form-label">Número de prestações</label>
-                                    <input id="dashboardInstallments" name="installments_count" type="number" min="2" max="120" value="2" class="form-control">
-                                </div>
-                                <div class="col-6" id="dashboardInstallmentFrequencyField" hidden>
-                                    <label for="dashboardInstallmentFrequency" class="form-label">Periodicidade</label>
-                                    <select id="dashboardInstallmentFrequency" name="installment_frequency" class="form-select">
-                                        <option value="weekly">Semanal</option><option value="biweekly">Quinzenal</option><option value="monthly" selected>Mensal</option>
-                                    </select>
-                                </div>
-                                <div class="col-12" id="dashboardInstallmentSchedule" hidden>
-                                    <div class="small fw-semibold mb-2">Resumo do parcelamento</div>
-                                    <div class="list-group list-group-flush" id="dashboardInstallmentScheduleList" aria-live="polite"></div>
-                                </div>
-                            </div>
-                            <div id="dashboardPaidFields" class="mt-3">
+                            <div id="dashboardPaidFields" class="mb-3">
                                 <label class="form-label d-block fw-semibold">Estado do pagamento</label>
                                 <div class="payment-status-grid" role="radiogroup" aria-label="Estado do pagamento">
-                                    <label class="payment-status-option"><input class="form-check-input" type="radio" name="paid_now" value="0" checked><span>Ainda não paguei</span></label>
+                                    <label class="payment-status-option"><input class="form-check-input" type="radio" name="paid_now" value="0" checked><span>Pendente</span></label>
                                     <label class="payment-status-option"><input class="form-check-input" type="radio" name="paid_now" value="partial"><span id="dashboardPaidPartialLabel">Paguei uma parte</span></label>
-                                    <label class="payment-status-option"><input class="form-check-input" type="radio" name="paid_now" value="1"><span id="dashboardPaidFullLabel">Já paguei tudo</span></label>
+                                    <label class="payment-status-option"><input class="form-check-input" type="radio" name="paid_now" value="1"><span id="dashboardPaidFullLabel">Pago</span></label>
                                 </div>
                                 <div id="dashboardPaymentDetails" class="row g-2 mt-2" hidden>
                                     <div class="col-12" id="dashboardPaymentAmountField"><label for="dashboardPaymentAmount" class="form-label">Valor pago</label><input id="dashboardPaymentAmount" name="payment_amount" type="text" inputmode="decimal" placeholder="0,00" class="form-control"></div>
                                     <div class="col-6"><label for="dashboardPaymentDate" class="form-label">Data do pagamento</label><input id="dashboardPaymentDate" name="payment_date" type="date" class="form-control" value="{{ now()->toDateString() }}"></div>
                                     <div class="col-6"><label for="dashboardPaymentAccount" class="form-label">Conta utilizada</label><select id="dashboardPaymentAccount" name="payment_account_id" class="form-select"><option value="">Selecionar conta</option>@foreach ($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }} · {{ $account->currency }}</option>@endforeach</select></div>
-                                    <div class="col-12"><label for="dashboardActualPaymentMethod" class="form-label">Método utilizado</label><select id="dashboardActualPaymentMethod" name="actual_payment_method" class="form-select"><option value="">Selecionar método</option><option value="cash">Dinheiro</option><option value="debit">Cartão de débito</option><option value="credit">Cartão de crédito</option><option value="transfer">Transferência bancária</option><option value="mbway">MB WAY</option><option value="direct_debit">Débito direto</option></select></div>
+                                    <div class="col-12"><label for="dashboardActualPaymentMethod" class="form-label">Método utilizado</label><select id="dashboardActualPaymentMethod" name="actual_payment_method" class="form-select"><option value="">Selecionar método</option><option value="cash">Dinheiro</option><option value="debit">Cartão de débito</option><option value="credit">Cartão de crédito</option><option value="transfer">Transferência bancária</option><option value="mbway">MB WAY</option><option value="direct_debit">Débito direto</option><option value="other">Outro</option></select></div>
                                 </div>
                             </div>
-                            <p class="form-text mb-0 mt-2">A recorrência cria novas obrigações. O parcelamento divide o valor desta obrigação em prestações.</p>
+                            <div class="accordion" id="dashboardAdditionalDetails">
+                                <div class="accordion-item border rounded-3">
+                                    <h3 class="accordion-header">
+                                        <button class="accordion-button collapsed py-3" type="button" data-bs-toggle="collapse" data-bs-target="#dashboardAdditionalDetailsPanel" aria-expanded="false" aria-controls="dashboardAdditionalDetailsPanel">Adicionar detalhes</button>
+                                    </h3>
+                                    <div id="dashboardAdditionalDetailsPanel" class="accordion-collapse collapse" data-bs-parent="#dashboardAdditionalDetails">
+                                        <div class="accordion-body">
+                                            <div class="mb-3">
+                                                <label class="form-check mb-2"><input class="form-check-input" type="checkbox" name="recurrence_enabled" value="1" id="dashboardRecurrenceEnabled"> <span class="form-check-label">Repetir este movimento</span></label>
+                                                <div id="dashboardRecurrenceFields" class="row g-2" hidden>
+                                                    <div class="col-4"><label for="dashboardRecurrenceInterval" class="form-label">A cada</label><input id="dashboardRecurrenceInterval" name="recurrence_interval" type="number" min="1" max="365" value="1" class="form-control"></div>
+                                                    <div class="col-4"><label for="dashboardRecurrenceFrequency" class="form-label">Frequência</label><select id="dashboardRecurrenceFrequency" name="recurrence_frequency" class="form-select"><option value="weekly">Semanal</option><option value="monthly" selected>Mensal</option><option value="quarterly">Trimestral</option><option value="yearly">Anual</option></select></div>
+                                                    <div class="col-4"><label for="dashboardRecurrenceEnds" class="form-label">Termina em</label><input id="dashboardRecurrenceEnds" name="recurrence_ends_at" type="date" class="form-control"></div>
+                                                </div>
+                                            </div>
+                                            <div id="dashboardCommitmentOptions" class="row g-2">
+                                                <div class="col-12">
+                                                    <label class="form-label d-block fw-semibold">Modalidade de pagamento</label>
+                                                    <div class="payment-mode-grid mb-3" role="radiogroup" aria-label="Modalidade de pagamento">
+                                                        <label class="payment-mode-card"><input class="visually-hidden" type="radio" name="payment_condition" value="cash" checked><span class="payment-mode-card-title">Pagamento único</span><span class="payment-mode-card-description">Uma única liquidação.</span><span class="payment-mode-card-selected" aria-hidden="true">Selecionado</span></label>
+                                                        <label class="payment-mode-card"><input class="visually-hidden" type="radio" name="payment_condition" value="deferred"><span class="payment-mode-card-title">Com vencimento</span><span class="payment-mode-card-description">Pagamento numa data futura.</span><span class="payment-mode-card-selected" aria-hidden="true">Selecionado</span></label>
+                                                        <label class="payment-mode-card"><input class="visually-hidden" type="radio" name="payment_condition" value="installments"><span class="payment-mode-card-title">Parcelado</span><span class="payment-mode-card-description">Dividido em prestações.</span><span class="payment-mode-card-selected" aria-hidden="true">Selecionado</span></label>
+                                                    </div>
+                                                    <label for="dashboardPaymentMethod" class="form-label">Método previsto</label>
+                                                    <select id="dashboardPaymentMethod" name="payment_method" class="form-select">
+                                                        <option value="">Selecionar método</option><option value="cash">Dinheiro</option><option value="debit">Cartão de débito</option><option value="transfer">Transferência bancária</option><option value="mbway">MB WAY</option><option value="direct_debit">Débito direto</option><option value="credit">Cartão de crédito (regista em Cartões)</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-12" id="dashboardDueDateField"><label for="dashboardDueDate" class="form-label">Data de vencimento</label><input id="dashboardDueDate" name="due_date" type="date" class="form-control" value="{{ now()->toDateString() }}"></div>
+                                                <div class="col-6" id="dashboardInstallmentsField" hidden><label for="dashboardInstallments" class="form-label">Número de prestações</label><input id="dashboardInstallments" name="installments_count" type="number" min="2" max="120" value="2" class="form-control"></div>
+                                                <div class="col-6" id="dashboardInstallmentFrequencyField" hidden><label for="dashboardInstallmentFrequency" class="form-label">Periodicidade</label><select id="dashboardInstallmentFrequency" name="installment_frequency" class="form-select"><option value="weekly">Semanal</option><option value="monthly" selected>Mensal</option></select></div>
+                                                <div class="col-12" id="dashboardInstallmentSchedule" hidden><div class="small fw-semibold mb-2">Resumo do parcelamento</div><div class="list-group list-group-flush" id="dashboardInstallmentScheduleList" aria-live="polite"></div></div>
+                                            </div>
+                                            <p class="form-text mb-0 mt-3">A recorrência cria movimentos futuros. O parcelamento divide o valor em prestações. Não é possível combinar as duas opções.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-danger w-100" id="saveMovementButton" >Guardar despesa</button>
