@@ -29,7 +29,7 @@ class RecurrenceService
         $rule = DB::transaction(function () use ($user, $data): Recorrencia {
             $rule = $user->recorrencias()->create([
                 'type' => $data['type'],
-                'expense_behavior' => $data['type'] === 'expense' ? ($data['expense_behavior'] ?? 'variable') : 'variable',
+                'expense_behavior' => $data['type'] === 'expense' ? ($category->expense_behavior ?? 'variable') : 'variable',
                 'description' => $data['description'],
                 'amount' => $data['amount'],
                 'category_id' => $data['category_id'],
@@ -88,7 +88,7 @@ class RecurrenceService
             }
             $this->assertDefaultAccount($user, $movement->type, $data['account_id'] ?? null);
             $date = Carbon::parse($movement->movement_date)->toDateString();
-            $values = ['type' => $movement->type, 'expense_behavior' => $movement->type === 'expense' ? ($data['expense_behavior'] ?? 'variable') : 'variable', 'description' => $data['description'], 'amount' => $data['amount'], 'category_id' => $data['category_id'], 'account_id' => $data['account_id'] ?? null, 'frequency' => $data['frequency'], 'interval_value' => (int) $data['interval_value'], 'anchor_date' => $date, 'ends_at' => $data['ends_at'] ?? null, 'is_active' => true];
+            $values = ['type' => $movement->type, 'expense_behavior' => $movement->type === 'expense' ? ($category->expense_behavior ?? 'variable') : 'variable', 'description' => $data['description'], 'amount' => $data['amount'], 'category_id' => $data['category_id'], 'account_id' => $data['account_id'] ?? null, 'frequency' => $data['frequency'], 'interval_value' => (int) $data['interval_value'], 'anchor_date' => $date, 'ends_at' => $data['ends_at'] ?? null, 'is_active' => true];
             if (!$rule) {
                 $rule = $user->recorrencias()->create($values + ['next_occurrence' => $date]);
                 $movement->recurrence_id = $rule->id;
