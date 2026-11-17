@@ -517,7 +517,7 @@ class FinancialAcceptanceTest extends TestCase
 
         $this->assertDatabaseCount('movimentos', 1);
         $this->assertDatabaseHas('parcelas_divida', ['id' => $installment->id, 'status' => 'cancelled', 'paid_amount' => '0.00']);
-        $this->assertDatabaseHas('movimentos', ['debt_id' => $debt->id, 'installment_id' => $installment->id, 'status' => 'void']);
+        $this->assertDatabaseHas('movimentos', ['id' => $user->movimentos()->where('status', 'void')->value('id'), 'debt_id' => null, 'installment_id' => null, 'status' => 'void']);
         $this->assertDatabaseHas('dividas', ['id' => $debt->id, 'status' => 'cancelled']);
     }
 

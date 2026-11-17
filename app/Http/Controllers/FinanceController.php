@@ -397,7 +397,7 @@ class FinanceController extends Controller
             if ($movement?->invoice_id) {
                 $invoice = $request->user()->faturas()->whereKey($movement->invoice_id)->firstOrFail();
                 if ($invoice->status !== 'open') {
-                    throw ValidationException::withMessages(['expense' => 'Não é possível editar uma compra de fatura já liquidada. Estorna o movimento e regista a correção.']);
+                    throw ValidationException::withMessages(['expense' => 'Não é possível editar uma compra de fatura já liquidada. Resolve primeiro os pagamentos e saldos associados à fatura para permitir uma correção segura.']);
                 }
             }
             $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId, 'expense_behavior' => $expenseBehavior, 'actual_payment_method' => $actualPaymentMethod]), $legacyType, $legacy->id);
@@ -447,7 +447,7 @@ class FinanceController extends Controller
                     && ($tipo !== 'despesa' || $movement->expense_behavior === $payload['expense_behavior']);
                 if (! $sameFinancialData) {
                     throw ValidationException::withMessages([
-                        'movement' => 'Um movimento liquidado não pode ser editado. Estorna-o e regista a correção como um novo movimento.',
+                        'movement' => 'Um movimento liquidado não pode ser editado. Para corrigir, elimina-o pela ação de domínio se a propagação for permitida e regista o movimento correto.',
                     ]);
                 }
                 $currentAccountId = $tipo === 'despesa'

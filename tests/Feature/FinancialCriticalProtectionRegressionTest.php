@@ -123,7 +123,7 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
         $this->assertSame('void', $payment->fresh()->status);
         $this->assertSame('200.00', app(AccountBalanceService::class)->balance($bank->fresh()));
         $this->assertSame(0, $user->movimentos()->whereNotNull('reversal_of_id')->count());
-        $this->assertDatabaseHas('historico_movimentos', ['movement_id' => $forecast->id, 'action' => 'voided']);
+        $this->assertDatabaseHas('historico_movimentos', ['movement_id' => $forecast->id, 'action' => 'deleted']);
     }
 
 
