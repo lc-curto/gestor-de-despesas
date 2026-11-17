@@ -318,13 +318,14 @@ class FinanceController extends Controller
         }
         $expenseBehavior = $data['expense_behavior'] ?? 'variable';
         $notes = $data['notes'] ?? null;
-        unset($data['notes'], $data['expense_behavior'], $data['account_id'], $data['payment_account_id'], $data['paid_now'], $data['payment_amount'], $data['payment_date'], $data[$data['payment_condition'], $data['payment_method'], $data['installments_count'], $data['installment_frequency'], $data['card_only'], $data['recurrence_enabled'], $data['recurrence_frequency'], $data['recurrence_interval'], $data['recurrence_ends_at']);
+        $actualPaymentMethod = $data['actual_payment_method'] ?? null;
+        unset($data['notes'], $data['actual_payment_method'], $data['expense_behavior'], $data['account_id'], $data['payment_account_id'], $data['paid_now'], $data['payment_amount'], $data['payment_date'], $data['payment_condition'], $data['payment_method'], $data['installments_count'], $data['installment_frequency'], $data['card_only'], $data['recurrence_enabled'], $data['recurrence_frequency'], $data['recurrence_interval'], $data['recurrence_ends_at']);
         if ($tipo !== 'despesa') unset($data['due_date']);
         $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
 
         DB::transaction(function () use ($request, $service, $invoices, $tipo, $data, $accountId, $legacyType, $expenseBehavior, $isPendingExpense, $notes): void {
             $legacy = $this->query($request)->create($data);
-            $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId, 'expense_behavior' => $expenseBehavior, 'notes' => $notes]), $legacyType, $legacy->id);
+            $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId, 'expense_behavior' => $expenseBehavior, 'notes' => $notes, 'actual_payment_method' => $actualPaymentMethod]), $legacyType, $legacy->id);
             if ($isPendingExpense) {
                 $service->createPending($request->user(), array_merge($payload, ['source_account_id' => null, 'destination_account_id' => null, 'notes' => $notes]));
                 return;
