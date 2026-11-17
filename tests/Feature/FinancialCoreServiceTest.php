@@ -116,6 +116,7 @@ class FinancialCoreServiceTest extends TestCase
         $response = $this->actingAs($user)->postJson('/api/financial/commitments', [
             'name' => 'Computador', 'total_amount' => '100.00', 'start_date' => '2026-11-01',
             'due_date' => '2026-11-15', 'payment_condition' => 'installments', 'installments_count' => 3,
+            'paid_now' => '0',
         ])->assertCreated();
         $debtId = $response->json('data.id');
         $installments = $response->json('data.parcelas');
@@ -145,6 +146,7 @@ class FinancialCoreServiceTest extends TestCase
             'payment_condition' => 'installments',
             'installments_count' => 3,
             'installment_frequency' => 'weekly',
+            'paid_now' => '0',
         ])->assertCreated()->json('data.parcelas');
 
         $this->assertSame(
@@ -160,6 +162,7 @@ class FinancialCoreServiceTest extends TestCase
             'payment_condition' => 'installments',
             'installments_count' => 3,
             'installment_frequency' => 'biweekly',
+            'paid_now' => '0',
         ])->assertCreated()->json('data.parcelas');
 
         $this->assertSame(
@@ -198,6 +201,7 @@ class FinancialCoreServiceTest extends TestCase
         $debt = $this->actingAs($user)->postJson('/api/financial/commitments', [
             'name' => 'Móvel', 'total_amount' => '100.00', 'start_date' => '2026-11-01',
             'due_date' => '2026-11-15', 'payment_condition' => 'installments', 'installments_count' => 2,
+            'paid_now' => '0',
         ])->assertCreated()->json('data');
 
         $this->postJson('/api/financial/commitments/'.$debt['id'].'/installments/'.$debt['parcelas'][0]['id'].'/pay', [

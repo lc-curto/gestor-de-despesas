@@ -18,6 +18,7 @@ class InstallmentMovementRegressionTest extends TestCase
             'start_date' => '2026-11-17',
             'due_date' => '2026-12-17',
             'payment_condition' => 'installments',
+            'paid_now' => '0',
             'payment_method' => 'transfer',
             'category_id' => $user->categorias()->where('slug', 'casa')->firstOrFail()->id,
             'account_id' => null,

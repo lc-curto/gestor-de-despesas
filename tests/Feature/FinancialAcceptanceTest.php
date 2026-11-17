@@ -512,6 +512,7 @@ class FinancialAcceptanceTest extends TestCase
         $this->actingAs($user)->postJson(route('financial.commitments.store'), [
             'name' => 'Conta parcialmente paga', 'total_amount' => '90.00',
             'start_date' => '2026-11-01', 'due_date' => '2026-11-25', 'payment_condition' => 'deferred',
+            'paid_now' => '0',
             'initial_payment' => ['account_id' => $account->id, 'amount' => '40.00', 'payment_date' => '2026-11-16'],
         ])->assertCreated()->assertJsonPath('data.parcelas.0.status', 'partial');
 
