@@ -147,16 +147,30 @@
         if (hiddenDueDate) hiddenDueDate.value = dueToggle?.checked ? (dueInput?.value || '') : '';
 
         if (recurrence && installmentsToggle) {
+            // Parcelamentos representam obrigações futuras: só podem ser criados
+            // enquanto a despesa estiver pendente. Recorrência continua disponível
+            // para movimentos pagos, sem permitir a combinação com prestações.
+            installmentsToggle.disabled = !isExpense || isPaid || Boolean(recurrence.checked);
             recurrence.disabled = Boolean(installmentsToggle.checked);
-            installmentsToggle.disabled = Boolean(recurrence.checked) || !isExpense;
-            if (!isExpense) {
+
+            if (!isExpense || isPaid) {
+                installmentsToggle.checked = false;
+                if (installmentsFields) installmentsFields.hidden = true;
+            }
+            if (recurrence.checked && installmentsToggle.checked) {
                 installmentsToggle.checked = false;
                 if (installmentsFields) installmentsFields.hidden = true;
             }
         }
-        if (recurrence?.checked && installmentsToggle?.checked) {
-            installmentsToggle.checked = false;
-            if (installmentsFields) installmentsFields.hidden = true;
+        // Uma data de vencimento só faz sentido para uma obrigação ainda pendente.
+        if (dueToggle && isExpense) {
+            dueToggle.disabled = isPaid;
+            if (isPaid) {
+                dueToggle.checked = false;
+                if (dueField) dueField.hidden = true;
+                if (dueInput) dueInput.required = false;
+                if (hiddenDueDate) hiddenDueDate.value = '';
+            }
         }
         if (condition) condition.value = recurrence?.checked ? 'cash' : (installmentsToggle?.checked ? 'installments' : (dueToggle?.checked ? 'deferred' : 'cash'));
         renderInstallmentSchedule();
@@ -840,6 +854,9 @@
             values.due_date = document.getElementById('dashboardDueDateEnabled')?.checked ? (document.getElementById('dashboardDueDateInput')?.value || '') : '';
             const paidState = values.paid_now || '0';
             const isNewExpense = !editing && movementType === 'despesa';
+            if (isNewExpense && paidState !== '0' && ['deferred', 'installments'].includes(condition)) {
+                throw new Error('O parcelamento e o vencimento futuro só podem ser criados para movimentos pendentes. Regista o pagamento no próprio movimento quando o efetuares.');
+            }
             const isInstallment = isNewExpense && condition === 'installments';
             const normalizedAmount = parseMoney(values.amount);
             if (!normalizedAmount) {
@@ -873,6 +890,7 @@
                             start_date: values.expense_date,
                             due_date: values.due_date || values.expense_date,
                             payment_condition: 'installments',
+                            paid_now: paidState,
                             payment_method: values.payment_method || null,
                             account_id: values.account_id || null,
                             category_id: values.category_id || null,
