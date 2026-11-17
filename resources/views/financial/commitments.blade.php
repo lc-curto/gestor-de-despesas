@@ -90,8 +90,8 @@
         @endforelse
     </section>
 
-    <section class="commitment-section mb-4" aria-labelledby="historySectionTitle">
-        <div class="d-flex justify-content-between align-items-center mb-2"><div><h2 class="h5 fw-bold mb-1" id="historySectionTitle">Histórico de pagamentos</h2><p class="small text-secondary mb-0">Pagamentos já registados.</p></div><span class="badge text-bg-secondary">{{ $historyItems->count() }}</span></div>
+    <details class="commitment-secondary-section mb-4"><summary>Histórico <span class="badge text-bg-secondary">{{ $historyItems->count() }}</span></summary><section class="commitment-section" aria-labelledby="historySectionTitle">
+        <div class="d-flex justify-content-between align-items-center mb-2"><div><h2 class="visually-hidden h5 fw-bold mb-1" id="historySectionTitle">Histórico</h2></div></div>
         @if($historyItems->isNotEmpty()) <details class="commitment-history"><summary>Ver histórico de pagamentos ({{ $historyItems->count() }})</summary> @endif
         @forelse($historyItems as $history)
             @if($loop->index === 10) <details class="commitment-more-items"><summary>Ver mais {{ $historyItems->count() - 10 }} pagamentos</summary><div> @endif
@@ -99,10 +99,10 @@
         @empty <p class="small text-secondary">Ainda não existem pagamentos no histórico.</p> @endforelse
         @if($historyItems->count() > 10)</div></details>@endif
         @if($historyItems->isNotEmpty()) </details> @endif
-    </section>
+    </section></details>
 
-    <section class="commitment-section mb-4" aria-labelledby="manageSectionTitle">
-        <h2 class="h5 fw-bold mb-1" id="manageSectionTitle">Gerir parcelamentos</h2><p class="small text-secondary">Editar a descrição e a próxima prestação ou encerrar o parcelamento.</p>
+    <details class="commitment-secondary-section mb-4"><summary>Gerir parcelamentos</summary><section class="commitment-section" aria-labelledby="manageSectionTitle">
+        <h2 class="visually-hidden h5 fw-bold mb-1" id="manageSectionTitle">Gerir parcelamentos</h2>
         @foreach($commitments as $commitment)
             @if(!in_array($commitment->status,['paid','cancelled'],true))
                 <article class="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom py-3"><div><strong>{{ $commitment->name }}</strong><div class="small text-secondary">{{ $commitment->payment_condition === 'installments' ? $commitment->installments_count.' prestações' : 'Pagamento único' }} · {{ number_format((float)$commitment->total_amount,2,',','.') }} {{ auth()->user()->currency }}</div></div>
@@ -110,7 +110,7 @@
                 </article>
             @endif
         @endforeach
-    </section>
+    </section></details>
 </div>
 
 <div class="modal fade" id="editCommitmentModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content rounded-4 border-0"><form id="editCommitmentForm">
@@ -136,6 +136,12 @@
 .commitments-page .commitment-progress{height:.4rem;margin:.7rem 0;border-radius:99px;background:var(--bs-tertiary-bg)}
 .commitments-page .commitment-progress .progress-bar{border-radius:99px;background:var(--bs-primary)}
 .commitments-page .commitment-card-footer{align-items:flex-start}
+.commitments-page .commitment-secondary-section{border-top:1px solid var(--bs-border-color);padding:.8rem 0}
+.commitments-page .commitment-secondary-section>summary{display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-size:.85rem;font-weight:600;list-style:none}
+.commitments-page .commitment-secondary-section>summary::-webkit-details-marker{display:none}
+.commitments-page .commitment-secondary-section>summary:after{content:'＋';color:var(--bs-primary);font-size:1.1rem}
+.commitments-page .commitment-secondary-section[open]>summary:after{content:'−'}
+.commitments-page .commitment-secondary-section .commitment-section{padding-top:.75rem}
 .commitments-page .commitment-card-details{flex:0 0 auto}
 .commitments-page .commitment-card-details>summary{color:var(--bs-primary);font-size:.8rem;font-weight:600;cursor:pointer;list-style:none}
 .commitments-page .commitment-card-details>summary::-webkit-details-marker{display:none}
