@@ -36,7 +36,7 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->assertStringContainsString('0/6', $xpath->query('//article[contains(@class,"commitment-card")]')->item(0)->textContent);
         $this->assertCount(1, $xpath->query('//button[contains(@class,"commitment-pay-next")]'));
         $this->assertCount(0, $xpath->query('//form[contains(@class,"js-api-form")]'));
-        $this->assertCount(6, $xpath->query('//div[contains(@class,"commitment-installment")]'));
+        $this->assertCount(6, $xpath->query('//div[contains(concat(" ", normalize-space(@class), " "), " commitment-installment ")]'));
         $this->assertSame('0.00', $debt->fresh()->parcelas->first()->paid_amount);
     }
 
@@ -222,11 +222,11 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->assertCount(1, $cards);
         $this->assertStringContainsString('0/120', $cards->item(0)->textContent);
         $this->assertCount(1, $xpath->query('//button[contains(@class,"commitment-pay-next")]'));
-        $this->assertCount(6, $xpath->query('//div[contains(@class,"commitment-installment")]'));
+        $this->assertCount(6, $xpath->query('//div[contains(concat(" ", normalize-space(@class), " "), " commitment-installment ")]'));
         $this->assertSame(120, $debt->fresh()->parcelas()->count());
 
         $secondHistoryPage = $this->get(route('financial.commitments.page', ['installments_'.$debt->id => 2]))->assertOk();
         $secondXPath = $this->document($secondHistoryPage->getContent());
-        $this->assertCount(6, $secondXPath->query('//div[contains(@class,"commitment-installment")]'));
+        $this->assertCount(6, $secondXPath->query('//div[contains(concat(" ", normalize-space(@class), " "), " commitment-installment ")]'));
     }
 }
