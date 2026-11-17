@@ -41,7 +41,7 @@ class FinancialCommitmentService
                     'principal_amount' => number_format($amountCents / 100, 2, '.', ''),
                     'interest_amount' => '0.00', 'paid_amount' => '0.00', 'status' => 'pending',
                 ]);
-                if (($data['payment_method'] ?? null) !== 'credit') {
+                if (!in_array($data['payment_method'] ?? null, ['credit', 'card'], true)) {
                     $installment = ParcelaDivida::query()->where('user_id', $user->id)->where('debt_id', $debt->id)->where('installment_number', $i)->firstOrFail();
                     $this->movements->createPending($user, [
                         'type' => 'expense',

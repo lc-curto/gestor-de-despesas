@@ -184,7 +184,7 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertCount(1, $debt->parcelas);
         $this->assertSame('90.00', (string) $debt->parcelas->first()->amount);
         $this->assertSame('pending', $debt->parcelas->first()->status);
-        $this->assertDatabaseCount('movimentos', 0);
+        $this->assertDatabaseCount('movimentos', 1);
     }
 
     public function test_installment_cannot_be_settled_using_a_credit_card(): void

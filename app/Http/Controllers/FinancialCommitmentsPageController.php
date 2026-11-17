@@ -49,7 +49,7 @@ class FinancialCommitmentsPageController extends Controller
         $commitmentOpen = (float) $user->parcelasDivida()
             ->whereHas('divida', fn ($query) => $query
                 ->whereIn('payment_condition', ['deferred', 'installments'])
-                ->where(fn ($query) => $query->whereNull('payment_method')->orWhere('payment_method', '!=', 'credit'))
+                ->where(fn ($query) => $query->whereNull('payment_method')->orWhereNotIn('payment_method', ['credit', 'card']))
                 ->where('status', '!=', 'cancelled'))
             ->where('status', '!=', 'paid')
             ->selectRaw('COALESCE(SUM(amount - paid_amount), 0) as remaining')
@@ -58,7 +58,7 @@ class FinancialCommitmentsPageController extends Controller
         $commitmentOverdue = (float) $user->parcelasDivida()
             ->whereHas('divida', fn ($query) => $query
                 ->whereIn('payment_condition', ['deferred', 'installments'])
-                ->where(fn ($query) => $query->whereNull('payment_method')->orWhere('payment_method', '!=', 'credit'))
+                ->where(fn ($query) => $query->whereNull('payment_method')->orWhereNotIn('payment_method', ['credit', 'card']))
                 ->where('status', '!=', 'cancelled'))
             ->where('status', '!=', 'paid')
             ->whereDate('due_date', '<', today())
