@@ -467,8 +467,16 @@ class FinancialDeletionService
             foreach ($paymentEvents as $event) {
                 $before = $event->getAttributes();
                 if ($event->status !== 'settled') {
-                    $event->update(['status' => 'void', 'settles_movement_id' => null]);
+                    $legacyType = $event->legacy_type;
+                    $legacyId = $event->legacy_id;
+                    $event->update([
+                        'status' => 'void',
+                        'settles_movement_id' => null,
+                        'legacy_type' => null,
+                        'legacy_id' => null,
+                    ]);
                     $action = 'voided';
+                    $this->deleteLegacyForMovement($user, $operationId, $legacyType, $legacyId);
                 } else {
                     $event->update(['settles_movement_id' => null]);
                     $action = 'detached';
