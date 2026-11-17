@@ -105,7 +105,7 @@ class FinanceController extends Controller
             ],
             $dateField => 'required|date',
             'recurrence_enabled' => 'sometimes|boolean',
-            'recurrence_frequency' => ['required_if:recurrence_enabled,1', Rule::in(['daily', 'weekly', 'monthly', 'yearly', 'custom'])],
+            'recurrence_frequency' => ['required_if:recurrence_enabled,1', Rule::in(['daily', 'weekly', 'monthly', 'quarterly', 'yearly', 'custom'])],
             'recurrence_interval' => 'required_if:recurrence_enabled,1|integer|min:1|max:365',
             'recurrence_ends_at' => 'nullable|date|after_or_equal:' . $dateField,
         ]);

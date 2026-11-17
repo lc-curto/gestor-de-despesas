@@ -298,6 +298,7 @@ class RecurrenceService
             'daily' => $date->copy()->addDays($interval),
             'weekly' => $date->copy()->addWeeks($interval),
             'monthly' => $this->monthAtAnchor($date, $anchor, $interval),
+            'quarterly' => $this->monthAtAnchor($date, $anchor, $interval * 3),
             'yearly' => $this->yearAtAnchor($date, $anchor, $interval),
             'custom' => $date->copy()->addDays($interval),
             default => throw ValidationException::withMessages(['frequency' => 'Frequência recorrente inválida.']),

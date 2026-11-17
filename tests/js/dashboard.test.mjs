@@ -305,7 +305,7 @@ test('despesa comum paga normaliza o valor e o pagamento antes de enviar o formu
     ui.element('movementAmount').value = '90,50';
     ui.form.querySelector('[name="paid_now"][value="1"]').checked = true;
     ui.form.querySelector('[name="paid_now"][value="1"]').dispatchEvent(new ui.window.Event('change'));
-    assert.equal(ui.element('dashboardPaymentAmount').value, '90,50');
+    assert.equal(ui.element('dashboardPaymentAmount').value, '90.50');
     ui.submit();
     await flush();
     assert.equal(sent.get('amount'), '90.50');
