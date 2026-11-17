@@ -117,6 +117,9 @@
                 option.hidden = !isExpense && isCreditCard;
                 option.disabled = !isExpense && isCreditCard;
             });
+            accountField.querySelectorAll('optgroup').forEach((group) => {
+                group.hidden = [...group.querySelectorAll('option')].every((option) => option.hidden);
+            });
             if (accountField.selectedOptions[0]?.disabled) accountField.value = '';
         }
         if (methodField && accountField) {
