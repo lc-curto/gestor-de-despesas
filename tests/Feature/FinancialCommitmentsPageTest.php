@@ -232,7 +232,7 @@ class FinancialCommitmentsPageTest extends TestCase
 
     public function test_purchase_pagination_is_server_side_and_summary_uses_all_commitments(): void
     {
-        $this->travelTo(\Illuminate\Support\\Carbon::parse('2026-11-17 12:00:00'));
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-17 12:00:00'));
         $user = User::factory()->create();
         $service = app(FinancialCommitmentService::class);
 
