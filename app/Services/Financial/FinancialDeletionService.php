@@ -184,7 +184,7 @@ class FinancialDeletionService
 
             if ($locked->debt_id || $locked->installment_id) {
                 throw ValidationException::withMessages([
-                    'movement' => 'Este movimento pertence a um parcelamento. Elimina ou gere o parcelamento na respetiva área para resolver todas as parcelas e pagamentos.',
+                    'movement' => 'Este movimento pertence à área de Parcelamentos. Elimina ou gere o parcelamento nessa área para resolver todas as parcelas e pagamentos.',
                 ]);
             }
             if ($locked->status === 'partial' && ! $locked->is_settlement_parent) {

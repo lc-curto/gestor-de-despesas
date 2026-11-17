@@ -234,10 +234,10 @@ class CardIntegrityRegressionTest extends TestCase
         $payment = app(CardInvoiceService::class)->payOpeningDebt($user, $card->id, $bank->id, '2026-11-17', '50.00');
         DB::table('movimentos')->where('id', $payment->id)->update(['opening_debt_card_id' => null]);
         $payment->refresh();
-        $this->assertRejected(fn () => app(FinancialMovementService::class)->deleteAsCorrection($user, $payment), 'movement', 'reconcilia');
+        $this->assertRejected(fn () => app(FinancialMovementService::class)->deleteAsCorrection($user, $payment), 'movement', 'Reconcilia');
         app(FinancialAccountService::class)->rename($user, $card, 'Novo nome');
-        $this->assertRejected(fn () => app(FinancialMovementService::class)->deleteAsCorrection($user, $payment), 'movement', 'reconcilia');
-        $this->assertRejected(fn () => app(FinancialMovementService::class)->deleteAsCorrection($user, $payment), 'movement', 'reconcilia');
+        $this->assertRejected(fn () => app(FinancialMovementService::class)->deleteAsCorrection($user, $payment), 'movement', 'Reconcilia');
+        $this->assertRejected(fn () => app(FinancialMovementService::class)->deleteAsCorrection($user, $payment), 'movement', 'Reconcilia');
         $this->assertSame('settled', $payment->fresh()->status);
         $this->assertSame('50.00', (string) $card->fresh()->opening_debt_paid);
         $this->assertBalance($bank, '450.00');
