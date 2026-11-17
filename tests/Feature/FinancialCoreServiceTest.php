@@ -70,8 +70,8 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('paid', $invoice->fresh()->status);
         $invoiceParent = $invoice->movimentos()->where('is_settlement_parent', true)->firstOrFail();
         $this->assertSame('settled', $invoiceParent->status);
-        $this->assertSame(2, $invoiceParent->settlements()->where('type', 'transfer')->where('status', 'settled')->count());
-        $this->assertSame('60.00', number_format((float) $invoiceParent->settlements()->sum('amount'), 2, '.', ''));
+        $this->assertSame(1, $invoiceParent->settlements()->where('type', 'transfer')->where('status', 'settled')->count());
+        $this->assertSame('47.25', number_format((float) $invoiceParent->settlements()->sum('amount'), 2, '.', ''));
         $this->assertSame('0.00', app(AccountBalanceService::class)->balance($card));
         $this->assertSame('52.75', app(AccountBalanceService::class)->balance($bank));
         $this->assertDatabaseCount('despesas', 0);
@@ -107,6 +107,9 @@ class FinancialCoreServiceTest extends TestCase
         ])->assertOk();
 
         $this->assertSame('paid', $invoice->fresh()->status);
+        $invoiceParent = $invoice->movimentos()->where('is_settlement_parent', true)->firstOrFail();
+        $this->assertSame(2, $invoiceParent->settlements()->where('type', 'transfer')->where('status', 'settled')->count());
+        $this->assertSame('60.00', number_format((float) $invoiceParent->settlements()->sum('amount'), 2, '.', ''));
         $this->assertSame('0.00', app(AccountBalanceService::class)->balance($card));
         $this->assertSame('40.00', app(AccountBalanceService::class)->balance($bank));
         $this->assertDatabaseCount('despesas', 0);
@@ -678,7 +681,7 @@ class FinancialCoreServiceTest extends TestCase
 
         $this->postJson('/api/financial/invoices/'.$invoice->id.'/charges', [
             'charge_type' => 'interest', 'description' => 'Juros por atraso',
-            'amount' => '5.00', 'movement_date' => '2026-12-02',
+            'amount' => '5.00', 'movement_date' => '2026-11-17',
         ])->assertCreated()->assertJsonPath('data.type', 'expense')->assertJsonPath('data.invoice_id', $invoice->id);
 
         $invoiceData = $this->getJson('/api/financial/invoices')->assertOk()->json('data.data.0');
