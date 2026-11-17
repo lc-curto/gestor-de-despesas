@@ -746,7 +746,7 @@ class FinancialMovementService
             $this->audit(
                 $user,
                 $locked,
-                'original_updated_after_settlement',
+                'settlement_parent_updated',
                 $before,
                 $locked->getAttributes(),
                 'Termos do movimento original ajustados sem alterar o histórico de liquidações.'
