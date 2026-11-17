@@ -80,7 +80,6 @@ Route::middleware(['auth', 'financial.review'])->group(function () {
         Route::put('/movements/{id}/settle', [FinancialCoreController::class, 'settleMovement'])->name('movements.settle');
         Route::put('/movements/{id}/confirm', [FinancialCoreController::class, 'confirmMovement'])->name('movements.confirm');
         Route::put('/movements/{id}', [FinancialCoreController::class, 'updatePendingMovement'])->name('movements.update');
-        Route::put('/movements/{id}/void', [FinancialCoreController::class, 'voidMovement'])->name('movements.void');
         Route::delete('/movements/{id}/recurrence-scope', [FinancialCoreController::class, 'destroyRecurringOccurrence'])->name('movements.recurrence.destroy');
         Route::delete('/movements/{id}', [FinancialCoreController::class, 'destroyMovement'])->name('movements.destroy');
     });
