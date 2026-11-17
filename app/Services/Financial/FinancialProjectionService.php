@@ -119,13 +119,19 @@ class FinancialProjectionService
 
         $invoices = Fatura::query()
             ->where('user_id', $user->id)
+            ->where('status', '!=', 'carried')
             ->where('due_date', '>=', $rangeStart->toDateString())
             ->where('due_date', '<', $rangeEndExclusive)
-            ->with(['conta', 'movimentos' => fn ($query) => $query->where('status', 'settled')])
+            ->with([
+                'conta',
+                'movimentos' => fn ($query) => $query->where('status', 'settled'),
+                'saldosTransportados:id,user_id,source_invoice_id,target_invoice_id,amount',
+            ])
             ->get();
         foreach ($invoices as $invoice) {
             $total = (float) $invoice->movimentos
-                ->where('type', 'expense')->where('is_settlement_parent', false)->sum('amount');
+                ->where('type', 'expense')->where('is_settlement_parent', false)->sum('amount')
+                + (float) $invoice->saldosTransportados->sum('amount');
             $paid = (float) $invoice->movimentos->where('type', 'transfer')
                 ->sum(fn (Movimento $movement) => $movement->reversal_of_id ? -(float) $movement->amount : (float) $movement->amount);
             $remaining = round($total - $paid, 2);
