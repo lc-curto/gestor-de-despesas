@@ -45,6 +45,7 @@ class FinancialCommitmentsPageController extends Controller
 
         $openInstallments = $user->parcelasDivida()
             ->whereHas('divida', fn ($query) => $query
+                ->whereNull('archived_at')
                 ->where('payment_condition', 'installments')
                 ->where(fn ($query) => $query->whereNull('payment_method')->orWhereNotIn('payment_method', ['credit', 'card']))
                 ->where('status', '!=', 'cancelled'))
