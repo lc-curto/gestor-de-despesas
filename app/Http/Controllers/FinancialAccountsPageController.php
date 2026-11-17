@@ -75,15 +75,5 @@ class FinancialAccountsPageController extends Controller
         return back()->with('success', 'Movimento eliminado. Os saldos foram atualizados.');
     }
 
-    public function reverseMovement(Request $request, string $id, FinancialMovementService $service)
-    {
-        $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
-        $service->deleteAsCorrection(
-            $request->user(),
-            $movement,
-            $request->input('reason') ?: 'Movimento eliminado a partir do detalhe da conta.'
-        );
 
-        return back()->with('success', 'Movimento eliminado. Os saldos foram atualizados.');
-    }
 }
