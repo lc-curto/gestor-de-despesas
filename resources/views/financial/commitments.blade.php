@@ -121,16 +121,28 @@
 
 
 
-                        <div class="commitment-card-actions">
-                            <button type="button" class="btn btn-outline-secondary btn-sm js-edit-commitment"
-                                data-url="{{ route('financial.commitments.update', $commitment->id) }}"
-                                data-name="{{ $commitment->name }}"
-                                data-total="{{ number_format((float) $commitment->total_amount, 2, '.', '') }}"
-                                data-merchant="{{ $commitment->merchant }}"
-                                data-due="{{ $next?->due_date?->format('Y-m-d') ?? $commitment->due_date?->format('Y-m-d') }}">Editar compra</button>
-                            <button type="button" class="btn btn-outline-danger btn-sm js-cancel-commitment"
-                                data-url="{{ route('financial.commitments.cancel', $commitment->id) }}"
-                                data-name="{{ $commitment->name }}">Cancelar compra</button>
+                        <div class="commitment-management">
+                            <h3 class="small fw-bold mb-2">Gestão da compra</h3>
+                            <div class="commitment-card-actions">
+                                <button type="button" class="btn btn-outline-secondary js-edit-commitment"
+                                    data-url="{{ route('financial.commitments.update', $commitment->id) }}"
+                                    data-name="{{ $commitment->name }}"
+                                    data-merchant="{{ $commitment->merchant }}">Editar compra</button>
+                                <button type="button" class="btn btn-outline-primary js-renegotiate-commitment"
+                                    data-url="{{ route('financial.commitments.renegotiate', $commitment->id) }}"
+                                    data-name="{{ $commitment->name }}"
+                                    data-remaining="{{ number_format((float) $commitment->remaining_amount, 2, '.', '') }}"
+                                    data-count="{{ max(1, $partsTotal - $partsPaid) }}"
+                                    data-frequency="{{ $commitment->installment_frequency ?? 'monthly' }}"
+                                    data-due="{{ $next?->due_date?->format('Y-m-d') ?? now()->addMonth()->toDateString() }}">Renegociar</button>
+                                <button type="button" class="btn btn-outline-secondary js-archive-commitment"
+                                    data-url="{{ route('financial.commitments.archive', $commitment->id) }}"
+                                    data-name="{{ $commitment->name }}"
+                                    data-has-payments="{{ (float) $commitment->paid_amount_total > 0 ? '1' : '0' }}">Arquivar</button>
+                                <button type="button" class="btn btn-outline-danger js-cancel-commitment"
+                                    data-url="{{ route('financial.commitments.cancel', $commitment->id) }}"
+                                    data-name="{{ $commitment->name }}">Cancelar</button>
+                            </div>
                         </div>
                     </div>
                 </article>
@@ -281,13 +293,43 @@
         <div class="modal-body">
             <label class="form-label" for="editCommitmentName">Nome da compra</label><input class="form-control mb-3" id="editCommitmentName" name="name" required maxlength="160">
             <label class="form-label" for="editCommitmentMerchant">Comerciante (opcional)</label><input class="form-control mb-3" id="editCommitmentMerchant" name="merchant" maxlength="160">
-            <label class="form-label" for="editCommitmentTotal">Valor total (€)</label><input class="form-control mb-3" id="editCommitmentTotal" name="total_amount" type="number" min="0.01" step="0.01" required>
-            <label class="form-label" for="editCommitmentDue">Próximo vencimento</label><input class="form-control" id="editCommitmentDue" name="due_date" type="date" required>
+            <p class="small text-secondary mb-0">Os valores e as datas das prestações são alterados em Renegociar, mantendo o histórico de pagamentos.</p>
             <div id="editCommitmentError" class="small text-danger mt-2"></div>
         </div>
         <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
     </form></div></div>
 </div>
+
+<div class="modal fade" id="renegotiateCommitmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable commitment-payment-dialog"><div class="modal-content rounded-4 border-0">
+        <form id="renegotiateCommitmentForm">
+            <div class="modal-header border-0"><div><h2 class="modal-title h5 fw-bold">Renegociar parcelamento</h2><small class="text-secondary" id="renegotiateCommitmentName"></small></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+            <div class="modal-body">
+                <p class="small text-secondary">Os pagamentos realizados serão preservados. Apenas as prestações futuras serão substituídas.</p>
+                <label class="form-label" for="renegotiateRemaining">Saldo a renegociar (€)</label><input class="form-control mb-3" id="renegotiateRemaining" name="remaining_amount" type="number" min="0.01" step="0.01" required>
+                <label class="form-label" for="renegotiateCount">Número de novas prestações</label><input class="form-control mb-3" id="renegotiateCount" name="installments_count" type="number" min="1" max="120" required>
+                <label class="form-label" for="renegotiateFrequency">Frequência</label><select class="form-select mb-3" id="renegotiateFrequency" name="installment_frequency"><option value="monthly">Mensal</option><option value="biweekly">Quinzenal</option><option value="weekly">Semanal</option></select>
+                <label class="form-label" for="renegotiateDue">Vencimento da primeira nova prestação</label><input class="form-control" id="renegotiateDue" name="due_date" type="date" required>
+                <div class="commitment-renegotiation-preview mt-3 p-3 rounded-3 bg-body-tertiary"><small class="text-secondary d-block">Valor estimado por prestação</small><strong id="renegotiatePreview">—</strong><small class="text-secondary d-block mt-1" id="renegotiatePreviewNote">O último valor pode variar alguns cêntimos devido ao arredondamento.</small></div>
+                <div id="renegotiateCommitmentError" class="small text-danger mt-2" role="alert"></div>
+            </div>
+            <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button><button type="submit" class="btn btn-primary">Confirmar renegociação</button></div>
+        </form>
+    </div></div>
+</div>
+
+<div class="modal fade" id="archiveCommitmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content rounded-4 border-0">
+        <div class="modal-header border-0"><h2 class="modal-title h5 fw-bold">Arquivar compra</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+        <div class="modal-body"><p id="archiveCommitmentMessage" class="mb-2"></p><p class="small text-secondary mb-0">A compra sai da lista principal. Os pagamentos, movimentos e histórico permanecem guardados.</p><div id="archiveCommitmentError" class="small text-danger mt-2" role="alert"></div></div>
+        <div class="modal-footer border-0">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button>
+            <button type="button" class="btn btn-primary" id="confirmArchiveCommitment">Arquivar compra</button>
+            <button type="button" class="btn btn-outline-danger d-none" id="deleteUnusedCommitment">Eliminar compra sem pagamentos</button>
+        </div>
+    </div></div>
+</div>
+
 @endsection
 
 @push('styles')
@@ -452,6 +494,11 @@
     }
 }
 
+
+.commitment-management{border-top:1px solid var(--bs-border-color);padding-top:.9rem;margin-top:.9rem}
+.commitment-card-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem;padding:0;margin:0;border:0}
+.commitment-card-actions .btn{min-height:42px;white-space:normal}
+.commitment-renegotiation-preview strong{font-size:1.25rem;font-variant-numeric:tabular-nums}
 </style>
 @endpush
 
