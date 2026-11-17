@@ -71,14 +71,13 @@ class RecurrenceService
 
                     foreach ($forecasts as $forecast) {
                         $this->assertNotCommitmentForecast($forecast);
-                        if ($forecast->legacy_type === 'despesa') {
-                            Despesa::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
-                        }
-                        if ($forecast->legacy_type === 'receita') {
-                            Receita::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
-                        }
-                        $forecast->historico()->delete();
-                        $forecast->delete();
+                        $this->movements->deleteAsCorrection(
+                            $user,
+                            $forecast,
+                            'Previsão futura removida durante a atualização da recorrência.',
+                            true,
+                            true
+                        );
                     }
 
                     // Se a regra for retomada depois, recomeça na primeira ocorrência cancelada.
@@ -106,14 +105,13 @@ class RecurrenceService
                     ->filter(fn ($forecast) => ! $forecast->historico()->where('action', 'confirmed')->exists());
                 foreach ($forecasts as $forecast) {
                     $this->assertNotCommitmentForecast($forecast);
-                    if ($forecast->legacy_type === 'despesa') {
-                        Despesa::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
-                    }
-                    if ($forecast->legacy_type === 'receita') {
-                        Receita::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
-                    }
-                    $forecast->historico()->delete();
-                    $forecast->delete();
+                    $this->movements->deleteAsCorrection(
+                        $user,
+                        $forecast,
+                        'Previsão futura removida ao pausar a recorrência.',
+                        true,
+                        true
+                    );
                 }
                 $rule->fill($values);
                 $rule->next_occurrence = $date;
@@ -189,14 +187,13 @@ class RecurrenceService
 
                 foreach ($forecasts as $forecast) {
                     $this->assertNotCommitmentForecast($forecast);
-                    if ($forecast->legacy_type === 'despesa') {
-                        Despesa::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
-                    }
-                    if ($forecast->legacy_type === 'receita') {
-                        Receita::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
-                    }
-                    $forecast->historico()->delete();
-                    $forecast->delete();
+                    $this->movements->deleteAsCorrection(
+                        $user,
+                        $forecast,
+                        'Previsão futura removida ao pausar a recorrência.',
+                        true,
+                        true
+                    );
                 }
 
                 // Retomar a regra deve recriar a primeira previsão que foi removida.
