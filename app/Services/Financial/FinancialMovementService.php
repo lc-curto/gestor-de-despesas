@@ -45,6 +45,7 @@ class FinancialMovementService
                 'status' => 'settled',
                 'description' => $data['description'],
                 'notes' => $data['notes'] ?? null,
+                'payment_method' => $data['payment_method'] ?? null,
                 'amount' => $data['amount'],
                 'movement_date' => $data['movement_date'],
                 'source_account_id' => $source?->id,
