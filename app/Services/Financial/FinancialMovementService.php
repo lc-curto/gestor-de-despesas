@@ -131,11 +131,19 @@ class FinancialMovementService
             if ($card->type !== 'credit_card' || !$card->is_operational || $card->status !== 'active') {
                 throw ValidationException::withMessages(['invoice' => 'O cartão associado a esta fatura não está ativo.']);
             }
+            if ($locked->status === 'carried') {
+                throw ValidationException::withMessages(['invoice' => 'Esta fatura já foi transportada para um ciclo seguinte. Paga o saldo na fatura de destino.']);
+            }
 
             $this->assertInvoiceReconciled($user, $locked);
-            $totalCents = $this->balances->toCents((string) $locked->movimentos()->where('type', 'expense')->where('status', 'settled')->sum('amount'));
-            $paidCents = $this->balances->toCents((string) $locked->movimentos()->where('type', 'transfer')->where('status', 'settled')->sum('amount'));
-            $remainingCents = $totalCents - $paidCents;
+            $parent = $this->syncInvoiceSettlementParent($user, $locked);
+            if (!$parent) {
+                throw ValidationException::withMessages(['invoice' => 'Esta fatura não possui valores reconhecidos para pagamento.']);
+            }
+
+            $alreadySettled = $this->netSettledCents($user, $parent);
+            $totalCents = $this->balances->toCents((string) $parent->amount);
+            $remainingCents = $totalCents - $alreadySettled;
             if ($remainingCents <= 0) {
                 throw ValidationException::withMessages(['invoice' => 'Esta fatura já está totalmente paga.']);
             }
@@ -145,7 +153,7 @@ class FinancialMovementService
                 throw ValidationException::withMessages(['amount' => 'O pagamento deve ser superior a zero e não pode exceder o valor pendente.']);
             }
 
-            $movement = $this->createMovement($user, [
+            $event = $this->createMovement($user, [
                 'type' => 'transfer',
                 'description' => 'Pagamento da fatura ' . $card->name . ' · ' . $locked->reference_month->format('m/Y'),
                 'amount' => number_format($paymentCents / 100, 2, '.', ''),
@@ -153,11 +161,80 @@ class FinancialMovementService
                 'source_account_id' => $source->id,
                 'destination_account_id' => $card->id,
                 'invoice_id' => $locked->id,
+                'settles_movement_id' => $parent->id,
             ], true);
-            if ($paymentCents === $remainingCents) {
-                $locked->update(['status' => 'paid']);
+
+            $this->refreshSettlementParent($user, $parent->id);
+            return $event->refresh();
+        });
+    }
+
+    /**
+     * Mantém uma obrigação técnica por fatura. As compras e encargos continuam
+     * a ser as despesas económicas; este agregado serve apenas para liquidação.
+     */
+    public function syncInvoiceSettlementParent(User $user, Fatura $invoice): ?Movimento
+    {
+        return DB::transaction(function () use ($user, $invoice): ?Movimento {
+            $lockedInvoice = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+            $card = $user->contasFinanceiras()->whereKey($lockedInvoice->account_id)->firstOrFail();
+            $totalCents = 0;
+            $expenses = $lockedInvoice->movimentos()
+                ->where('type', 'expense')->where('status', 'settled')
+                ->where('is_settlement_parent', false)->get(['amount']);
+            foreach ($expenses as $expense) $totalCents += $this->balances->toCents((string) $expense->amount);
+            if ($totalCents <= 0) return null;
+
+            $parent = Movimento::query()->where('user_id', $user->id)
+                ->where('invoice_id', $lockedInvoice->id)
+                ->where('is_settlement_parent', true)
+                ->where('type', 'expense')
+                ->lockForUpdate()->first();
+
+            $paidCents = 0;
+            $payments = $lockedInvoice->movimentos()->where('type', 'transfer')->where('status', 'settled')
+                ->get(['amount', 'reversal_of_id']);
+            foreach ($payments as $payment) {
+                $cents = $this->balances->toCents((string) $payment->amount);
+                $paidCents += $payment->reversal_of_id ? -$cents : $cents;
             }
-            return $movement;
+            if ($paidCents > $totalCents) {
+                throw ValidationException::withMessages(['invoice' => 'O total da fatura ficou abaixo dos pagamentos já registados. É necessária uma correção explícita antes de continuar.']);
+            }
+
+            $status = $paidCents <= 0 ? 'pending' : ($paidCents >= $totalCents ? 'settled' : 'partial');
+            $amount = number_format($totalCents / 100, 2, '.', '');
+            if (!$parent) {
+                $parent = $this->createPending($user, [
+                    'type' => 'expense',
+                    'description' => 'Fatura ' . $card->name . ' · ' . $lockedInvoice->reference_month->format('m/Y'),
+                    'amount' => $amount,
+                    'movement_date' => $lockedInvoice->due_date->toDateString(),
+                    'source_account_id' => $card->id,
+                ]);
+                $before = $parent->getAttributes();
+                $parent->update([
+                    'invoice_id' => $lockedInvoice->id,
+                    'is_settlement_parent' => true,
+                    'status' => $status,
+                    'settled_at' => $status === 'settled' ? now() : null,
+                ]);
+                $this->audit($user, $parent, 'invoice_obligation_created', $before, $parent->getAttributes());
+            } else {
+                $before = $parent->getAttributes();
+                $parent->update([
+                    'amount' => $amount,
+                    'movement_date' => $lockedInvoice->due_date->toDateString(),
+                    'status' => $status,
+                    'is_settlement_parent' => true,
+                    'settled_at' => $status === 'settled' ? now() : null,
+                ]);
+                if ($before !== $parent->getAttributes()) {
+                    $this->audit($user, $parent, 'invoice_obligation_updated', $before, $parent->getAttributes());
+                }
+            }
+            $lockedInvoice->update(['status' => $status === 'settled' ? 'paid' : ($status === 'partial' ? 'partial' : 'open')]);
+            return $parent->refresh();
         });
     }
 
@@ -166,7 +243,8 @@ class FinancialMovementService
     {
         // Estornos de versões anteriores não alteravam os agregados da fatura.
         if ($invoice->movimentos()->where('user_id', $user->id)->whereIn('id', DB::table('movimentos')
-            ->select('reversal_of_id')->where('user_id', $user->id)->whereNotNull('reversal_of_id'))->exists()) {
+            ->select('reversal_of_id')->where('user_id', $user->id)->whereNotNull('reversal_of_id')
+            ->whereNull('settles_movement_id'))->exists()) {
             throw ValidationException::withMessages([
                 'invoice' => 'Esta fatura tem um estorno anterior que exige reconciliação antes de novos lançamentos ou pagamentos.',
             ]);
@@ -328,6 +406,17 @@ class FinancialMovementService
             $cents = $this->balances->toCents((string) $event->amount);
             $net += $event->reversal_of_id ? -$cents : $cents;
         }
+
+        // Pagamentos anteriores à associação ao motor central permanecem válidos.
+        if ($original->invoice_id) {
+            $legacyPayments = Movimento::query()->where('user_id', $user->id)
+                ->where('invoice_id', $original->invoice_id)->where('type', 'transfer')
+                ->where('status', 'settled')->whereNull('settles_movement_id')
+                ->whereNull('reversal_of_id')->get(['amount']);
+            foreach ($legacyPayments as $payment) {
+                $net += $this->balances->toCents((string) $payment->amount);
+            }
+        }
         return $net;
     }
 
@@ -339,11 +428,17 @@ class FinancialMovementService
 
         $net = $this->netSettledCents($user, $parent);
         $total = $this->balances->toCents((string) $parent->amount);
+        $isInvoiceParent = $parent->invoice_id !== null;
+        $parentStatus = $net <= 0 ? 'pending' : ($net >= $total ? 'settled' : 'partial');
         $parent->update([
-            'status' => $net <= 0 ? 'pending' : ($net >= $total ? 'settled' : 'partial'),
-            'is_settlement_parent' => $net > 0,
-            'settled_at' => $net >= $total ? now() : null,
+            'status' => $parentStatus,
+            'is_settlement_parent' => $isInvoiceParent || $net > 0,
+            'settled_at' => $parentStatus === 'settled' ? now() : null,
         ]);
+        if ($isInvoiceParent) {
+            Fatura::query()->where('user_id', $user->id)->whereKey($parent->invoice_id)
+                ->update(['status' => $parentStatus === 'settled' ? 'paid' : ($parentStatus === 'partial' ? 'partial' : 'open')]);
+        }
         $this->audit($user, $parent, 'settlement_recalculated', null, $parent->getAttributes(), 'Estado recalculado após estorno de liquidação.');
         $this->syncInstallmentFromSettlementParent($user, $parent);
     }
@@ -653,9 +748,14 @@ class FinancialMovementService
             // Os agregados de fatura e as projeções somam os tipos originais; um
             // movimento inverso isolado não anula a compra ou o pagamento neles.
             if ($original->invoice_id) {
-                throw ValidationException::withMessages([
-                    'movement' => 'Não é possível estornar com segurança um movimento de fatura. Para uma compra sem pagamentos, elimina-a como correção; se houver pagamentos, pede a reconciliação da fatura. Não uses uma transferência para compensar.',
-                ]);
+                $invoicePayment = $original->type === 'transfer' && $original->settles_movement_id
+                    && Movimento::query()->where('user_id', $user->id)->whereKey($original->settles_movement_id)
+                        ->where('invoice_id', $original->invoice_id)->where('is_settlement_parent', true)->exists();
+                if (!$invoicePayment) {
+                    throw ValidationException::withMessages([
+                        'movement' => 'Não é possível estornar uma compra diretamente na fatura. Regista um crédito identificado ou corrige a fatura antes de continuar.',
+                    ]);
+                }
             }
             $openingDebtCard = $this->openingDebtCardForReversal($user, $original);
             if (!$openingDebtCard && $this->appearsToBeOpeningDebtPayment($user, $original)) {
@@ -685,6 +785,7 @@ class FinancialMovementService
                 'amount' => $original->amount,
                 'movement_date' => now()->toDateString(),
                 'reversal_of_id' => $original->id,
+                'invoice_id' => $original->invoice_id,
                 'settles_movement_id' => $original->settles_movement_id,
                 'is_historical' => (bool) $original->is_historical,
             ]), true);
