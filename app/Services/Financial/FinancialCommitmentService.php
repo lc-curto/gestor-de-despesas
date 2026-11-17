@@ -219,7 +219,7 @@ class FinancialCommitmentService
             $firstDue = Carbon::parse($data['due_date']);
             $locked->update([
                 'total_amount' => number_format(($paidCents + $remainingCents) / 100, 2, '.', ''),
-                'installments_count' => (int) $parts->where('status', 'paid')->count() + $count,
+                'installments_count' => (int) $parts->whereIn('status', ['paid', 'partial'])->count() + $count,
                 'installment_frequency' => $frequency,
                 'due_date' => $firstDue->toDateString(),
                 'status' => 'open',
