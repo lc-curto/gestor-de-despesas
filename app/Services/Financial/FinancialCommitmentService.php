@@ -352,13 +352,21 @@ class FinancialCommitmentService
             $amount = round((float) ($data['amount'] ?? $remaining), 2);
             if ($remaining <= 0 || $amount <= 0 || $amount > $remaining) throw ValidationException::withMessages(['amount' => 'O valor do pagamento excede o saldo da parcela.']);
             $forecast = Movimento::query()->where('user_id', $user->id)->where('debt_id', $lockedDebt->id)
-                ->where('installment_id', $locked->id)->where('status', 'pending')
+                ->where('installment_id', $locked->id)
+                ->where(function ($query) {
+                    $query->where('status', 'pending')
+                        ->orWhere(fn ($partial) => $partial->where('status', 'partial')->where('is_settlement_parent', true));
+                })
                 ->when($expectedForecastId, fn ($query) => $query->whereKey($expectedForecastId))->lockForUpdate()->first();
             if ($expectedForecastId && !$forecast) {
                 throw ValidationException::withMessages(['movement' => 'Esta previsão já foi liquidada ou deixou de estar disponível. Atualiza a página.']);
             }
-            if ($forecast && (int) round((float) $forecast->amount * 100) !== (int) round($remaining * 100)) {
+            if ($forecast && !$forecast->is_settlement_parent
+                && (int) round((float) $forecast->amount * 100) !== (int) round($remaining * 100)) {
                 throw ValidationException::withMessages(['movement' => 'A previsão não corresponde ao saldo da prestação. Revê o parcelamento antes de pagar.']);
+            }
+            if (!$forecast) {
+                throw ValidationException::withMessages(['movement' => 'Não existe uma previsão ativa para esta prestação. Revê o parcelamento antes de pagar.']);
             }
             if ($expectedForecastId && $amount < $remaining && !isset($data['expected_amount'])) {
                 throw ValidationException::withMessages(['movement' => 'Atualiza a página antes de fazer um pagamento parcial.']);
@@ -367,24 +375,13 @@ class FinancialCommitmentService
                 && (int) round((float) $data['expected_amount'] * 100) !== (int) round((float) $forecast->amount * 100)) {
                 throw ValidationException::withMessages(['movement' => 'O valor pendente desta prestação foi alterado. Atualiza a página antes de pagar.']);
             }
-            if ($forecast && $amount >= $remaining) {
-                $payment = $this->movements->settle($user, $forecast, [
-                    'source_account_id' => $paymentAccount->id,
-                    'movement_date' => $data['payment_date'] ?? now()->toDateString(),
-                ]);
-            } else {
-                if ($forecast) $forecast->update(['amount' => number_format($remaining - $amount, 2, '.', '')]);
-                $payment = $this->movements->create($user, [
-                    'type' => 'expense', 'description' => 'Pagamento: '.$lockedDebt->name,
-                    'amount' => number_format($amount, 2, '.', ''),
-                    'movement_date' => $data['payment_date'] ?? now()->toDateString(),
-                    'source_account_id' => $paymentAccount->id, 'debt_id' => $debt->id, 'installment_id' => $locked->id,
-                    'category_id' => $forecast?->category_id,
-                ]);
-            }
-            $paid = round((float) $locked->paid_amount + $amount, 2);
-            $locked->update(['paid_amount' => number_format($paid, 2, '.', ''), 'status' => $paid >= (float) $locked->amount ? 'paid' : 'partial']);
-            if (!$lockedDebt->parcelas()->where('status', '!=', 'paid')->exists()) $lockedDebt->update(['status' => 'paid']);
+            $payment = $this->movements->settle($user, $forecast, [
+                'source_account_id' => $paymentAccount->id,
+                'movement_date' => $data['payment_date'] ?? now()->toDateString(),
+                'amount' => number_format((int) round($amount * 100) / 100, 2, '.', ''),
+            ]);
+            $locked->refresh();
+
             return ['installment' => $locked->refresh()->load('divida'), 'movement' => $payment];
         });
     }
