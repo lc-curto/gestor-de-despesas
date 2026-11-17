@@ -992,7 +992,6 @@
         const settled = row.dataset.movementStatus === 'settled';
         const onlyOption = document.getElementById('deleteScopeOnly');
         const futureOption = document.getElementById('deleteScopeFuture');
-        const allOption = document.getElementById('deleteScopeAll');
         const note = document.getElementById('deleteMovementNote');
 
         document.getElementById('deleteMovementDescription').textContent = row.dataset.description || '';
@@ -1001,7 +1000,7 @@
         document.getElementById('deleteMovementTitle').textContent = recurring ? 'Excluir recorrência' : 'Excluir movimento';
 
         // Reinicia sempre a seleção: o estado anterior do modal não pode influenciar esta exclusão.
-        [onlyOption, futureOption, allOption].forEach((input) => {
+        [onlyOption, futureOption].forEach((input) => {
             if (input) {
                 input.checked = false;
                 input.disabled = false;
