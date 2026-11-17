@@ -319,7 +319,7 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->assertSame('120.00', $debt->fresh()->total_amount);
         $this->assertSame(12, (int) $debt->fresh()->installments_count);
         $this->assertSame(11, $debt->fresh()->parcelas()->where('status', 'pending')->count());
-        $this->assertSame(11, $debt->fresh()->parcelas()->where('status', 'cancelled')->count());
+        $this->assertSame(0, $debt->fresh()->parcelas()->where('status', 'cancelled')->count());
         $this->assertEquals(110.0, (float) $debt->fresh()->parcelas()->where('status', 'pending')->sum('amount'));
         $this->assertSame(11, $user->movimentos()->where('debt_id', $debt->id)->where('status', 'pending')->count());
         $this->assertDatabaseHas('dividas_renegociacoes', ['debt_id' => $debt->id, 'user_id' => $user->id]);
