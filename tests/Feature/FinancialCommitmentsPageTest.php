@@ -350,6 +350,26 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->assertSame(0, $user->movimentos()->where('debt_id', $deleted->id)->where('status', 'pending')->count());
     }
 
+    public function test_purchase_card_renders_four_management_actions_and_dedicated_modals(): void
+    {
+        $user = User::factory()->create();
+        app(FinancialCommitmentService::class)->create($user, [
+            'name' => 'Compra com gestão completa',
+            'total_amount' => '120.00',
+            'start_date' => now()->toDateString(),
+            'due_date' => now()->addMonth()->toDateString(),
+            'payment_condition' => 'installments',
+            'installments_count' => 6,
+        ]);
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+        $xpath = $this->document($this->actingAs($user)->get(route('financial.commitments.page'))->assertOk()->getContent());
+        $this->assertCount(4, $xpath->query('//div[contains(@class,"commitment-card-actions")]/button'));
+        foreach (['editCommitmentModal', 'renegotiateCommitmentModal', 'archiveCommitmentModal', 'cancelCommitmentModal'] as $modalId) {
+            $this->assertCount(1, $xpath->query('//*[@id="'.$modalId.'"]'));
+        }
+        $this->assertCount(1, $xpath->query('//button[contains(@class,"commitment-history-trigger")]'));
+    }
+
     public function test_commitment_merchant_is_saved_and_displayed_on_purchase_card(): void
     {
         $user = User::factory()->create();
