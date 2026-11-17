@@ -85,6 +85,7 @@
         const paidState = form.querySelector('[name="paid_now"]:checked')?.value || '0';
         const isPaid = paidState === '1';
         const settlementFields = document.getElementById('movementSettlementFields');
+        const paymentMethodField = document.getElementById('movementPaymentMethodField');
         const accountLabel = document.getElementById('movementAccountLabel');
         const accountField = document.getElementById('movementAccount');
         const methodField = document.getElementById('dashboardActualPaymentMethod');
@@ -99,8 +100,10 @@
         const condition = document.getElementById('movementPaymentCondition');
         const plannedMethod = document.getElementById('movementPlannedPaymentMethod');
 
-        if (settlementFields) settlementFields.hidden = !isPaid;
-        if (accountField) accountField.required = isPaid;
+        const needsAssignedAccount = isPaid || Boolean(recurrence?.checked);
+        if (settlementFields) settlementFields.hidden = !needsAssignedAccount;
+        if (paymentMethodField) paymentMethodField.hidden = !isPaid;
+        if (accountField) accountField.required = needsAssignedAccount;
         if (methodField) methodField.required = isPaid;
         if (accountLabel) accountLabel.textContent = isExpense ? 'De onde saiu o dinheiro?' : 'Para onde entrou o dinheiro?';
         if (recurrenceFields) recurrenceFields.hidden = !recurrence?.checked;
