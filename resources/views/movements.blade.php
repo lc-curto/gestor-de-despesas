@@ -74,6 +74,7 @@
                                     <input type="hidden" name="_method" id="movementMethod" value="POST">
                                     <input type="hidden" name="payment_condition" id="movementPaymentCondition" value="cash">
                                     <input type="hidden" name="payment_method" id="movementPlannedPaymentMethod" value="">
+                                    <input type="hidden" name="expense_behavior" id="movementExpenseBehavior" value="variable">
                                     <input type="hidden" name="due_date" id="dashboardDueDate" value="">
                                     <div id="movementFormError" class="alert alert-danger d-none" role="alert" tabindex="-1"></div>
 
@@ -558,6 +559,7 @@ window.meuBolsoDashboard = {
     expenseUpdateBase: @json(url('/despesas')),
     incomeUpdateBase: @json(url('/receitas')),
     expenseCategories: @json($categoriasDespesa),
+    expenseCategoryBehaviors: @json($expenseCategoryBehaviors),
     incomeCategories: @json($categoriasReceita),
     categories: @json($categorias),
     financialMovementBase: @json(url('/api/financial/movements'))
