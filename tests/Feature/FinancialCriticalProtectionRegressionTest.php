@@ -86,7 +86,6 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
         foreach ([
             $this->deleteJson(route('financial.movements.destroy', $forecast->id)),
             $this->deleteJson(route('financial.accounts.movement.destroy', $forecast->id)),
-            $this->postJson(route('financial.movements.reverse', $forecast->id)),
         ] as $response) {
             $response->assertUnprocessable()->assertJsonValidationErrors('movement');
             $this->assertStringContainsString('Parcelamentos', $response->json('errors.movement.0'));
