@@ -54,6 +54,7 @@ class FinancialAccountsPageController extends Controller
                 $query->where('source_account_id', $account->id)
                     ->orWhere('destination_account_id', $account->id);
             })
+            ->whereIn('status', ['pending', 'partial', 'settled'])
             ->orderByDesc('movement_date')
             ->orderByDesc('created_at')
             ->paginate(30)
