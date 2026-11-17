@@ -520,19 +520,21 @@ class FinancialAcceptanceTest extends TestCase
         $user = User::factory()->create();
         $account = $this->bank($user, balance: '500.00');
 
-        $this->actingAs($user)->postJson(route('financial.commitments.store'), [
+        $response = $this->actingAs($user)->postJson(route('financial.commitments.store'), [
             'name' => 'Conta parcialmente paga', 'total_amount' => '90.00',
             'start_date' => '2026-11-01', 'due_date' => '2026-11-25', 'payment_condition' => 'deferred',
             'paid_now' => '0',
             'initial_payment' => ['account_id' => $account->id, 'amount' => '40.00', 'payment_date' => '2026-11-16'],
         ])->assertCreated()->assertJsonPath('data.parcelas.0.status', 'partial');
+        $debtId = $response->json('data.id');
+        $installmentId = $response->json('data.parcelas.0.id');
 
         $this->assertDatabaseCount('dividas', 1);
         $this->assertDatabaseCount('movimentos', 2);
         $this->assertDatabaseHas('movimentos', [
             'type' => 'expense', 'status' => 'settled', 'amount' => '40.00', 'source_account_id' => $account->id,
         ]);
-        $forecast = $user->movimentos()->where('debt_id', $debt->id)->where('installment_id', $debt->parcelas->first()->id)->firstOrFail();
+        $forecast = $user->movimentos()->where('debt_id', $debtId)->where('installment_id', $installmentId)->firstOrFail();
         $this->assertSame('partial', $forecast->status);
         $this->assertSame('90.00', (string) $forecast->amount);
         $this->assertSame('40.00', number_format((float) $forecast->settlements()->where('status', 'settled')->sum('amount'), 2, '.', ''));
