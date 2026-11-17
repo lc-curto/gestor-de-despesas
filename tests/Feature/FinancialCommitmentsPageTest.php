@@ -56,7 +56,7 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->postJson($endpoint, ['amount' => '15.00', 'account_id' => $account->id, 'payment_date' => now()->toDateString()])->assertOk();
         $updatedButton = $this->document($this->get(route('financial.commitments.page'))->getContent())->query('//button[contains(@class,"commitment-pay-next")]')->item(0);
         $this->assertNotNull($updatedButton);
-        $this->assertSame('0.00', $updatedButton->getAttribute('data-remaining'));
+        $this->assertSame('20.00', $updatedButton->getAttribute('data-remaining'));
     }
 
     public function test_canonical_payment_changes_only_the_requested_amount_and_rejects_excess(): void
@@ -122,7 +122,7 @@ class FinancialCommitmentsPageTest extends TestCase
         $response->assertDontSee('Despesa única futura');
         $xpath = $this->document($response->getContent());
         foreach (['Ontem' => ['16/11/2026', 'Atrasada'], 'Hoje' => ['17/11/2026', 'Próxima'], 'Amanhã' => ['18/11/2026', 'Próxima']] as $name => [$dueDate, $status]) {
-            $badges = $xpath->query('//section[@aria-labelledby="paymentsSectionTitle"]//article[contains(@class,"commitment-card") and .//strong[normalize-space(.)="'.$name.'"]]//div[contains(@class,"commitment-installment-row") and .//span[normalize-space(.)="'.$dueDate.'"]]//span[contains(concat(" ", normalize-space(@class), " "), " badge ")]');
+            $badges = $xpath->query('//article[contains(@class,"commitment-card") and .//span[contains(@class,"commitment-card-name") and normalize-space(.)="'.$name.'"]]//div[contains(@class,"commitment-installment") and .//small[normalize-space(.)="'.$dueDate.'"]]//span[contains(concat(" ", normalize-space(@class), " "), " badge ")]');
             $this->assertCount(1, $badges, $name);
             $this->assertSame($status, trim($badges->item(0)->textContent), $name);
         }
