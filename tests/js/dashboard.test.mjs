@@ -12,17 +12,22 @@ const markup = `<!doctype html><meta name="csrf-token" content="test-token">
  <input id="movementDate" name="expense_date" type="date" required>
  <div class="mb-3"><select id="movementAccount" name="account_id"><option value="">Seleciona</option><option value="account-id">Conta</option></select></div>
  <select id="movementCategory" name="category_id" required></select>
- <input type="radio" name="payment_condition" value="cash" checked>
- <input type="radio" name="payment_condition" value="installments">
+ <input type="hidden" name="payment_condition" id="movementPaymentCondition" value="cash">
+ <input type="hidden" name="payment_method" id="movementPlannedPaymentMethod" value="">
+ <input type="hidden" name="expense_behavior" id="movementExpenseBehavior" value="variable">
+ <input type="hidden" name="due_date" id="dashboardDueDate" value="">
  <input type="radio" name="paid_now" value="0" checked>
  <input type="radio" name="paid_now" value="1">
- <input type="radio" name="paid_now" value="partial">
- <select name="payment_method" id="dashboardPaymentMethod"><option value="transfer">Transferência</option><option value="credit">Crédito</option></select>
- <input id="dashboardDueDate" name="due_date" type="date"><input id="dashboardInstallments" name="installments_count" type="number" value="3">
- <select id="dashboardInstallmentFrequency" name="installment_frequency"><option value="monthly">Mensal</option></select>
- <div id="dashboardInstallmentScheduleList"></div><input id="dashboardPaymentAmount" name="payment_amount" type="text" inputmode="decimal">
- <input id="dashboardPaymentDate" name="payment_date" type="date" value="2026-11-17">
- <select id="dashboardPaymentAccount" name="payment_account_id"><option value="account-id">Conta</option></select>
+ <div id="movementSettlementFields" hidden>
+  <select id="movementAccount" name="account_id"><option value="">Seleciona</option><option value="account-id" data-account-type="bank">Conta</option></select>
+  <div id="movementPaymentMethodField"><select id="dashboardActualPaymentMethod" name="actual_payment_method"><option value="">Selecionar</option><option value="transfer" data-account-type="bank">Transferência</option><option value="credit" data-account-type="credit_card">Crédito</option></select></div>
+ </div>
+ <input type="checkbox" id="dashboardDueDateEnabled">
+ <div id="dashboardDueDateField" hidden><input id="dashboardDueDateInput" type="date" value="2026-12-17"></div>
+ <input type="checkbox" id="dashboardRecurrenceEnabled" name="recurrence_enabled" value="1">
+ <div id="dashboardRecurrenceFields" hidden><input id="dashboardRecurrenceInterval" name="recurrence_interval" value="1"><select id="dashboardRecurrenceFrequency" name="recurrence_frequency"><option value="monthly">Mensal</option></select><input id="dashboardRecurrenceEnds" name="recurrence_ends_at"></div>
+ <input type="checkbox" id="dashboardInstallmentsEnabled">
+ <div id="dashboardInstallmentFields" hidden><input id="dashboardInstallments" name="installments_count" type="number" value="3"><select id="dashboardInstallmentFrequency" name="installment_frequency"><option value="monthly">Mensal</option></select><div id="dashboardInstallmentScheduleList"></div></div>
  <button type="submit" id="saveMovementButton">Guardar despesa</button>
 </form></div>
 <div id="settleMovementModal"><form id="settleMovementForm">
@@ -78,10 +83,12 @@ function setup(fetch, initialMovements = []) {
     element('movementAmount').value = '90';
     element('movementDate').value = '2026-11-17';
     element('movementCategory').value = 'casa-id';
-    form.querySelector('[name="payment_condition"][value="installments"]').checked = true;
-    element('dashboardDueDate').value = '2026-12-17';
+    element('dashboardInstallmentsEnabled').checked = true;
+    element('dashboardDueDateEnabled').checked = true;
+    element('dashboardDueDateInput').value = '2026-12-17';
     element('dashboardInstallments').value = '3';
-    form.querySelector('[name="payment_condition"][value="installments"]').dispatchEvent(new window.Event('change'));
+    element('dashboardInstallmentsEnabled').dispatchEvent(new window.Event('change'));
+    element('dashboardDueDateEnabled').dispatchEvent(new window.Event('change'));
     const submit = () => form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
     return { dom, window, element, form, modal, submit };
 }
@@ -126,7 +133,7 @@ test('sucesso confirma o primeiro vencimento sem mudar silenciosamente o mês ou
     assert.equal(calls.filter(({ options }) => options.method === 'POST').length, 1);
     const payload = JSON.parse(calls[0].options.body);
     assert.equal(payload.name, 'QA PósDeploy Parcelamento 3x 20261117');
-    assert.equal(payload.payment_method, 'transfer');
+    assert.equal(payload.payment_method, null);
     assert.equal(payload.category_id, 'casa-id');
     assert.equal(payload.due_date, '2026-12-17');
     ui.dom.window.close();
@@ -167,7 +174,7 @@ test('resposta ambígua ou falha de rede mantém modal aberto e alerta para risc
 
 test('rejeição de parcelamento por cartão orienta para Cartões e mantém modal aberto', async () => {
     const ui = setup(async () => jsonResponse(422, { errors: { payment_method: ['Regista a compra em Cartões.'] } }));
-    ui.element('dashboardPaymentMethod').value = 'credit';
+    ui.element('movementPlannedPaymentMethod').value = 'credit';
     ui.submit();
     await flush();
     assert.equal(ui.modal.open, true);
@@ -183,7 +190,7 @@ const existingMovement = {
 
 test('a vista usa entradas textuais com teclado decimal para todos os valores monetários de Movimentos', () => {
     const blade = readFileSync(new URL('../../resources/views/movements.blade.php', import.meta.url), 'utf8');
-    for (const id of ['movementAmount', 'dashboardPaymentAmount', 'settleMovementAmount']) {
+    for (const id of ['movementAmount', 'settleMovementAmount']) {
         const tag = blade.match(new RegExp(`<input\\b[^>]*\\bid="${id}"[^>]*>`))?.[0];
         assert.ok(tag, `campo ${id} presente`);
         assert.match(tag, /type="text"/);
@@ -285,16 +292,20 @@ test('despesa comum paga normaliza o valor e o pagamento antes de enviar o formu
         if (options.method === 'POST') { sent = options.body; return jsonResponse(200, { ok: true }); }
         return jsonResponse(200, { data: [] });
     });
-    ui.form.querySelector('[name="payment_condition"][value="cash"]').checked = true;
-    ui.form.querySelector('[name="payment_condition"][value="cash"]').dispatchEvent(new ui.window.Event('change'));
+    ui.element('dashboardInstallmentsEnabled').checked = false;
+    ui.element('dashboardInstallmentsEnabled').dispatchEvent(new ui.window.Event('change'));
     ui.element('movementAmount').value = '90,50';
     ui.form.querySelector('[name="paid_now"][value="1"]').checked = true;
     ui.form.querySelector('[name="paid_now"][value="1"]').dispatchEvent(new ui.window.Event('change'));
-    assert.equal(ui.element('dashboardPaymentAmount').value, '90,50');
+    ui.element('movementAccount').value = 'account-id';
+    ui.element('dashboardActualPaymentMethod').value = 'transfer';
+    ui.element('dashboardActualPaymentMethod').dispatchEvent(new ui.window.Event('change'));
     ui.submit();
     await flush();
     assert.equal(sent.get('amount'), '90.50');
-    assert.equal(sent.get('payment_amount'), '90.50');
+    assert.equal(sent.get('actual_payment_method'), 'transfer');
+    assert.equal(sent.get('payment_account_id'), 'account-id');
+    assert.equal(sent.has('account_id'), false);
     ui.dom.window.close();
 });
 
