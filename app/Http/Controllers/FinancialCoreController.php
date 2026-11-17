@@ -431,7 +431,7 @@ class FinancialCoreController extends Controller
                     'account_id' => $accountId,
                     'amount' => $data['amount'] ?? number_format(max(0, (float) $installment->amount - (float) $installment->paid_amount), 2, '.', ''),
                     'payment_date' => $data['movement_date'] ?? $movement->movement_date->toDateString(),
-                    'expected_amount' => $data['expected_amount'] ?? number_format(max(0, (float) $installment->amount - (float) $installment->paid_amount), 2, '.', ''),
+                    'expected_amount' => $data['expected_amount'] ?? null,
                 ], $movement->id);
                 return response()->json(['data' => $result['movement'], 'installment' => $result['installment']]);
             }
