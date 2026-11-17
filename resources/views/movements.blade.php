@@ -46,178 +46,194 @@
 </section>
 
         <div class="modal fade" id="movementEntryModal" tabindex="-1" aria-labelledby="recordTitle" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 bg-transparent">
-        <article id="movementEntryCard" class="card border-0 shadow-sm rounded-4 movement-editor-card">
-            <div class="card-body p-3 p-lg-4">
-                <div class="d-flex align-items-center gap-2 mb-3">
-                    <i data-lucide="plus" class="text-primary" aria-hidden="true"></i>
-                    <div>
-                        <h2 id="recordTitle" class="h5 fw-bold mb-0">Adicionar despesa</h2>
-                    </div>
-                </div>
-
-                <div class="btn-group w-100 record-type-buttons mb-3" role="group" aria-label="Tipo de lançamento">
-                    <button type="button" class="btn btn-danger active" id="expenseTypeButton" aria-pressed="true" aria-controls="recordEditorPanel" aria-expanded="true"><i data-lucide="arrow-down-right" class="me-1"></i>Despesa</button>
-                    <button type="button" class="btn btn-outline-success" id="incomeTypeButton" aria-pressed="false" aria-controls="recordEditorPanel" aria-expanded="true"><i data-lucide="arrow-up-right" class="me-1"></i>Receita</button>
-                </div>
-
-                @if ($errors->any())
-                    <div class="alert alert-danger small"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
-                @endif
-
-                <div id="recordEditorPanel">
-                    <form id="dashboardMovementForm" method="POST" action="{{ route('despesas.store') }}">
-                        @csrf
-                        <input type="hidden" name="_method" id="movementMethod" value="POST">
-                        <div id="movementFormError" class="alert alert-danger d-none" role="alert" tabindex="-1"></div>
-                        <div class="mb-3">
-                            <label for="movementAmount" class="form-label">Valor</label>
-                            <div class="input-group input-group-lg">
-                                <input type="text" inputmode="decimal" class="form-control fw-semibold" id="movementAmount" name="amount" placeholder="0,00" aria-describedby="movementAmountHelp" value="{{ old('amount') }}" required>
-                                <span class="input-group-text" id="amountCurrencySymbol">{{ $simbolos[$moeda] ?? $moeda }}</span>
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable movement-entry-dialog">
+                <div class="modal-content border-0 bg-transparent">
+                    <article id="movementEntryCard" class="card border-0 shadow-sm rounded-4 movement-editor-card">
+                        <div class="card-body p-3 p-lg-4">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <i data-lucide="plus" class="text-primary" aria-hidden="true"></i>
+                                <h2 id="recordTitle" class="h5 fw-bold mb-0">Novo movimento</h2>
                             </div>
-                            <div id="movementAmountHelp" class="form-text">Usa vírgula ou ponto para os cêntimos.</div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="movementDescription" class="form-label" id="descriptionLabel">Descrição</label>
-                            <input type="text" class="form-control" id="movementDescription" name="description" placeholder="Ex.: Supermercado" value="{{ old('description') }}" maxlength="255" required>
-                        </div>
-                        <div class="row g-2 mb-3">
-                            <div class="col-6">
-                                <label for="movementDate" class="form-label">Data</label>
-                                <input type="date" class="form-control" id="movementDate" name="expense_date" value="{{ old('expense_date', old('income_date', now()->toDateString())) }}" required>
+
+                            <div class="btn-group w-100 record-type-buttons mb-3" role="group" aria-label="Tipo de movimento">
+                                <button type="button" class="btn btn-danger active" id="expenseTypeButton" aria-pressed="true" aria-controls="recordEditorPanel">
+                                    <i data-lucide="arrow-down-right" class="me-1" aria-hidden="true"></i>Despesa
+                                </button>
+                                <button type="button" class="btn btn-outline-success" id="incomeTypeButton" aria-pressed="false" aria-controls="recordEditorPanel">
+                                    <i data-lucide="arrow-up-right" class="me-1" aria-hidden="true"></i>Receita
+                                </button>
                             </div>
-                            <div class="col-6">
-                                <label for="movementCategory" class="form-label">Categoria</label>
-                                <select class="form-select" id="movementCategory" name="category_id" required>
-                                    <option value="" selected disabled>Seleciona uma categoria</option>
-                                    @foreach ($categoriasDespesa as $id => $label)
-                                        <option value="{{ $id }}" @selected((string) old('category_id') === (string) $id)>{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="movementAccount" class="form-label">Conta de saída</label>
-                            <select class="form-select" id="movementAccount" name="account_id" required>
-                                <option value="">Selecionar conta</option>
-                                @foreach ($accounts as $account)
-                                    <option value="{{ $account->id }}" @selected($accounts->count() === 1)>{{ $account->name }} · {{ $account->currency }}</option>
-                                @endforeach
-                            </select>
-                            @if ($accounts->isEmpty())
-                                <div class="form-text text-warning">Cria uma conta e configura o saldo inicial em <a href="{{ route('financial.accounts.page') }}">Contas</a> antes de registar.</div>
+
+                            @if ($errors->any())
+                                <div class="alert alert-danger small"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
                             @endif
-                        </div>
-                        <div class="accordion mb-3" id="dashboardAdditionalDetails">
-                            <div class="accordion-item border rounded-3">
-                                <h3 class="accordion-header" id="dashboardAdditionalDetailsHeading">
-                                    <button class="accordion-button collapsed py-3" type="button" data-bs-toggle="collapse" data-bs-target="#dashboardAdditionalDetailsPanel" aria-expanded="false" aria-controls="dashboardAdditionalDetailsPanel">Adicionar detalhes</button>
-                                </h3>
-                                <div id="dashboardAdditionalDetailsPanel" class="accordion-collapse collapse" aria-labelledby="dashboardAdditionalDetailsHeading" data-bs-parent="#dashboardAdditionalDetails">
-                                    <div class="accordion-body px-3">
-                        <div class="border-top pt-3 mb-3">
-                            <label class="form-check mb-2"><input class="form-check-input" type="checkbox" name="recurrence_enabled" value="1" id="dashboardRecurrenceEnabled"> <span class="form-check-label">Repetir esta despesa/receita</span></label>
-                            <div id="dashboardRecurrenceFields" class="row g-2" hidden>
-                                <div class="col-4"><label for="dashboardRecurrenceInterval" class="form-label">A cada</label><input id="dashboardRecurrenceInterval" name="recurrence_interval" type="number" min="1" max="365" value="1" class="form-control"></div>
-                                <div class="col-4"><label for="dashboardRecurrenceFrequency" class="form-label">Frequência</label><select id="dashboardRecurrenceFrequency" name="recurrence_frequency" class="form-select"><option value="weekly">Semanal</option><option value="monthly" selected>Mensal</option><option value="quarterly">Trimestral</option><option value="yearly">Anual</option></select></div>
-                                <div class="col-4"><label for="dashboardRecurrenceEnds" class="form-label">Termina em</label><input id="dashboardRecurrenceEnds" name="recurrence_ends_at" type="date" class="form-control"></div>
-                            </div>
-                        </div>
-                        <div id="dashboardExpenseBehaviorField" class="mb-3">
-                            <label class="form-label d-block">Comportamento da despesa</label>
-                            <div class="d-flex gap-3">
-                                <label class="form-check"><input class="form-check-input" type="radio" name="expense_behavior" value="variable" checked> <span class="form-check-label">Variável</span></label>
-                                <label class="form-check"><input class="form-check-input" type="radio" name="expense_behavior" value="fixed"> <span class="form-check-label">Fixa</span></label>
-                            </div>
-                            <div class="form-text">Fixa é uma despesa estrutural ou regular, mesmo que o valor varie.</div>
-                        </div>
-                        <div id="dashboardPaymentFields" class="border-top pt-3 mb-3">
-                            <label class="form-label d-block fw-semibold mb-2">Modalidade de pagamento</label>
-                            <div class="payment-mode-grid mb-3" role="radiogroup" aria-label="Modalidade de pagamento">
-                                <label class="payment-mode-card">
-                                    <input class="visually-hidden" type="radio" name="payment_condition" value="cash" checked>
-                                    <span class="payment-mode-card-title">Pagamento único</span>
-                                    <span class="payment-mode-card-description">Pago numa única vez.</span>
-                                    <span class="payment-mode-card-selected" aria-hidden="true">Selecionado</span>
-                                </label>
-                                <label class="payment-mode-card">
-                                    <input class="visually-hidden" type="radio" name="payment_condition" value="deferred">
-                                    <span class="payment-mode-card-title">Pagamento com vencimento</span>
-                                    <span class="payment-mode-card-description">Tem uma data de vencimento.</span>
-                                    <span class="payment-mode-card-selected" aria-hidden="true">Selecionado</span>
-                                </label>
-                                <label class="payment-mode-card">
-                                    <input class="visually-hidden" type="radio" name="payment_condition" value="installments">
-                                    <span class="payment-mode-card-title">Pagamento parcelado</span>
-                                    <span class="payment-mode-card-description">Dividido em prestações.</span>
-                                    <span class="payment-mode-card-selected" aria-hidden="true">Selecionado</span>
-                                </label>
-                            </div>
-                            <div id="dashboardCommitmentOptions" class="row g-2" hidden>
-                                <div class="col-12">
-                                    <label for="dashboardPaymentMethod" class="form-label">Método de pagamento previsto</label>
-                                    <select id="dashboardPaymentMethod" name="payment_method" class="form-select">
-                                        <option value="">Selecionar método</option>
-                                        <option value="cash">Dinheiro</option><option value="debit">Cartão de débito</option>
-                                        <option value="credit">Cartão de crédito (regista em Cartões)</option><option value="transfer">Transferência bancária</option>
-                                        <option value="mbway">MB WAY</option><option value="direct_debit">Débito direto</option>
-                                    </select>
-                                </div>
-                                <div class="col-12" id="dashboardDueDateField">
-                                    <label for="dashboardDueDate" class="form-label">Data de vencimento</label>
-                                    <input id="dashboardDueDate" name="due_date" type="date" class="form-control" value="{{ now()->toDateString() }}">
-                                </div>
-                                <div class="col-6" id="dashboardInstallmentsField" hidden>
-                                    <label for="dashboardInstallments" class="form-label">Número de prestações</label>
-                                    <input id="dashboardInstallments" name="installments_count" type="number" min="2" max="120" value="2" class="form-control">
-                                </div>
-                                <div class="col-6" id="dashboardInstallmentFrequencyField" hidden>
-                                    <label for="dashboardInstallmentFrequency" class="form-label">Periodicidade</label>
-                                    <select id="dashboardInstallmentFrequency" name="installment_frequency" class="form-select">
-                                        <option value="weekly">Semanal</option><option value="monthly" selected>Mensal</option>
-                                    </select>
-                                </div>
-                                <div class="col-12" id="dashboardInstallmentSchedule" hidden>
-                                    <div class="small fw-semibold mb-2">Resumo do parcelamento</div>
-                                    <div class="list-group list-group-flush" id="dashboardInstallmentScheduleList" aria-live="polite"></div>
-                                </div>
-                            </div>
-                                        <div class="mb-3">
-                                            <label for="movementNotes" class="form-label">Notas (opcional)</label>
-                                            <textarea id="movementNotes" name="notes" rows="2" class="form-control" placeholder="Observações adicionais">{{ old('notes') }}</textarea>
+
+                            <div id="recordEditorPanel">
+                                <form id="dashboardMovementForm" method="POST" action="{{ route('despesas.store') }}">
+                                    @csrf
+                                    <input type="hidden" name="_method" id="movementMethod" value="POST">
+                                    <input type="hidden" name="payment_condition" id="movementPaymentCondition" value="cash">
+                                    <input type="hidden" name="payment_method" id="movementPlannedPaymentMethod" value="">
+                                    <input type="hidden" name="due_date" id="dashboardDueDate" value="">
+                                    <div id="movementFormError" class="alert alert-danger d-none" role="alert" tabindex="-1"></div>
+
+                                    <div class="mb-3">
+                                        <label for="movementAmount" class="form-label fw-semibold">Valor</label>
+                                        <div class="input-group input-group-lg">
+                                            <input type="text" inputmode="decimal" class="form-control fw-semibold" id="movementAmount" name="amount" placeholder="0,00" aria-describedby="movementAmountHelp" value="{{ old('amount') }}" required>
+                                            <span class="input-group-text" id="amountCurrencySymbol">{{ $simbolos[$moeda] ?? $moeda }}</span>
+                                        </div>
+                                        <div id="movementAmountHelp" class="form-text">Usa vírgula ou ponto para os cêntimos.</div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="movementDescription" class="form-label fw-semibold" id="descriptionLabel">Descrição</label>
+                                        <input type="text" class="form-control" id="movementDescription" name="description" placeholder="Ex.: Supermercado" value="{{ old('description') }}" maxlength="255" required>
+                                    </div>
+
+                                    <div class="row g-2 mb-3 movement-date-category">
+                                        <div class="col-6">
+                                            <label for="movementDate" class="form-label fw-semibold">Data</label>
+                                            <input type="date" class="form-control" id="movementDate" name="expense_date" value="{{ old('expense_date', old('income_date', now()->toDateString())) }}" required>
+                                        </div>
+                                        <div class="col-6">
+                                            <label for="movementCategory" class="form-label fw-semibold">Categoria</label>
+                                            <select class="form-select" id="movementCategory" name="category_id" required>
+                                                <option value="" selected disabled>Seleciona uma categoria</option>
+                                                @foreach ($categoriasDespesa as $id => $label)
+                                                    <option value="{{ $id }}" @selected((string) old('category_id') === (string) $id)>{{ $label }}</option>
+                                                @endforeach
+                                            </select>
                                         </div>
                                     </div>
-                                </div>
+
+                                    <fieldset id="dashboardPaidFields" class="border-0 p-0 m-0 mb-3">
+                                        <legend class="form-label fw-semibold mb-2">Estado do movimento</legend>
+                                        <div class="payment-status-grid movement-status-grid" role="radiogroup" aria-label="Estado do movimento">
+                                            <label class="payment-status-option">
+                                                <input class="form-check-input" type="radio" name="paid_now" value="0" checked>
+                                                <span>Pendente</span>
+                                            </label>
+                                            <label class="payment-status-option">
+                                                <input class="form-check-input" type="radio" name="paid_now" value="1">
+                                                <span>Pago</span>
+                                            </label>
+                                        </div>
+                                    </fieldset>
+
+                                    <div id="movementSettlementFields" class="mb-3" hidden>
+                                        <label for="movementAccount" class="form-label fw-semibold" id="movementAccountLabel">De onde saiu o dinheiro?</label>
+                                        <select class="form-select mb-3" id="movementAccount" name="account_id">
+                                            <option value="">Selecionar conta</option>
+                                            @foreach ($accounts as $account)
+                                                <option value="{{ $account->id }}" @selected($accounts->count() === 1)>{{ $account->name }} · {{ $account->currency }}</option>
+                                            @endforeach
+                                        </select>
+                                        @if ($accounts->isEmpty())
+                                            <div class="form-text text-warning mb-3">Cria uma conta e configura o saldo inicial em <a href="{{ route('financial.accounts.page') }}">Contas</a> antes de registar.</div>
+                                        @endif
+                                        <label for="dashboardActualPaymentMethod" class="form-label fw-semibold">Método de pagamento</label>
+                                        <select id="dashboardActualPaymentMethod" name="actual_payment_method" class="form-select">
+                                            <option value="">Selecionar método</option>
+                                            <option value="cash">Dinheiro</option>
+                                            <option value="debit">Cartão de débito</option>
+                                            <option value="credit">Cartão de crédito</option>
+                                            <option value="transfer">Transferência bancária</option>
+                                            <option value="mbway">MB WAY</option>
+                                            <option value="direct_debit">Débito direto</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="accordion mb-3 movement-details-accordion" id="dashboardAdditionalDetails">
+                                        <div class="accordion-item border rounded-3">
+                                            <h3 class="accordion-header" id="dashboardAdditionalDetailsHeading">
+                                                <button class="accordion-button collapsed py-3" type="button" data-bs-toggle="collapse" data-bs-target="#dashboardAdditionalDetailsPanel" aria-expanded="false" aria-controls="dashboardAdditionalDetailsPanel">
+                                                    <span><strong>Adicionar detalhes</strong><small class="d-block text-secondary fw-normal">Vencimento, repetição, prestações e notas</small></span>
+                                                </button>
+                                            </h3>
+                                            <div id="dashboardAdditionalDetailsPanel" class="accordion-collapse collapse" aria-labelledby="dashboardAdditionalDetailsHeading" data-bs-parent="#dashboardAdditionalDetails">
+                                                <div class="accordion-body px-3">
+                                                    <div class="mb-3">
+                                                        <label class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="dashboardDueDateEnabled">
+                                                            <span class="form-check-label">Definir data de vencimento</span>
+                                                        </label>
+                                                        <div id="dashboardDueDateField" class="mt-2" hidden>
+                                                            <label for="dashboardDueDateInput" class="form-label">Data de vencimento</label>
+                                                            <input id="dashboardDueDateInput" type="date" class="form-control" value="{{ now()->toDateString() }}">
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-check">
+                                                            <input class="form-check-input" type="checkbox" name="recurrence_enabled" value="1" id="dashboardRecurrenceEnabled">
+                                                            <span class="form-check-label">Repetir este movimento</span>
+                                                        </label>
+                                                        <div id="dashboardRecurrenceFields" class="row g-2 mt-1" hidden>
+                                                            <div class="col-4">
+                                                                <label for="dashboardRecurrenceInterval" class="form-label">A cada</label>
+                                                                <input id="dashboardRecurrenceInterval" name="recurrence_interval" type="number" min="1" max="365" value="1" class="form-control">
+                                                            </div>
+                                                            <div class="col-8">
+                                                                <label for="dashboardRecurrenceFrequency" class="form-label">Frequência</label>
+                                                                <select id="dashboardRecurrenceFrequency" name="recurrence_frequency" class="form-select">
+                                                                    <option value="weekly">Semanal</option>
+                                                                    <option value="monthly" selected>Mensal</option>
+                                                                    <option value="yearly">Anual</option>
+                                                                </select>
+                                                            </div>
+                                                            <div class="col-12">
+                                                                <label for="dashboardRecurrenceEnds" class="form-label">Termina em (opcional)</label>
+                                                                <input id="dashboardRecurrenceEnds" name="recurrence_ends_at" type="date" class="form-control">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="dashboardInstallmentsEnabled">
+                                                            <span class="form-check-label">Dividir em prestações</span>
+                                                        </label>
+                                                        <div id="dashboardInstallmentFields" class="row g-2 mt-1" hidden>
+                                                            <div class="col-6">
+                                                                <label for="dashboardInstallments" class="form-label">Número de prestações</label>
+                                                                <input id="dashboardInstallments" name="installments_count" type="number" min="2" max="120" value="2" class="form-control">
+                                                            </div>
+                                                            <div class="col-6">
+                                                                <label for="dashboardInstallmentFrequency" class="form-label">Periodicidade</label>
+                                                                <select id="dashboardInstallmentFrequency" name="installment_frequency" class="form-select">
+                                                                    <option value="weekly">Semanal</option>
+                                                                    <option value="biweekly">Quinzenal</option>
+                                                                    <option value="monthly" selected>Mensal</option>
+                                                                </select>
+                                                            </div>
+                                                            <div class="col-12">
+                                                                <div class="small fw-semibold mb-2">Resumo do parcelamento</div>
+                                                                <div class="list-group list-group-flush" id="dashboardInstallmentScheduleList" aria-live="polite"></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label for="movementNotes" class="form-label">Notas (opcional)</label>
+                                                        <textarea id="movementNotes" name="notes" rows="3" class="form-control" placeholder="Observações adicionais">{{ old('notes') }}</textarea>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-grid gap-2">
+                                        <button type="submit" class="btn btn-danger w-100" id="saveMovementButton">Guardar movimento</button>
+                                        <button type="button" class="btn btn-outline-secondary d-none" id="cancelMovementEdit">Cancelar edição</button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
-                            <div id="dashboardPaidFields" class="mt-3">
-                                <label class="form-label d-block fw-semibold">Estado do pagamento</label>
-                                <div class="payment-status-grid" role="radiogroup" aria-label="Estado do pagamento">
-                                    <label class="payment-status-option"><input class="form-check-input" type="radio" name="paid_now" value="0" checked><span>Pendente</span></label>
-                                    <label class="payment-status-option"><input class="form-check-input" type="radio" name="paid_now" value="partial"><span id="dashboardPaidPartialLabel">Paguei uma parte</span></label>
-                                    <label class="payment-status-option"><input class="form-check-input" type="radio" name="paid_now" value="1"><span id="dashboardPaidFullLabel">Pago</span></label>
-                                </div>
-                                <div id="dashboardPaymentDetails" class="row g-2 mt-2" hidden>
-                                    <div class="col-12" id="dashboardPaymentAmountField"><label for="dashboardPaymentAmount" class="form-label">Valor pago</label><input id="dashboardPaymentAmount" name="payment_amount" type="text" inputmode="decimal" placeholder="0,00" class="form-control"></div>
-                                    <div class="col-6"><label for="dashboardPaymentDate" class="form-label">Data do pagamento</label><input id="dashboardPaymentDate" name="payment_date" type="date" class="form-control" value="{{ now()->toDateString() }}"></div>
-                                    <div class="col-6"><label for="dashboardPaymentAccount" class="form-label">Conta utilizada</label><select id="dashboardPaymentAccount" name="payment_account_id" class="form-select"><option value="">Selecionar conta</option>@foreach ($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }} · {{ $account->currency }}</option>@endforeach</select></div>
-                                    <div class="col-12"><label for="dashboardActualPaymentMethod" class="form-label">Método utilizado</label><select id="dashboardActualPaymentMethod" name="actual_payment_method" class="form-select"><option value="">Selecionar método</option><option value="cash">Dinheiro</option><option value="debit">Cartão de débito</option><option value="credit">Cartão de crédito</option><option value="transfer">Transferência bancária</option><option value="mbway">MB WAY</option><option value="direct_debit">Débito direto</option></select></div>
-                                </div>
-                            </div>
-                            <p class="form-text mb-0 mt-2">A recorrência cria novas obrigações. O parcelamento divide o valor desta obrigação em prestações.</p>
-                        </div>
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-danger w-100" id="saveMovementButton" >Guardar despesa</button>
-                            <button type="button" class="btn btn-outline-secondary d-none" id="cancelMovementEdit">Cancelar edição</button>
-                        </div>
-                    </form>
+                    </article>
                 </div>
             </div>
-        </article>
-            </div></div>
         </div>
-
 <section class="row g-3 g-xl-4 align-items-start" aria-label="Movimentos">
     <div class="col-12">
         <article class="card border-0 shadow-sm rounded-4 history-card">
@@ -475,6 +491,25 @@
         .payment-mode-card-selected { position:absolute; right:.8rem; top:.8rem; margin:0; }
         .payment-mode-card-description { padding-right:5.5rem; }
     }
+</style>
+@endpush
+
+@push('styles')
+
+<style>
+.movement-entry-dialog{max-width:560px}
+.movement-editor-card .card-body{padding:24px!important}
+.movement-editor-card .form-label{font-size:.875rem;font-weight:600}
+.movement-editor-card .form-control,.movement-editor-card .form-select{min-height:48px;border-radius:12px}
+.movement-editor-card .input-group-lg>.form-control,.movement-editor-card .input-group-lg>.input-group-text{min-height:52px}
+.movement-editor-card .record-type-buttons .btn{min-height:46px;font-weight:700}
+.movement-status-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.movement-status-grid .payment-status-option{min-height:48px;border:1px solid var(--bs-border-color);border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px;cursor:pointer}
+.movement-status-grid .payment-status-option:has(input:checked){background:#dbeafe;border-color:#0d6efd}
+.movement-details-accordion .accordion-button{min-height:58px;border-radius:12px!important}
+.movement-details-accordion .accordion-button:not(.collapsed){background:#dbeafe;color:#174078;box-shadow:none}
+.movement-details-accordion .accordion-button::after{align-self:center}
+@media(max-width:575.98px){.movement-entry-dialog{margin:0;max-width:none;min-height:100%;align-items:flex-start}.movement-entry-dialog .modal-content{min-height:100%;border-radius:0!important}.movement-editor-card{min-height:100%;border-radius:0!important}.movement-editor-card .card-body{padding:20px 16px!important}.movement-date-category{display:grid;grid-template-columns:1fr}.movement-date-category>[class*="col-"]{width:100%}.movement-status-grid{grid-template-columns:1fr 1fr}}
 </style>
 @endpush
 
