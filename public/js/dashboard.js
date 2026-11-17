@@ -56,6 +56,7 @@
     const deleteModal = deleteModalElement ? bootstrap.Modal.getOrCreateInstance(deleteModalElement) : null;
     const deleteForm = document.getElementById('deleteMovementForm');
     let actionMovement = null;
+    category?.addEventListener('change', syncExpenseBehaviorFromCategory);
     document.getElementById('dashboardRecurrenceEnabled')?.addEventListener('change', function () {
         const fields = document.getElementById('dashboardRecurrenceFields');
         if (fields) fields.hidden = !this.checked;
@@ -578,6 +579,17 @@
         saveCache();
     }
 
+    function syncExpenseBehaviorFromCategory() {
+        const behavior = document.getElementById('movementExpenseBehavior');
+        if (!behavior) return;
+        if (movementType !== 'despesa' || !category?.value) {
+            behavior.value = 'variable';
+            return;
+        }
+        const configured = cfg.expenseCategoryBehaviors?.[category.value];
+        behavior.value = configured === 'fixed' ? 'fixed' : 'variable';
+    }
+
     function setMovementType(type) {
         movementType = type;
         const income = type === 'receita';
@@ -607,6 +619,7 @@
         Object.entries(options || {}).forEach(([key, label]) => category.add(new Option(label, key)));
         category.disabled = false;
         if (account) account.disabled = false;
+        syncExpenseBehaviorFromCategory();
         cancelButton?.classList.toggle('d-none', !isEditing);
         refreshPaymentFields();
     }
@@ -759,6 +772,7 @@
         amount.value = row.dataset.amount;
         date.value = row.dataset.date;
         category.value = row.dataset.categoryId;
+        syncExpenseBehaviorFromCategory();
         if (account) account.value = row.dataset.accountId || '';
         if (type === 'despesa') {
             const settled = row.dataset.movementStatus === 'settled';
