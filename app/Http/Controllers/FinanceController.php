@@ -75,6 +75,7 @@ class FinanceController extends Controller
 
         $data = $request->validate([
             'description' => 'required|string|max:255',
+            'notes' => 'nullable|string|max:2000',
             'expense_behavior' => ['nullable', Rule::in(['fixed', 'variable'])],
             'amount' => 'required|numeric|gt:0|decimal:0,2|max:9999999999.99',
             'account_id' => ['nullable', 'uuid', $accountExists],
@@ -161,6 +162,7 @@ class FinanceController extends Controller
             'type' => $tipo === 'despesa' ? 'expense' : 'income',
             'expense_behavior' => $tipo === 'despesa' ? ($data['expense_behavior'] ?? 'variable') : 'variable',
             'description' => $data['description'],
+            'notes' => $data['notes'] ?? null,
             'amount' => $data['amount'],
             'movement_date' => $data[$tipo === 'despesa' ? 'expense_date' : 'income_date'],
             'source_account_id' => $source,
@@ -299,15 +301,16 @@ class FinanceController extends Controller
                 ->with('success', ($tipo === 'despesa' ? 'Despesa' : 'Receita') . ' recorrente criada.');
         }
         $expenseBehavior = $data['expense_behavior'] ?? 'variable';
-        unset($data['expense_behavior'], $data['account_id'], $data['payment_account_id'], $data['paid_now'], $data['payment_amount'], $data['payment_date'], $data['actual_payment_method'], $data['payment_condition'], $data['payment_method'], $data['installments_count'], $data['installment_frequency'], $data['card_only'], $data['recurrence_enabled'], $data['recurrence_frequency'], $data['recurrence_interval'], $data['recurrence_ends_at']);
+        $notes = $data['notes'] ?? null;
+        unset($data['notes'], $data['expense_behavior'], $data['account_id'], $data['payment_account_id'], $data['paid_now'], $data['payment_amount'], $data['payment_date'], $data['actual_payment_method'], $data['payment_condition'], $data['payment_method'], $data['installments_count'], $data['installment_frequency'], $data['card_only'], $data['recurrence_enabled'], $data['recurrence_frequency'], $data['recurrence_interval'], $data['recurrence_ends_at']);
         if ($tipo !== 'despesa') unset($data['due_date']);
         $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
 
-        DB::transaction(function () use ($request, $service, $invoices, $tipo, $data, $accountId, $legacyType, $expenseBehavior, $isPendingExpense): void {
+        DB::transaction(function () use ($request, $service, $invoices, $tipo, $data, $accountId, $legacyType, $expenseBehavior, $isPendingExpense, $notes): void {
             $legacy = $this->query($request)->create($data);
-            $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId, 'expense_behavior' => $expenseBehavior]), $legacyType, $legacy->id);
+            $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId, 'expense_behavior' => $expenseBehavior, 'notes' => $notes]), $legacyType, $legacy->id);
             if ($isPendingExpense) {
-                $service->createPending($request->user(), array_merge($payload, ['source_account_id' => null, 'destination_account_id' => null]));
+                $service->createPending($request->user(), array_merge($payload, ['source_account_id' => null, 'destination_account_id' => null, 'notes' => $notes]));
                 return;
             }
             $this->createLinkedMovement($request, $payload, $service, $invoices);
