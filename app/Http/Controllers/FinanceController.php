@@ -365,6 +365,7 @@ class FinanceController extends Controller
         $recurrenceData = ['frequency' => $data['recurrence_frequency'] ?? 'monthly', 'interval_value' => $data['recurrence_interval'] ?? 1, 'ends_at' => $data['recurrence_ends_at'] ?? null];
         unset($data['recurrence_enabled'], $data['recurrence_frequency'], $data['recurrence_interval'], $data['recurrence_ends_at']);
         $expenseBehavior = $data['expense_behavior'] ?? 'variable';
+        $actualPaymentMethod = $data['actual_payment_method'] ?? null;
         unset($data['expense_behavior']);
         $isPendingExpense = $tipo === 'despesa'
             && !$recurrenceEnabled
@@ -385,7 +386,7 @@ class FinanceController extends Controller
                     throw ValidationException::withMessages(['expense' => 'Não é possível editar uma compra de fatura já liquidada. Estorna o movimento e regista a correção.']);
                 }
             }
-            $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId, 'expense_behavior' => $expenseBehavior]), $legacyType, $legacy->id);
+            $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId, 'expense_behavior' => $expenseBehavior, 'actual_payment_method' => $actualPaymentMethod]), $legacyType, $legacy->id);
 
             if (!$movement) {
                 $cutoff = $request->user()->financial_cutoff_date?->toDateString();
@@ -398,6 +399,7 @@ class FinanceController extends Controller
                     'movement_date' => $payload['movement_date'],
                     'category_id' => $payload['category_id'],
                     'expense_behavior' => $payload['expense_behavior'],
+                    'payment_method' => $payload['payment_method'],
                 ]);
                 if ($isPendingExpense) {
                     // A edição de uma despesa que continua por pagar não pode liquidá-la.
