@@ -126,10 +126,12 @@ class FinancialCoreServiceTest extends TestCase
         $this->postJson('/api/financial/commitments/'.$debtId.'/installments/'.$installments[0]['id'].'/pay', [
             'account_id' => $bank->id, 'amount' => '10.00', 'payment_date' => '2026-11-10',
         ])->assertOk()->assertJsonPath('data.status', 'partial')->assertJsonPath('data.paid_amount', '10.00');
+        $secondBank = $this->account($user, 'Conta secundária', '100.00');
         $this->postJson('/api/financial/commitments/'.$debtId.'/installments/'.$installments[0]['id'].'/pay', [
-            'account_id' => $bank->id, 'payment_date' => '2026-11-11',
+            'account_id' => $secondBank->id, 'payment_date' => '2026-11-11',
         ])->assertOk()->assertJsonPath('data.status', 'paid');
-        $this->assertSame('66.66', app(AccountBalanceService::class)->balance($bank));
+        $this->assertSame('90.00', app(AccountBalanceService::class)->balance($bank));
+        $this->assertSame('76.66', app(AccountBalanceService::class)->balance($secondBank));
         $this->assertSame(0, $user->movimentos()->where('installment_id', $installments[0]['id'])->where('status', 'pending')->count());
         $forecast = $user->movimentos()->where('installment_id', $installments[0]['id'])->firstOrFail();
         $this->assertSame('33.34', (string) $forecast->amount);
@@ -137,7 +139,12 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertTrue((bool) $forecast->fresh()->is_settlement_parent);
         $this->assertSame('33.34', number_format((float) $forecast->settlements()->where('status', 'settled')->sum('amount'), 2, '.', ''));
         $this->assertSame('33.34', (string) $installments[0]['amount']);
-        $this->assertSame('33.34', (string) $forecast->fresh()->settlements()->where('status', 'settled')->sum('amount'));
+        $events = $forecast->settlements()->where('status', 'settled')->orderBy('movement_date')->get();
+        $this->assertCount(2, $events);
+        $this->assertSame($bank->id, $events[0]->source_account_id);
+        $this->assertSame($secondBank->id, $events[1]->source_account_id);
+        $this->assertSame('2026-11-10', $events[0]->movement_date->toDateString());
+        $this->assertSame('2026-11-11', $events[1]->movement_date->toDateString());
     }
 
     public function test_commitment_supports_weekly_and_biweekly_installment_schedules(): void
