@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\ContaFinanceira;
 use App\Models\User;
 use App\Services\Financial\AccountBalanceService;
+use App\Services\Financial\CardInvoiceService;
 use App\Services\Financial\FinancialAccountService;
 use App\Services\Financial\FinancialMovementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
