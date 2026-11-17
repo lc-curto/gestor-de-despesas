@@ -134,7 +134,7 @@
                                     data-remaining="{{ number_format((float) $commitment->remaining_amount, 2, '.', '') }}"
                                     data-count="{{ max(1, $partsTotal - $partsPaid) }}"
                                     data-frequency="{{ $commitment->installment_frequency ?? 'monthly' }}"
-                                    data-due="{{ $next?->due_date?->format('Y-m-d') ?? now()->addMonth()->toDateString() }}">Renegociar</button>
+                                    data-due="{{ $next && $next->due_date->gte(today()) ? $next->due_date->format('Y-m-d') : now()->addMonth()->toDateString() }}">Renegociar</button>
                                 <button type="button" class="btn btn-outline-secondary js-archive-commitment"
                                     data-url="{{ route('financial.commitments.archive', $commitment->id) }}"
                                     data-name="{{ $commitment->name }}"
@@ -309,7 +309,7 @@
                 <label class="form-label" for="renegotiateRemaining">Saldo a renegociar (€)</label><input class="form-control mb-3" id="renegotiateRemaining" name="remaining_amount" type="number" min="0.01" step="0.01" required>
                 <label class="form-label" for="renegotiateCount">Número de novas prestações</label><input class="form-control mb-3" id="renegotiateCount" name="installments_count" type="number" min="1" max="120" required>
                 <label class="form-label" for="renegotiateFrequency">Frequência</label><select class="form-select mb-3" id="renegotiateFrequency" name="installment_frequency"><option value="monthly">Mensal</option><option value="biweekly">Quinzenal</option><option value="weekly">Semanal</option></select>
-                <label class="form-label" for="renegotiateDue">Vencimento da primeira nova prestação</label><input class="form-control" id="renegotiateDue" name="due_date" type="date" required>
+                <label class="form-label" for="renegotiateDue">Vencimento da primeira nova prestação</label><input class="form-control" id="renegotiateDue" name="due_date" type="date" min="{{ today()->toDateString() }}" required>
                 <div class="commitment-renegotiation-preview mt-3 p-3 rounded-3 bg-body-tertiary"><small class="text-secondary d-block">Valor estimado por prestação</small><strong id="renegotiatePreview">—</strong><small class="text-secondary d-block mt-1" id="renegotiatePreviewNote">O último valor pode variar alguns cêntimos devido ao arredondamento.</small></div>
                 <div id="renegotiateCommitmentError" class="small text-danger mt-2" role="alert"></div>
             </div>
