@@ -55,6 +55,7 @@ class FinancialMovementService
                 'invoice_charge_type' => $data['invoice_charge_type'] ?? null,
                 'origin_invoice_id' => $data['origin_invoice_id'] ?? null,
                 'invoice_credit_for_movement_id' => $data['invoice_credit_for_movement_id'] ?? null,
+                'invoice_payment_allocation' => $data['invoice_payment_allocation'] ?? null,
                 'opening_debt_card_id' => $data['opening_debt_card_id'] ?? null,
                 'adjustment_direction' => $data['adjustment_direction'] ?? null,
                 'is_historical' => $isHistorical,
@@ -137,9 +138,9 @@ class FinancialMovementService
         ], true);
     }
 
-    public function payCardInvoice(User $user, Fatura $invoice, string $sourceAccountId, string $date, ?string $requestedAmount = null): Movimento
+    public function payCardInvoice(User $user, Fatura $invoice, string $sourceAccountId, string $date, ?string $requestedAmount = null, ?array $allocation = null): Movimento
     {
-        return DB::transaction(function () use ($user, $invoice, $sourceAccountId, $date, $requestedAmount): Movimento {
+        return DB::transaction(function () use ($user, $invoice, $sourceAccountId, $date, $requestedAmount, $allocation): Movimento {
             $locked = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
             $card = $user->contasFinanceiras()->whereKey($locked->account_id)->lockForUpdate()->firstOrFail();
             $source = $user->contasFinanceiras()->whereKey($sourceAccountId)->lockForUpdate()->firstOrFail();
@@ -171,6 +172,17 @@ class FinancialMovementService
             if ($paymentCents <= 0 || $paymentCents > $remainingCents) {
                 throw ValidationException::withMessages(['amount' => 'O pagamento deve ser superior a zero e não pode exceder o valor pendente.']);
             }
+            if ($allocation !== null) {
+                $allocationCents = 0;
+                foreach ($allocation as $componentAmount) {
+                    if ($componentAmount !== null && $componentAmount !== '') {
+                        $allocationCents += $this->balances->toCents((string) $componentAmount);
+                    }
+                }
+                if ($allocationCents !== $paymentCents) {
+                    throw ValidationException::withMessages(['allocation' => 'A decomposição fornecida pelo banco deve somar exatamente o valor do pagamento.']);
+                }
+            }
 
             $event = $this->createMovement($user, [
                 'type' => 'transfer',
@@ -180,6 +192,7 @@ class FinancialMovementService
                 'source_account_id' => $source->id,
                 'destination_account_id' => $card->id,
                 'invoice_id' => $locked->id,
+                'invoice_payment_allocation' => $allocation,
                 'settles_movement_id' => $parent->id,
             ], true);
 
