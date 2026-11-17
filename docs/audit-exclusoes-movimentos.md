@@ -327,25 +327,25 @@ A validação deve considerar todas as representações e relações antes de pe
 
 O método verifica movimentos associados, dívidas, recorrências, movimentos de fatura, dívida inicial e saldo; se não encontrar dependências, executa hard delete de todas as faturas do cartão e do próprio cartão. É um fluxo próprio, não centralizado, e precisa de ser cruzado com saldos transportados, histórico de faturas, créditos, encargos, alocações e referências indiretas. A validação atual de movimentos de fatura não prova, por si só, que todos os dependentes de fatura estão ausentes.
 
-## Matriz inicial página → rota → operação → serviço
+## Matriz atual página → rota → operação → serviço
 
-| Página/área | Ação | Endpoint/rota | Comportamento atual |
+| Página/área | Ação | Endpoint/rota | Comportamento atual na branch |
 |---|---|---|---|
-| Movimentos | Eliminar movimento | `DELETE /api/financial/movements/{id}` | `deleteAsCorrection`; marca `void`, bloqueia algumas relações |
-| Movimentos recorrentes | Eliminar ocorrência/âmbito | `DELETE /api/financial/movements/{id}/recurrence-scope` | Remove previsões pendentes por âmbito via `deleteAsCorrection` |
-| Rota Financeira | Eliminar previsão | `DELETE /api/financial/movements/{id}` | Mesmo endpoint, mas UI decide a ação por estado |
-| Rota Financeira | Anular recorrência | `PUT /api/financial/movements/{id}/void` | `voidPending`; ação separada da exclusão |
-| Rota Financeira | Ação sobre movimento liquidado | `POST /api/financial/movements/{id}/reverse` | Opera sobre evento individual; evento de pagamento de parcela pode não ter `debt_id/installment_id` direto |
-| Parcelamentos | Eliminar obrigação | `DELETE /api/financial/commitments/{id}` | `deleteUnused`; soft delete apenas da obrigação após validação |
-| Parcelamentos | Cancelar obrigação | `POST /api/financial/commitments/{id}/cancel` | Cancela pendências, preserva pagamentos |
-| Parcelamentos | Arquivar obrigação | `POST /api/financial/commitments/{id}/archive` | Define `archived_at` |
-| Contas — detalhe | Eliminar movimento canónico | `DELETE /contas/movimentos/{id}` | Hard delete direto + delete do histórico |
-| Contas — detalhe | Eliminar despesa/receita legacy | `DELETE /despesas/{id}`, `DELETE /receitas/{id}` | Serviço marca canónico como `void` e apaga legacy |
-| Contas — detalhe | Ação sobre liquidado | `POST /contas/movimentos/{id}/estornar` | Serviço de reversão |
-| Cartões | Eliminar cartão | `DELETE /api/financial/cards/{id}` | Hard delete de faturas e cartão, após validações |
-| Categorias | Eliminar categoria | `DELETE /categorias/{id}` | Verifica apenas legacy; FK restringe movimentos canónicos |
-| Recorrências | Pausar/desativar | `PATCH /api/financial/recurrences/{id}/status` | Hard delete de previsões pendentes e respetivo histórico |
-| Despesas/receitas | Editar substituindo movimento | `PUT/PATCH /despesas/{id}`, `PUT/PATCH /receitas/{id}` | Em ramo específico, hard delete do movimento e histórico antes de recriar |
+| Movimentos | Eliminar movimento | `DELETE /api/financial/movements/{id}` | `FinancialMovementService::deleteAsCorrection` → `FinancialDeletionService::deleteMovement`; marca o movimento como `void`, preserva histórico, propaga para eventos filhos e recalcula pai, parcela, fatura ou dívida inicial quando aplicável |
+| Movimentos recorrentes | Eliminar ocorrência/âmbito | `DELETE /api/financial/movements/{id}/recurrence-scope` | Aplica exclusão central ao âmbito permitido; preserva ocorrências realizadas e histórico |
+| Rota Financeira | Eliminar movimento | `DELETE /api/financial/movements/{id}` | Usa a mesma política central; a UI já não chama endpoints de reverse/void |
+| Parcelamentos | Eliminar obrigação | `DELETE /api/financial/commitments/{id}` | `FinancialCommitmentService::delete` → `deleteCommitment`; soft delete da obrigação, anula previsões, cancela prestações futuras e preserva/desassocia pagamentos liquidados |
+| Parcelamentos | Cancelar obrigação | `POST /api/financial/commitments/{id}/cancel` | `FinancialCommitmentService::cancel` → `cancelCommitment`; mantém a obrigação cancelada, anula previsões pendentes/parciais e preserva pagamentos reais autónomos |
+| Parcelamentos | Arquivar obrigação | `POST /api/financial/commitments/{id}/archive` | Define `archived_at`; as projeções excluem previsões do agregado arquivado sem apagar eventos de pagamento |
+| Contas — detalhe | Eliminar movimento canónico | `DELETE /contas/movimentos/{id}` | `FinancialAccountsPageController::destroyMovement` encaminha para `deleteAsCorrection`; sem hard delete direto |
+| Despesas/receitas legacy | Eliminar registo | `DELETE /despesas/{id}`, `DELETE /receitas/{id}` | `FinanceController::destroy` elimina movimento canónico pela política central e grava snapshot do registo legacy; se não existir movimento canónico, audita a eliminação legacy isolada |
+| Despesas/receitas legacy | Editar/substituir | `PUT/PATCH /despesas/{id}`, `PUT/PATCH /receitas/{id}` | Pendentes usam atualização controlada; liquidados não aceitam alteração financeira; substituição preserva movimento e histórico, libertando a associação legacy dentro da transação |
+| Cartões | Eliminar cartão sem uso | `DELETE /api/financial/cards/{id}` | `FinancialAccountService::deleteUnusedCard` → orquestrador; bloqueia qualquer movimento/histórico, dívida, recorrência, fatura com movimentos, saldo transportado, dívida inicial ou saldo não nulo; só elimina cartão sem uso |
+| Categorias | Eliminar categoria | `DELETE /categorias/{id}` | `CategoriaController::destroy` → orquestrador; verifica referências legacy e canónicas, incluindo movimentos `void`; se existir histórico, bloqueia e exige desativação |
+| Recorrências | Pausar/retomar | `PATCH /api/financial/recurrences/{id}/status` | `RecurrenceService::setActive`; anula apenas previsões futuras elegíveis por exclusão central, mantém ocorrências realizadas e histórico; retomar regenera previsões |
+| Recorrências | Alterar regra a partir de movimento | edição de despesa/receita | `RecurrenceService::syncEditedMovement`; anula previsões futuras não confirmadas e mantém a ocorrência realizada |
+| Faturas | Eliminar compra/encargo | `DELETE /api/financial/movements/{id}` | Fatura com pagamentos ativos ou saldo transportado bloqueia exclusão isolada; sem essas dependências, recalcula total e soft-deletes a fatura vazia |
+| Faturas | Eliminar pagamento | `DELETE /api/financial/movements/{id}` | Retira o efeito do pagamento, recalcula obrigação da fatura e saldo da conta; não cria movimento inverso |
 
 ## Observações sobre integridade referencial encontradas nas migrations
 
@@ -357,7 +357,11 @@ O método verifica movimentos associados, dívidas, recorrências, movimentos de
 
 ## Estado da auditoria ampliada
 
-Esta matriz é um inventário confirmado das rotas e dos principais caminhos destrutivos encontrados até agora. Ainda falta fechar o cruzamento de todas as relações indiretas, consultas de cada página, constraints completas, testes de regressão e operações destrutivas executadas por edição/importação. A auditoria não deve ser declarada concluída antes dessa validação.
+O inventário das rotas de exclusão, cancelamento, edição/substituição e recorrência foi cruzado com os serviços centrais, projeções, FKs e testes de regressão. Os findings E-01 a E-17 descrevem a baseline anterior e estão identificados como tal; a matriz acima descreve o comportamento da branch atual.
+
+A validação automatizada cobre movimentos, eventos de liquidação, pagamentos parciais/totais, parcelamentos, faturas, dívida inicial de cartão, recorrências, categorias, cartões, isolamento entre utilizadores e idempotência. A revisão estática confirmou que os endpoints de produto para reverse/void isolados já não estão registados em `routes/web.php`.
+
+Limites remanescentes: o CI não simula concorrência real entre transações/processos; a ordem de locks foi revista no código, mas um teste de stress concorrente em ambiente MySQL dedicado ainda seria validação adicional. O CI também reporta dois testes como `risky`, sem falhas; esses avisos devem permanecer visíveis e não ser apresentados como testes aprovados sem ressalva.
 
 
 ## 8. Modelo aprovado para exclusões financeiras
@@ -376,7 +380,7 @@ Decisão funcional aprovada:
 - Contas e cartões com histórico devem ser encerrados/desativados, não eliminados. Cartões sem utilização podem ser eliminados.
 - Categorias com movimentos históricos são desativadas; só categorias sem referências podem ser eliminadas.
 
-## 9. Implementação iniciada na branch
+## 9. Implementação na branch
 
 Foi criado `App\Services\Financial\FinancialDeletionService` como orquestrador de exclusões e a migration `2026_11_17_230000_create_financial_deletion_audit_tables.php`, com:
 
@@ -401,19 +405,23 @@ Integrações já alteradas:
 - Substituição de movimentos legacy na edição deixa de apagar o movimento canónico e o histórico.
 - Endpoints de estorno foram removidos das rotas de produto; os dados antigos permanecem compatíveis.
 
-Testes de regressão atualizados/adicionados para pagamentos parciais, pagamentos de faturas, dívida inicial, transferência, exclusão de parcelamentos parcial e totalmente pagos, cancelamento parcial, divergência entre contador e eventos, idempotência e preservação de pagamentos. O CI mais recente executou 196 testes aprovados e 1.578 assertions; 2 testes foram classificados como risky, sem falhas.
+Testes de regressão atualizados/adicionados para pagamentos parciais, pagamentos de faturas, dívida inicial, transferência, exclusão de parcelamentos parcial e totalmente pagos, cancelamento parcial, divergência entre contador e eventos, idempotência, proteção de cartão com histórico e categoria com movimento canónico. O último CI confirmado antes das alterações mais recentes executou 196 testes aprovados e 1.578 assertions; 2 testes foram classificados como risky, sem falhas. O CI do HEAD atual está em execução.
 
-## 10. Pendências antes de declarar a auditoria/implementação concluída
+## 10. Validação final e limites conhecidos
 
-1. Reexecutar a suíte completa após as próximas alterações e investigar os 2 testes classificados como risky.
-2. Validar em testes a exclusão lógica de faturas vazias e a restauração da mesma fatura quando surge uma nova compra no mesmo ciclo. A implementação foi adicionada com migration e helper de recuperação por cartão/período.
-3. Rever todos os fluxos de edição/substituição e importação para garantir que nenhum outro caminho apaga movimentos ou histórico diretamente.
-4. Remover métodos internos de compatibilidade de estorno quando não houver consumidores restantes; preservar os dados legados.
-5. Completar testes de rollback, concorrência, isolamento entre utilizadores, relações de saldo transportado, recorrências e categorias.
-6. Validar todas as listagens/projeções (Dashboard, Movimentos, Rota Financeira, Contas, Parcelamentos, Cartões e Faturas) após cada operação.
-7. Não fazer merge nem deploy antes da validação e aprovação.
+1. [x] Inventário das rotas e caminhos destrutivos de movimentos, compromissos, cartões, categorias, recorrências, faturas e edição/substituição.
+2. [x] Orquestrador central e trilho de auditoria com snapshots antes/depois.
+3. [x] Remoção de hard delete de movimentos e histórico nos fluxos financeiros identificados.
+4. [x] Testes de regressão para pagamentos parciais/totais, cancelamento e eliminação de parcelamentos, pagamentos de fatura, dívida inicial, recorrências, categorias, cartões e isolamento entre utilizadores.
+5. [x] Teste de idempotência para eliminação repetida de movimento sem duplicar auditoria.
+6. [x] Teste de fatura vazia: soft delete e restauração do mesmo ID quando há nova compra no mesmo ciclo.
+7. [x] CI aprovado no commit `680207807115e762bf56664a4c29be7f84357bc8`: 196 testes aprovados, 1.578 assertions e 2 testes classificados como `risky`.
+8. [ ] CI do commit mais recente, que inclui regressões de eliminação de cartão, categoria com movimento canónico, idempotência e eliminação de compromisso previamente cancelado.
+9. [ ] Investigar os dois testes classificados como `risky` e reduzir a zero os avisos, se forem corrigíveis sem mascarar comportamento.
+10. [ ] Executar stress test de concorrência com duas transações MySQL simultâneas; a revisão estática confirmou locks, mas o workflow atual não simula concorrência real.
+11. [ ] Merge e deploy permanecem fora do âmbito até aprovação explícita do utilizador.
 
-A implementação permanece em andamento. Esta documentação não declara a auditoria concluída.
+A auditoria está tecnicamente implementada na branch, mas a validação final depende do CI do HEAD e dos dois itens de robustez acima. Não fazer merge nem deploy sem aprovação explícita.
 
 ### Atualização adicional da implementação
 
