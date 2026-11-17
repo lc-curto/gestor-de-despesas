@@ -142,7 +142,11 @@ class FinancialCommitmentsPageController extends Controller
                 ->orderBy('installment_number')
                 ->first();
 
+            $hasOverdue = $commitment->parcelas()->whereColumn('amount', '>', 'paid_amount')
+                ->where('status', '!=', 'cancelled')->whereDate('due_date', '<', today())->exists();
+
             $commitment->setAttribute('next_installment', $next);
+            $commitment->setAttribute('has_overdue_installment', $hasOverdue);
             $commitment->setAttribute('remaining_amount', max(0, (float) $commitment->total_amount - (float) $commitment->paid_amount_total));
             $commitment->setAttribute('progress_percent', (float) $commitment->total_amount > 0
                 ? min(100, round(((float) $commitment->paid_amount_total / (float) $commitment->total_amount) * 100, 1))
