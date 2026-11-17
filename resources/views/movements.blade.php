@@ -132,16 +132,18 @@
                                         @if ($accounts->isEmpty())
                                             <div class="form-text text-warning mb-3">Cria uma conta e configura o saldo inicial em <a href="{{ route('financial.accounts.page') }}">Contas</a> antes de registar.</div>
                                         @endif
-                                        <label for="dashboardActualPaymentMethod" class="form-label fw-semibold">Método de pagamento</label>
-                                        <select id="dashboardActualPaymentMethod" name="actual_payment_method" class="form-select">
-                                            <option value="">Selecionar método</option>
-                                            <option value="cash">Dinheiro</option>
-                                            <option value="debit">Cartão de débito</option>
-                                            <option value="credit">Cartão de crédito</option>
-                                            <option value="transfer">Transferência bancária</option>
-                                            <option value="mbway">MB WAY</option>
-                                            <option value="direct_debit">Débito direto</option>
-                                        </select>
+                                        <div id="movementPaymentMethodField">
+                                            <label for="dashboardActualPaymentMethod" class="form-label fw-semibold">Método de pagamento</label>
+                                            <select id="dashboardActualPaymentMethod" name="actual_payment_method" class="form-select">
+                                                <option value="">Selecionar método</option>
+                                                <option value="cash">Dinheiro</option>
+                                                <option value="debit">Cartão de débito</option>
+                                                <option value="credit">Cartão de crédito</option>
+                                                <option value="transfer">Transferência bancária</option>
+                                                <option value="mbway">MB WAY</option>
+                                                <option value="direct_debit">Débito direto</option>
+                                            </select>
+                                        </div>
                                     </div>
 
                                     <div class="accordion mb-3 movement-details-accordion" id="dashboardAdditionalDetails">
