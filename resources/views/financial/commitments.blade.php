@@ -4,9 +4,8 @@
 
 @section('content')
 <div class="app-content commitments-page">
-    <header class="page-heading commitments-heading mb-4 d-flex flex-wrap justify-content-between align-items-end gap-3">
+    <header class="page-heading commitments-heading mb-4">
         <div><h1 class="h2 fw-bold mb-1">Parcelamentos</h1><p class="text-secondary mb-0">Gestão de compras e prestações</p></div>
-        <button type="button" class="btn btn-primary mt-3 mt-md-0" data-bs-toggle="modal" data-bs-target="#createCommitmentModal">Nova compra</button>
     </header>
 
     <div id="commitmentFeedback" class="alert d-none" role="status" aria-live="polite"></div>
@@ -292,49 +291,28 @@
 @push('styles')
 <style>
 .commitments-page{max-width:1500px;margin-inline:auto;container-type:inline-size}
-.commitment-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
-.commitment-metric{min-width:0;padding:1.1rem 1.25rem;background:var(--bs-body-bg);border:1px solid var(--bs-border-color);border-radius:1rem;display:flex;flex-direction:column;justify-content:center;gap:.35rem}
-.commitment-metric span,.commitment-metric small{font-size:.8rem;color:var(--bs-secondary-color)}
-.commitment-metric strong{font-size:1.35rem;line-height:1.3;font-weight:750;overflow-wrap:normal;word-break:normal}
-.commitment-metric-primary{grid-column:auto}
-.commitment-metric small{line-height:1.4}
+.commitment-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;width:100%}
+.commitment-metric{position:relative;min-width:0;min-height:126px;padding:1.15rem 1.25rem;background:var(--bs-body-bg);border:1px solid var(--bs-border-color);border-radius:1rem;display:flex;flex-direction:column;justify-content:space-between;gap:.55rem;overflow:hidden}
+.commitment-metric span{font-size:.78rem;font-weight:600;letter-spacing:.01em;color:var(--bs-secondary-color)}
+.commitment-metric small{font-size:.78rem;color:var(--bs-secondary-color);line-height:1.4}
+.commitment-metric strong{font-size:1.3rem;line-height:1.25;font-weight:750;overflow-wrap:anywhere;word-break:normal;font-variant-numeric:tabular-nums}
+.commitment-metric-primary{grid-column:auto;background:linear-gradient(135deg,var(--bs-primary-bg-subtle),var(--bs-body-bg));border-color:color-mix(in srgb,var(--bs-primary) 22%,var(--bs-border-color))}
+.commitment-metric-primary strong{font-size:1.75rem;letter-spacing:-.025em}
+.commitment-metric:not(.commitment-metric-primary){background:var(--bs-tertiary-bg)}
+.commitment-metric:not(.commitment-metric-primary) strong{font-size:1.25rem}
 @container (max-width: 620px){
- .commitment-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
- .commitment-metric{padding:.8rem .9rem;border-radius:.85rem}
- .commitment-metric-primary{grid-column:1/-1}
- .commitment-metric strong{font-size:1.15rem}
- .commitment-metric-primary strong{font-size:1.55rem}
- .commitment-metric small{font-size:.76rem}
+ .commitment-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem;width:100%}
+ .commitment-metric{min-height:116px;padding:.9rem;border-radius:.9rem}
+ .commitment-metric-primary{grid-column:1/-1;min-height:132px}
+ .commitment-metric-primary strong{font-size:1.7rem}
+ .commitment-metric:not(.commitment-metric-primary){min-height:124px}
+ .commitment-metric:not(.commitment-metric-primary) strong{font-size:1.16rem}
 }
 @container (max-width: 360px){
- .commitment-summary{grid-template-columns:minmax(0,1fr)}
- .commitment-metric-primary{grid-column:auto}
-}
-
-/* Mobile: the two secondary KPIs share the full row evenly. */
-@media (max-width: 767.98px){
- .commitment-summary{
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:.6rem;
- }
+ .commitment-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .commitment-metric{padding:.75rem}
+ .commitment-metric strong{font-size:1.05rem}
  .commitment-metric-primary{grid-column:1/-1}
- .commitment-metric:not(.commitment-metric-primary){
-  min-height:138px;
-  justify-content:space-between;
-  padding:.85rem;
- }
- .commitment-metric:not(.commitment-metric-primary) span{
-  min-height:2.2em;
-  line-height:1.35;
- }
- .commitment-metric:not(.commitment-metric-primary) strong{
-  font-size:1.08rem;
-  line-height:1.25;
-  overflow-wrap:anywhere;
- }
- .commitment-metric:not(.commitment-metric-primary) small{
-  line-height:1.35;
- }
 }
 .commitment-history-trigger{padding:0 .9rem .85rem;display:flex;justify-content:flex-end}
 .commitment-history-modal .modal-dialog{max-width:680px}
