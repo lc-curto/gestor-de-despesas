@@ -315,7 +315,7 @@ class FinancialCommitmentService
         });
     }
 
-    public function deleteUnused(User $user, Divida $debt): void
+    public function delete(User $user, Divida $debt): void
     {
         app(FinancialDeletionService::class)->deleteCommitment(
             $user,
