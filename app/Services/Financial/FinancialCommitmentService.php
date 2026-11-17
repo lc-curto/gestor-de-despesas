@@ -258,12 +258,14 @@ class FinancialCommitmentService
 
     public function archive(User $user, Divida $debt): Divida
     {
-        $locked = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
-        if ($locked->status === 'cancelled') {
-            throw ValidationException::withMessages(['commitment' => 'Uma compra cancelada não pode ser arquivada nesta operação.']);
-        }
-        $locked->update(['archived_at' => now()]);
-        return $locked->refresh();
+        return DB::transaction(function () use ($user, $debt): Divida {
+            $locked = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status === 'cancelled') {
+                throw ValidationException::withMessages(['commitment' => 'Uma compra cancelada não pode ser arquivada nesta operação.']);
+            }
+            $locked->update(['archived_at' => now()]);
+            return $locked->refresh();
+        });
     }
 
     public function deleteUnused(User $user, Divida $debt): void
@@ -279,8 +281,7 @@ class FinancialCommitmentService
             $locked->parcelas()->whereIn('status', ['pending', 'partial'])->update(['status' => 'cancelled']);
             Movimento::query()->where('user_id', $user->id)->where('debt_id', $locked->id)->where('status', 'pending')->get()
                 ->each(fn (Movimento $forecast) => $this->movements->voidCancelledCommitmentForecast($user, $locked, $forecast));
-            $locked->parcelas()->delete();
-            DB::table('dividas_renegociacoes')->where('user_id', $user->id)->where('debt_id', $locked->id)->delete();
+            // Soft delete: preserve installments and renegotiation audit history.
             $locked->delete();
         });
     }
