@@ -78,7 +78,7 @@ class FinancialCoreController extends Controller
 
     public function updateCommitment(Request $request, string $id, FinancialCommitmentService $service): JsonResponse
     {
-        $data = $request->validate(['name' => 'required|string|max:160', 'due_date' => 'required|date']);
+        $data = $request->validate(['name' => 'required|string|max:160', 'due_date' => 'required|date', 'total_amount' => 'sometimes|required|numeric|gt:0|decimal:0,2|max:9999999999.99']);
         $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();
         return response()->json(['data' => $service->update($request->user(), $debt, $data)]);
     }
