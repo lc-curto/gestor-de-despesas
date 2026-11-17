@@ -81,30 +81,4 @@ jobs:
           DB_DATABASE: meu_bolso_test
           DB_USERNAME: root
           DB_PASSWORD: root
-        run: |
-          php artisan test --display-all-issues --log-junit /tmp/phpunit-junit.xml --log-events-verbose-text /tmp/phpunit-events.txt
-          python - <<'PY'
-          import xml.etree.ElementTree as ET
-          root = ET.parse('/tmp/phpunit-junit.xml').getroot()
-          events = open('/tmp/phpunit-events.txt', encoding='utf-8').read().splitlines()
-          for index, line in enumerate(events):
-              if 'risky' in line.lower() or 'considered risky' in line.lower():
-                  print('PHPUnit event detail:')
-                  print('\\n'.join(events[max(0, index - 3):min(len(events), index + 6)]))
-          targets = (
-              'card_purchases_are_in_card_history_not_movements_and_invoice_payment_remains_visible',
-              'acceptance_dashboard_and_movements_read_canonical_financial_movements',
-          )
-          for case in root.iter('testcase'):
-              if any(target in case.attrib.get('name', '') for target in targets):
-                  print('PHPUnit detail:', case.attrib)
-                  for issue in case:
-                      print(f"  {issue.tag}: {issue.attrib}")
-                      if issue.text:
-                          print(issue.text.strip())
-              for issue in case:
-                  if issue.tag in ('error', 'failure', 'skipped'):
-                      print(f"{case.attrib.get('classname')}::{case.attrib.get('name')} [{issue.tag}] {issue.attrib.get('type', '')}")
-                      if issue.text:
-                          print(issue.text.strip())
-          PY
+        run: php artisan test --display-all-issues

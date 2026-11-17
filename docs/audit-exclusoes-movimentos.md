@@ -152,7 +152,7 @@ Em `FinanceController::update`, num ramo alternativo, `$movement->historico()->d
 - [x] Políticas centrais para compromissos, cartões, categorias e recorrências.
 - [x] Remoção das rotas de produto para estorno/anulação isolada.
 - [x] Testes de regressão para pagamentos, faturas, dívida inicial, parcelamentos e recorrências.
-- [x] CI aprovado no commit `7ecf586c2498deb580071ccfb9f6390a1f4ba22d` (202 testes aprovados, 1.633 assertions; 2 testes classificados como `risky`, sem falhas).
+- [x] CI aprovado no commit `fe4ecbb84f09e295fe8569f3169b658450f64222` (204 testes aprovados, 1.655 assertions, zero `risky`).
 - [x] Cancelamento de parcelamento parcialmente pago: previsão parcial anulada, pagamentos preservados/desassociados e auditoria concluída.
 - [x] Eliminação de parcelamento totalmente pago: evento preservado, prestação mantém estado `paid` e ligações ao agregado removidas.
 - [x] Eliminação de parcelamento previamente cancelado: auditoria anterior validada e pagamentos preservados como movimentos independentes.
@@ -169,7 +169,7 @@ Em `FinanceController::update`, num ramo alternativo, `$movement->historico()->d
 - [x] Testes de isolamento entre utilizadores nas rotas de eliminação de compromisso e movimento.
 - [x] Revisão dos fluxos de edição/substituição e projeções de Dashboard, Movimentos, Rota Financeira, Contas, Parcelamentos, Cartões e Faturas.
 - [ ] Stress test concorrente com duas transações MySQL simultâneas; os locks foram revistos, mas não simulados pelo workflow.
-- [ ] Investigar os dois testes `risky` remanescentes.
+- [x] Avisos `risky` eliminados: corrigida diretiva `@push('scripts')` duplicada em `resources/views/movements.blade.php`; adicionadas verificações de integridade dos buffers de saída nos testes de renderização.
 - [ ] Merge/deploy apenas após aprovação explícita.
 
 ## Decisão de produto/arquitetura — exclusão propagada, sem operação de estorno
@@ -431,7 +431,7 @@ Testes de regressão atualizados/adicionados para pagamentos parciais, pagamento
 10. [ ] Executar stress test de concorrência com duas transações MySQL simultâneas; a revisão estática confirmou locks, mas o workflow atual não simula concorrência real.
 11. [ ] Merge e deploy permanecem fora do âmbito até aprovação explícita do utilizador.
 
-A implementação e os testes funcionais/atómicos estão concluídos na branch. Permanecem duas ressalvas de qualidade: dois testes `risky` ainda sem diagnóstico conclusivo e ausência de stress test concorrente real. Não fazer merge nem deploy sem aprovação explícita.
+A implementação e os testes funcionais/atómicos estão concluídos na branch. A única ressalva de validação adicional é a ausência de um stress test concorrente real em duas transações MySQL simultâneas; a revisão estática e os testes transacionais cobrem atomicidade e locks, mas não substituem esse teste de carga. Não fazer merge nem deploy sem aprovação explícita.
 
 ### Atualização adicional da implementação
 
