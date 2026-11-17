@@ -298,6 +298,7 @@ class CardInvoiceService
             if ($locked->closing_date && $locked->closing_date->gt(today())) {
                 throw ValidationException::withMessages(['invoice' => 'A data de fecho deste ciclo ainda não chegou.']);
             }
+            $this->carryOverdueInvoices($user, $locked);
             $this->movements->assertInvoiceReconciled($user, $locked);
             $expectedCents = $this->invoiceTotalCents($locked);
             $statementCents = (int) round((float) $statementAmount * 100);
