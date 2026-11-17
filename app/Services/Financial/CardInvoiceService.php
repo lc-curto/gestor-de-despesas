@@ -193,6 +193,7 @@ class CardInvoiceService
                 throw ValidationException::withMessages(['invoice' => 'A fatura está fechada, paga ou já foi transportada. Regista o encargo no ciclo seguinte.']);
             }
             $this->carryOverdueInvoices($user, $locked);
+            $this->movements->assertInvoiceReconciled($user, $locked);
             $card = $user->contasFinanceiras()->whereKey($locked->account_id)->lockForUpdate()->firstOrFail();
             if ($card->type !== 'credit_card' || !$card->is_operational || $card->status !== 'active') {
                 throw ValidationException::withMessages(['invoice' => 'O cartão associado a esta fatura não está ativo.']);
@@ -329,6 +330,7 @@ class CardInvoiceService
                 throw ValidationException::withMessages(['invoice' => 'A fatura está fechada, paga ou já foi transportada. Regista o crédito no ciclo seguinte.']);
             }
             $this->carryOverdueInvoices($user, $locked);
+            $this->movements->assertInvoiceReconciled($user, $locked);
             $card = $user->contasFinanceiras()->whereKey($locked->account_id)->lockForUpdate()->firstOrFail();
             if ($card->type !== 'credit_card' || !$card->is_operational || $card->status !== 'active') {
                 throw ValidationException::withMessages(['invoice' => 'O cartão associado a esta fatura não está ativo.']);
