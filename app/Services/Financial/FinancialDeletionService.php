@@ -455,12 +455,8 @@ class FinancialDeletionService
                 $invoice->id => $invoice->movimentos()->where('is_settlement_parent', true)->first()?->getAttributes(),
             ]);
 
-            $accountIds = $related->flatMap(fn (Movimento $item) => [$item->source_account_id, $item->destination_account_id])
-                ->merge($paymentEvents->flatMap(fn (Movimento $item) => [$item->source_account_id, $item->destination_account_id]))
-                ->filter()->unique()->sort()->values();
-            if ($accountIds->isNotEmpty()) {
-                ContaFinanceira::query()->where('user_id', $user->id)->whereIn('id', $accountIds)->orderBy('id')->lockForUpdate()->get();
-            }
+            // Os saldos das contas são projeções dos movimentos; não há saldo materializado
+            // a atualizar nem necessidade de bloquear contas inteiras nesta operação.
 
             $operationId = $this->startOperation(
                 $user,
