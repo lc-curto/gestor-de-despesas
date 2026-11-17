@@ -199,3 +199,35 @@ Os métodos e rotas denominados `reverse`, `estorno` ou `reversal_of_id` devem s
 10. Repetir uma exclusão: resposta idempotente e nenhum segundo efeito financeiro.
 
 **Nota de rigor:** “exclusão propagada” não significa que qualquer operação possa sempre ser concluída. Quando houver uma dependência partilhada ou uma consequência externa/ambígua que não possa ser recalculada com segurança, o sistema deve bloquear a exclusão e explicar a dependência, em vez de criar órfãos ou corromper saldos.
+
+
+## E-11 — [ALTA] Exclusão/cancelamento de parcelamento pode deixar movimentos liquidados visíveis
+
+**Reprodução relatada pelo utilizador (17/11/2026):** um parcelamento foi removido, mas as parcelas pagas continuaram na página de Movimentos. A tentativa de remover essas linhas diretamente foi bloqueada; por outro percurso financeiro, o parcelamento deixou de aparecer, mas os movimentos permaneceram.
+
+### O que o código confirma
+
+1. `FinancialCommitmentService::create` cria três entidades relacionadas: a obrigação em `dividas`, as parcelas em `parcelas_divida` e uma previsão canónica por parcela em `movimentos`, com `debt_id` e `installment_id`.
+2. Ao liquidar uma parcela, `FinancialMovementService::settle` cria um evento de pagamento ligado à previsão por `settles_movement_id`, altera a previsão para `partial` ou `settled` e sincroniza o montante pago na parcela. A previsão continua a ser um movimento canónico ligado à obrigação.
+3. `FinancialMovementService::deleteAsCorrection` bloqueia qualquer movimento com `installment_id`, bem como eventos de liquidação e previsões de dívida. Por isso, a recusa na página de Movimentos é coerente com a proteção atualmente implementada.
+4. `FinancialCommitmentService::cancel` cancela apenas parcelas `pending/partial` e previsões `pending`. Não elimina nem altera previsões `settled`, nem os eventos de pagamento associados. É uma operação de cancelamento do saldo futuro, não uma exclusão propagada do agregado.
+5. `FinancialCommitmentService::deleteUnused` verifica pagamentos através de `parcelas.paid_amount > 0` ou movimentos `settled` com o mesmo `debt_id`. Se detetar pagamento, deve bloquear. Se não detetar, cancela parcelas pendentes/parciais, anula previsões pendentes e aplica soft delete apenas à obrigação (`dividas`). Não propaga soft delete às parcelas nem aos movimentos liquidados.
+6. A listagem de Movimentos em `DashboardController::movimentosQuery` consulta diretamente `movimentos` canónicos com estado `pending/partial/settled`. Não exige que a obrigação associada continue ativa/não eliminada. Assim, uma previsão liquidada e/ou evento de pagamento sobrevivente continua elegível para aparecer, mesmo quando a obrigação sofre soft delete.
+7. A vista de Parcelamentos calcula a visibilidade do botão de exclusão com base no total de `paid_amount`, enquanto o servidor também verifica movimentos liquidados associados. O backend deve continuar a ser a autoridade, mas os dois indicadores podem divergir em dados históricos inconsistentes.
+
+### Conclusão técnica
+
+As páginas não estão a consultar uma única entidade: Parcelamentos apresenta o agregado `Divida + Parcelas`; Movimentos apresenta eventos de `movimentos`. A ligação entre eles é feita por chaves (`debt_id`, `installment_id`, `settles_movement_id`), não por uma consulta que obrigue a existência/estado ativo da obrigação. Soft delete da obrigação não apaga nem oculta automaticamente os eventos canónicos.
+
+**Limite da conclusão:** com o código atual da branch, uma chamada bem-sucedida a `DELETE /api/financial/commitments/{id}` para uma parcela corretamente registada como paga deveria ser bloqueada por `deleteUnused`. Portanto, o relato de sucesso nessa rota indica uma destas situações ainda por confirmar nos dados concretos: (a) o pagamento foi gravado num formato legado/desassociado que não satisfaz os dois predicados de proteção; (b) foi executado o endpoint de cancelamento, não o DELETE; ou (c) o código em produção divergia da branch auditada. Não é correto afirmar qual delas ocorreu sem identificar o URL/método efetivamente chamado e inspecionar os registos envolvidos.
+
+### Lacunas de teste
+
+- Não existe teste que tente eliminar um compromisso depois de uma liquidação total/parcial e confirme bloqueio sem alterações.
+- Não existe teste que cancele um compromisso com parcelas pagas e confirme a política explícita de preservação/visibilidade dos eventos.
+- Não existe teste de integridade que, após eliminar/cancelar uma obrigação, procure movimentos e eventos de liquidação com `debt_id`, `installment_id` ou `settles_movement_id` ligados ao agregado.
+- Não existe teste que compare a listagem de Parcelamentos com a listagem canónica de Movimentos após exclusão/cancelamento.
+
+### Correção exigida pela decisão de arquitetura
+
+A exclusão deve resolver o grafo completo: obrigação → parcelas → previsões → eventos de pagamento → contas afetadas. Se a propagação financeira for permitida pela matriz, todos os eventos exclusivos devem ser logicamente eliminados na mesma transação e os saldos recalculados. Se não for possível fazê-lo com segurança, a exclusão deve ser bloqueada. Não basta soft-delete da obrigação nem cancelar apenas previsões pendentes. A consulta de Movimentos também deve respeitar a política de visibilidade de agregados eliminados, sem ocultar silenciosamente pagamentos válidos.
