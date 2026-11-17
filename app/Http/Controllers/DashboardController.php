@@ -59,7 +59,7 @@ class DashboardController extends Controller
         $totalDespesas += (float) $user->movimentos()->whereNull('legacy_type')->where('type', 'expense')
             ->whereIn('status', ['pending', 'partial', 'settled'])->whereNull('settles_movement_id')->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
         $totalReceitas += (float) $user->movimentos()->whereNull('legacy_type')->where('type', 'income')
-            ->whereIn('status', ['pending', 'settled'])->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
+            ->whereIn('status', ['pending', 'partial', 'settled'])->whereNull('settles_movement_id')->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
 
         $operationalAccounts = $user->contasFinanceiras()
             ->whereIn('type', ['bank', 'cash'])
