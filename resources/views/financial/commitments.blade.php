@@ -318,6 +318,13 @@
     </div></div>
 </div>
 
+<div class="modal fade" id="cancelCommitmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content rounded-4 border-0">
+        <div class="modal-header border-0"><h2 class="modal-title h5 fw-bold">Cancelar compra</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+        <div class="modal-body"><p id="cancelCommitmentMessage" class="mb-2"></p><p class="small text-secondary mb-0">As prestações futuras serão interrompidas. Pagamentos e movimentos já realizados serão preservados. O cancelamento não gera reembolso.</p><div id="cancelCommitmentError" class="small text-danger mt-2" role="alert"></div></div>
+        <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button><button type="button" class="btn btn-danger" id="confirmCancelCommitment">Confirmar cancelamento</button></div>
+    </div></div>
+</div>
 <div class="modal fade" id="archiveCommitmentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered"><div class="modal-content rounded-4 border-0">
         <div class="modal-header border-0"><h2 class="modal-title h5 fw-bold">Arquivar compra</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
@@ -671,16 +678,28 @@
         }
     });
 
-    document.querySelectorAll('.js-cancel-commitment').forEach(button=>button.addEventListener('click',async()=>{
-        if(!window.confirm('Cancelar "'+button.dataset.name+'"? Os pagamentos já realizados serão preservados.')) return;
-        button.disabled=true;
-        try {
-            const response=await fetch(button.dataset.url,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({})});
-            const result=await response.json().catch(()=>({}));
-            if(!response.ok) throw new Error(result.message||'Não foi possível cancelar.');
-            window.location.reload();
-        } catch(error) { showError(feedback,error.message);button.disabled=false; }
+    const cancelModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('cancelCommitmentModal'));
+    let cancelActionUrl = null;
+    document.querySelectorAll('.js-cancel-commitment').forEach(button => button.addEventListener('click', () => {
+        cancelActionUrl = button.dataset.url;
+        document.getElementById('cancelCommitmentMessage').textContent = 'Pretendes cancelar "' + button.dataset.name + '"?';
+        document.getElementById('cancelCommitmentError').textContent = '';
+        cancelModal.show();
     }));
+    document.getElementById('confirmCancelCommitment').addEventListener('click', async () => {
+        if (!cancelActionUrl) return;
+        const button = document.getElementById('confirmCancelCommitment');
+        button.disabled = true;
+        try {
+            const response = await fetch(cancelActionUrl,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({})});
+            const result = await response.json().catch(()=>({}));
+            if (!response.ok) throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível cancelar.');
+            window.location.reload();
+        } catch(error) {
+            document.getElementById('cancelCommitmentError').textContent = error.message;
+            button.disabled = false;
+        }
+    });
 
     const paymentModalElement=document.getElementById('commitmentPaymentModal');
     const paymentModal=bootstrap.Modal.getOrCreateInstance(paymentModalElement);
