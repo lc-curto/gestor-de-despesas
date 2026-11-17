@@ -56,6 +56,7 @@ class FinancialProjectionService
         // Uma obrigação parcialmente liquidada projeta apenas o saldo não pago.
         $partiallySettled = $user->movimentos()
             ->where('is_settlement_parent', true)
+            ->whereNull('installment_id')
             ->where('status', 'partial')
             ->where('is_historical', false)
             ->whereIn('type', ['expense', 'income'])
