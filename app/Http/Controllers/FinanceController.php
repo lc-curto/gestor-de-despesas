@@ -535,7 +535,7 @@ class FinanceController extends Controller
 
             // Registos legacy sem movimento canónico também passam pela auditoria central.
             if ($this->query($request)->whereKey($id)->exists()) {
-                app(\\App\\Services\\Financial\\FinancialDeletionService::class)
+                app(\App\Services\Financial\FinancialDeletionService::class)
                     ->deleteLegacyRecord($request->user(), $tipo, $id);
             }
         });
