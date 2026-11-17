@@ -119,7 +119,7 @@ class FinancialCommitmentService
 
             $locked->update([
                 'name' => $data['name'],
-                'merchant' => $data['merchant'] ?? $locked->merchant,
+                'merchant' => array_key_exists('merchant', $data) ? $data['merchant'] : $locked->merchant,
                 'due_date' => $newDue->toDateString(),
                 'total_amount' => $locked->total_amount,
             ]);
