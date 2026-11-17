@@ -541,7 +541,7 @@ class FinancialAcceptanceTest extends TestCase
     public function test_acceptance_movement_entry_uses_approved_mobile_first_structure(): void
     {
         $user = User::factory()->create();
-        $this->withoutMiddleware(\\App\\Http\\Middleware\\EnsureFinancialDataReviewed::class);
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureFinancialDataReviewed::class);
 
         $response = $this->actingAs($user)->get(route('dashboard.movimentos'));
         $response->assertOk()
