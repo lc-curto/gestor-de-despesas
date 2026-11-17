@@ -170,6 +170,12 @@ class FinancialCoreController extends Controller
             'account_id' => ['required', 'uuid', Rule::exists('contas_financeiras', 'id')->where('user_id', $request->user()->id)],
             'amount' => 'nullable|numeric|gt:0|decimal:0,2|max:9999999999.99',
             'payment_date' => 'required|date',
+            'allocation' => 'sometimes|array',
+            'allocation.principal' => 'nullable|numeric|gte:0|decimal:0,2',
+            'allocation.interest' => 'nullable|numeric|gte:0|decimal:0,2',
+            'allocation.fees' => 'nullable|numeric|gte:0|decimal:0,2',
+            'allocation.taxes' => 'nullable|numeric|gte:0|decimal:0,2',
+            'allocation.other' => 'nullable|numeric|gte:0|decimal:0,2',
         ]);
         $invoice = $request->user()->faturas()->whereKey($id)->firstOrFail();
         return response()->json(['data' => $service->pay(
@@ -177,7 +183,8 @@ class FinancialCoreController extends Controller
             $invoice,
             $data['account_id'],
             $data['payment_date'],
-            isset($data['amount']) ? (string) $data['amount'] : null
+            isset($data['amount']) ? (string) $data['amount'] : null,
+            $data['allocation'] ?? null
         )]);
     }
 
