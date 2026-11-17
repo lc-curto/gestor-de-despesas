@@ -52,6 +52,34 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
         ]);
     }
 
+
+    public function test_another_user_cannot_delete_commitment_or_linked_movement(): void
+    {
+        $owner = User::factory()->create();
+        $attacker = User::factory()->create();
+        $bank = $this->bank($owner);
+        $debt = $this->debt($owner, $bank);
+        $installment = $debt->parcelas->sortBy('installment_number')->first();
+        $forecast = $owner->movimentos()->where('installment_id', $installment->id)->firstOrFail();
+
+        $this->actingAs($attacker)
+            ->deleteJson(route('financial.commitments.destroy', $debt->id))
+            ->assertNotFound();
+        $this->deleteJson(route('financial.movements.destroy', $forecast->id))
+            ->assertNotFound();
+
+        $this->assertSame('open', $debt->fresh()->status);
+        $this->assertSame('pending', $forecast->fresh()->status);
+        $this->assertSame('0.00', $installment->fresh()->paid_amount);
+        $this->assertSame('200.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+        $this->assertDatabaseMissing('deletion_operations', [
+            'root_entity_id' => $debt->id,
+        ]);
+        $this->assertDatabaseMissing('deletion_operations', [
+            'root_entity_id' => $forecast->id,
+        ]);
+    }
+
     public function test_linked_forecasts_cannot_be_edited_confirmed_voided_or_deleted_and_full_payment_remains_valid(): void
     {
         $user = User::factory()->create();
