@@ -74,22 +74,24 @@
                             <span class="badge {{ $isCompleted ? 'text-bg-success' : ($commitment->has_overdue_installment ? 'text-bg-danger' : 'text-bg-success') }}">{{ $isCompleted ? 'Concluído' : ($commitment->has_overdue_installment ? 'Em atraso' : 'Em dia') }}</span>
                         </span>
                         <span class="commitment-card-balances">
-                            <span><small>Saldo em aberto</small><strong>{{ auth()->user()->currency }} {{ number_format($commitment->remaining_amount, 2, ',', '.') }}</strong></span>
-                            <span><small>Prestações pagas</small><strong>{{ $partsPaid }}/{{ $partsTotal }}</strong></span>
+                            <span class="commitment-card-balance-primary"><small>Saldo em aberto</small><strong>{{ auth()->user()->currency }} {{ number_format($commitment->remaining_amount, 2, ',', '.') }}</strong></span>
+                            <span class="commitment-card-balance-secondary"><small>Prestações pagas</small><strong>{{ $partsPaid }} <small>de {{ $partsTotal }}</small></strong></span>
                         </span>
-                        <span class="progress commitment-progress" role="progressbar" aria-label="Valor pago" aria-valuenow="{{ $commitment->progress_percent }}" aria-valuemin="0" aria-valuemax="100">
-                            <span class="progress-bar" style="width: {{ $commitment->progress_percent }}%"></span>
+                        <span class="commitment-progress-block">
+                            <span class="progress commitment-progress" role="progressbar" aria-label="Valor pago" aria-valuenow="{{ $commitment->progress_percent }}" aria-valuemin="0" aria-valuemax="100">
+                                <span class="progress-bar" style="width: {{ $commitment->progress_percent }}%"></span>
+                            </span>
+                            <span class="commitment-card-foot">
+                                <small>{{ number_format($commitment->progress_percent, 1, ',', '.') }}% pago</small>
+                                <small>{{ $next ? 'Próxima prestação: '.$next->due_date->format('d/m/Y') : 'Plano concluído' }}</small>
+                            </span>
                         </span>
-                        <span class="commitment-card-foot">
-                            <small>{{ number_format($commitment->progress_percent, 1, ',', '.') }}% pago</small>
-                            <small>{{ $next ? 'Próxima: '.$next->due_date->format('d/m/Y') : 'Concluído' }}</small>
-                        </span>
-                        <span class="commitment-card-details-label">Ver detalhes <span aria-hidden="true">⌄</span></span>
                     </button>
 
-                    <div class="commitment-history-trigger">
-                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#commitmentHistoryModal-{{ $commitment->id }}">
-                            Ver histórico ({{ $history->total() }})
+                    <div class="commitment-card-utility">
+                        <button type="button" class="commitment-card-details-label" aria-controls="commitment-details-{{ $commitment->id }}">Ver detalhes <span aria-hidden="true">⌄</span></button>
+                        <button type="button" class="btn btn-outline-primary btn-sm commitment-history-trigger" data-bs-toggle="modal" data-bs-target="#commitmentHistoryModal-{{ $commitment->id }}">
+                            Histórico <span class="commitment-history-count">({{ $history->total() }})</span>
                         </button>
                     </div>
 
@@ -352,21 +354,28 @@
 .commitment-list-heading,.commitment-history-heading{display:flex;justify-content:space-between;align-items:center;gap:.75rem;margin-bottom:.85rem}
 .commitment-cards{display:grid;grid-template-columns:minmax(0,1fr);gap:.85rem}
 .commitment-card{min-width:0;border:1px solid var(--bs-border-color);border-radius:1rem;background:var(--bs-body-bg);box-shadow:0 2px 8px rgba(0,0,0,.035);overflow:hidden}
-.commitment-card-toggle{display:flex;width:100%;flex-direction:column;gap:.7rem;padding:1rem 1.1rem;text-align:left;border:0;background:transparent;color:inherit}
+.commitment-card-toggle{display:flex;width:100%;flex-direction:column;gap:.85rem;padding:1rem 1.1rem .8rem;text-align:left;border:0;background:transparent;color:inherit}
 .commitment-card-toggle:hover{background:var(--bs-tertiary-bg)}
 .commitment-card-heading,.commitment-card-balances,.commitment-card-foot{display:flex;justify-content:space-between;align-items:center;gap:.75rem;width:100%}
 .commitment-card-name{font-weight:700;font-size:1rem;overflow-wrap:anywhere;display:flex;flex-direction:column;gap:.15rem}
 .commitment-merchant{font-size:.76rem;font-weight:400;color:var(--bs-secondary-color)}
-.commitment-card-balances>span{display:flex;flex-direction:column;gap:.2rem}
+.commitment-card-balances>span{display:flex;flex-direction:column;gap:.22rem;min-width:0}
 .commitment-card-balances>span:last-child{text-align:right}
 .commitment-card-balances small,.commitment-detail-summary small{font-size:.75rem;color:var(--bs-secondary-color)}
-.commitment-card-balances strong{font-size:1rem}
-.commitment-progress{height:7px;width:100%;background:var(--bs-tertiary-bg);border-radius:99px}
+.commitment-card-balances strong{font-size:1.05rem;line-height:1.25;font-variant-numeric:tabular-nums}
+.commitment-card-balance-primary strong{font-size:1.15rem}
+.commitment-card-balance-secondary strong{font-size:1.05rem}
+.commitment-card-balance-secondary strong small{font-size:.8rem;font-weight:500}
+.commitment-progress-block{display:flex;flex-direction:column;gap:.45rem;width:100%}
+.commitment-progress{height:6px;width:100%;background:var(--bs-tertiary-bg);border-radius:99px;margin:0}
 .commitment-progress .progress-bar{background:var(--bs-primary);border-radius:99px}
-.commitment-card-foot{font-size:.75rem;color:var(--bs-secondary-color)}
-.commitment-card-details-label{align-self:flex-end;font-size:.85rem;color:var(--bs-primary);font-weight:600}
+.commitment-card-foot{font-size:.73rem;color:var(--bs-secondary-color)}
+.commitment-card-utility{display:flex;justify-content:space-between;align-items:center;gap:.75rem;padding:.65rem 1.1rem .8rem;border-top:1px solid var(--bs-border-color)}
+.commitment-card-details-label{display:inline-flex;align-items:center;gap:.3rem;padding:0;border:0;background:transparent;font-size:.84rem;color:var(--bs-primary);font-weight:600}
 .commitment-card-details-label span{display:inline-block;transition:transform .15s}
-.commitment-card-toggle[aria-expanded=true] .commitment-card-details-label span{transform:rotate(180deg)}
+.commitment-card-toggle[aria-expanded=true]+.commitment-card-utility .commitment-card-details-label span{transform:rotate(180deg)}
+.commitment-history-trigger{padding:.35rem .7rem;font-size:.78rem}
+.commitment-history-count{font-variant-numeric:tabular-nums}
 .commitment-details{border-top:1px solid var(--bs-border-color);padding:1rem 1.1rem}
 .commitment-detail-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.85rem;margin-bottom:1rem}
 .commitment-detail-summary>div{display:flex;flex-direction:column;gap:.2rem}
@@ -400,7 +409,11 @@
  .commitment-tabs{gap:.35rem;margin-bottom:.85rem}
  .commitment-tabs .btn{flex:1 1 auto;padding:.45rem .55rem;font-size:.78rem}
  .commitment-cards{grid-template-columns:minmax(0,1fr);gap:.65rem}
- .commitment-card-toggle{padding:.9rem}
+ .commitment-card-toggle{padding:.9rem .9rem .75rem;gap:.75rem}
+ .commitment-card-utility{padding:.6rem .9rem .7rem}
+ .commitment-card-balances strong{font-size:1rem}
+ .commitment-card-balance-primary strong{font-size:1.08rem}
+ .commitment-card-foot{font-size:.7rem}
  .commitment-details{padding:.9rem}
  .commitment-detail-summary{gap:.75rem}
  .commitment-payment-dialog{margin:.5rem;align-items:flex-end;min-height:calc(100% - 1rem)}
