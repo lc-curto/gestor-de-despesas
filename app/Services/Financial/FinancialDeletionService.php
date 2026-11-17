@@ -1,20 +1,20 @@
 <?php
 
-namespace App\\Services\\Financial;
+namespace App\Services\Financial;
 
-use App\\Models\\Categoria;
-use App\\Models\\ContaFinanceira;
-use App\\Models\\Despesa;
-use App\\Models\\Divida;
-use App\\Models\\Fatura;
-use App\\Models\\HistoricoMovimento;
-use App\\Models\\Movimento;
-use App\\Models\\ParcelaDivida;
-use App\\Models\\Receita;
-use App\\Models\\User;
-use Illuminate\\Support\\Facades\\DB;
-use Illuminate\\Support\\Str;
-use Illuminate\\Validation\\ValidationException;
+use App\Models\Categoria;
+use App\Models\ContaFinanceira;
+use App\Models\Despesa;
+use App\Models\Divida;
+use App\Models\Fatura;
+use App\Models\HistoricoMovimento;
+use App\Models\Movimento;
+use App\Models\ParcelaDivida;
+use App\Models\Receita;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Orquestra exclusões financeiras sobre o grafo de dependências.
