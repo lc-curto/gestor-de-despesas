@@ -9,6 +9,7 @@ use App\Services\Financial\FinancialAccountService;
 use App\Services\Financial\RecurrenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class FinancialRecurrenceTest extends TestCase
@@ -222,9 +223,11 @@ class FinancialRecurrenceTest extends TestCase
         $event = $user->movimentos()->where('settles_movement_id', $movement->id)->firstOrFail();
         $this->assertSame('2026-11-16', $event->movement_date->toDateString());
         $this->assertSame('30.00', $event->amount);
-        $this->assertDatabaseHas('despesas', [
-            'id' => $movement->legacy_id, 'amount' => '30.00', 'expense_date' => '2026-11-15',
-        ]);
+        $this->assertTrue(DB::table('despesas')
+            ->where('id', $movement->legacy_id)
+            ->where('amount', 30)
+            ->whereDate('expense_date', '2026-11-15')
+            ->exists());
         $this->assertSame('70.00', app(AccountBalanceService::class)->balance($account));
     }
 
@@ -251,9 +254,11 @@ class FinancialRecurrenceTest extends TestCase
         $event = $user->movimentos()->where('settles_movement_id', $movement->id)->firstOrFail();
         $this->assertSame('2026-11-16', $event->movement_date->toDateString());
         $this->assertSame('100.00', $event->amount);
-        $this->assertDatabaseHas('receitas', [
-            'id' => $movement->legacy_id, 'amount' => '100.00', 'income_date' => '2026-11-15',
-        ]);
+        $this->assertTrue(DB::table('receitas')
+            ->where('id', $movement->legacy_id)
+            ->where('amount', 100)
+            ->whereDate('income_date', '2026-11-15')
+            ->exists());
         $this->assertSame('200.00', app(AccountBalanceService::class)->balance($account));
     }
 
