@@ -80,7 +80,7 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
         $this->putJson(route('financial.movements.settle', $forecast->id), [
             'source_account_id' => $bank->id, 'amount' => '30.00', 'expected_amount' => '30.00',
             'movement_date' => '2026-11-17',
-        ])->assertOk()->assertJsonPath('data.id', $forecast->id)
+        ])->assertOk()->assertJsonPath('data.settles_movement_id', $forecast->id)
             ->assertJsonPath('installment.paid_amount', '30.00')->assertJsonPath('installment.status', 'paid');
 
         foreach ([
@@ -97,7 +97,7 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
         $this->assertSame(0, $user->movimentos()->whereNotNull('reversal_of_id')->count());
     }
 
-    public function test_partial_payment_cannot_be_deleted_or_reversed_and_normal_cancellation_keeps_it(): void
+    public function test_partial_payment_can_be_reversed_through_the_common_engine_and_cancellation_keeps_audit_history(): void
     {
         $user = User::factory()->create();
         $bank = $this->bank($user);
@@ -107,21 +107,22 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
         $this->actingAs($user)->postJson(route('financial.commitments.installments.pay', [$debt->id, $part->id]), [
             'account_id' => $bank->id, 'amount' => '10.00', 'payment_date' => '2026-11-17',
         ])->assertOk();
-        $payment = $user->movimentos()->where('installment_id', $part->id)->where('status', 'settled')->firstOrFail();
+        $payment = $forecast->settlements()->where('status', 'settled')->firstOrFail();
 
         $this->deleteJson(route('financial.movements.destroy', $payment->id))->assertUnprocessable()->assertJsonValidationErrors('movement');
-        $this->postJson(route('financial.movements.reverse', $payment->id))->assertUnprocessable()->assertJsonValidationErrors('movement');
-        $this->assertSame('10.00', $part->fresh()->paid_amount);
-        $this->assertSame('20.00', $forecast->fresh()->amount);
-        $this->assertSame('190.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+        $this->postJson(route('financial.movements.reverse', $payment->id))->assertOk();
+        $this->assertSame('0.00', $part->fresh()->paid_amount);
+        $this->assertSame('pending', $forecast->fresh()->status);
+        $this->assertSame('200.00', app(AccountBalanceService::class)->balance($bank->fresh()));
 
         $this->postJson(route('financial.commitments.cancel', $debt->id))->assertOk()->assertJsonPath('data.status', 'cancelled');
         $this->assertSame('cancelled', $part->fresh()->status);
-        $this->assertSame('10.00', $part->fresh()->paid_amount);
+        $this->assertSame('0.00', $part->fresh()->paid_amount);
         $this->assertSame('void', $forecast->fresh()->status);
         $this->assertSame(0, $user->movimentos()->where('debt_id', $debt->id)->where('status', 'pending')->count());
         $this->assertSame('settled', $payment->fresh()->status);
-        $this->assertSame('190.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+        $this->assertSame('200.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+        $this->assertSame(1, $user->movimentos()->where('reversal_of_id', $payment->id)->count());
         $this->assertDatabaseHas('historico_movimentos', ['movement_id' => $forecast->id, 'action' => 'voided']);
     }
 
