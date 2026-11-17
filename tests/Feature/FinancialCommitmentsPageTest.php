@@ -229,4 +229,34 @@ class FinancialCommitmentsPageTest extends TestCase
         $secondXPath = $this->document($secondHistoryPage->getContent());
         $this->assertCount(6, $secondXPath->query('//div[contains(concat(" ", normalize-space(@class), " "), " commitment-installment ")]'));
     }
+
+    public function test_purchase_pagination_is_server_side_and_summary_uses_all_commitments(): void
+    {
+        $this->travelTo(\\Illuminate\\Support\\Carbon::parse('2026-11-17 12:00:00'));
+        $user = User::factory()->create();
+        $service = app(FinancialCommitmentService::class);
+
+        for ($index = 1; $index <= 12; $index++) {
+            $service->create($user, [
+                'name' => 'Compra '.$index,
+                'total_amount' => '20.00',
+                'start_date' => '2026-11-17',
+                'due_date' => '2026-12-17',
+                'payment_condition' => 'installments',
+                'installments_count' => 2,
+            ]);
+        }
+
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+        $desktop = $this->actingAs($user)->get(route('financial.commitments.page', ['per_page' => 10]))->assertOk();
+        $this->assertSame(12, $desktop->viewData('commitments')->total());
+        $this->assertSame(10, $desktop->viewData('commitments')->count());
+        $this->assertSame(240.0, $desktop->viewData('summary')['open']);
+
+        $mobile = $this->get(route('financial.commitments.page', ['per_page' => 6]))->assertOk();
+        $this->assertSame(12, $mobile->viewData('commitments')->total());
+        $this->assertSame(6, $mobile->viewData('commitments')->count());
+        $this->assertSame(240.0, $mobile->viewData('summary')['open']);
+    }
+
 }
