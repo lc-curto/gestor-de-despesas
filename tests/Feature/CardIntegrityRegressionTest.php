@@ -67,54 +67,39 @@ class CardIntegrityRegressionTest extends TestCase
         $this->assertSame($balance, app(AccountBalanceService::class)->balance($account->fresh()));
     }
 
-    public function test_unpaid_invoice_purchase_cannot_be_reversed_but_can_be_deleted_as_audited_correction(): void
+    public function test_unpaid_invoice_purchase_can_be_deleted_as_an_audited_correction(): void
     {
         $user = User::factory()->create();
         $card = $this->card($user);
         $purchase = $this->purchase($user, $card);
         $invoice = $user->faturas()->firstOrFail();
-        $auditCount = DB::table('historico_movimentos')->count();
 
-        $response = $this->actingAs($user)->postJson('/api/financial/movements/'.$purchase->id.'/reverse');
-        $response->assertUnprocessable()->assertJsonValidationErrors('movement');
-        $this->assertStringContainsString('fatura', $response->json('errors.movement.0'));
-        $this->assertSame($auditCount, DB::table('historico_movimentos')->count());
-        $this->assertSame(2, $user->movimentos()->count());
-        $this->assertSame('settled', $purchase->fresh()->status);
-        $this->assertSame('open', $invoice->fresh()->status);
-        $listed = app(CardInvoiceService::class)->listInvoices($user)->items()[0];
-        $this->assertEquals(100, $listed->total_amount);
-        $this->assertSame('100.00', $listed->remaining_amount);
-        $this->assertBalance($card, '-100.00');
-
-        $this->deleteJson('/api/financial/movements/'.$purchase->id)->assertOk();
+        $this->actingAs($user)->deleteJson('/api/financial/movements/'.$purchase->id)->assertOk();
         $this->assertSame('void', $purchase->fresh()->status);
-        $this->assertDatabaseHas('historico_movimentos', ['movement_id' => $purchase->id, 'action' => 'deleted_as_correction']);
+        $this->assertDatabaseHas('historico_movimentos', ['movement_id' => $purchase->id, 'action' => 'deleted']);
         $this->assertCount(0, app(CardInvoiceService::class)->listInvoices($user)->items());
         $this->assertBalance($card, '0.00');
-        $this->deleteJson('/api/financial/movements/'.$purchase->id)->assertUnprocessable();
 
+        // A repetição é idempotente e não volta a alterar saldos.
+        $this->deleteJson('/api/financial/movements/'.$purchase->id)->assertOk();
         $replacement = $this->purchase($user, $card, '25.00');
         $this->assertSame($invoice->id, $replacement->invoice_id);
         $this->assertBalance($card, '-25.00');
     }
 
-    public function test_invoice_purchase_cannot_be_reversed_but_linked_payments_can_be_reversed_and_repaid(): void
+    public function test_invoice_purchase_with_payments_is_protected_but_payment_events_can_be_deleted_and_repaid(): void
     {
         $user = User::factory()->create();
         $bank = $this->bank($user);
-        $card = $this->card($user);
+        $card = $this->card($user, limit: '500.00');
         $purchase = $this->purchase($user, $card, '100.00');
         $invoice = $user->faturas()->firstOrFail();
         $invoices = app(CardInvoiceService::class);
         $partial = $invoices->pay($user, $invoice, $bank->id, '2026-11-17', '35.25');
-        $this->assertSame($invoice->id, $partial->invoice_id);
-        $this->assertSame('partial', $invoice->fresh()->status);
 
-        $this->actingAs($user)->postJson('/api/financial/movements/'.$purchase->id.'/reverse')->assertUnprocessable();
-        $this->postJson('/api/financial/movements/'.$partial->id.'/reverse')->assertOk();
-        $this->deleteJson('/api/financial/movements/'.$purchase->id)->assertUnprocessable();
-        $this->deleteJson('/api/financial/movements/'.$partial->id)->assertUnprocessable();
+        $this->actingAs($user)->deleteJson('/api/financial/movements/'.$purchase->id)->assertUnprocessable();
+        $this->deleteJson('/api/financial/movements/'.$partial->id)->assertOk();
+        $this->assertSame('void', $partial->fresh()->status);
 
         $listed = $invoices->listInvoices($user)->items()[0];
         $this->assertEquals(100, $listed->total_amount);
@@ -129,11 +114,10 @@ class CardIntegrityRegressionTest extends TestCase
         $this->assertSame('100.00', (string) $final->amount);
         $this->assertSame('paid', $invoice->fresh()->status);
 
-        $this->postJson('/api/financial/movements/'.$final->id.'/reverse')->assertOk();
+        $this->deleteJson('/api/financial/movements/'.$final->id)->assertOk();
         $this->assertSame('open', $invoice->fresh()->status);
         $this->assertBalance($bank, '500.00');
         $this->assertBalance($card, '-100.00');
-        $this->deleteJson('/api/financial/movements/'.$final->id)->assertUnprocessable();
 
         $repaid = $invoices->pay($user, $invoice, $bank->id, '2026-11-17');
         $this->assertSame('100.00', (string) $repaid->amount);
@@ -145,8 +129,7 @@ class CardIntegrityRegressionTest extends TestCase
         $this->assertSame('paid', $listed->display_status);
         $this->assertBalance($bank, '400.00');
         $this->assertBalance($card, '0.00');
-        $this->assertSame(7, $user->movimentos()->count());
-        $this->assertSame(2, $user->movimentos()->whereNotNull('reversal_of_id')->count());
+        $this->assertSame(0, $user->movimentos()->whereNotNull('reversal_of_id')->count());
     }
 
     public function test_generic_transfers_to_and_from_cards_are_rejected_even_with_forged_payment_metadata(): void
@@ -213,7 +196,7 @@ class CardIntegrityRegressionTest extends TestCase
         $this->assertSame('70.00', $listed->remaining_amount);
     }
 
-    public function test_opening_debt_delete_is_blocked_and_reversal_restores_counters_balances_and_audit_once(): void
+    public function test_identified_opening_debt_payment_can_be_deleted_and_counters_are_recalculated(): void
     {
         $user = User::factory()->create();
         $bank = $this->bank($user);
@@ -223,28 +206,13 @@ class CardIntegrityRegressionTest extends TestCase
         $this->assertSame($card->id, $payment->opening_debt_card_id);
         $this->assertSame('100.00', (string) $card->fresh()->opening_debt_paid);
 
-        $response = $this->actingAs($user)->deleteJson('/api/financial/movements/'.$payment->id);
-        $response->assertUnprocessable()->assertJsonValidationErrors('movement');
-        $this->assertStringContainsString('estorno', $response->json('errors.movement.0'));
-        $this->assertSame('settled', $payment->fresh()->status);
-        $this->assertSame('100.00', (string) $card->fresh()->opening_debt_paid);
-        $this->assertBalance($bank, '400.00');
-        $this->assertBalance($card, '-200.00');
-        $this->assertRejected(fn () => $invoices->payOpeningDebt($user, $card->id, $bank->id, '2026-11-17', '200.01'), 'amount', 'dívida inicial');
-        $this->assertRejected(fn () => $invoices->payOpeningDebt($user, $card->id, $card->id, '2026-11-17', '1.00'), 'account_id', 'bancária');
-        $this->assertSame('100.00', (string) $card->fresh()->opening_debt_paid);
-
-        $reversal = app(FinancialMovementService::class)->reverse($user, $payment, 'Correção');
-        $this->assertSame($payment->id, $reversal->reversal_of_id);
-        $this->assertSame($card->id, $reversal->source_account_id);
+        $this->actingAs($user)->deleteJson('/api/financial/movements/'.$payment->id)->assertOk();
+        $this->assertSame('void', $payment->fresh()->status);
         $this->assertSame('0.00', (string) $card->fresh()->opening_debt_paid);
         $this->assertBalance($bank, '500.00');
         $this->assertBalance($card, '-300.00');
-        $this->assertDatabaseHas('historico_movimentos', ['movement_id' => $payment->id, 'action' => 'reversed', 'reason' => 'Correção']);
-        $this->assertDatabaseHas('historico_movimentos', ['movement_id' => $reversal->id, 'action' => 'created']);
-        $this->assertRejected(fn () => app(FinancialMovementService::class)->reverse($user, $payment), 'movement', 'já foi estornado');
-        $this->deleteJson('/api/financial/movements/'.$payment->id)->assertUnprocessable();
-        $this->deleteJson('/api/financial/movements/'.$reversal->id)->assertUnprocessable();
+        $this->assertDatabaseHas('historico_movimentos', ['movement_id' => $payment->id, 'action' => 'deleted']);
+        $this->assertSame(0, $user->movimentos()->whereNotNull('reversal_of_id')->count());
 
         $invoices->payOpeningDebt($user, $card->id, $bank->id, '2026-11-17', '300.00');
         $this->assertSame('300.00', (string) $card->fresh()->opening_debt_paid);
@@ -261,10 +229,10 @@ class CardIntegrityRegressionTest extends TestCase
         $payment = app(CardInvoiceService::class)->payOpeningDebt($user, $card->id, $bank->id, '2026-11-17', '50.00');
         DB::table('movimentos')->where('id', $payment->id)->update(['opening_debt_card_id' => null]);
         $payment->refresh();
-        $this->assertRejected(fn () => app(FinancialMovementService::class)->deleteAsCorrection($user, $payment), 'movement', 'estorno');
+        $this->assertRejected(fn () => app(FinancialMovementService::class)->deleteAsCorrection($user, $payment), 'movement', 'reconcilia');
         app(FinancialAccountService::class)->rename($user, $card, 'Novo nome');
         $this->assertRejected(fn () => app(FinancialMovementService::class)->deleteAsCorrection($user, $payment), 'movement', 'estorno');
-        $this->assertRejected(fn () => app(FinancialMovementService::class)->reverse($user, $payment), 'movement', 'reconciliação');
+        $this->assertRejected(fn () => app(FinancialMovementService::class)->reverse($user, $payment), 'movement', 'reconcilia');
         $this->assertSame('settled', $payment->fresh()->status);
         $this->assertSame('50.00', (string) $card->fresh()->opening_debt_paid);
         $this->assertBalance($bank, '450.00');
@@ -365,7 +333,7 @@ class CardIntegrityRegressionTest extends TestCase
         $this->assertBalance($card, '-100.00');
     }
 
-    public function test_non_card_transfers_and_reversals_including_old_generic_card_transfer_still_work(): void
+    public function test_settled_transfers_and_expenses_can_be_deleted_without_inverse_movements(): void
     {
         $user = User::factory()->create();
         $bank = $this->bank($user);
@@ -376,21 +344,20 @@ class CardIntegrityRegressionTest extends TestCase
             'description' => 'Poupança', 'amount' => '40.00', 'movement_date' => '2026-11-17',
             'source_account_id' => $bank->id, 'destination_account_id' => $other->id,
         ]);
-        $service->reverse($user, $transfer);
+        $service->deleteAsCorrection($user, $transfer);
+        $this->assertSame('void', $transfer->fresh()->status);
         $this->assertBalance($bank, '500.00');
         $this->assertBalance($other, '0.00');
-        $this->assertRejected(fn () => $service->reverse($user, $transfer), 'movement', 'já foi estornado');
 
         $expense = $service->create($user, [
             'type' => 'expense', 'description' => 'Despesa corrente', 'amount' => '12.50',
             'movement_date' => '2026-11-17', 'source_account_id' => $bank->id,
         ]);
-        $expenseReversal = $service->reverse($user, $expense);
-        $this->assertSame('income', $expenseReversal->type);
+        $service->deleteAsCorrection($user, $expense);
+        $this->assertSame('void', $expense->fresh()->status);
         $this->assertBalance($bank, '500.00');
 
-        // Um lançamento anterior à proteção pode ser estornado sem passar pela
-        // entrada genérica nem ser confundido com pagamento de dívida inicial.
+        // Movimento legado de transferência para cartão: a exclusão retira ambas as pernas.
         $legacy = $user->movimentos()->create([
             'type' => 'transfer', 'status' => 'settled', 'description' => 'Transferência antiga',
             'amount' => '25.00', 'movement_date' => '2026-11-17',
@@ -399,9 +366,10 @@ class CardIntegrityRegressionTest extends TestCase
         ]);
         $this->assertBalance($bank, '475.00');
         $this->assertBalance($card, '25.00');
-        $reverse = $service->reverse($user, $legacy);
-        $this->assertSame($legacy->id, $reverse->reversal_of_id);
+        $service->deleteAsCorrection($user, $legacy);
+        $this->assertSame('void', $legacy->fresh()->status);
         $this->assertBalance($bank, '500.00');
         $this->assertBalance($card, '0.00');
+        $this->assertSame(0, $user->movimentos()->whereNotNull('reversal_of_id')->count());
     }
 }
