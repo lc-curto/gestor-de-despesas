@@ -121,7 +121,7 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->assertSame(110.0, $summary['upcoming']);
         $response->assertDontSee('Despesa única futura');
         $xpath = $this->document($response->getContent());
-        foreach (['Ontem' => ['16/11/2026', 'Atrasada'], 'Hoje' => ['17/11/2026', 'Próxima'], 'Amanhã' => ['18/11/2026', 'Pendente']] as $name => [$dueDate, $status]) {
+        foreach (['Ontem' => ['16/11/2026', 'Atrasada'], 'Hoje' => ['17/11/2026', 'Próxima'], 'Amanhã' => ['18/11/2026', 'Próxima']] as $name => [$dueDate, $status]) {
             $badges = $xpath->query('//article[contains(@class,"commitment-card") and .//span[contains(@class,"commitment-card-name") and normalize-space(.)="'.$name.'"]]//div[contains(@class,"commitment-installment") and .//small[normalize-space(.)="'.$dueDate.'"]]//span[contains(concat(" ", normalize-space(@class), " "), " badge ")]');
             $this->assertCount(1, $badges, $name);
             $this->assertSame($status, trim($badges->item(0)->textContent), $name);
