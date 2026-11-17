@@ -545,7 +545,6 @@
 
 @push('scripts')
 <script>document.addEventListener('DOMContentLoaded',()=>{const c=document.getElementById('dashboardRecurrenceEnabled'),f=document.getElementById('dashboardRecurrenceFields');if(c&&f){const sync=()=>f.hidden=!c.checked;c.addEventListener('change',sync);sync();}});</script>
-@push('scripts')
 <script>
 window.meuBolsoDashboard = {
     userId: @json(auth()->id()),
