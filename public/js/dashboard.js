@@ -77,6 +77,8 @@
     let cachedMovements = [];
     let totalExpenses = Number(document.getElementById('totalAmount')?.dataset.total || 0);
     let totalIncome = Number(document.getElementById('totalIncome')?.dataset.total || 0);
+    let submittingMovement = false;
+    let settlingMovement = false;
 
     function refreshPaymentFields() {
         const isExpense = movementType === 'despesa';
@@ -129,7 +131,6 @@
         if (paymentAmount) paymentAmount.required = paymentState === 'partial' && isExpense;
         if (paymentDate) paymentDate.required = hasPayment && isExpense;
         if (paymentAmount) {
-            paymentAmount.max = document.getElementById('movementAmount')?.value || '';
             if (paymentState === '1') paymentAmount.value = document.getElementById('movementAmount')?.value || '';
             if (paymentState !== 'partial' && paymentState !== '1') paymentAmount.value = '';
         }
@@ -142,7 +143,8 @@
         const list = document.getElementById('dashboardInstallmentScheduleList');
         if (!list) return;
         const count = Math.min(120, Math.max(2, Number(document.getElementById('dashboardInstallments')?.value || 2)));
-        const amount = Math.round((Number(document.getElementById('movementAmount')?.value || 0) * 100));
+        const normalizedAmount = parseMoney(document.getElementById('movementAmount')?.value || '');
+        const amount = normalizedAmount ? Math.round(Number(normalizedAmount) * 100) : 0;
         const dueValue = document.getElementById('dashboardDueDate')?.value;
         const frequency = document.getElementById('dashboardInstallmentFrequency')?.value || 'monthly';
         if (!dueValue || !amount) {
@@ -201,6 +203,27 @@
         return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
     }
 
+    // Aceita os dois separadores decimais. Agrupamento exige um separador
+    // decimal explícito, para não confundir 1.234 com 1,234 ou arredondar.
+    function parseMoney(value) {
+        const input = String(value || '').trim();
+        if (input.length > 24) return null;
+        let normalized;
+        if (/^\d{1,3}(?:\.\d{3})+,\d{1,2}$/.test(input)) {
+            normalized = input.replaceAll('.', '').replace(',', '.');
+        } else if (/^\d{1,3}(?:,\d{3})+\.\d{1,2}$/.test(input)) {
+            normalized = input.replaceAll(',', '');
+        } else if (/^(?:\d+(?:[.,]\d{1,2})?|[.,]\d{1,2})$/.test(input)) {
+            normalized = input.replace(',', '.');
+        } else {
+            return null;
+        }
+        const [whole, fraction = ''] = normalized.split('.');
+        const cents = BigInt(whole || '0') * 100n + BigInt(fraction.padEnd(2, '0') || '0');
+        if (cents <= 0n || cents > 999999999999n) return null;
+        return String(cents / 100n) + '.' + String(cents % 100n).padStart(2, '0');
+    }
+
     function formatCurrency(value, currency) {
         return new Intl.NumberFormat('pt-PT', {
             style: 'currency',
@@ -240,6 +263,35 @@
         if (!status) return;
         status.textContent = message || '';
         status.classList.toggle('d-none', !message);
+    }
+
+    function showMovementError(message) {
+        const errorBox = document.getElementById('movementFormError');
+        if (!errorBox) {
+            if (message) alert(message);
+            return;
+        }
+        errorBox.textContent = message || '';
+        errorBox.classList.toggle('d-none', !message);
+        if (message) errorBox.focus();
+    }
+
+    function showMovementConfirmation(message, isInstallment, warning = false) {
+        const feedback = document.getElementById('movementSaveFeedback');
+        const feedbackMessage = document.getElementById('movementSaveFeedbackMessage');
+        const link = document.getElementById('movementSaveFeedbackLink');
+        if (!feedback || !feedbackMessage) return;
+        feedbackMessage.textContent = message + ' ';
+        feedback.classList.remove('d-none', 'alert-success', 'alert-warning');
+        feedback.classList.add(warning ? 'alert-warning' : 'alert-success');
+        link?.classList.toggle('d-none', !isInstallment);
+    }
+
+    function installmentConfirmation(values) {
+        const due = String(values.due_date || values.expense_date || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        const dateLabel = due ? due[3] + '/' + due[2] + '/' + due[1] : 'a data indicada';
+        const prefix = 'Parcelamento criado com ' + values.installments_count + ' prestações. Primeira prestação: ' + dateLabel + '. ';
+        return prefix + 'Em Movimentos, procura pelo mês do vencimento e verifica os filtros.';
     }
 
     function cacheKey() {
@@ -736,13 +788,18 @@
 
     async function submitMovement(event) {
         event.preventDefault();
+        if (submittingMovement) return;
+        showMovementError('');
         if (!navigator.onLine) {
-            alert('Não é possível guardar movimentos sem ligação à internet.');
+            showMovementError('Não é possível guardar movimentos sem ligação à internet.');
             return;
         }
         if (!form.reportValidity()) return;
 
         const buttonText = saveButton.textContent;
+        const wasEditing = editing;
+        let confirmation = null;
+        submittingMovement = true;
         saveButton.disabled = true;
         saveButton.textContent = 'A guardar...';
         try {
@@ -751,6 +808,18 @@
             const paidState = values.paid_now || '0';
             const isNewExpense = !editing && movementType === 'despesa';
             const isInstallment = isNewExpense && condition === 'installments';
+            const normalizedAmount = parseMoney(values.amount);
+            if (!normalizedAmount) {
+                throw new Error('Introduz um valor superior a zero, com até dois cêntimos. Para milhares usa, por exemplo, 1.234,56 ou 1234,56.');
+            }
+            values.amount = normalizedAmount;
+            if (paidState !== '0' && values.payment_amount) {
+                const normalizedPayment = parseMoney(values.payment_amount);
+                if (!normalizedPayment || Number(normalizedPayment) > Number(normalizedAmount)) {
+                    throw new Error('Introduz um valor pago válido que não exceda o valor do movimento.');
+                }
+                values.payment_amount = normalizedPayment;
+            }
 
             // A estrutura atual do motor não possui registo de pagamentos parciais
             // para despesas comuns. Não aceitar silenciosamente um pagamento total.
@@ -766,25 +835,39 @@
 
             if (isInstallment) {
                 // Só compras parceladas criam um Compromisso.
-                const commitmentResponse = await fetch(cfg.commitmentStore, {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
-                    body: JSON.stringify({
-                        name: values.description,
-                        total_amount: values.amount,
-                        start_date: values.expense_date,
-                        due_date: values.due_date || values.expense_date,
-                        payment_condition: 'installments',
-                        payment_method: values.payment_method || null,
-                        account_id: values.account_id || null,
-                        category_id: values.category_id || null,
-                        installments_count: values.installments_count,
-                        installment_frequency: values.installment_frequency || 'monthly'
-                    })
-                });
+                let commitmentResponse;
+                try {
+                    commitmentResponse = await fetch(cfg.commitmentStore, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                        body: JSON.stringify({
+                            name: values.description,
+                            total_amount: values.amount,
+                            start_date: values.expense_date,
+                            due_date: values.due_date || values.expense_date,
+                            payment_condition: 'installments',
+                            payment_method: values.payment_method || null,
+                            account_id: values.account_id || null,
+                            category_id: values.category_id || null,
+                            installments_count: values.installments_count,
+                            installment_frequency: values.installment_frequency || 'monthly'
+                        })
+                    });
+                } catch (_) {
+                    throw new Error('Não foi possível confirmar se o parcelamento foi criado. Verifica Parcelamentos antes de tentar novamente, para evitar duplicados.');
+                }
                 const commitmentPayload = await commitmentResponse.json().catch(() => ({}));
-                if (!commitmentResponse.ok || !commitmentPayload.data?.id) {
+                if (commitmentResponse.status === 422) {
+                    throw new Error(Object.values(commitmentPayload.errors || {}).flat()[0] || commitmentPayload.message || 'Não foi possível criar o parcelamento.');
+                }
+                if (commitmentResponse.status === 419 || commitmentResponse.status === 401) {
+                    throw new Error('A sessão expirou. Atualiza a página e inicia sessão novamente.');
+                }
+                if (commitmentResponse.status >= 500 || (commitmentResponse.ok && !commitmentPayload.data?.id)) {
+                    throw new Error('O servidor não confirmou a criação. Verifica Parcelamentos antes de tentar novamente, para evitar duplicados.');
+                }
+                if (!commitmentResponse.ok) {
                     throw new Error(commitmentPayload.message || 'Não foi possível criar o parcelamento.');
                 }
 
@@ -794,6 +877,8 @@
                 payload = { ok: true, data: commitmentPayload.data, message: 'Parcelamento criado.' };
             } else {
                 const movementData = new FormData(form);
+                movementData.set('amount', values.amount);
+                if (values.payment_amount) movementData.set('payment_amount', values.payment_amount);
                 if (isNewExpense) {
                     const isRecurring = values.recurrence_enabled === '1';
                     if (paidState === '0' && !isRecurring) {
@@ -822,32 +907,46 @@
             if (!response.ok || !payload.ok) {
                 throw new Error(payload.message || 'Não foi possível guardar as alterações.');
             }
-
-            if (editing) {
-                const restore = typeBeforeEdit;
-                editing = false;
-                resetEditor(false);
-                setMovementType(restore);
-            } else {
-                form.reset();
-                date.value = localDate();
-                setMovementType(movementType);
-                closeEditor();
-            }
-            await refreshDashboard();
+            confirmation = {
+                isInstallment,
+                message: isInstallment ? installmentConfirmation(values) : (wasEditing ? 'Movimento atualizado.' : 'Movimento guardado.')
+            };
         } catch (error) {
-            alert(error.message || 'Ocorreu um erro ao guardar o lançamento.');
+            showMovementError(error.message || 'Ocorreu um erro ao guardar o lançamento.');
+            return;
         } finally {
+            submittingMovement = false;
             saveButton.disabled = false;
             saveButton.textContent = buttonText;
             if (!editing) {
                 saveButton.textContent = 'Guardar ' + (movementType === 'receita' ? 'receita' : 'despesa');
             }
         }
+
+        // O POST já foi confirmado. Uma falha ao atualizar a lista não deve
+        // apresentar o registo como falhado nem incentivar um segundo POST.
+        if (wasEditing) {
+            const restore = typeBeforeEdit;
+            editing = false;
+            resetEditor(false);
+            setMovementType(restore);
+        } else {
+            form.reset();
+            date.value = localDate();
+            setMovementType(movementType);
+            closeEditor();
+        }
+        showMovementConfirmation(confirmation.message, confirmation.isInstallment);
+        try {
+            await refreshDashboard();
+        } catch (_) {
+            showMovementConfirmation(confirmation.message + ' Não foi possível atualizar a lista; atualiza a página. Não guardes novamente.', confirmation.isInstallment, true);
+        }
     }
 
     function openSettleModal(row) {
         actionMovement = row;
+        showSettleError('');
         const isExpense = row.dataset.movementType === 'despesa';
         document.getElementById('settleMovementTitle').textContent = isExpense ? 'Confirmar despesa' : 'Confirmar receita';
         document.getElementById('settleMovementDescription').textContent = row.dataset.description || '';
@@ -896,37 +995,81 @@
         deleteModal?.show();
     }
 
+    function showSettleError(message) {
+        const errorBox = document.getElementById('settleMovementError');
+        if (!errorBox) {
+            if (message) alert(message);
+            return;
+        }
+        errorBox.textContent = message || '';
+        errorBox.classList.toggle('d-none', !message);
+        if (message) errorBox.focus();
+    }
+
     async function submitSettleMovement(event) {
         event.preventDefault();
-        if (!actionMovement || !navigator.onLine || !settleForm.reportValidity()) return;
+        if (!actionMovement || settlingMovement) return;
+        showSettleError('');
+        if (!navigator.onLine) {
+            showSettleError('Não é possível confirmar movimentos sem ligação à internet.');
+            return;
+        }
+        if (!settleForm.reportValidity()) return;
         const submit = document.getElementById('settleMovementSubmit');
+        const settleAmount = document.getElementById('settleMovementAmount');
+        const normalizedAmount = parseMoney(settleAmount.value);
+        if (!normalizedAmount) {
+            settleAmount.setCustomValidity('Introduz um valor superior a zero com até dois cêntimos. Exemplo: 90,50.');
+            settleAmount.reportValidity();
+            return;
+        }
         const original = submit.textContent;
+        settlingMovement = true;
         submit.disabled = true;
         submit.textContent = 'A confirmar...';
         const isExpense = actionMovement.dataset.movementType === 'despesa';
         const accountId = document.getElementById('settleMovementAccount').value;
         const payload = {
-            amount: document.getElementById('settleMovementAmount').value,
+            amount: normalizedAmount,
+            expected_amount: actionMovement.dataset.amount,
             movement_date: document.getElementById('settleMovementDate').value,
             source_account_id: isExpense ? accountId : null,
             destination_account_id: isExpense ? null : accountId
         };
+        let isInstallment = false;
         try {
-            const response = await fetch(cfg.financialMovementBase + '/' + encodeURIComponent(actionMovement.dataset.financialMovementId) + '/settle', {
-                method: 'PUT',
-                credentials: 'same-origin',
-                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf || '' },
-                body: JSON.stringify(payload)
-            });
+            let response;
+            try {
+                response = await fetch(cfg.financialMovementBase + '/' + encodeURIComponent(actionMovement.dataset.financialMovementId) + '/settle', {
+                    method: 'PUT',
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf || '' },
+                    body: JSON.stringify(payload)
+                });
+            } catch (_) {
+                throw new Error('Não foi possível confirmar o pagamento. Verifica o histórico e os parcelamentos antes de tentar novamente.');
+            }
             const result = await response.json().catch(() => ({}));
+            if (response.status >= 500 || (response.ok && !result.data?.id)) {
+                throw new Error('O servidor não confirmou o pagamento. Verifica o histórico e os parcelamentos antes de tentar novamente.');
+            }
             if (!response.ok) throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'Não foi possível efetivar o movimento.');
-            settleModal?.hide();
-            await refreshDashboard();
+            isInstallment = Boolean(result.installment);
         } catch (error) {
-            alert(error.message);
+            showSettleError(error.message || 'Não foi possível efetivar o movimento.');
+            return;
         } finally {
+            settlingMovement = false;
             submit.disabled = false;
             submit.textContent = original;
+        }
+        settleModal?.hide();
+        const message = isInstallment ? 'Pagamento da prestação registado.' : 'Movimento efetivado.';
+        showMovementConfirmation(message, isInstallment);
+        try {
+            await refreshDashboard();
+        } catch (_) {
+            showMovementConfirmation(message + ' Não foi possível atualizar a lista; atualiza a página. Não confirmes novamente.', isInstallment, true);
         }
     }
 
@@ -1134,6 +1277,7 @@
     });
     form.addEventListener('submit', submitMovement);
     settleForm?.addEventListener('submit', submitSettleMovement);
+    document.getElementById('settleMovementAmount')?.addEventListener('input', (event) => event.target.setCustomValidity(''));
     deleteForm?.addEventListener('submit', submitDeleteMovement);
     list.addEventListener('click', (event) => {
         if (event.target.closest('#loadMoreMovements')) {
@@ -1177,6 +1321,12 @@
         if (event.key === 'Enter') convertCurrency();
     });
 
+    editorModalElement?.addEventListener('hide.bs.modal', (event) => {
+        if (submittingMovement) event.preventDefault();
+    });
+    settleModalElement?.addEventListener('hide.bs.modal', (event) => {
+        if (settlingMovement) event.preventDefault();
+    });
     editorModalElement?.addEventListener('shown.bs.modal', () => {
         expenseButton?.setAttribute('aria-expanded', 'true');
         incomeButton?.setAttribute('aria-expanded', 'true');

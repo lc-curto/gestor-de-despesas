@@ -42,11 +42,14 @@ class CardInvoiceService
             $closing = $reference->copy()->day(min($card->closing_day, $reference->daysInMonth));
             $dueMonth = $reference->copy()->addMonthNoOverflow();
             $due = $dueMonth->copy()->day(min($card->due_day, $dueMonth->daysInMonth));
-            $invoice = Fatura::query()->firstOrCreate(
+            // SQLite pode guardar a data com hora; procura a fatura pelo dia.
+            $invoice = Fatura::query()->where('user_id', $user->id)->where('account_id', $card->id)
+                ->whereDate('reference_month', $reference->toDateString())->first() ?? Fatura::query()->firstOrCreate(
                 ['user_id' => $user->id, 'account_id' => $card->id, 'reference_month' => $reference->toDateString()],
                 ['closing_date' => $closing->toDateString(), 'due_date' => $due->toDateString(), 'status' => 'open']
             );
             $invoice = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+            $this->movements->assertInvoiceReconciled($user, $invoice);
             if ($invoice->status === 'paid' || ($invoice->closing_date && $invoice->closing_date->lt(today()))) {
                 throw ValidationException::withMessages(['invoice' => 'A fatura deste ciclo já foi fechada. A compra deve entrar no ciclo seguinte.']);
             }
@@ -99,11 +102,14 @@ class CardInvoiceService
             $closing = $reference->copy()->day(min($card->closing_day, $reference->daysInMonth));
             $dueMonth = $reference->copy()->addMonthNoOverflow();
             $due = $dueMonth->copy()->day(min($card->due_day, $dueMonth->daysInMonth));
-            $invoice = Fatura::query()->firstOrCreate(
+            // SQLite pode guardar a data com hora; procura a fatura pelo dia.
+            $invoice = Fatura::query()->where('user_id', $user->id)->where('account_id', $card->id)
+                ->whereDate('reference_month', $reference->toDateString())->first() ?? Fatura::query()->firstOrCreate(
                 ['user_id' => $user->id, 'account_id' => $card->id, 'reference_month' => $reference->toDateString()],
                 ['closing_date' => $closing->toDateString(), 'due_date' => $due->toDateString(), 'status' => 'open']
             );
             $invoice = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+            $this->movements->assertInvoiceReconciled($user, $invoice);
             if ($invoice->status === 'paid' || ($invoice->closing_date && $invoice->closing_date->lt(today()))) {
                 throw ValidationException::withMessages(['invoice' => 'A fatura deste ciclo já foi fechada. A compra deve entrar no ciclo seguinte.']);
             }
@@ -117,32 +123,7 @@ class CardInvoiceService
 
     public function payOpeningDebt(User $user, string $cardId, string $sourceAccountId, string $date, string $requestedAmount): Movimento
     {
-        return DB::transaction(function () use ($user, $cardId, $sourceAccountId, $date, $requestedAmount): Movimento {
-            $card = $user->contasFinanceiras()->whereKey($cardId)->lockForUpdate()->firstOrFail();
-            $source = $user->contasFinanceiras()->whereKey($sourceAccountId)->lockForUpdate()->firstOrFail();
-            if ($card->type !== 'credit_card' || !$card->is_operational || $card->status !== 'active') {
-                throw ValidationException::withMessages(['card' => 'Cartão não disponível.']);
-            }
-            if ($source->id === $card->id || !in_array($source->type, ['bank', 'cash'], true) || !$source->is_operational || $source->status !== 'active') {
-                throw ValidationException::withMessages(['account_id' => 'Seleciona uma conta bancária ou de dinheiro ativa.']);
-            }
-            $balances = app(AccountBalanceService::class);
-            $remaining = $balances->toCents((string) ($card->opening_debt_amount ?? '0.00')) - $balances->toCents((string) ($card->opening_debt_paid ?? '0.00'));
-            $payment = $balances->toCents($requestedAmount);
-            if ($remaining <= 0 || $payment <= 0 || $payment > $remaining) {
-                throw ValidationException::withMessages(['amount' => 'O pagamento não pode exceder a dívida inicial ainda por pagar.']);
-            }
-            $movement = $this->movements->transfer($user, [
-                'description' => 'Pagamento de dívida inicial · ' . $card->name,
-                'amount' => number_format($payment / 100, 2, '.', ''),
-                'movement_date' => $date,
-                'source_account_id' => $source->id,
-                'destination_account_id' => $card->id,
-                'opening_debt_card_id' => $card->id,
-            ]);
-            $card->update(['opening_debt_paid' => number_format(($balances->toCents((string) ($card->opening_debt_paid ?? '0.00')) + $payment) / 100, 2, '.', '')]);
-            return $movement;
-        });
+        return $this->movements->payCardOpeningDebt($user, $cardId, $sourceAccountId, $date, $requestedAmount);
     }
 
     public function listInvoices(User $user)
@@ -170,44 +151,6 @@ class CardInvoiceService
 
     public function pay(User $user, Fatura $invoice, string $sourceAccountId, string $date, ?string $requestedAmount = null): Movimento
     {
-        return DB::transaction(function () use ($user, $invoice, $sourceAccountId, $date, $requestedAmount): Movimento {
-            $locked = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
-            $card = $user->contasFinanceiras()->whereKey($locked->account_id)->lockForUpdate()->firstOrFail();
-            $source = $user->contasFinanceiras()->whereKey($sourceAccountId)->lockForUpdate()->firstOrFail();
-
-            if ($source->id === $card->id || !in_array($source->type, ['bank', 'cash'], true) || !$source->is_operational || $source->status !== 'active') {
-                throw ValidationException::withMessages(['account_id' => 'A fatura deve ser paga a partir de uma conta bancária ou de dinheiro ativa.']);
-            }
-            if (!$card->is_operational || $card->status !== 'active') {
-                throw ValidationException::withMessages(['invoice' => 'O cartão associado a esta fatura não está ativo.']);
-            }
-
-            $balances = app(AccountBalanceService::class);
-            $totalCents = $balances->toCents((string) $locked->movimentos()->where('type', 'expense')->where('status', 'settled')->sum('amount'));
-            $paidCents = $balances->toCents((string) $locked->movimentos()->where('type', 'transfer')->where('status', 'settled')->sum('amount'));
-            $remainingCents = $totalCents - $paidCents;
-            if ($remainingCents <= 0) {
-                throw ValidationException::withMessages(['invoice' => 'Esta fatura já está totalmente paga.']);
-            }
-
-            $paymentCents = $requestedAmount !== null ? $balances->toCents($requestedAmount) : $remainingCents;
-            if ($paymentCents <= 0 || $paymentCents > $remainingCents) {
-                throw ValidationException::withMessages(['amount' => 'O pagamento deve ser superior a zero e não pode exceder o valor pendente.']);
-            }
-
-            $movement = $this->movements->transfer($user, [
-                'description' => 'Pagamento da fatura ' . $card->name . ' · ' . $locked->reference_month->format('m/Y'),
-                'amount' => number_format($paymentCents / 100, 2, '.', ''),
-                'movement_date' => $date,
-                'source_account_id' => $source->id,
-                'destination_account_id' => $card->id,
-                'invoice_id' => $locked->id,
-            ]);
-
-            if ($paymentCents === $remainingCents) {
-                $locked->update(['status' => 'paid']);
-            }
-            return $movement;
-        });
+        return $this->movements->payCardInvoice($user, $invoice, $sourceAccountId, $date, $requestedAmount);
     }
 }

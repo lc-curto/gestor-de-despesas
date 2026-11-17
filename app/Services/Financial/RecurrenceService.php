@@ -68,6 +68,7 @@ class RecurrenceService
                         ->first();
 
                     foreach ($forecasts as $forecast) {
+                        $this->assertNotCommitmentForecast($forecast);
                         if ($forecast->legacy_type === 'despesa') Despesa::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
                         if ($forecast->legacy_type === 'receita') Receita::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
                         $forecast->historico()->delete();
@@ -97,6 +98,7 @@ class RecurrenceService
                 $forecasts = $user->movimentos()->where('recurrence_id', $rule->id)->where('status', 'pending')->whereDate('recurrence_occurrence_date', '>', $date)->lockForUpdate()->get()
                     ->filter(fn ($forecast) => !$forecast->historico()->where('action', 'confirmed')->exists());
                 foreach ($forecasts as $forecast) {
+                    $this->assertNotCommitmentForecast($forecast);
                     if ($forecast->legacy_type === 'despesa') Despesa::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
                     if ($forecast->legacy_type === 'receita') Receita::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
                     $forecast->historico()->delete(); $forecast->delete();
@@ -166,6 +168,7 @@ class RecurrenceService
                     ->first();
 
                 foreach ($forecasts as $forecast) {
+                    $this->assertNotCommitmentForecast($forecast);
                     if ($forecast->legacy_type === 'despesa') {
                         Despesa::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
                     }
@@ -311,6 +314,13 @@ class RecurrenceService
     {
         $next = $date->copy()->startOfYear()->addYears($interval)->month($anchor->month);
         return $next->day(min($anchor->day, $next->daysInMonth));
+    }
+
+    private function assertNotCommitmentForecast(\App\Models\Movimento $forecast): void
+    {
+        if ($forecast->installment_id || $forecast->debt_id) {
+            throw ValidationException::withMessages(['movement' => 'Esta previsão também está ligada a um compromisso. Revê-a em Parcelamentos antes de alterar a recorrência.']);
+        }
     }
 
     private function assertDefaultAccount(User $user, string $type, ?string $accountId): void

@@ -64,6 +64,9 @@ jobs:
       - name: Verificar projeto
         run: npm run check
 
+      - name: Testar fluxos JavaScript
+        run: npm run test:js
+
       - name: Compilar assets
         run: npm run build
 

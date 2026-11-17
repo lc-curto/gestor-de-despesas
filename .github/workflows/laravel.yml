@@ -70,6 +70,7 @@ jobs:
         run: |
           npm ci
           npm run check
+          npm run test:js
 
       - name: Run migrations and tests
         env:

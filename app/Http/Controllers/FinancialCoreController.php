@@ -371,18 +371,38 @@ class FinancialCoreController extends Controller
         return response()->json(['data' => $movement], 201);
     }
 
-    public function settleMovement(Request $request, string $id, FinancialMovementService $service, CardInvoiceService $invoices): JsonResponse
+    public function settleMovement(Request $request, string $id, FinancialMovementService $service, CardInvoiceService $invoices, FinancialCommitmentService $commitments): JsonResponse
     {
         $data = $request->validate([
             'source_account_id' => 'nullable|uuid',
             'destination_account_id' => 'nullable|uuid',
             'amount' => 'sometimes|required|numeric|gt:0|decimal:0,2|max:9999999999.99',
+            'expected_amount' => 'sometimes|required|numeric|gt:0|decimal:0,2|max:9999999999.99',
             'movement_date' => 'sometimes|required|date',
         ]);
 
         $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
 
-        return DB::transaction(function () use ($request, $movement, $data, $service, $invoices): JsonResponse {
+        return DB::transaction(function () use ($request, $movement, $data, $service, $invoices, $commitments): JsonResponse {
+            if ($movement->debt_id || $movement->installment_id) {
+                if (!$movement->debt_id || !$movement->installment_id) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['movement' => 'Esta previsão tem uma ligação incompleta ao parcelamento.']);
+                }
+                $accountId = $data['source_account_id'] ?? $movement->source_account_id;
+                if (!$accountId) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['source_account_id' => 'Seleciona uma conta para liquidar a prestação.']);
+                }
+                $debt = $request->user()->dividas()->whereKey($movement->debt_id)->firstOrFail();
+                $installment = $debt->parcelas()->where('user_id', $request->user()->id)->whereKey($movement->installment_id)->firstOrFail();
+                $result = $commitments->payInstallmentWithMovement($request->user(), $debt, $installment, [
+                    'account_id' => $accountId,
+                    'amount' => $data['amount'] ?? $movement->amount,
+                    'payment_date' => $data['movement_date'] ?? $movement->movement_date->toDateString(),
+                    'expected_amount' => $data['expected_amount'] ?? null,
+                ], $movement->id);
+                return response()->json(['data' => $result['movement'], 'installment' => $result['installment']]);
+            }
+
             // A confirmação permite corrigir o valor e a data efetivos antes de atualizar o saldo.
             $changes = array_intersect_key($data, array_flip(['amount', 'movement_date']));
             if ($changes) {

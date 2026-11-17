@@ -333,7 +333,7 @@ class FinancialAcceptanceTest extends TestCase
             'category' => 'compras',
             'expense_date' => '2026-11-16',
             'payment_condition' => 'installments',
-            'payment_method' => 'card',
+            'payment_method' => 'transfer',
             'due_date' => '2026-11-25',
             'installments_count' => 119,
             'installment_frequency' => 'monthly',
@@ -341,7 +341,7 @@ class FinancialAcceptanceTest extends TestCase
         ])->assertOk()->assertJsonPath('ok', true);
 
         $this->assertDatabaseCount('despesas', 0);
-        $this->assertDatabaseCount('movimentos', 0);
+        $this->assertDatabaseCount('movimentos', 119);
         $this->assertDatabaseCount('dividas', 1);
         $this->assertDatabaseCount('parcelas_divida', 119);
     }

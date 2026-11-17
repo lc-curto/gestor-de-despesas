@@ -8,6 +8,7 @@
     $symbol = $symbols[$currency] ?? $currency;
     $format = fn ($value) => number_format($value, 2, ',', '.');
     $today = now()->format('Y-m-d');
+    $accountsById = $accounts->keyBy('id');
 @endphp
 
 <section class="financial-route-page" id="financialRoute"
@@ -59,16 +60,23 @@
                             @php
                                 $running += $values['cash_delta'];
                                 $status = $running <= 0 ? 'risk' : ($running <= $fixedTotal ? 'attention' : ($running < ($fixedTotal + $variableTotal) ? 'protected' : 'comfortable'));
-                                $dayItems = $values['items']->map(fn ($item) => [
-                                    'id' => $item->id, 'type' => $item->type, 'status' => $item->status,
-                                    'description' => $item->description, 'amount' => (float) $item->amount,
-                                    'date' => $item->movement_date->toDateString(),
-                                    'expense_behavior' => $item->expense_behavior,
-                                    'category' => $item->categoria?->name ?? 'Sem categoria', 'category_id' => $item->category_id,
-                                    'account_id' => $item->type === 'expense' ? $item->source_account_id : $item->destination_account_id,
-                                    'recurrence_id' => $item->recurrence_id,
-                                    'notes' => $item->notes ?? '',
-                                ])->values();
+                                $dayItems = $values['items']->map(function ($item) use ($accountsById) {
+                                    // O sinal identifica o lado do movimento relevante para a projeção.
+                                    $delta = (float) $item->projection_delta;
+                                    $accountId = $delta < 0 ? $item->source_account_id : $item->destination_account_id;
+
+                                    return [
+                                        'id' => $item->id, 'type' => $item->type, 'status' => $item->status,
+                                        'description' => $item->description, 'amount' => (float) $item->amount,
+                                        'projection_delta' => $delta, 'date' => $item->movement_date->toDateString(),
+                                        'expense_behavior' => $item->expense_behavior,
+                                        'category' => $item->categoria?->name ?? 'Sem categoria', 'category_id' => $item->category_id,
+                                        'account_id' => $accountId,
+                                        'account_name' => $accountId ? ($accountsById->get($accountId)?->name ?? 'Conta indisponível') : 'Sem conta associada',
+                                        'recurrence_id' => $item->recurrence_id,
+                                        'notes' => $item->notes ?? '',
+                                    ];
+                                })->values();
                             @endphp
                             <tr class="{{ $date === $today ? 'is-today' : '' }}">
                                 <th scope="row"><button type="button" class="route-cell route-date" data-date="{{ $date }}">{{ \Illuminate\Support\Carbon::parse($date)->format('d') }}</button></th>
@@ -110,7 +118,7 @@
                     <label><input type="radio" name="route_type" value="variable" checked><span>Variável</span></label>
                 </div></div>
                 <div class="mb-3"><label for="routeDescription" class="form-label">Descrição</label><input id="routeDescription" name="description" class="form-control" maxlength="255" placeholder="Ex.: Supermercado" required></div>
-                <div class="row g-3"><div class="col-6"><label for="routeAmount" class="form-label">Valor ({{ $symbol }})</label><input id="routeAmount" name="amount" type="number" min="0.01" step="0.01" class="form-control" placeholder="0,00" required></div><div class="col-6"><label for="routeDate" class="form-label">Data</label><input id="routeDate" name="movement_date" type="date" class="form-control" required></div>
+                <div class="row g-3"><div class="col-6"><label for="routeAmount" class="form-label">Valor ({{ $symbol }})</label><input id="routeAmount" name="amount" type="text" inputmode="decimal" min="0.01" data-money="positive" class="form-control" placeholder="0,00" required aria-describedby="routeAmountHelp"><div class="form-text" id="routeAmountHelp">Ex.: 90,50, 1.000,00 ou 90.50</div></div><div class="col-6"><label for="routeDate" class="form-label">Data</label><input id="routeDate" name="movement_date" type="date" class="form-control" required></div>
                     <div class="col-12"><label for="routeCategory" class="form-label">Categoria</label><select id="routeCategory" name="category_id" class="form-select"><option value="">Selecionar categoria</option>@foreach($categories as $category)<option value="{{ $category->id }}" data-type="{{ $category->type }}">{{ $category->name }}</option>@endforeach</select></div>
                     <div class="col-12"><label for="routeAccount" class="form-label">Conta</label><select id="routeAccount" name="account_id" class="form-select" required><option value="">Selecionar conta</option>@foreach($accounts as $account)<option value="{{ $account->id }}" data-type="{{ $account->type }}">{{ $account->name }}</option>@endforeach</select></div>
                     <div class="col-12"><label for="routeNotes" class="form-label">Observação (opcional)</label><textarea id="routeNotes" name="notes" class="form-control" rows="2" placeholder="Adicionar observação..."></textarea></div>
@@ -124,8 +132,8 @@
 <div class="modal fade" id="routeMovementDetailModal" tabindex="-1" aria-labelledby="routeMovementDetailTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered"><div class="modal-content route-sheet-content">
         <div class="modal-header"><div><p class="small text-secondary mb-1" id="routeMovementKind"></p><h2 class="modal-title h5 fw-bold" id="routeMovementDetailTitle">Movimento</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
-        <div class="modal-body"><div class="route-detail-amount" id="routeMovementAmount"></div><dl class="route-detail-list"><div><dt>Categoria</dt><dd id="routeMovementCategory"></dd></div><div><dt>Data</dt><dd id="routeMovementDate"></dd></div><div><dt>Descrição</dt><dd id="routeMovementDescription"></dd></div><div><dt>Observação</dt><dd id="routeMovementNotes"></dd></div></dl><div class="small text-danger" id="routeDetailError" role="alert"></div></div>
-        <div class="modal-footer justify-content-between"><button type="button" class="btn btn-outline-danger" id="routeDeleteMovement">Excluir</button><div><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button type="button" class="btn btn-primary" id="routeEditMovement">Editar</button></div></div>
+        <div class="modal-body"><div class="route-detail-amount" id="routeMovementAmount"></div><dl class="route-detail-list"><div><dt>Categoria</dt><dd id="routeMovementCategory"></dd></div><div><dt>Conta</dt><dd id="routeMovementAccount"></dd></div><div><dt>Data</dt><dd id="routeMovementDate"></dd></div><div><dt>Descrição</dt><dd id="routeMovementDescription"></dd></div><div><dt>Observação</dt><dd id="routeMovementNotes"></dd></div></dl><p class="small text-secondary mt-3 mb-0" id="routeEditHelp" role="status"></p><div class="small text-danger" id="routeDetailError" role="alert"></div></div>
+        <div class="modal-footer justify-content-between"><button type="button" class="btn btn-outline-danger" id="routeDeleteMovement">Excluir</button><div><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button type="button" class="btn btn-primary" id="routeEditMovement" aria-describedby="routeEditHelp">Editar</button></div></div>
     </div></div>
 </div>
 
@@ -208,6 +216,9 @@
  const form=document.getElementById('routeMovementForm');
  const fmt=value=>new Intl.NumberFormat('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2}).format(value)+' '+({EUR:'€',USD:'$',GBP:'£',BRL:'R$'}[currency]||currency);
  const dateLabel=value=>new Intl.DateTimeFormat('pt-PT',{day:'2-digit',month:'long',year:'numeric'}).format(new Date(value+'T12:00:00'));
+ const movementKind=item=>item.type==='adjustment'?'Ajuste de saldo':item.type==='transfer'?'Transferência':item.type==='income'?'Entrada':item.expense_behavior==='fixed'?'Gasto fixo':'Variável';
+ const signedAmount=item=>['adjustment','transfer'].includes(item.type)?(item.projection_delta>0?'+':item.projection_delta<0?'−':'')+fmt(Math.abs(item.projection_delta)):(item.type==='income'?'+':'−')+fmt(item.amount);
+ const canEditMovement=item=>['income','expense'].includes(item.type)&&item.status==='pending'&&!/^(debt|invoice)-/.test(String(item.id));
  const dayData=date=>{const el=document.getElementById('route-day-'+date);return el?JSON.parse(el.textContent):null};
  const setPeriod=()=>{const url=new URL(window.location.href);url.searchParams.set('mes',month);url.searchParams.set('modo',mode);window.location.href=url.toString()};
  const periodStep=()=>window.matchMedia('(max-width: 767.98px)').matches?1:mode;
@@ -221,6 +232,7 @@
  document.getElementById('routeNewMovement').addEventListener('click',()=>openForm());
  document.getElementById('routeAddFromDay').addEventListener('click',()=>{dayModal.hide();openForm(activeDate)});
  function openForm(date=activeDate,movement=null){
+   if(movement&&!canEditMovement(movement))return;
    editId=movement?.id||null;form.reset();document.getElementById('routeMovementTitle').textContent=editId?'Editar movimento':'Novo movimento';
    document.getElementById('routeDate').value=movement?.date||date;document.getElementById('routeDescription').value=movement?.description||'';
    document.getElementById('routeAmount').value=movement?.amount||'';
@@ -250,8 +262,8 @@
    items.forEach(item=>{
      const b=document.createElement('button');b.type='button';b.className='route-movement-item';
      const left=document.createElement('span'),name=document.createElement('strong'),meta=document.createElement('small'),amount=document.createElement('strong');
-     name.textContent=item.description;meta.textContent=(item.type==='income'?'Entrada':item.expense_behavior==='fixed'?'Gasto fixo':'Variável')+' · '+item.category;
-     left.append(name,meta);amount.textContent=(item.type==='income'?'+':'−')+fmt(item.amount);b.append(left,amount);
+     name.textContent=item.description;meta.textContent=movementKind(item)+' · '+item.category;
+     left.append(name,meta);amount.textContent=signedAmount(item);b.append(left,amount);
      b.addEventListener('click',()=>{dayModal.hide();openMovementDetail(item)});list.append(b);
    });
  }
@@ -259,18 +271,21 @@
  root.querySelectorAll('[data-date]').forEach(b=>b.addEventListener('click',()=>openDay(b.dataset.date,b.dataset.filter==='income'?'income':b.dataset.filter||'all')));
  function openMovementDetail(item){
    activeMovement=item;document.getElementById('routeMovementDetailTitle').textContent=item.description;
-   document.getElementById('routeMovementKind').textContent=item.type==='income'?'Entrada':item.expense_behavior==='fixed'?'Gasto fixo':'Variável';
-   document.getElementById('routeMovementAmount').textContent=fmt(item.amount);
+   document.getElementById('routeMovementKind').textContent=movementKind(item);
+   document.getElementById('routeMovementAmount').textContent=['adjustment','transfer'].includes(item.type)?signedAmount(item):fmt(item.amount);
    document.getElementById('routeMovementCategory').textContent=item.category;
+   document.getElementById('routeMovementAccount').textContent=item.account_name;
    document.getElementById('routeMovementDate').textContent=dateLabel(item.date);
    document.getElementById('routeMovementDescription').textContent=item.description;
    document.getElementById('routeMovementNotes').textContent=item.notes||'—';
    document.getElementById('routeDetailError').textContent='';
+   document.getElementById('routeEditMovement').disabled=!canEditMovement(item);
+   document.getElementById('routeEditHelp').textContent=item.type==='adjustment'?'Este ajuste não pode ser editado aqui. Para o corrigir, podes estorná-lo; o registo de um novo ajuste não está disponível neste formulário.':item.type==='transfer'?'As transferências não podem ser editadas neste formulário. Verifica se é possível estornar a transferência antes de a corrigir.':item.status==='settled'?'Um movimento liquidado não pode ser editado. Para o corrigir, podes estorná-lo e registar o movimento correto.':!canEditMovement(item)?'Esta previsão é gerada automaticamente; gere-a na área de compromissos ou faturas.':'';
    const deleteButton=document.getElementById('routeDeleteMovement');
    deleteButton.textContent=item.status==='settled'?'Estornar':(item.recurrence_id?'Anular':'Excluir');
    detailModal.show();
  }
- document.getElementById('routeEditMovement').addEventListener('click',()=>{detailModal.hide();openForm(activeMovement.date,activeMovement)});
+ document.getElementById('routeEditMovement').addEventListener('click',()=>{if(!activeMovement||!canEditMovement(activeMovement))return;detailModal.hide();openForm(activeMovement.date,activeMovement)});
  document.getElementById('routeDeleteMovement').addEventListener('click',()=>{
    const item=activeMovement;const settled=item.status==='settled';const recurring=!!item.recurrence_id;
    document.getElementById('routeConfirmTitle').textContent=settled?'Confirmar estorno':(recurring?'Anular ocorrência':'Confirmar exclusão');
@@ -280,11 +295,17 @@
  });
  document.getElementById('routeConfirmAction').addEventListener('click',async()=>{try{if(confirmCallback)await confirmCallback()}catch(e){document.getElementById('routeConfirmText').textContent=e.message} });
  form.querySelectorAll('[name="route_type"]').forEach(radio=>radio.addEventListener('change',()=>{const type=radio.value==='income'?'receita':'despesa';form.querySelectorAll('#routeCategory option[data-type]').forEach(option=>{option.hidden=option.dataset.type!==type});if(document.getElementById('routeCategory').selectedOptions[0]?.hidden)document.getElementById('routeCategory').value=''}));
- form.addEventListener('submit',async e=>{
-   e.preventDefault();const data=new FormData(form);const selected=data.get('route_type');
+   form.addEventListener('submit',async e=>{
+   e.preventDefault();const data=new FormData(form);const selected=form.querySelector('[name="route_type"]:checked')?.value||data.get('route_type');
+   const amountText=String(data.get('amount')||'').trim().replace(/[\u00a0\s]/g,'');let amount='';
+   try {
+     if (!/^\d+(?:,\d{1,2}|\.\d{1,2})?$/.test(amountText) && !/^\d{1,3}(?:\.\d{3})+,\d{1,2}$/.test(amountText)) throw new Error('Usa o formato 90,50 ou 1.000,00.');
+     if (amountText.includes(',')){const parts=amountText.split(',');amount=parts[0].replace(/\./g,'')+'.'+parts[1].padEnd(2,'0');} else if(amountText.includes('.')){const parts=amountText.split('.');amount=parts[0]+'.'+parts[1].padEnd(2,'0');} else amount=amountText+'.00';
+     if (!(Number(amount)>0)) throw new Error('O valor deve ser maior que zero.');
+   } catch(error){document.getElementById('routeFormError').textContent=error.message;return}
    const type=selected==='income'?'income':'expense';const behavior=selected==='fixed'?'fixed':'variable';
    const account=document.getElementById('routeAccount').value;
-   const payload={type,expense_behavior:behavior,description:data.get('description'),amount:data.get('amount'),movement_date:data.get('movement_date'),category_id:data.get('category_id')||null,notes:data.get('notes')||null};
+   const payload={type,expense_behavior:behavior,description:data.get('description'),amount,movement_date:data.get('movement_date'),category_id:data.get('category_id')||null,notes:data.get('notes')||null};
    if(type==='expense')payload.source_account_id=account;else payload.destination_account_id=account;
    const url=editId?urls.update+'/'+editId:urls.store;const response=await fetch(url,{method:editId?'PUT':'POST',headers:{'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':csrf},body:JSON.stringify(payload)});
    const json=await response.json();if(!response.ok){document.getElementById('routeFormError').textContent=Object.values(json.errors||{request:[json.message||'Não foi possível guardar.']}).flat().join(' ');return}

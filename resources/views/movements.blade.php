@@ -14,6 +14,11 @@
     </div>
 </header>
 
+<div id="movementSaveFeedback" class="alert d-none" role="status" aria-live="polite">
+    <span id="movementSaveFeedbackMessage"></span>
+    <a id="movementSaveFeedbackLink" href="{{ route('financial.commitments.page') }}" class="alert-link d-none">Ver parcelamentos</a>
+</div>
+
 <section class="movements-period-summary" aria-label="Resumo financeiro do período">
     <div class="movements-period-summary-heading" id="movementsSummaryPeriod">Resumo de {{ \Illuminate\Support\Carbon::createFromFormat('Y-m', $mes)->locale('pt_PT')->translatedFormat('F Y') }}</div>
     <div class="movements-period-summary-values">
@@ -64,6 +69,7 @@
                     <form id="dashboardMovementForm" method="POST" action="{{ route('despesas.store') }}">
                         @csrf
                         <input type="hidden" name="_method" id="movementMethod" value="POST">
+                        <div id="movementFormError" class="alert alert-danger d-none" role="alert" tabindex="-1"></div>
                         <div class="mb-3">
                             <label for="movementDescription" class="form-label" id="descriptionLabel">Descrição</label>
                             <input type="text" class="form-control" id="movementDescription" name="description" placeholder="Ex.: Supermercado" value="{{ old('description') }}" maxlength="255" required>
@@ -72,9 +78,10 @@
                             <div class="col-6">
                                 <label for="movementAmount" class="form-label">Valor</label>
                                 <div class="input-group">
-                                    <input type="number" class="form-control" id="movementAmount" name="amount" placeholder="0,00" min="0.01" step="0.01" value="{{ old('amount') }}" required>
+                                    <input type="text" inputmode="decimal" class="form-control" id="movementAmount" name="amount" placeholder="0,00" aria-describedby="movementAmountHelp" value="{{ old('amount') }}" required>
                                     <span class="input-group-text" id="amountCurrencySymbol">{{ $simbolos[$moeda] ?? $moeda }}</span>
                                 </div>
+                                <div id="movementAmountHelp" class="form-text">Usa vírgula ou ponto para os cêntimos.</div>
                             </div>
                             <div class="col-6">
                                 <label for="movementDate" class="form-label">Data</label>
@@ -177,7 +184,7 @@
                                     <label class="payment-status-option"><input class="form-check-input" type="radio" name="paid_now" value="1"><span>Já paguei tudo</span></label>
                                 </div>
                                 <div id="dashboardPaymentDetails" class="row g-2 mt-2" hidden>
-                                    <div class="col-12" id="dashboardPaymentAmountField"><label for="dashboardPaymentAmount" class="form-label">Valor pago</label><input id="dashboardPaymentAmount" name="payment_amount" type="number" min="0.01" step="0.01" class="form-control"></div>
+                                    <div class="col-12" id="dashboardPaymentAmountField"><label for="dashboardPaymentAmount" class="form-label">Valor pago</label><input id="dashboardPaymentAmount" name="payment_amount" type="text" inputmode="decimal" placeholder="0,00" class="form-control"></div>
                                     <div class="col-6"><label for="dashboardPaymentDate" class="form-label">Data do pagamento</label><input id="dashboardPaymentDate" name="payment_date" type="date" class="form-control" value="{{ now()->toDateString() }}"></div>
                                     <div class="col-6"><label for="dashboardPaymentAccount" class="form-label">Conta utilizada</label><select id="dashboardPaymentAccount" name="payment_account_id" class="form-select"><option value="">Selecionar conta</option>@foreach ($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }} · {{ $account->currency }}</option>@endforeach</select></div>
                                     <div class="col-12"><label for="dashboardActualPaymentMethod" class="form-label">Método utilizado</label><select id="dashboardActualPaymentMethod" name="actual_payment_method" class="form-select"><option value="">Selecionar método</option><option value="cash">Dinheiro</option><option value="debit">Cartão de débito</option><option value="credit">Cartão de crédito</option><option value="transfer">Transferência bancária</option><option value="mbway">MB WAY</option><option value="direct_debit">Débito direto</option></select></div>
@@ -355,10 +362,11 @@
                 </div>
                 <div class="modal-body">
                     <p class="text-secondary small mb-3" id="settleMovementDescription"></p>
+                    <div id="settleMovementError" class="alert alert-danger d-none" role="alert" tabindex="-1"></div>
                     <div class="mb-3">
                         <label for="settleMovementAmount" class="form-label fw-semibold">Valor efetivo</label>
                         <div class="input-group">
-                            <input id="settleMovementAmount" name="amount" type="number" min="0.01" step="0.01" class="form-control" required>
+                            <input id="settleMovementAmount" name="amount" type="text" inputmode="decimal" placeholder="0,00" class="form-control" required>
                             <span class="input-group-text">{{ $moeda }}</span>
                         </div>
                     </div>

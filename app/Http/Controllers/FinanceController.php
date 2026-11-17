@@ -413,6 +413,9 @@ class FinanceController extends Controller
                 }
                 $service->assignLegacyAccount($request->user(), $movement, $accountId);
             } else {
+                if ($movement->installment_id || $movement->debt_id) {
+                    throw ValidationException::withMessages(['movement' => 'Este movimento está ligado a um compromisso. Revê-o em Parcelamentos.']);
+                }
                 // Preserva a regra e a data original da ocorrência ao substituir o movimento.
                 // Caso contrário, desmarcar a repetição não encontra a regra para a desativar.
                 $recurrenceId = $movement->recurrence_id;
