@@ -533,10 +533,10 @@ class FinanceController extends Controller
                 );
             }
 
-            // Se não havia movimento canónico, a representação legacy ainda precisa
-            // de ser removida. Quando o orquestrador já a removeu, não repetir a operação.
+            // Registos legacy sem movimento canónico também passam pela auditoria central.
             if ($this->query($request)->whereKey($id)->exists()) {
-                $legacy->delete();
+                app(\\App\\Services\\Financial\\FinancialDeletionService::class)
+                    ->deleteLegacyRecord($request->user(), $tipo, $id);
             }
         });
 
