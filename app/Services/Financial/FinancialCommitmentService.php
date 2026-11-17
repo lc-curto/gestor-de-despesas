@@ -120,7 +120,7 @@ class FinancialCommitmentService
             $locked->update([
                 'name' => $data['name'],
                 'due_date' => $newDue->toDateString(),
-                ... (array_key_exists('total_amount', $data) ? ['total_amount' => $locked->total_amount] : []),
+                'total_amount' => $locked->total_amount,
             ]);
 
             foreach ($pendingParts as $index => $part) {
