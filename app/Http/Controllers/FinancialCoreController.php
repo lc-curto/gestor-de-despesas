@@ -429,9 +429,9 @@ class FinancialCoreController extends Controller
                 $installment = $debt->parcelas()->where('user_id', $request->user()->id)->whereKey($movement->installment_id)->firstOrFail();
                 $result = $commitments->payInstallmentWithMovement($request->user(), $debt, $installment, [
                     'account_id' => $accountId,
-                    'amount' => $data['amount'] ?? $movement->amount,
+                    'amount' => $data['amount'] ?? number_format(max(0, (float) $installment->amount - (float) $installment->paid_amount), 2, '.', ''),
                     'payment_date' => $data['movement_date'] ?? $movement->movement_date->toDateString(),
-                    'expected_amount' => $data['expected_amount'] ?? null,
+                    'expected_amount' => $data['expected_amount'] ?? number_format(max(0, (float) $installment->amount - (float) $installment->paid_amount), 2, '.', ''),
                 ], $movement->id);
                 return response()->json(['data' => $result['movement'], 'installment' => $result['installment']]);
             }
