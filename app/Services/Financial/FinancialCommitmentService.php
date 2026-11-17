@@ -172,7 +172,7 @@ class FinancialCommitmentService
 
             $parts = $locked->parcelas()->orderBy('installment_number')->lockForUpdate()->get();
             $paidCents = (int) round((float) $parts->sum('paid_amount') * 100);
-            $oldRemainingCents = (int) round($parts->sum(fn ($part) => max(0, (float) $part->amount - (float) $part->paid_amount)) * 100);
+            $oldRemainingCents = (int) round($parts->whereIn('status', ['pending', 'partial'])->sum(fn ($part) => max(0, (float) $part->amount - (float) $part->paid_amount)) * 100);
             if ($oldRemainingCents <= 0) {
                 throw ValidationException::withMessages(['commitment' => 'Este parcelamento já não tem saldo por pagar.']);
             }
@@ -275,6 +275,8 @@ class FinancialCommitmentService
             if ($hasPayments) {
                 throw ValidationException::withMessages(['commitment' => 'Esta compra já tem pagamentos registados. Arquiva ou cancela-a; não pode ser eliminada.']);
             }
+            $locked->update(['status' => 'cancelled']);
+            $locked->parcelas()->whereIn('status', ['pending', 'partial'])->update(['status' => 'cancelled']);
             Movimento::query()->where('user_id', $user->id)->where('debt_id', $locked->id)->where('status', 'pending')->get()
                 ->each(fn (Movimento $forecast) => $this->movements->voidCancelledCommitmentForecast($user, $locked, $forecast));
             $locked->parcelas()->delete();
