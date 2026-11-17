@@ -281,23 +281,18 @@ class FinancialRecurrenceTest extends TestCase
         $this->assertSame(2, $user->movimentos()->where('recurrence_id', $rule->id)->where('status', 'void')->count());
     }
 
-    public function test_recurring_delete_scope_all_preserves_settled_movements_and_removes_pending_occurrences(): void
+    public function test_recurring_delete_scope_rejects_all_to_prevent_retroactive_deletion(): void
     {
         $user = User::factory()->create();
-        $account = $this->account($user);
-        $this->actingAs($user)->postJson('/api/financial/recurrences', $this->createRule($user, $account->id))->assertCreated();
+        $this->actingAs($user)->postJson('/api/financial/recurrences', $this->createRule($user))->assertCreated();
         $rule = $user->recorrencias()->firstOrFail();
-        $settled = $user->movimentos()->where('recurrence_id', $rule->id)->orderBy('recurrence_occurrence_date')->firstOrFail();
-        $this->putJson('/api/financial/movements/'.$settled->id.'/settle', [
-            'source_account_id' => $account->id,
-        ])->assertOk();
+        $selected = $user->movimentos()->where('recurrence_id', $rule->id)->orderBy('recurrence_occurrence_date')->firstOrFail();
 
-        $this->deleteJson('/api/financial/movements/'.$settled->id.'/recurrence-scope', ['scope' => 'all'])->assertOk();
+        $this->deleteJson('/api/financial/movements/'.$selected->id.'/recurrence-scope', ['scope' => 'all'])
+            ->assertUnprocessable();
 
-        $this->assertFalse($rule->fresh()->is_active);
-        $this->assertSame('settled', $settled->fresh()->status);
-        $this->assertSame(1, $user->movimentos()->where('recurrence_id', $rule->id)->where('status', 'settled')->count());
-        $this->assertSame(0, $user->movimentos()->where('recurrence_id', $rule->id)->where('status', 'pending')->count());
+        $this->assertTrue($rule->fresh()->is_active);
+        $this->assertSame(3, $user->movimentos()->where('recurrence_id', $rule->id)->where('status', 'pending')->count());
     }
 
 
