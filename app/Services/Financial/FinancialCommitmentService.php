@@ -275,6 +275,9 @@ class FinancialCommitmentService
                 ]);
             }
 
+            // Se o novo plano tiver menos prestações, as linhas excedentes ficam canceladas.
+            $replaceableParts->slice($count)->each(fn ($part) => $part->update(['status' => 'cancelled']));
+
             return $locked->refresh()->load('parcelas');
         });
     }
