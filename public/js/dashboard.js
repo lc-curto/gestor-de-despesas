@@ -997,23 +997,25 @@
 
         document.getElementById('deleteMovementDescription').textContent = row.dataset.description || '';
         document.getElementById('deleteRecurringOptions').hidden = !recurring;
-        document.getElementById('deleteSingleOption').hidden = recurring;
+        document.getElementById('deleteSingleConfirmation').hidden = recurring;
         document.getElementById('deleteMovementTitle').textContent = recurring ? 'Excluir recorrência' : 'Excluir movimento';
 
         // Reinicia sempre a seleção: o estado anterior do modal não pode influenciar esta exclusão.
-        [onlyOption, futureOption, allOption, document.getElementById('deleteScopeOnlySingle')].forEach((input) => {
-            if (input) input.checked = false;
+        [onlyOption, futureOption, allOption].forEach((input) => {
+            if (input) {
+                input.checked = false;
+                input.disabled = false;
+            }
         });
 
         if (recurring) {
-            // Ocorrências já pagas são preservadas; nesse caso só se pode interromper esta e/ou as seguintes.
+            // Movimentos já pagos permanecem no histórico; não podem ser excluídos isoladamente.
             onlyOption.closest('label').hidden = settled;
             onlyOption.disabled = settled;
             futureOption.checked = settled;
             onlyOption.checked = !settled;
-            allOption.checked = false;
         } else {
-            document.getElementById('deleteScopeOnlySingle').checked = true;
+            onlyOption.closest('label').hidden = false;
         }
 
         note.hidden = !(recurring && settled);
