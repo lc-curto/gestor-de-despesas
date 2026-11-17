@@ -157,6 +157,131 @@ class FinancialCommitmentService
         });
     }
 
+    /**
+     * Guarda a versão anterior e substitui apenas as prestações ainda não pagas.
+     * Pagamentos e prestações liquidadas/parcialmente liquidadas permanecem intactos.
+     */
+    public function renegotiate(User $user, Divida $debt, array $data): Divida
+    {
+        return DB::transaction(function () use ($user, $debt, $data): Divida {
+            $locked = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
+            if (in_array($locked->status, ['cancelled', 'paid'], true)) {
+                throw ValidationException::withMessages(['commitment' => 'Só é possível renegociar um parcelamento ativo.']);
+            }
+
+            $parts = $locked->parcelas()->orderBy('installment_number')->lockForUpdate()->get();
+            $paidCents = (int) round((float) $parts->sum('paid_amount') * 100);
+            $oldRemainingCents = (int) round($parts->sum(fn ($part) => max(0, (float) $part->amount - (float) $part->paid_amount)) * 100);
+            if ($oldRemainingCents <= 0) {
+                throw ValidationException::withMessages(['commitment' => 'Este parcelamento já não tem saldo por pagar.']);
+            }
+
+            $count = (int) $data['installments_count'];
+            $frequency = $data['installment_frequency'];
+            $remainingCents = array_key_exists('remaining_amount', $data)
+                ? (int) round(((float) $data['remaining_amount']) * 100)
+                : $oldRemainingCents;
+            if ($remainingCents < 1 || $remainingCents < $count) {
+                throw ValidationException::withMessages(['remaining_amount' => 'O saldo renegociado deve permitir pelo menos 0,01 € por prestação.']);
+            }
+
+            DB::table('dividas_renegociacoes')->insert([
+                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'user_id' => $user->id,
+                'debt_id' => $locked->id,
+                'previous_terms' => json_encode([
+                    'total_amount' => $locked->total_amount,
+                    'installments_count' => $locked->installments_count,
+                    'installment_frequency' => $locked->installment_frequency,
+                    'due_date' => $locked->due_date?->toDateString(),
+                    'remaining_amount' => number_format($oldRemainingCents / 100, 2, '.', ''),
+                ], JSON_THROW_ON_ERROR),
+                'new_terms' => json_encode([
+                    'remaining_amount' => number_format($remainingCents / 100, 2, '.', ''),
+                    'installments_count' => $count,
+                    'installment_frequency' => $frequency,
+                    'due_date' => $data['due_date'],
+                ], JSON_THROW_ON_ERROR),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            foreach ($parts->whereIn('status', ['pending', 'partial']) as $part) {
+                $part->update(['status' => 'cancelled']);
+                Movimento::query()->where('user_id', $user->id)->where('debt_id', $locked->id)
+                    ->where('installment_id', $part->id)->where('status', 'pending')->get()
+                    ->each(fn (Movimento $forecast) => $this->movements->voidCancelledCommitmentForecast($user, $locked, $forecast));
+            }
+
+            $base = intdiv($remainingCents, $count);
+            $remainder = $remainingCents % $count;
+            $firstNumber = (int) $parts->max('installment_number') + 1;
+            $firstDue = Carbon::parse($data['due_date']);
+            $locked->update([
+                'total_amount' => number_format(($paidCents + $remainingCents) / 100, 2, '.', ''),
+                'installments_count' => (int) $parts->where('status', 'paid')->count() + $count,
+                'installment_frequency' => $frequency,
+                'due_date' => $firstDue->toDateString(),
+                'status' => 'open',
+            ]);
+
+            for ($i = 0; $i < $count; $i++) {
+                $amountCents = $base + ($i < $remainder ? 1 : 0);
+                $number = $firstNumber + $i;
+                $dueDate = $this->installmentDate($firstDue->copy(), $i, $frequency);
+                $part = ParcelaDivida::query()->create([
+                    'user_id' => $user->id,
+                    'debt_id' => $locked->id,
+                    'installment_number' => $number,
+                    'due_date' => $dueDate->toDateString(),
+                    'amount' => number_format($amountCents / 100, 2, '.', ''),
+                    'principal_amount' => number_format($amountCents / 100, 2, '.', ''),
+                    'interest_amount' => '0.00',
+                    'paid_amount' => '0.00',
+                    'status' => 'pending',
+                ]);
+                $this->movements->createPending($user, [
+                    'type' => 'expense',
+                    'description' => $locked->name.' · Parcela '.$number.'/'.$locked->installments_count,
+                    'amount' => number_format($amountCents / 100, 2, '.', ''),
+                    'movement_date' => $dueDate->toDateString(),
+                    'source_account_id' => $locked->account_id,
+                    'debt_id' => $locked->id,
+                    'installment_id' => $part->id,
+                ]);
+            }
+
+            return $locked->refresh()->load('parcelas');
+        });
+    }
+
+    public function archive(User $user, Divida $debt): Divida
+    {
+        $locked = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
+        if ($locked->status === 'cancelled') {
+            throw ValidationException::withMessages(['commitment' => 'Uma compra cancelada não pode ser arquivada nesta operação.']);
+        }
+        $locked->update(['archived_at' => now()]);
+        return $locked->refresh();
+    }
+
+    public function deleteUnused(User $user, Divida $debt): void
+    {
+        DB::transaction(function () use ($user, $debt): void {
+            $locked = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
+            $hasPayments = $locked->parcelas()->where('paid_amount', '>', 0)->exists()
+                || Movimento::query()->where('user_id', $user->id)->where('debt_id', $locked->id)->where('status', 'settled')->exists();
+            if ($hasPayments) {
+                throw ValidationException::withMessages(['commitment' => 'Esta compra já tem pagamentos registados. Arquiva ou cancela-a; não pode ser eliminada.']);
+            }
+            Movimento::query()->where('user_id', $user->id)->where('debt_id', $locked->id)->where('status', 'pending')->get()
+                ->each(fn (Movimento $forecast) => $this->movements->voidCancelledCommitmentForecast($user, $locked, $forecast));
+            $locked->parcelas()->delete();
+            DB::table('dividas_renegociacoes')->where('user_id', $user->id)->where('debt_id', $locked->id)->delete();
+            $locked->delete();
+        });
+    }
+
     public function cancel(User $user, Divida $debt): Divida
     {
         return DB::transaction(function () use ($user, $debt): Divida {
