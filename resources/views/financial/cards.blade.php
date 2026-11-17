@@ -6,7 +6,7 @@
 <div class="app-content credit-cards-page">
     <header class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
         <div><h1 class="h2 fw-bold mb-1">Cartões</h1><p class="text-secondary mb-0">Gestão de crédito e utilização.</p></div>
-        <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#createCardModal"><i data-lucide="plus" aria-hidden="true"></i><span class="ms-1">Novo cartão</span></button>
+        <div class="d-flex flex-wrap gap-2"><a href="{{ route('financial.invoices.page') }}" class="btn btn-outline-secondary"><i data-lucide="receipt" aria-hidden="true"></i><span class="ms-1">Faturas</span></a><button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#createCardModal"><i data-lucide="plus" aria-hidden="true"></i><span class="ms-1">Novo cartão</span></button></div>
     </header>
     <div id="cardsFeedback" class="alert d-none" role="status" aria-live="polite"></div>
     <section class="row row-cols-3 g-2 mb-4 cards-kpi-grid" aria-label="Resumo dos cartões">
