@@ -87,14 +87,16 @@ class FinancialDeletionService
 
             $invoice = null;
             $isInvoicePayment = $locked->type === 'transfer' && $locked->settles_movement_id && $locked->invoice_id;
-            if ($locked->invoice_id && ! $isInvoicePayment) {
+            if ($locked->invoice_id) {
                 $invoice = Fatura::query()
                     ->where('user_id', $user->id)
                     ->whereKey($locked->invoice_id)
                     ->lockForUpdate()
                     ->firstOrFail();
 
-                $this->movements->assertInvoiceReconciled($user, $invoice);
+                if (! $isInvoicePayment) {
+                    $this->movements->assertInvoiceReconciled($user, $invoice);
+                }
                 $hasPayments = $invoice->movimentos()
                     ->where('type', 'transfer')
                     ->where('status', 'settled')
@@ -106,7 +108,7 @@ class FinancialDeletionService
                             ->orWhere('target_invoice_id', $invoice->id);
                     })->exists();
 
-                if (in_array($invoice->status, ['closed', 'paid', 'carried'], true) || $hasPayments || $hasCarry) {
+                if (! $isInvoicePayment && (in_array($invoice->status, ['closed', 'paid', 'carried'], true) || $hasPayments || $hasCarry)) {
                     throw ValidationException::withMessages([
                         'movement' => 'Este movimento pertence a uma fatura fechada, paga ou com pagamentos/saldos associados. A exclusão isolada foi bloqueada para preservar as alocações e os ciclos seguintes.',
                     ]);
@@ -277,7 +279,7 @@ class FinancialDeletionService
             $beforeDebt = $lockedDebt->getAttributes();
             $lockedDebt->update(['status' => 'cancelled']);
             $lockedDebt->delete();
-            $this->recordItem($user, $operationId, 'Divida', $lockedDebt->id, 'soft_deleted', $beforeDebt, $lockedDebt->fresh()->getAttributes());
+            $this->recordItem($user, $operationId, 'Divida', $lockedDebt->id, 'soft_deleted', $beforeDebt, $lockedDebt->getAttributes());
 
             foreach ($installments as $installment) {
                 $before = $installment->getAttributes();
