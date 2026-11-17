@@ -119,6 +119,30 @@ class FinancialDeletionService
         });
     }
 
+    public function deleteLegacyRecord(User $user, string $type, string $id): void
+    {
+        DB::transaction(function () use ($user, $type, $id): void {
+            if (! in_array($type, ['despesa', 'receita'], true)) {
+                throw ValidationException::withMessages(['movement' => 'Tipo de registo legacy inválido.']);
+            }
+
+            $query = $type === 'despesa' ? Despesa::query() : Receita::query();
+            $record = $query->where('user_id', $user->id)->whereKey($id)->lockForUpdate()->first();
+            if (! $record) {
+                return;
+            }
+
+            $operationId = $this->startOperation($user, 'legacy_'.$type, $id, 'Registo legacy eliminado pelo utilizador.');
+            $before = $record->getAttributes();
+            $record->delete();
+            $this->recordItem($user, $operationId, ucfirst($type), $id, 'soft_deleted', $before, $record->getAttributes());
+            DB::table('deletion_operations')->where('id', $operationId)->update([
+                'status' => 'completed',
+                'updated_at' => now(),
+            ]);
+        });
+    }
+
     public function deleteMovement(
         User $user,
         Movimento $movement,
