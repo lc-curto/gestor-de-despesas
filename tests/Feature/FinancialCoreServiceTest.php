@@ -682,7 +682,8 @@ class FinancialCoreServiceTest extends TestCase
         $this->postJson('/api/financial/invoices/'.$invoice->id.'/charges', [
             'charge_type' => 'interest', 'description' => 'Juros por atraso',
             'amount' => '5.00', 'movement_date' => '2026-11-17',
-        ])->assertCreated()->assertJsonPath('data.type', 'expense')->assertJsonPath('data.invoice_id', $invoice->id);
+        ])->assertCreated()->assertJsonPath('data.type', 'expense')->assertJsonPath('data.invoice_id', $invoice->id)
+            ->assertJsonPath('data.invoice_charge_type', 'interest');
 
         $invoiceData = $this->getJson('/api/financial/invoices')->assertOk()->json('data.data.0');
         $this->assertSame('55.00', $invoiceData['total_amount']);
