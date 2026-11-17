@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['user_id', 'name', 'slug', 'type', 'icon', 'color', 'is_active'])]
+#[Fillable(['user_id', 'name', 'slug', 'type', 'expense_behavior', 'icon', 'color', 'is_active'])]
 class Categoria extends Model
 {
     use HasUuids;
