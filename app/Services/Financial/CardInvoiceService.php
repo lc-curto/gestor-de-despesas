@@ -137,16 +137,17 @@ class CardInvoiceService
     public function listInvoices(User $user)
     {
         return Fatura::query()->where('user_id', $user->id)
-            ->whereHas('movimentos', fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false))
+            ->where(function ($query) { $query->whereHas('movimentos', fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false))->orWhereHas('saldosTransportados'); })
             ->with('conta:id,name,type,currency,credit_limit')
             ->with([
                 'movimentos' => fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false)
                     ->select('id', 'invoice_id', 'description', 'amount', 'movement_date', 'type', 'is_settlement_parent'),
                 'pagamentos' => fn ($q) => $q->where('status', 'settled')
-                    ->select('id', 'invoice_id', 'amount', 'reversal_of_id', 'type'),
+                    ->with(['contaOrigem:id,name,type', 'contaDestino:id,name,type'])
+                    ->select('id', 'invoice_id', 'amount', 'reversal_of_id', 'type', 'movement_date', 'source_account_id', 'destination_account_id'),
                 'creditos' => fn ($q) => $q->where('status', 'settled')
-                    ->select('id', 'invoice_id', 'amount', 'invoice_credit_for_movement_id', 'invoice_charge_type'),
-                'saldosTransportados:id,user_id,source_invoice_id,target_invoice_id,amount',
+                    ->select('id', 'invoice_id', 'amount', 'movement_date', 'invoice_credit_for_movement_id', 'invoice_charge_type'),
+                'saldosTransportados' => fn ($q) => $q->with('sourceInvoice:id,reference_month,closing_date,due_date,status')->select('id', 'user_id', 'source_invoice_id', 'target_invoice_id', 'amount'),
             ])
             ->withCount(['movimentos' => fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false)])
             ->orderByDesc('reference_month')->paginate(30)
