@@ -709,7 +709,7 @@ class FinancialCoreServiceTest extends TestCase
             'movement_date' => '2026-11-12',
         ]);
         $sourceInvoice = $user->faturas()->firstOrFail();
-        $this->travelTo(\\Illuminate\\Support\\Carbon::parse('2026-12-06 12:00:00'));
+        $this->travelTo(\Illuminate\\Support\\Carbon::parse('2026-12-06 12:00:00'));
 
         $invoices->purchase($user, [
             'account_id' => $card->id, 'description' => 'Compra dezembro', 'amount' => '50.00',
@@ -730,7 +730,7 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('interest', $charge->invoice_charge_type);
         $this->assertSame($sourceInvoice->id, $charge->origin_invoice_id);
 
-        $carry = \\App\\Models\\FaturaSaldoTransportado::query()
+        $carry = \App\\Models\\FaturaSaldoTransportado::query()
             ->where('source_invoice_id', $sourceInvoice->id)
             ->where('target_invoice_id', $targetInvoice->id)->firstOrFail();
         $this->assertSame('100.00', (string) $carry->amount);
@@ -744,10 +744,10 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('-155.00', app(AccountBalanceService::class)->balance($card->fresh()));
         $this->assertSame(3, $user->movimentos()->where('type', 'expense')->where('is_settlement_parent', false)->count());
 
-        $projection = app(\\App\\Services\\Financial\\FinancialProjectionService::class)->build(
+        $projection = app(\App\\Services\\Financial\\FinancialProjectionService::class)->build(
             $user,
-            \\Illuminate\\Support\\Carbon::parse('2027-01-01'),
-            \\Illuminate\\Support\\Carbon::parse('2027-01-31')
+            \Illuminate\\Support\\Carbon::parse('2027-01-01'),
+            \Illuminate\\Support\\Carbon::parse('2027-01-31')
         );
         $invoiceProjection = $projection['movements']->filter(fn ($item) => str_starts_with((string) $item->id, 'invoice-'));
         $this->assertCount(1, $invoiceProjection);
