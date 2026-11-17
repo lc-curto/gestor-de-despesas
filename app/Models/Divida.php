@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Divida extends Model
 {
-    use HasUuids;
+    use HasUuids, SoftDeletes;
     protected $table = 'dividas';
     protected $fillable = ['user_id','name', 'merchant', 'type', 'payment_condition', 'payment_method', 'installments_count', 'installment_frequency', 'account_id', 'total_amount', 'start_date', 'due_date', 'status', 'archived_at'];
     protected function casts(): array { return ['total_amount' => 'decimal:2', 'installments_count' => 'integer', 'start_date' => 'date', 'due_date' => 'date', 'archived_at' => 'datetime']; }
