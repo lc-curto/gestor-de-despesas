@@ -46,6 +46,9 @@ class FinancialCoreController extends Controller
             'start_date' => 'required|date',
             'due_date' => 'nullable|date|after_or_equal:start_date',
             'payment_condition' => ['required', Rule::in(['cash', 'deferred', 'installments'])],
+            // Compromissos representam obrigações ainda não liquidadas.
+            // A liquidação é registada posteriormente em cada prestação.
+            'paid_now' => ['required', Rule::in(['0'])],
             'payment_method' => 'nullable|string|max:30',
             'installments_count' => [Rule::requiredIf($request->input('payment_condition') === 'installments'), 'nullable', 'integer', 'min:2', 'max:120'],
             'installment_frequency' => ['nullable', Rule::in(['weekly', 'biweekly', 'monthly'])],
