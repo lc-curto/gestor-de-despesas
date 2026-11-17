@@ -470,8 +470,15 @@ class FinanceController extends Controller
 
                 $cutoff = $request->user()->financial_cutoff_date?->toDateString();
                 $payload['is_historical'] = (bool) $movement->is_historical || ($cutoff !== null && $date <= $cutoff);
-                $movement->historico()->delete();
-                $movement->delete();
+                // Substitui sem apagar o registo canónico nem o seu histórico.
+                // A referência legacy é libertada para o novo movimento dentro da mesma transação.
+                $service->deleteAsCorrection(
+                    $request->user(),
+                    $movement,
+                    'Movimento substituído durante a edição do registo legado.',
+                    false
+                );
+                $movement->update(['legacy_type' => null, 'legacy_id' => null]);
                 $this->createLinkedMovement($request, $payload, $service, $invoices);
 
                 if ($recurrenceId) {
