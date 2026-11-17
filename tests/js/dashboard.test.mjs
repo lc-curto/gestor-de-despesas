@@ -10,8 +10,7 @@ const markup = `<!doctype html><meta name="csrf-token" content="test-token">
  <div id="movementFormError" class="d-none" tabindex="-1"></div><input id="movementMethod" name="_method" value="POST">
  <input id="movementDescription" name="description" required><input id="movementAmount" name="amount" type="text" inputmode="decimal" required>
  <input id="movementDate" name="expense_date" type="date" required>
- <div class="mb-3"><select id="movementAccount" name="account_id"><option value="">Seleciona</option><option value="account-id">Conta</option></select></div>
- <select id="movementCategory" name="category_id" required><option value="">Seleciona</option><option value="casa-id">Casa</option></select>
+  <select id="movementCategory" name="category_id" required><option value="">Seleciona</option><option value="casa-id">Casa</option></select>
  <input type="hidden" name="payment_condition" id="movementPaymentCondition" value="cash">
  <input type="hidden" name="payment_method" id="movementPlannedPaymentMethod" value="">
  <input type="hidden" name="expense_behavior" id="movementExpenseBehavior" value="variable">
