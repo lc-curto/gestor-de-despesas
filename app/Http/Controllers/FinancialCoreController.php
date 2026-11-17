@@ -541,13 +541,7 @@ class FinancialCoreController extends Controller
         return response()->json(['data' => $service->confirmPending($request->user(), $movement, $data)]);
     }
 
-    public function voidMovement(Request $request, string $id, FinancialMovementService $service): JsonResponse
-    {
-        $data = $request->validate(['reason' => 'nullable|string|max:1000']);
-        $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
 
-        return response()->json(['data' => $service->voidPending($request->user(), $movement, $data['reason'] ?? null)]);
-    }
 
 
 
