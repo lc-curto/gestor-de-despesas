@@ -359,6 +359,54 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
         $this->assertSame('200.00', app(AccountBalanceService::class)->balance($bank->fresh()));
     }
 
+
+    public function test_failed_parent_recalculation_rolls_back_movement_deletion_and_audit(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->bank($user);
+        $forecast = app(FinancialMovementService::class)->createPending($user, [
+            'type' => 'expense',
+            'description' => 'Despesa com pagamento parcial',
+            'amount' => '30.00',
+            'movement_date' => '2026-11-17',
+            'source_account_id' => $bank->id,
+        ]);
+        app(FinancialMovementService::class)->settle($user, $forecast, [
+            'source_account_id' => $bank->id,
+            'amount' => '10.00',
+            'movement_date' => '2026-11-17',
+        ]);
+        $payment = $forecast->settlements()->where('status', 'settled')->firstOrFail();
+
+        $this->mock(FinancialMovementService::class, function ($mock): void {
+            $mock->shouldReceive('refreshSettlementParentAfterDeletion')
+                ->once()
+                ->andThrow(new \RuntimeException('Falha simulada no recálculo do agregado.'));
+        });
+
+        try {
+            app(\App\Services\Financial\FinancialDeletionService::class)
+                ->deleteMovement($user, $payment, 'Teste de rollback transacional.');
+            $this->fail('A falha de recálculo deveria interromper a operação.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Falha simulada no recálculo do agregado.', $exception->getMessage());
+        }
+
+        $this->assertSame('settled', $payment->fresh()->status);
+        $this->assertSame('partial', $forecast->fresh()->status);
+        $this->assertSame('190.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+        $this->assertDatabaseMissing('deletion_operations', [
+            'user_id' => $user->id,
+            'root_entity_type' => 'movement',
+            'root_entity_id' => $payment->id,
+        ]);
+        $this->assertDatabaseMissing('deletion_operation_items', [
+            'user_id' => $user->id,
+            'entity_type' => 'Movimento',
+            'entity_id' => $payment->id,
+        ]);
+    }
+
     public function test_renegotiation_orchestrator_rejects_an_already_paid_installment(): void
     {
         $user = User::factory()->create();
