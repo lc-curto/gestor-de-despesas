@@ -557,9 +557,13 @@ class FinancialAcceptanceTest extends TestCase
             ->assertSee('value="monthly"', false);
 
         $html = $response->getContent();
-        $this->assertLessThan(strpos($html, 'id="movementDescription"'), strpos($html, 'id="movementAmount"'));
-        $this->assertLessThan(strpos($html, 'id="movementDate"'), strpos($html, 'id="movementCategory"'));
-        $this->assertStringContainsString('accordion-button collapsed', $html);
+        $formStart = strpos($html, '<form id="dashboardMovementForm"');
+        $this->assertNotFalse($formStart, 'O formulário principal de movimentos deve estar presente.');
+        $formHtml = substr($html, $formStart, strpos($html, '</form>', $formStart) - $formStart);
+
+        $this->assertLessThan(strpos($formHtml, 'id="movementDescription"'), strpos($formHtml, 'id="movementAmount"'));
+        $this->assertLessThan(strpos($formHtml, 'id="movementCategory"'), strpos($formHtml, 'id="movementDate"'));
+        $this->assertStringContainsString('accordion-button collapsed', $formHtml);
     }
 
 }
