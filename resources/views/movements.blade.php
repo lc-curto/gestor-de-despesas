@@ -125,9 +125,23 @@
                                         <label for="movementAccount" class="form-label fw-semibold" id="movementAccountLabel">De onde saiu o dinheiro?</label>
                                         <select class="form-select mb-3" id="movementAccount" name="account_id">
                                             <option value="">Selecionar conta</option>
-                                            @foreach ($accounts as $account)
-                                                <option value="{{ $account->id }}" @selected($accounts->count() === 1)>{{ $account->name }} · {{ $account->currency }}</option>
+                                            @foreach ($accounts->where('type', 'bank') as $account)
+                                                <option value="{{ $account->id }}" data-account-type="bank" @selected($accounts->count() === 1)>{{ $account->name }} · {{ $account->currency }}</option>
                                             @endforeach
+                                            @if ($accounts->where('type', 'credit_card')->isNotEmpty())
+                                                <optgroup label="Cartões de crédito">
+                                                    @foreach ($accounts->where('type', 'credit_card') as $account)
+                                                        <option value="{{ $account->id }}" data-account-type="credit_card">{{ $account->name }} · {{ $account->currency }}</option>
+                                                    @endforeach
+                                                </optgroup>
+                                            @endif
+                                            @if ($accounts->where('type', 'cash')->isNotEmpty())
+                                                <optgroup label="Dinheiro">
+                                                    @foreach ($accounts->where('type', 'cash') as $account)
+                                                        <option value="{{ $account->id }}" data-account-type="cash">{{ $account->name }} · {{ $account->currency }}</option>
+                                                    @endforeach
+                                                </optgroup>
+                                            @endif
                                         </select>
                                         @if ($accounts->isEmpty())
                                             <div class="form-text text-warning mb-3">Cria uma conta e configura o saldo inicial em <a href="{{ route('financial.accounts.page') }}">Contas</a> antes de registar.</div>
@@ -136,12 +150,12 @@
                                             <label for="dashboardActualPaymentMethod" class="form-label fw-semibold">Método de pagamento</label>
                                             <select id="dashboardActualPaymentMethod" name="actual_payment_method" class="form-select">
                                                 <option value="">Selecionar método</option>
-                                                <option value="cash">Dinheiro</option>
-                                                <option value="debit">Cartão de débito</option>
-                                                <option value="credit">Cartão de crédito</option>
-                                                <option value="transfer">Transferência bancária</option>
-                                                <option value="mbway">MB WAY</option>
-                                                <option value="direct_debit">Débito direto</option>
+                                                <option value="cash" data-account-type="cash">Dinheiro</option>
+                                                <option value="debit" data-account-type="bank">Cartão de débito</option>
+                                                <option value="transfer" data-account-type="bank">Transferência bancária</option>
+                                                <option value="mbway" data-account-type="bank">MB WAY</option>
+                                                <option value="direct_debit" data-account-type="bank">Débito direto</option>
+                                                <option value="credit" data-account-type="credit_card">Cartão de crédito</option>
                                             </select>
                                         </div>
                                     </div>
