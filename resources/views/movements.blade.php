@@ -456,15 +456,14 @@
                 <div class="modal-body">
                     <p class="text-secondary small mb-2" id="deleteMovementDescription"></p>
                     <p class="alert alert-info small py-2 mb-2" id="deleteMovementNote" hidden></p>
-                    <div id="deleteSingleOption" class="form-check border rounded-3 p-3">
-                        <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeOnlySingle" value="only" checked>
-                        <label class="form-check-label fw-semibold" for="deleteScopeOnlySingle">Só este movimento</label>
+                    <div id="deleteSingleConfirmation" class="small text-secondary">
+                        Esta ação irá excluir apenas este movimento e não poderá ser desfeita.
                     </div>
                     <div id="deleteRecurringOptions" class="d-grid gap-2" hidden>
                         <label class="form-check border rounded-3 p-3 mb-0" for="deleteScopeOnly">
                             <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeOnly" value="only">
-                            <span class="fw-semibold">Só este</span>
-                            <span class="d-block small text-secondary">Mantém os seguintes.</span>
+                            <span class="fw-semibold">Apenas este movimento</span>
+                            <span class="d-block small text-secondary">Exclui esta ocorrência e mantém as restantes.</span>
                         </label>
                         <label class="form-check border rounded-3 p-3 mb-0" for="deleteScopeFuture">
                             <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeFuture" value="this_and_future">
