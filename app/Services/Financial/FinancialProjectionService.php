@@ -125,13 +125,15 @@ class FinancialProjectionService
             ->with([
                 'conta',
                 'movimentos' => fn ($query) => $query->where('status', 'settled'),
+                'creditos' => fn ($query) => $query->where('status', 'settled')->select('id', 'invoice_id', 'amount', 'invoice_charge_type'),
                 'saldosTransportados:id,user_id,source_invoice_id,target_invoice_id,amount',
             ])
             ->get();
         foreach ($invoices as $invoice) {
             $total = (float) $invoice->movimentos
                 ->where('type', 'expense')->where('is_settlement_parent', false)->sum('amount')
-                + (float) $invoice->saldosTransportados->sum('amount');
+                + (float) $invoice->saldosTransportados->sum('amount')
+                - (float) $invoice->creditos->sum('amount');
             $paid = (float) $invoice->movimentos->where('type', 'transfer')
                 ->sum(fn (Movimento $movement) => $movement->reversal_of_id ? -(float) $movement->amount : (float) $movement->amount);
             $remaining = round($total - $paid, 2);
