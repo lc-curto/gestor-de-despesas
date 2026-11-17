@@ -262,13 +262,19 @@ class DashboardController extends Controller
             ->where(fn ($q) => $q->whereNull('financial_movements.status')->orWhere('financial_movements.status', '!=', 'void'))
             ->whereNull('financial_movements.invoice_id')
             ->selectRaw("despesas.id, financial_movements.id AS financial_movement_id, 0 AS is_invoice_payment, 'despesa' AS tipo, despesas.description, despesas.amount,
-                CASE WHEN financial_movements.is_settlement_parent = 1 THEN GREATEST(0, financial_movements.amount - COALESCE((
+                CASE WHEN financial_movements.is_settlement_parent = 1 THEN CASE WHEN (financial_movements.amount - COALESCE((
                     SELECT SUM(CASE WHEN settlement_events.reversal_of_id IS NULL THEN settlement_events.amount ELSE -settlement_events.amount END)
                     FROM movimentos AS settlement_events
                     WHERE settlement_events.user_id = financial_movements.user_id
                         AND settlement_events.settles_movement_id = financial_movements.id
                         AND settlement_events.status = 'settled'
-                ), 0)) ELSE despesas.amount END AS remaining_amount,
+                ), 0)) < 0 THEN 0 ELSE (financial_movements.amount - COALESCE((
+                    SELECT SUM(CASE WHEN settlement_events.reversal_of_id IS NULL THEN settlement_events.amount ELSE -settlement_events.amount END)
+                    FROM movimentos AS settlement_events
+                    WHERE settlement_events.user_id = financial_movements.user_id
+                        AND settlement_events.settles_movement_id = financial_movements.id
+                        AND settlement_events.status = 'settled'
+                ), 0)) END ELSE despesas.amount END AS remaining_amount,
                 despesas.currency, categorias.id AS category, categorias.name AS category_label, categorias.icon AS category_icon, categorias.color AS category_color, despesas.expense_date AS data_movimento, financial_movements.source_account_id AS account_id, financial_movements.status AS movement_status, financial_movements.requires_account_assignment AS requires_account_assignment, financial_movements.is_historical AS is_historical, financial_movements.expense_behavior AS expense_behavior, despesas.due_date AS due_date, financial_movements.recurrence_id AS recurrence_id, recurrence_rules.frequency AS recurrence_frequency, recurrence_rules.interval_value AS recurrence_interval, recurrence_rules.ends_at AS recurrence_ends_at");
 
         // Conserva-se o pagamento visível como saída, com is_invoice_payment, pois
@@ -296,13 +302,19 @@ class DashboardController extends Controller
             ->whereBetween('receitas.income_date', [$inicio->toDateString(), $fim->toDateString()])
             ->where(fn ($q) => $q->whereNull('financial_movements.status')->orWhere('financial_movements.status', '!=', 'void'))
             ->selectRaw("receitas.id, financial_movements.id AS financial_movement_id, 0 AS is_invoice_payment, 'receita' AS tipo, receitas.description, receitas.amount,
-                CASE WHEN financial_movements.is_settlement_parent = 1 THEN GREATEST(0, financial_movements.amount - COALESCE((
+                CASE WHEN financial_movements.is_settlement_parent = 1 THEN CASE WHEN (financial_movements.amount - COALESCE((
                     SELECT SUM(CASE WHEN settlement_events.reversal_of_id IS NULL THEN settlement_events.amount ELSE -settlement_events.amount END)
                     FROM movimentos AS settlement_events
                     WHERE settlement_events.user_id = financial_movements.user_id
                         AND settlement_events.settles_movement_id = financial_movements.id
                         AND settlement_events.status = 'settled'
-                ), 0)) ELSE receitas.amount END AS remaining_amount,
+                ), 0)) < 0 THEN 0 ELSE (financial_movements.amount - COALESCE((
+                    SELECT SUM(CASE WHEN settlement_events.reversal_of_id IS NULL THEN settlement_events.amount ELSE -settlement_events.amount END)
+                    FROM movimentos AS settlement_events
+                    WHERE settlement_events.user_id = financial_movements.user_id
+                        AND settlement_events.settles_movement_id = financial_movements.id
+                        AND settlement_events.status = 'settled'
+                ), 0)) END ELSE receitas.amount END AS remaining_amount,
                 receitas.currency, categorias.id AS category, categorias.name AS category_label, categorias.icon AS category_icon, categorias.color AS category_color, receitas.income_date AS data_movimento, financial_movements.destination_account_id AS account_id, financial_movements.status AS movement_status, financial_movements.requires_account_assignment AS requires_account_assignment, financial_movements.is_historical AS is_historical, financial_movements.expense_behavior AS expense_behavior, NULL AS due_date, financial_movements.recurrence_id AS recurrence_id, recurrence_rules.frequency AS recurrence_frequency, recurrence_rules.interval_value AS recurrence_interval, recurrence_rules.ends_at AS recurrence_ends_at");
 
         $canonical = DB::table('movimentos as canonical_movements')
@@ -318,13 +330,19 @@ class DashboardController extends Controller
             ->where(fn ($query) => $query->where('canonical_movements.type', '!=', 'expense')->orWhereNull('canonical_movements.invoice_id'))
             ->whereBetween('canonical_movements.movement_date', [$inicio->toDateString(), $fim->toDateString()])
             ->selectRaw("canonical_movements.id, canonical_movements.id AS financial_movement_id, 0 AS is_invoice_payment, CASE WHEN canonical_movements.type = 'income' THEN 'receita' ELSE 'despesa' END AS tipo, canonical_movements.description, canonical_movements.amount,
-                CASE WHEN canonical_movements.is_settlement_parent = 1 THEN GREATEST(0, canonical_movements.amount - COALESCE((
+                CASE WHEN canonical_movements.is_settlement_parent = 1 THEN CASE WHEN (canonical_movements.amount - COALESCE((
                     SELECT SUM(CASE WHEN settlement_events.reversal_of_id IS NULL THEN settlement_events.amount ELSE -settlement_events.amount END)
                     FROM movimentos AS settlement_events
                     WHERE settlement_events.user_id = canonical_movements.user_id
                         AND settlement_events.settles_movement_id = canonical_movements.id
                         AND settlement_events.status = 'settled'
-                ), 0)) ELSE canonical_movements.amount END AS remaining_amount,
+                ), 0)) < 0 THEN 0 ELSE (canonical_movements.amount - COALESCE((
+                    SELECT SUM(CASE WHEN settlement_events.reversal_of_id IS NULL THEN settlement_events.amount ELSE -settlement_events.amount END)
+                    FROM movimentos AS settlement_events
+                    WHERE settlement_events.user_id = canonical_movements.user_id
+                        AND settlement_events.settles_movement_id = canonical_movements.id
+                        AND settlement_events.status = 'settled'
+                ), 0)) END ELSE canonical_movements.amount END AS remaining_amount,
                 canonical_users.currency, canonical_categories.id AS category, canonical_categories.name AS category_label, canonical_categories.icon AS category_icon, canonical_categories.color AS category_color, canonical_movements.movement_date AS data_movimento, CASE WHEN canonical_movements.type = 'income' THEN canonical_movements.destination_account_id ELSE canonical_movements.source_account_id END AS account_id, canonical_movements.status AS movement_status, canonical_movements.requires_account_assignment AS requires_account_assignment, canonical_movements.is_historical AS is_historical, canonical_movements.expense_behavior AS expense_behavior, NULL AS due_date, canonical_movements.recurrence_id AS recurrence_id, canonical_rules.frequency AS recurrence_frequency, canonical_rules.interval_value AS recurrence_interval, canonical_rules.ends_at AS recurrence_ends_at");
 
         if ($tipo === 'despesa') {
