@@ -58,6 +58,7 @@ class CardInvoiceService
                 'type' => 'expense',
                 'expense_behavior' => $data['expense_behavior'] ?? 'variable',
                 'description' => $data['description'],
+                'payment_method' => 'credit',
                 'amount' => $data['amount'],
                 'movement_date' => $date->toDateString(),
                 'source_account_id' => $card->id,
