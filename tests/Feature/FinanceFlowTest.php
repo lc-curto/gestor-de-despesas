@@ -677,14 +677,33 @@ class FinanceFlowTest extends TestCase
             $user->contasFinanceiras()->whereKey($accountId)->firstOrFail()
         ));
 
+        app(\App\Services\Financial\FinancialMovementService::class)->settle($user, $updated, [
+            'source_account_id' => $accountId,
+            'amount' => '80.00',
+            'movement_date' => '2026-11-17',
+        ]);
+        $this->assertSame('settled', $movement->fresh()->status);
+
         $this->actingAs($user)->putJson(route('despesas.update', $legacy->id), array_merge($payload, [
-            'amount' => '30.00',
+            'amount' => '130.00',
+        ]))->assertOk();
+
+        $this->assertSame('130.00', $movement->fresh()->amount);
+        $this->assertSame('partial', $movement->fresh()->status);
+        $this->assertSame(2, $movement->settlements()->where('status', 'settled')->count());
+        $this->assertSame('130.00', (string) $legacy->fresh()->amount);
+        $this->assertSame('9880.00', app(AccountBalanceService::class)->balance(
+            $user->contasFinanceiras()->whereKey($accountId)->firstOrFail()
+        ));
+
+        $this->actingAs($user)->putJson(route('despesas.update', $legacy->id), array_merge($payload, [
+            'amount' => '110.00',
         ]))->assertUnprocessable()->assertJsonValidationErrors('amount');
 
-        $this->assertSame('120.00', $movement->fresh()->amount);
-        $this->assertSame('120.00', (string) $legacy->fresh()->amount);
+        $this->assertSame('130.00', $movement->fresh()->amount);
+        $this->assertSame('130.00', (string) $legacy->fresh()->amount);
         $this->assertSame('40.00', $payment->fresh()->amount);
-        $this->assertSame(1, $movement->settlements()->where('status', 'settled')->count());
+        $this->assertSame(2, $movement->settlements()->where('status', 'settled')->count());
     }
 
 }
