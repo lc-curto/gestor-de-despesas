@@ -280,7 +280,7 @@ class FinancialMovementService
                 'category_id' => $locked->category_id,
                 'expense_behavior' => $locked->expense_behavior,
                 'settles_movement_id' => $locked->id,
-            ]);
+            ], false);
 
             $before = $locked->getAttributes();
             $newSettledCents = $alreadySettled + $paymentCents;
