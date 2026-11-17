@@ -201,7 +201,7 @@ class FinancialMovementService
                 'settles_movement_id' => $parent->id,
             ], true);
 
-            $this->refreshSettlementParent($user, $parent->id);
+            $this->refreshSettlementParentAfterDeletion($user, $parent->id);
 
             return $event->refresh();
         });
@@ -483,7 +483,7 @@ class FinancialMovementService
     }
 
     /** Recalcula a obrigação quando uma liquidação associada é estornada. */
-    private function refreshSettlementParent(User $user, string $originalId): void
+    public function refreshSettlementParentAfterDeletion(User $user, string $originalId): void
     {
         $parent = Movimento::query()->where('user_id', $user->id)->whereKey($originalId)->lockForUpdate()->first();
         if (! $parent || ! $parent->is_settlement_parent) {
@@ -831,154 +831,33 @@ class FinancialMovementService
      * Trata o comando "eliminar" como correção do lançamento.
      * O movimento canónico permanece auditável, mas deixa de produzir impacto financeiro.
      */
-    public function deleteAsCorrection(User $user, Movimento $movement, ?string $reason = null): Movimento
-    {
-        return DB::transaction(function () use ($user, $movement, $reason) {
-            $locked = Movimento::query()
-                ->where('user_id', $user->id)
-                ->whereKey($movement->id)
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            if ($locked->settles_movement_id || $locked->is_settlement_parent || $locked->installment_id || ($locked->status === 'pending' && $locked->debt_id)) {
-                throw ValidationException::withMessages(['movement' => 'Este movimento está ligado a uma prestação. Gere ou cancela o compromisso em Parcelamentos; não o elimines isoladamente.']);
-            }
-            if ($locked->status === 'void') {
-                throw ValidationException::withMessages(['movement' => 'Este movimento já foi removido ou estornado.']);
-            }
-            if ($locked->reversal_of_id || Movimento::query()->where('reversal_of_id', $locked->id)->exists()) {
-                throw ValidationException::withMessages(['movement' => 'Este movimento faz parte de um estorno. Mantém o par original e a reversão para preservar o histórico e os saldos.']);
-            }
-
-            if ($this->appearsToBeOpeningDebtPayment($user, $locked)) {
-                throw ValidationException::withMessages([
-                    'movement' => 'Um pagamento de dívida inicial não pode ser eliminado como correção. Usa o estorno para repor a dívida e os saldos; se o pagamento antigo não puder ser identificado, pede a reconciliação do cartão.',
-                ]);
-            }
-
-            // Uma compra de cartão ligada a uma fatura parcialmente paga ou paga
-            // não pode ser removida isoladamente sem redistribuir pagamentos.
-            if ($locked->invoice_id) {
-                $invoice = $user->faturas()->whereKey($locked->invoice_id)->lockForUpdate()->firstOrFail();
-                $this->assertInvoiceReconciled($user, $invoice);
-                $hasPayments = $invoice->movimentos()
-                    ->where('type', 'transfer')
-                    ->where('status', 'settled')
-                    ->exists();
-
-                if ($invoice->status === 'paid' || $hasPayments) {
-                    throw ValidationException::withMessages([
-                        'movement' => 'Esta compra pertence a uma fatura com pagamentos registados. Corrige primeiro a fatura para manter os saldos coerentes.',
-                    ]);
-                }
-            }
-
-            $before = $locked->getAttributes();
-            $locked->update(['status' => 'void']);
-            $this->audit(
-                $user,
-                $locked,
-                'deleted_as_correction',
-                $before,
-                $locked->getAttributes(),
-                $reason ?? 'Removido pelo utilizador como correção de lançamento.'
-            );
-
-            return $locked->refresh();
-        });
+    public function deleteAsCorrection(
+        User $user,
+        Movimento $movement,
+        ?string $reason = null,
+        bool $deleteLegacy = true,
+        bool $detachRecurrence = false
+    ): Movimento {
+        return app(FinancialDeletionService::class)->deleteMovement(
+            $user,
+            $movement,
+            $reason ?? 'Movimento eliminado pelo utilizador.',
+            $deleteLegacy,
+            $detachRecurrence
+        );
     }
 
+    /**
+     * Compatibilidade com chamadas antigas. A operação já não cria movimentos
+     * inversos: encaminha o pedido para a exclusão financeira propagada.
+     */
     public function reverse(User $user, Movimento $movement, ?string $reason = null): Movimento
     {
-        return DB::transaction(function () use ($user, $movement, $reason) {
-            // Mantém a mesma ordem de bloqueio usada nas liquidações: obrigação antes do evento.
-            if ($movement->settles_movement_id) {
-                Movimento::query()->where('user_id', $user->id)->whereKey($movement->settles_movement_id)->lockForUpdate()->firstOrFail();
-            }
-            $original = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
-            if ($original->is_settlement_parent) {
-                $message = $original->installment_id
-                    ? 'Esta previsão pertence a uma prestação e não pode ser estornada enquanto obrigação. Estorna os pagamentos associados em Parcelamentos.'
-                    : 'O movimento original não pode ser estornado enquanto obrigação. Estorna os eventos de liquidação associados.';
-                throw ValidationException::withMessages(['movement' => $message]);
-            }
-            if ($original->installment_id) {
-                throw ValidationException::withMessages(['movement' => 'Este movimento está ligado a uma prestação e não pode ser estornado isoladamente. Revê o compromisso em Parcelamentos.']);
-            }
-            if ($original->status !== 'settled') {
-                throw ValidationException::withMessages(['movement' => 'Só é possível estornar movimentos liquidados.']);
-            }
-            if ($original->reversal_of_id || Movimento::query()->where('reversal_of_id', $original->id)->exists()) {
-                throw ValidationException::withMessages(['movement' => 'Este movimento já foi estornado.']);
-            }
-            // Os agregados de fatura e as projeções somam os tipos originais; um
-            // movimento inverso isolado não anula a compra ou o pagamento neles.
-            if ($original->invoice_id) {
-                $invoicePayment = $original->type === 'transfer' && $original->settles_movement_id
-                    && Movimento::query()->where('user_id', $user->id)->whereKey($original->settles_movement_id)
-                        ->where('invoice_id', $original->invoice_id)->where('is_settlement_parent', true)->exists();
-                if (! $invoicePayment) {
-                    throw ValidationException::withMessages([
-                        'movement' => 'Não é possível estornar uma compra diretamente na fatura. Regista um crédito identificado ou corrige a fatura antes de continuar.',
-                    ]);
-                }
-                $invoice = Fatura::query()->where('user_id', $user->id)->whereKey($original->invoice_id)->firstOrFail();
-                if ($invoice->status === 'carried') {
-                    throw ValidationException::withMessages([
-                        'movement' => 'O saldo desta fatura já foi transportado para um ciclo seguinte. Corrige o pagamento na fatura de destino.',
-                    ]);
-                }
-            }
-            $openingDebtCard = $this->openingDebtCardForReversal($user, $original);
-            if (! $openingDebtCard && $this->appearsToBeOpeningDebtPayment($user, $original)) {
-                throw ValidationException::withMessages([
-                    'movement' => 'Não foi possível identificar com segurança este pagamento antigo de dívida inicial. Pede a reconciliação do cartão antes de o estornar.',
-                ]);
-            }
-            if ($openingDebtCard) {
-                $openingDebtCard = ContaFinanceira::query()->where('user_id', $user->id)->whereKey($openingDebtCard->id)->lockForUpdate()->firstOrFail();
-                $paidCents = $this->balances->toCents((string) ($openingDebtCard->opening_debt_paid ?? '0.00'));
-                $reversedCents = $this->balances->toCents((string) $original->amount);
-                if ($reversedCents > $paidCents) {
-                    throw ValidationException::withMessages(['movement' => 'O pagamento não pode ser estornado porque o saldo de dívida inicial já foi alterado. Revê a dívida do cartão antes de continuar.']);
-                }
-            }
-            $payload = match ($original->type) {
-                'expense' => ['type' => 'income', 'source_account_id' => null, 'destination_account_id' => $original->source_account_id],
-                'income' => ['type' => 'expense', 'source_account_id' => $original->destination_account_id, 'destination_account_id' => null],
-                'transfer' => ['type' => 'transfer', 'source_account_id' => $original->destination_account_id, 'destination_account_id' => $original->source_account_id],
-                'adjustment' => $original->adjustment_direction === 'increase'
-                    ? ['type' => 'adjustment', 'source_account_id' => $original->destination_account_id, 'destination_account_id' => null, 'adjustment_direction' => 'decrease']
-                    : ['type' => 'adjustment', 'source_account_id' => null, 'destination_account_id' => $original->source_account_id, 'adjustment_direction' => 'increase'],
-                default => throw ValidationException::withMessages(['movement' => 'Este tipo de movimento não pode ser estornado.']),
-            };
-            $reversal = $this->createMovement($user, array_merge($payload, [
-                'description' => 'Estorno: '.$original->description,
-                'amount' => $original->amount,
-                'movement_date' => now()->toDateString(),
-                'reversal_of_id' => $original->id,
-                'invoice_id' => $original->invoice_id,
-                'settles_movement_id' => $original->settles_movement_id,
-                'is_historical' => (bool) $original->is_historical,
-            ]), true);
-            $before = $original->getAttributes();
-            if ($openingDebtCard) {
-                $paidCents -= $this->balances->toCents((string) $original->amount);
-                $openingDebtCard->update(['opening_debt_paid' => number_format($paidCents / 100, 2, '.', '')]);
-                if (! $original->opening_debt_card_id) {
-                    $original->opening_debt_card_id = $openingDebtCard->id;
-                    $original->save();
-                }
-            }
-            if ($original->settles_movement_id) {
-                $this->refreshSettlementParent($user, $original->settles_movement_id);
-            }
-            // Ambos os lançamentos ficam liquidados: os seus efeitos opostos cancelam-se
-            // no saldo e a origem mantém-se auditável. O vínculo único impede novo estorno.
-            $this->audit($user, $original->refresh(), 'reversed', $before, $original->getAttributes(), $reason);
-
-            return $reversal->refresh();
-        });
+        return app(FinancialDeletionService::class)->deleteMovement(
+            $user,
+            $movement,
+            $reason ?? 'Movimento eliminado pelo utilizador.'
+        );
     }
 
     private function account(User $user, ?string $id): ?ContaFinanceira
