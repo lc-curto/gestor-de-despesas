@@ -116,7 +116,7 @@ class CardInvoiceService
             $invoice = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
             $this->movements->assertInvoiceReconciled($user, $invoice);
             $this->carryOverdueInvoices($user, $invoice);
-            if (in_array($invoice->status, ['paid', 'carried'], true) || ($invoice->closing_date && $invoice->closing_date->lt(today()))) {
+            if (in_array($invoice->status, ['paid', 'carried', 'closed'], true) || ($invoice->closing_date && $invoice->closing_date->lt(today()))) {
                 throw ValidationException::withMessages(['invoice' => 'A fatura deste ciclo já foi fechada. A compra deve entrar no ciclo seguinte.']);
             }
 
