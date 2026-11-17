@@ -658,7 +658,7 @@
     });
     deleteButton.addEventListener('click', async () => {
         if (!archiveActionUrl || !window.confirm('Eliminar definitivamente esta compra? Esta ação não pode ser desfeita.')) return;
-        const deleteUrl = archiveActionUrl.replace(/\\/archive$/, '');
+        const deleteUrl = archiveActionUrl.replace('/archive', '');
         deleteButton.disabled = true;
         try {
             const response = await fetch(deleteUrl,{method:'DELETE',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({})});
