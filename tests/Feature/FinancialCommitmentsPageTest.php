@@ -259,4 +259,33 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->assertSame(240.0, $mobile->viewData('summary')['open']);
     }
 
+
+    public function test_editing_total_preserves_paid_amount_and_redistributes_only_pending_installments(): void
+    {
+        $user = User::factory()->create();
+        $account = app(FinancialAccountService::class)->create($user, ['name' => 'Conta', 'type' => 'bank', 'opening_balance' => '200.00']);
+        $debt = app(FinancialCommitmentService::class)->create($user, [
+            'name' => 'Móvel', 'total_amount' => '60.00',
+            'start_date' => '2026-11-17', 'due_date' => '2026-12-17',
+            'payment_condition' => 'installments', 'installments_count' => 3,
+        ]);
+        $first = $debt->parcelas->sortBy('installment_number')->first();
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+        $this->actingAs($user)->postJson(route('financial.commitments.installments.pay', [$debt->id, $first->id]), [
+            'account_id' => $account->id, 'amount' => '5.00', 'payment_date' => '2026-11-17',
+        ])->assertOk();
+
+        $this->putJson(route('financial.commitments.update', $debt->id), [
+            'name' => 'Móvel atualizado', 'total_amount' => '90.00', 'due_date' => '2026-12-20',
+        ])->assertOk();
+
+        $this->assertSame('90.00', $debt->fresh()->total_amount);
+        $this->assertSame('5.00', $first->fresh()->paid_amount);
+        $this->assertSame('33.34', $first->fresh()->amount);
+        $this->assertSame('28.33', $debt->fresh()->parcelas()->where('installment_number', 2)->value('amount'));
+        $this->assertSame('28.33', $debt->fresh()->parcelas()->where('installment_number', 3)->value('amount'));
+        $this->assertSame('28.34', $user->movimentos()->where('installment_id', $first->id)->where('status', 'pending')->value('amount'));
+        $this->assertSame('5.00', $user->movimentos()->where('installment_id', $first->id)->where('status', 'settled')->value('amount'));
+    }
+
 }
