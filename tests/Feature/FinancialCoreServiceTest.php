@@ -539,4 +539,72 @@ class FinancialCoreServiceTest extends TestCase
     }
 
 
+
+    public function test_reversing_installment_settlement_restores_installment_and_forecast(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->account($user, 'Conta principal', '100.00');
+        $commitments = app(\\App\\Services\\Financial\\FinancialCommitmentService::class);
+        $debt = $commitments->create($user, [
+            'name' => 'Eletrodoméstico',
+            'total_amount' => '60.00',
+            'start_date' => '2026-11-01',
+            'due_date' => '2026-11-25',
+            'payment_condition' => 'deferred',
+        ]);
+        $installment = $debt->parcelas->firstOrFail();
+
+        $commitments->payInstallmentWithMovement($user, $debt, $installment, [
+            'account_id' => $account->id,
+            'amount' => '20.00',
+            'payment_date' => '2026-11-18',
+        ]);
+
+        $forecast = $user->movimentos()->where('installment_id', $installment->id)->firstOrFail();
+        $event = $forecast->settlements()->where('status', 'settled')->firstOrFail();
+        app(FinancialMovementService::class)->reverse($user, $event, 'Pagamento incorreto');
+
+        $this->assertSame('0.00', (string) $installment->fresh()->paid_amount);
+        $this->assertSame('pending', $installment->fresh()->status);
+        $this->assertSame('pending', $forecast->fresh()->status);
+        $this->assertFalse((bool) $forecast->fresh()->is_settlement_parent);
+        $this->assertSame('100.00', app(AccountBalanceService::class)->balance($account->fresh()));
+    }
+
+    public function test_installment_projection_shows_effective_payment_and_only_remaining_balance(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->account($user, 'Conta principal', '100.00');
+        $commitments = app(\\App\\Services\\Financial\\FinancialCommitmentService::class);
+        $debt = $commitments->create($user, [
+            'name' => 'Eletrodoméstico',
+            'total_amount' => '60.00',
+            'start_date' => '2026-11-01',
+            'due_date' => '2026-11-25',
+            'payment_condition' => 'deferred',
+        ]);
+        $installment = $debt->parcelas->firstOrFail();
+
+        $commitments->payInstallment($user, $debt, $installment, [
+            'account_id' => $account->id,
+            'amount' => '20.00',
+            'payment_date' => '2026-11-18',
+        ]);
+
+        $projection = app(\\App\\Services\\Financial\\FinancialProjectionService::class)->build(
+            $user,
+            \\Illuminate\\Support\\Carbon::parse('2026-11-18'),
+            \\Illuminate\\Support\\Carbon::parse('2026-11-30')
+        );
+        $items = $projection['movements'];
+        $effective = $items->filter(fn ($item) => $item->settles_movement_id !== null);
+        $remaining = $items->firstWhere('id', 'debt-'.$installment->id);
+
+        $this->assertCount(1, $effective);
+        $this->assertSame(-20.0, (float) $effective->first()->projection_delta);
+        $this->assertNotNull($remaining);
+        $this->assertSame(-40.0, (float) $remaining->projection_delta);
+        $this->assertSame(-60.0, (float) $items->sum('projection_delta'));
+    }
+
 }
