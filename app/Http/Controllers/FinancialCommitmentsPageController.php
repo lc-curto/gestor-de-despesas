@@ -1,14 +1,14 @@
 <?php
 
-namespace App\\Http\\Controllers;
+namespace App\Http\Controllers;
 
-use App\\Models\\ContaFinanceira;
-use App\\Models\\Divida;
-use App\\Models\\ParcelaDivida;
-use App\\Services\\Financial\\AccountBalanceService;
-use App\\Services\\Financial\\CardInvoiceService;
-use Illuminate\\Http\\Request;
-use Illuminate\\Support\\Facades\\DB;
+use App\Models\ContaFinanceira;
+use App\Models\Divida;
+use App\Models\ParcelaDivida;
+use App\Services\Financial\AccountBalanceService;
+use App\Services\Financial\CardInvoiceService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class FinancialCommitmentsPageController extends Controller
 {
