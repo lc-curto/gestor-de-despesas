@@ -510,8 +510,8 @@ class FinanceFlowTest extends TestCase
         $this->actingAs($user)
             ->get(route('financial.commitments.page'))
             ->assertOk()
-            ->assertSee('Compromissos')
-            ->assertSee('Próximos pagamentos');
+            ->assertSee('Parcelamentos')
+            ->assertSee('Próximas prestações');
     }
 
     public function test_commitments_page_shows_deferred_commitment(): void

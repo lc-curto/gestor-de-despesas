@@ -474,8 +474,9 @@ class FinancialAcceptanceTest extends TestCase
             'account_id' => $account->id, 'amount' => '20.00', 'payment_date' => '2026-11-16',
         ])->assertUnprocessable();
 
-        $this->assertDatabaseCount('movimentos', 0);
+        $this->assertDatabaseCount('movimentos', 1);
         $this->assertDatabaseHas('parcelas_divida', ['id' => $installment->id, 'status' => 'cancelled', 'paid_amount' => '0.00']);
+        $this->assertDatabaseHas('movimentos', ['debt_id' => $debt->id, 'installment_id' => $installment->id, 'status' => 'void']);
         $this->assertDatabaseHas('dividas', ['id' => $debt->id, 'status' => 'cancelled']);
     }
 
@@ -491,10 +492,11 @@ class FinancialAcceptanceTest extends TestCase
         ])->assertCreated()->assertJsonPath('data.parcelas.0.status', 'partial');
 
         $this->assertDatabaseCount('dividas', 1);
-        $this->assertDatabaseCount('movimentos', 1);
+        $this->assertDatabaseCount('movimentos', 2);
         $this->assertDatabaseHas('movimentos', [
             'type' => 'expense', 'status' => 'settled', 'amount' => '40.00', 'source_account_id' => $account->id,
         ]);
+        $this->assertDatabaseHas('movimentos', ['type' => 'expense', 'status' => 'pending', 'amount' => '50.00']);
         $this->assertSame('460.00', app(AccountBalanceService::class)->balance($account->fresh()));
     }
 

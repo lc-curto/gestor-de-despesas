@@ -72,7 +72,7 @@ class DashboardController extends Controller
             ->whereIn('status', ['pending', 'partial'])
             ->whereHas('divida', fn ($query) => $query
                 ->where('status', '!=', 'cancelled')
-                ->where(fn ($query) => $query->whereNull('payment_method')->orWhere('payment_method', '!=', 'credit')))
+                ->where(fn ($query) => $query->whereNull('payment_method')->orWhereNotIn('payment_method', ['credit', 'card'])))
             ->selectRaw('COALESCE(SUM(amount - paid_amount), 0) as remaining')
             ->value('remaining');
         $pendingPaymentTotal = $openInvoiceTotal + $openInstallmentTotal;
@@ -80,7 +80,7 @@ class DashboardController extends Controller
             + $user->parcelasDivida()->whereIn('status', ['pending', 'partial'])
                 ->whereHas('divida', fn ($query) => $query
                     ->where('status', '!=', 'cancelled')
-                    ->where(fn ($query) => $query->whereNull('payment_method')->orWhere('payment_method', '!=', 'credit')))
+                    ->where(fn ($query) => $query->whereNull('payment_method')->orWhereNotIn('payment_method', ['credit', 'card'])))
                 ->count();
 
         // A primeira página carrega os dois tipos de movimento. O filtro de tipo é

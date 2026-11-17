@@ -53,7 +53,7 @@ class FinancialProjectionService
             ->with('divida')
             ->whereHas('divida', fn ($query) => $query
                 ->where('status', '!=', 'cancelled')
-                ->where(fn ($query) => $query->whereNull('payment_method')->orWhere('payment_method', '!=', 'credit')))
+                ->where(fn ($query) => $query->whereNull('payment_method')->orWhereNotIn('payment_method', ['credit', 'card'])))
             ->whereIn('status', ['pending', 'partial'])
             ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('movimentos as linked_movements')
                 ->whereColumn('linked_movements.installment_id', 'parcelas_divida.id')

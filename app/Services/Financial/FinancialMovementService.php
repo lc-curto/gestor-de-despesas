@@ -78,6 +78,8 @@ class FinancialMovementService
                 'category_id' => $data['category_id'] ?? null,
                 'recurrence_id' => $data['recurrence_id'] ?? null,
                 'recurrence_occurrence_date' => $data['recurrence_occurrence_date'] ?? null,
+                'debt_id' => $data['debt_id'] ?? null,
+                'installment_id' => $data['installment_id'] ?? null,
                 'legacy_type' => $data['legacy_type'] ?? null,
                 'legacy_id' => $data['legacy_id'] ?? null,
                 'is_historical' => false,
