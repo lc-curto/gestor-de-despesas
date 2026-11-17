@@ -244,9 +244,9 @@
                                         </div>
                                     </div>
 
-                                    <div class="d-grid gap-2">
-                                        <button type="submit" class="btn btn-danger w-100" id="saveMovementButton">Guardar movimento</button>
-                                        <button type="button" class="btn btn-outline-secondary d-none" id="cancelMovementEdit">Cancelar edição</button>
+                                    <div class="d-flex flex-column flex-sm-row gap-2">
+                                        <button type="button" class="btn btn-outline-secondary flex-fill" id="cancelMovementEdit">Cancelar</button>
+                                        <button type="submit" class="btn btn-danger flex-fill" id="saveMovementButton">Guardar movimento</button>
                                     </div>
                                 </form>
                             </div>
