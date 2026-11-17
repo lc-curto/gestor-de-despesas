@@ -165,6 +165,21 @@ test('resposta ambígua ou falha de rede mantém modal aberto e alerta para risc
     }
 });
 
+test('pagamento inicial superior à primeira prestação é rejeitado antes de criar o parcelamento', async () => {
+    let calls = 0;
+    const ui = setup(async () => { calls++; return jsonResponse(201, { data: { id: 'debt-id' } }); });
+    ui.form.querySelector('[name="paid_now"][value="partial"]').checked = true;
+    ui.form.querySelector('[name="paid_now"][value="partial"]').dispatchEvent(new ui.window.Event('change'));
+    ui.element('dashboardPaymentAmount').value = '31,00';
+    ui.element('dashboardPaymentAccount').value = 'account-id';
+    ui.submit();
+    await flush();
+    assert.equal(calls, 0);
+    assert.equal(ui.modal.open, true);
+    assert.match(ui.element('movementFormError').textContent, /não pode exceder o valor da primeira prestação/);
+    ui.dom.window.close();
+});
+
 test('rejeição de parcelamento por cartão orienta para Cartões e mantém modal aberto', async () => {
     const ui = setup(async () => jsonResponse(422, { errors: { payment_method: ['Regista a compra em Cartões.'] } }));
     ui.element('dashboardPaymentMethod').value = 'credit';

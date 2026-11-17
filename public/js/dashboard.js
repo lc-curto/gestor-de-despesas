@@ -121,6 +121,11 @@
 
         const paymentState = form.querySelector('[name="paid_now"]:checked')?.value || '0';
         const hasPayment = paymentState === '1' || paymentState === 'partial';
+        const isInstallmentPayment = condition === 'installments';
+        const partialLabel = document.getElementById('dashboardPaidPartialLabel');
+        const fullLabel = document.getElementById('dashboardPaidFullLabel');
+        if (partialLabel) partialLabel.textContent = isInstallmentPayment ? 'Paguei uma parte da primeira prestação' : 'Paguei uma parte';
+        if (fullLabel) fullLabel.textContent = isInstallmentPayment ? 'Já paguei a primeira prestação' : 'Já paguei tudo';
         if (paidFields) paidFields.hidden = !isExpense;
         if (paymentDetails) paymentDetails.hidden = !hasPayment || !isExpense;
         const paymentAccount = document.getElementById('dashboardPaymentAccount');
@@ -291,7 +296,10 @@
         const due = String(values.due_date || values.expense_date || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
         const dateLabel = due ? due[3] + '/' + due[2] + '/' + due[1] : 'a data indicada';
         const prefix = 'Parcelamento criado com ' + values.installments_count + ' prestações. Primeira prestação: ' + dateLabel + '. ';
-        return prefix + 'Em Movimentos, procura pelo mês do vencimento e verifica os filtros.';
+        const initialPayment = values.paid_now !== '0' && values.payment_amount
+            ? ' Pagamento inicial de ' + values.payment_amount + ' registado.'
+            : '';
+        return prefix + initialPayment + ' Em Movimentos, procura pelo mês do vencimento e verifica os filtros.';
     }
 
     function cacheKey() {
