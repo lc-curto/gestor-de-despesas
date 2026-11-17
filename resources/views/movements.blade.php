@@ -194,9 +194,9 @@
                             <div id="dashboardPaidFields" class="mt-3">
                                 <label class="form-label d-block fw-semibold">Estado do pagamento</label>
                                 <div class="payment-status-grid" role="radiogroup" aria-label="Estado do pagamento">
-                                    <label class="payment-status-option"><input class="form-check-input" type="radio" name="paid_now" value="0" checked><span>Ainda não paguei</span></label>
+                                    <label class="payment-status-option"><input class="form-check-input" type="radio" name="paid_now" value="0" checked><span>Pendente</span></label>
                                     <label class="payment-status-option"><input class="form-check-input" type="radio" name="paid_now" value="partial"><span id="dashboardPaidPartialLabel">Paguei uma parte</span></label>
-                                    <label class="payment-status-option"><input class="form-check-input" type="radio" name="paid_now" value="1"><span id="dashboardPaidFullLabel">Já paguei tudo</span></label>
+                                    <label class="payment-status-option"><input class="form-check-input" type="radio" name="paid_now" value="1"><span id="dashboardPaidFullLabel">Pago</span></label>
                                 </div>
                                 <div id="dashboardPaymentDetails" class="row g-2 mt-2" hidden>
                                     <div class="col-12" id="dashboardPaymentAmountField"><label for="dashboardPaymentAmount" class="form-label">Valor pago</label><input id="dashboardPaymentAmount" name="payment_amount" type="text" inputmode="decimal" placeholder="0,00" class="form-control"></div>
