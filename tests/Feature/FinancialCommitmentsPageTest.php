@@ -329,7 +329,7 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->assertSame('190.00', app(AccountBalanceService::class)->balance($account->fresh()));
     }
 
-    public function test_archive_hides_purchase_and_delete_soft_deletes_only_without_payments(): void
+    public function test_archive_hides_purchase_and_delete_soft_deletes_commitment(): void
     {
         $user = User::factory()->create();
         $service = app(FinancialCommitmentService::class);
@@ -393,7 +393,7 @@ class FinancialCommitmentsPageTest extends TestCase
         )->assertOk();
 
         $xpath = $this->document($this->get(route('financial.commitments.page'))->assertOk()->getContent());
-        $deleteButton = $xpath->query('//*[@id="deleteUnusedCommitment" and not(contains(concat(" ", normalize-space(@class), " "), " d-none "))]')->item(0);
+        $deleteButton = $xpath->query('//*[@id="deleteCommitmentButton" and not(contains(concat(" ", normalize-space(@class), " "), " d-none "))]')->item(0);
         $this->assertNotNull($deleteButton);
         $archiveButton = $xpath->query('//button[contains(@class,"js-archive-commitment")]')->item(0);
         $this->assertNotNull($archiveButton);

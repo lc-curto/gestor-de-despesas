@@ -332,7 +332,7 @@
         <div class="modal-footer border-0">
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button>
             <button type="button" class="btn btn-primary" id="confirmArchiveCommitment">Arquivar compra</button>
-            <button type="button" class="btn btn-outline-danger" id="deleteUnusedCommitment">Eliminar compra</button>
+            <button type="button" class="btn btn-outline-danger" id="deleteCommitmentButton">Eliminar compra</button>
         </div>
     </div></div>
 </div>
@@ -645,7 +645,7 @@
     const archiveModalElement = document.getElementById('archiveCommitmentModal');
     const archiveModal = bootstrap.Modal.getOrCreateInstance(archiveModalElement);
     const archiveButton = document.getElementById('confirmArchiveCommitment');
-    const deleteButton = document.getElementById('deleteUnusedCommitment');
+    const deleteButton = document.getElementById('deleteCommitmentButton');
     let archiveActionUrl = null;
     let deleteActionUrl = null;
     let archiveActionName = '';

@@ -152,10 +152,12 @@ Em `FinanceController::update`, num ramo alternativo, `$movement->historico()->d
 - [x] Políticas centrais para compromissos, cartões, categorias e recorrências.
 - [x] Remoção das rotas de produto para estorno/anulação isolada.
 - [x] Testes de regressão para pagamentos, faturas, dívida inicial, parcelamentos e recorrências.
-- [x] CI aprovado no commit `d800fefca844c101fdcf17b5ea50f97edb35fe41` (194 testes aprovados, 1.564 assertions; 2 testes risky sem falhas).
+- [x] CI aprovado no commit `059f8fa5e285a007e19fa38df61844bca8b159a1` (196 testes aprovados, 1.578 assertions; 2 testes risky sem falhas).
 - [x] Cancelamento de parcelamento parcialmente pago: previsão parcial anulada, pagamentos preservados/desassociados e auditoria concluída.
 - [x] Eliminação de parcelamento totalmente pago: evento preservado, prestação mantém estado `paid` e ligações ao agregado removidas.
 - [x] Bloqueio de exclusão/cancelamento quando `paid_amount` diverge dos eventos de pagamento ou quando o estado da previsão não corresponde aos eventos.
+- [x] Isolamento multiutilizador: utilizador diferente recebe 404 ao tentar eliminar compromisso ou movimento alheio.
+- [x] UI de Parcelamentos mantém a ação de eliminação disponível com pagamentos e utiliza URL DELETE explícita; backend valida a segurança da propagação.
 - [ ] Completar testes de rollback, concorrência, isolamento entre utilizadores e referências órfãs.
 - [ ] Rever todos os fluxos de edição/importação e projeções das páginas.
 - [ ] Auditoria integral e critérios de aceitação finais.
@@ -399,7 +401,7 @@ Integrações já alteradas:
 - Substituição de movimentos legacy na edição deixa de apagar o movimento canónico e o histórico.
 - Endpoints de estorno foram removidos das rotas de produto; os dados antigos permanecem compatíveis.
 
-Testes de regressão atualizados/adicionados para pagamentos parciais, pagamentos de faturas, dívida inicial, transferência, exclusão de parcelamentos parcial e totalmente pagos, cancelamento parcial, divergência entre contador e eventos, idempotência e preservação de pagamentos. O CI mais recente executou 194 testes aprovados e 1.564 assertions; 2 testes foram classificados como risky, sem falhas.
+Testes de regressão atualizados/adicionados para pagamentos parciais, pagamentos de faturas, dívida inicial, transferência, exclusão de parcelamentos parcial e totalmente pagos, cancelamento parcial, divergência entre contador e eventos, idempotência e preservação de pagamentos. O CI mais recente executou 196 testes aprovados e 1.578 assertions; 2 testes foram classificados como risky, sem falhas.
 
 ## 10. Pendências antes de declarar a auditoria/implementação concluída
 
