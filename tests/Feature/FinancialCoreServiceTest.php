@@ -551,7 +551,7 @@ class FinancialCoreServiceTest extends TestCase
     {
         $user = User::factory()->create();
         $account = $this->account($user, 'Conta principal', '100.00');
-        $commitments = app(\\App\\Services\\Financial\\FinancialCommitmentService::class);
+        $commitments = app(\App\Services\Financial\FinancialCommitmentService::class);
         $debt = $commitments->create($user, [
             'name' => 'Eletrodoméstico',
             'total_amount' => '60.00',
@@ -582,7 +582,7 @@ class FinancialCoreServiceTest extends TestCase
     {
         $user = User::factory()->create();
         $account = $this->account($user, 'Conta principal', '100.00');
-        $commitments = app(\\App\\Services\\Financial\\FinancialCommitmentService::class);
+        $commitments = app(\App\Services\Financial\FinancialCommitmentService::class);
         $debt = $commitments->create($user, [
             'name' => 'Eletrodoméstico',
             'total_amount' => '60.00',
@@ -598,10 +598,10 @@ class FinancialCoreServiceTest extends TestCase
             'payment_date' => '2026-11-18',
         ]);
 
-        $projection = app(\\App\\Services\\Financial\\FinancialProjectionService::class)->build(
+        $projection = app(\App\Services\Financial\FinancialProjectionService::class)->build(
             $user,
-            \\Illuminate\\Support\\Carbon::parse('2026-11-18'),
-            \\Illuminate\\Support\\Carbon::parse('2026-11-30')
+            \Illuminate\Support\Carbon::parse('2026-11-18'),
+            \Illuminate\Support\Carbon::parse('2026-11-30')
         );
         $items = $projection['movements'];
         $effective = $items->filter(fn ($item) => $item->settles_movement_id !== null);
