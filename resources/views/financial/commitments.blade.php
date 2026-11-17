@@ -371,7 +371,7 @@
             const result=await response.json().catch(()=>({}));
             if(!response.ok) throw new Error(result.message||'Não foi possível cancelar.');
             window.location.reload();
-        } catch(error) { showError(error.message);button.disabled=false; }
+        } catch(error) { showError(feedback,error.message);button.disabled=false; }
     }));
 
     const paymentModalElement=document.getElementById('commitmentPaymentModal');
