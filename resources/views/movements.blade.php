@@ -125,9 +125,13 @@
                                         <label for="movementAccount" class="form-label fw-semibold" id="movementAccountLabel">De onde saiu o dinheiro?</label>
                                         <select class="form-select mb-3" id="movementAccount" name="account_id">
                                             <option value="">Selecionar conta</option>
-                                            @foreach ($accounts->where('type', 'bank') as $account)
-                                                <option value="{{ $account->id }}" data-account-type="bank" @selected($accounts->count() === 1)>{{ $account->name }} · {{ $account->currency }}</option>
-                                            @endforeach
+                                            @if ($accounts->where('type', 'bank')->isNotEmpty())
+                                                <optgroup label="Contas bancárias">
+                                                    @foreach ($accounts->where('type', 'bank') as $account)
+                                                        <option value="{{ $account->id }}" data-account-type="bank" @selected($accounts->count() === 1)>{{ $account->name }} · {{ $account->currency }}</option>
+                                                    @endforeach
+                                                </optgroup>
+                                            @endif
                                             @if ($accounts->where('type', 'credit_card')->isNotEmpty())
                                                 <optgroup label="Cartões de crédito">
                                                     @foreach ($accounts->where('type', 'credit_card') as $account)
