@@ -84,6 +84,31 @@ class FinancialCoreController extends Controller
         return response()->json(['data' => $service->update($request->user(), $debt, $data)]);
     }
 
+    public function renegotiateCommitment(Request $request, string $id, FinancialCommitmentService $service): JsonResponse
+    {
+        $data = $request->validate([
+            'installments_count' => 'required|integer|min:1|max:120',
+            'installment_frequency' => ['required', Rule::in(['weekly', 'biweekly', 'monthly'])],
+            'due_date' => 'required|date|after_or_equal:today',
+            'remaining_amount' => 'nullable|numeric|gt:0|decimal:0,2|max:9999999999.99',
+        ]);
+        $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();
+        return response()->json(['data' => $service->renegotiate($request->user(), $debt, $data), 'message' => 'Parcelamento renegociado.']);
+    }
+
+    public function archiveCommitment(Request $request, string $id, FinancialCommitmentService $service): JsonResponse
+    {
+        $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();
+        return response()->json(['data' => $service->archive($request->user(), $debt), 'message' => 'Compra arquivada.']);
+    }
+
+    public function deleteCommitment(Request $request, string $id, FinancialCommitmentService $service): JsonResponse
+    {
+        $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();
+        $service->deleteUnused($request->user(), $debt);
+        return response()->json(['message' => 'Compra eliminada.']);
+    }
+
     public function cancelCommitment(Request $request, string $id, FinancialCommitmentService $service): JsonResponse
     {
         $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();
