@@ -564,7 +564,7 @@ class FinancialAcceptanceTest extends TestCase
         $this->assertSame('500.00', app(AccountBalanceService::class)->balance($account->fresh()));
     }
 
-    public function test_acceptance_reversing_opening_debt_payment_restores_card_debt_and_payment_counter(): void
+    public function test_acceptance_deleting_identified_opening_debt_payment_restores_card_debt_and_counter(): void
     {
         $user = User::factory()->create();
         $bank = $this->bank($user, balance: '500.00');
@@ -573,16 +573,13 @@ class FinancialAcceptanceTest extends TestCase
             'opening_balance_date' => '2026-11-01', 'closing_day' => 25, 'due_day' => 5, 'credit_limit' => '1000.00',
         ]);
         $payment = app(CardInvoiceService::class)->payOpeningDebt($user, $card->id, $bank->id, '2026-11-16', '100.00');
-        $this->assertSame($card->id, $payment->opening_debt_card_id);
 
-        // Simula um pagamento antigo criado antes da coluna tipada; a inferência exige
-        // correspondência exata entre descrição gerada e cartão de destino.
-        DB::table('movimentos')->where('id', $payment->id)->update(['opening_debt_card_id' => null]);
-        app(FinancialMovementService::class)->reverse($user, $payment->fresh(), 'Correção do pagamento');
+        $this->actingAs($user)->deleteJson('/api/financial/movements/'.$payment->id)->assertOk();
 
         $this->assertDatabaseHas('contas_financeiras', ['id' => $card->id, 'opening_debt_paid' => '0.00']);
+        $this->assertDatabaseHas('movimentos', ['id' => $payment->id, 'status' => 'void', 'opening_debt_card_id' => $card->id]);
         $this->assertSame('500.00', app(AccountBalanceService::class)->balance($bank->fresh()));
         $this->assertSame('-300.00', app(AccountBalanceService::class)->balance($card->fresh()));
-        $this->assertDatabaseHas('movimentos', ['id' => $payment->id, 'status' => 'settled', 'opening_debt_card_id' => $card->id]);
+        $this->assertSame(0, $user->movimentos()->whereNotNull('reversal_of_id')->count());
     }
 }
