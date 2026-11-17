@@ -290,9 +290,19 @@ class FinancialDeletionService
 
             if ($deleteLegacy && $locked->legacy_type && $locked->legacy_id) {
                 if ($locked->legacy_type === 'despesa') {
-                    Despesa::query()->where('user_id', $user->id)->whereKey($locked->legacy_id)->delete();
+                    $legacy = Despesa::query()->where('user_id', $user->id)->whereKey($locked->legacy_id)->first();
+                    if ($legacy) {
+                        $beforeLegacy = $legacy->getAttributes();
+                        $legacy->delete();
+                        $this->recordItem($user, $operationId, 'Despesa', $legacy->id, 'soft_deleted', $beforeLegacy, $legacy->getAttributes());
+                    }
                 } elseif ($locked->legacy_type === 'receita') {
-                    Receita::query()->where('user_id', $user->id)->whereKey($locked->legacy_id)->delete();
+                    $legacy = Receita::query()->where('user_id', $user->id)->whereKey($locked->legacy_id)->first();
+                    if ($legacy) {
+                        $beforeLegacy = $legacy->getAttributes();
+                        $legacy->delete();
+                        $this->recordItem($user, $operationId, 'Receita', $legacy->id, 'soft_deleted', $beforeLegacy, $legacy->getAttributes());
+                    }
                 }
             }
 
