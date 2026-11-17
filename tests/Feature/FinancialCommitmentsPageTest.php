@@ -35,7 +35,7 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->assertCount(1, $xpath->query('//article[contains(@class,"commitment-card")]'));
         $this->assertStringContainsString('0/6', $xpath->query('//article[contains(@class,"commitment-card")]')->item(0)->textContent);
         $this->assertCount(1, $xpath->query('//button[contains(@class,"commitment-pay-next")]'));
-        $this->assertCount(0, $xpath->query('//form[contains(@class,"js-api-form")]'));
+        $this->assertCount(1, $xpath->query('//form[contains(@class,"js-api-form")]')); // Apenas o formulário único do modal de pagamento.
         $this->assertCount(6, $xpath->query('//div[contains(concat(" ", normalize-space(@class), " "), " commitment-installment ")]'));
         $this->assertSame('0.00', $debt->fresh()->parcelas->first()->paid_amount);
     }
