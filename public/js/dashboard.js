@@ -85,17 +85,11 @@
         const behaviorField = document.getElementById('dashboardExpenseBehaviorField');
         if (behaviorField) behaviorField.hidden = !isExpense;
 
-        let condition = form.querySelector('[name="payment_condition"]:checked')?.value || 'cash';
-        const recurrenceToggle = form.querySelector('[name="recurrence_enabled"]');
-        const isRecurring = !editing && Boolean(recurrenceToggle?.checked);
-        if (isRecurring && condition !== 'cash') {
-            const cashOption = form.querySelector('[name="payment_condition"][value="cash"]');
-            if (cashOption) cashOption.checked = true;
-            condition = 'cash';
-        }
+        const condition = form.querySelector('[name="payment_condition"]:checked')?.value || 'cash';
+        const isRecurring = isExpense && !editing && form.querySelector('[name="recurrence_enabled"]')?.checked;
         const isCommitment = isExpense && condition !== 'cash';
         if (paymentFields) paymentFields.hidden = !isExpense;
-        if (commitmentOptions) commitmentOptions.hidden = false;
+        if (commitmentOptions) commitmentOptions.hidden = !isCommitment;
         // A conta só é necessária quando existe uma liquidação efetiva.
         const accountField = document.getElementById('movementAccount');
         if (accountField) {
@@ -599,8 +593,6 @@
         saveButton.textContent = (isEditing ? 'Atualizar ' : 'Guardar ') + (income ? 'receita' : 'despesa');
         saveButton.className = 'btn w-100 ' + (income ? 'btn-success' : 'btn-danger');
         date.name = income ? 'income_date' : 'expense_date';
-        const accountLabel = document.getElementById('movementAccountLabel');
-        if (accountLabel) accountLabel.textContent = income ? 'Onde entrou o dinheiro?' : 'De onde saiu o dinheiro?';
         form.action = isEditing
             ? form.action
             : (income ? cfg.incomeStore : cfg.expenseStore);
@@ -1306,7 +1298,7 @@
     });
 
     cancelButton?.addEventListener('click', cancelEdit);
-    form.querySelectorAll('[name="payment_condition"], [name="paid_now"], [name="recurrence_enabled"]').forEach((input) => input.addEventListener('change', refreshPaymentFields));
+    form.querySelectorAll('[name="payment_condition"], [name="paid_now"]').forEach((input) => input.addEventListener('change', refreshPaymentFields));
     ['movementAmount', 'dashboardDueDate', 'dashboardInstallments', 'dashboardInstallmentFrequency'].forEach((id) => {
         document.getElementById(id)?.addEventListener('input', refreshPaymentFields);
         document.getElementById(id)?.addEventListener('change', refreshPaymentFields);

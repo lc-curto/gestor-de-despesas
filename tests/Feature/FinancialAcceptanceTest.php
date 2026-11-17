@@ -538,4 +538,28 @@ class FinancialAcceptanceTest extends TestCase
         $this->assertSame('-300.00', app(AccountBalanceService::class)->balance($card->fresh()));
         $this->assertDatabaseHas('movimentos', ['id' => $payment->id, 'status' => 'settled', 'opening_debt_card_id' => $card->id]);
     }
+    public function test_acceptance_movement_entry_uses_approved_mobile_first_structure(): void
+    {
+        $user = User::factory()->create();
+        $this->withoutMiddleware(\\App\\Http\\Middleware\\EnsureFinancialDataReviewed::class);
+
+        $response = $this->actingAs($user)->get(route('dashboard.movimentos'));
+        $response->assertOk()
+            ->assertSee('id="movementAmount"', false)
+            ->assertSee('id="movementDescription"', false)
+            ->assertSee('id="dashboardAdditionalDetails"', false)
+            ->assertSee('Adicionar detalhes')
+            ->assertSee('Estado do pagamento')
+            ->assertSee('Pendente')
+            ->assertSee('Pago')
+            ->assertSee('id="dashboardInstallmentFrequency"', false)
+            ->assertSee('value="weekly"', false)
+            ->assertSee('value="monthly"', false);
+
+        $html = $response->getContent();
+        $this->assertLessThan(strpos($html, 'id="movementDescription"'), strpos($html, 'id="movementAmount"'));
+        $this->assertLessThan(strpos($html, 'id="movementDate"'), strpos($html, 'id="movementCategory"'));
+        $this->assertStringContainsString('accordion-button collapsed', $html);
+    }
+
 }
