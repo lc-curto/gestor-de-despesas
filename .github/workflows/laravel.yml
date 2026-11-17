@@ -81,4 +81,15 @@ jobs:
           DB_DATABASE: meu_bolso_test
           DB_USERNAME: root
           DB_PASSWORD: root
-        run: php artisan test --display-all-issues
+        run: |
+          php artisan test --display-all-issues --log-junit /tmp/phpunit-junit.xml
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          root = ET.parse('/tmp/phpunit-junit.xml').getroot()
+          for case in root.iter('testcase'):
+              for issue in case:
+                  if issue.tag in ('error', 'failure', 'skipped'):
+                      print(f"{case.attrib.get('classname')}::{case.attrib.get('name')} [{issue.tag}] {issue.attrib.get('type', '')}")
+                      if issue.text:
+                          print(issue.text.strip())
+          PY

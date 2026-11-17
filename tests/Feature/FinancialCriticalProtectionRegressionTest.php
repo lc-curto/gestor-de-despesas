@@ -359,20 +359,31 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
         $this->assertSame('200.00', app(AccountBalanceService::class)->balance($bank->fresh()));
     }
 
-    public function test_internal_cancellation_rejects_a_commitment_that_is_not_cancelled(): void
+    public function test_renegotiation_orchestrator_rejects_an_already_paid_installment(): void
     {
         $user = User::factory()->create();
         $bank = $this->bank($user);
         $debt = $this->debt($user, $bank);
-        $forecast = $user->movimentos()->where('debt_id', $debt->id)->firstOrFail();
+        $part = $debt->parcelas->sortBy('installment_number')->first();
+        $forecast = $user->movimentos()->where('installment_id', $part->id)->firstOrFail();
+        $part->update(['status' => 'paid', 'paid_amount' => $part->amount]);
+
         try {
-            app(FinancialMovementService::class)->voidCancelledCommitmentForecast($user, $debt, $forecast);
-            $this->fail('A via interna exige que o compromisso já esteja cancelado.');
+            app(\App\Services\Financial\FinancialDeletionService::class)
+                ->renegotiateCommitmentInstallment($user, $debt, $part);
+            $this->fail('Uma prestação paga não pode ser substituída na renegociação.');
         } catch (ValidationException $exception) {
-            $this->assertArrayHasKey('movement', $exception->errors());
+            $this->assertArrayHasKey('commitment', $exception->errors());
         }
+
         $this->assertSame('pending', $forecast->fresh()->status);
+        $this->assertSame('paid', $part->fresh()->status);
         $this->assertSame('open', $debt->fresh()->status);
+        $this->assertDatabaseMissing('deletion_operations', [
+            'user_id' => $user->id,
+            'root_entity_type' => 'commitment_renegotiation',
+            'root_entity_id' => $debt->id,
+        ]);
     }
 
     public function test_pausing_recurrence_cannot_delete_a_forecast_also_linked_to_an_installment(): void
