@@ -772,7 +772,18 @@ class FinancialCoreServiceTest extends TestCase
             'movement_date' => '2026-11-12',
         ]);
         $invoice = $user->faturas()->firstOrFail();
-        $invoices->pay($user, $invoice, $bank->id, '2026-11-17', '20.00');
+        $this->postJson('/api/financial/invoices/'.$invoice->id.'/pay', [
+            'account_id' => $bank->id,
+            'amount' => '20.00',
+            'payment_date' => '2026-11-17',
+            'allocation' => ['principal' => '15.00', 'interest' => '5.00'],
+        ])->assertOk()->assertJsonPath('data.invoice_payment_allocation.principal', '15.00');
+        $this->postJson('/api/financial/invoices/'.$invoice->id.'/pay', [
+            'account_id' => $bank->id,
+            'amount' => '20.00',
+            'payment_date' => '2026-11-17',
+            'allocation' => ['principal' => '10.00', 'interest' => '5.00'],
+        ])->assertUnprocessable()->assertJsonValidationErrors('allocation');
 
         $response = $this->postJson('/api/financial/invoices/'.$invoice->id.'/credits', [
             'purchase_movement_id' => $purchase->id,
