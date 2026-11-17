@@ -54,7 +54,7 @@ class CardInvoiceService
                 throw ValidationException::withMessages(['invoice' => 'A fatura deste ciclo já foi fechada. A compra deve entrar no ciclo seguinte.']);
             }
 
-            return $this->movements->create($user, [
+            $purchase = $this->movements->create($user, [
                 'type' => 'expense',
                 'expense_behavior' => $data['expense_behavior'] ?? 'variable',
                 'description' => $data['description'],
@@ -70,6 +70,8 @@ class CardInvoiceService
                 'legacy_id' => $data['legacy_id'] ?? null,
                 'is_historical' => (bool) ($data['is_historical'] ?? false),
             ]);
+            $this->movements->syncInvoiceSettlementParent($user, $invoice);
+            return $purchase;
         });
     }
 
@@ -115,10 +117,12 @@ class CardInvoiceService
                 throw ValidationException::withMessages(['invoice' => 'A fatura deste ciclo já foi fechada. A compra deve entrar no ciclo seguinte.']);
             }
 
-            return $this->movements->settle($user, $locked, [
+            $settled = $this->movements->settle($user, $locked, [
                 'source_account_id' => $card->id,
                 'invoice_id' => $invoice->id,
             ]);
+            $this->movements->syncInvoiceSettlementParent($user, $invoice);
+            return $settled;
         });
     }
 
@@ -130,24 +134,62 @@ class CardInvoiceService
     public function listInvoices(User $user)
     {
         return Fatura::query()->where('user_id', $user->id)
-            ->whereHas('movimentos', fn ($q) => $q->where('type', 'expense')->where('status', 'settled'))
+            ->whereHas('movimentos', fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false))
             ->with('conta:id,name,type,currency,credit_limit')
-            ->with(['movimentos' => fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->select('id', 'invoice_id', 'description', 'amount', 'movement_date')])
-            ->withSum(['movimentos as total_amount' => fn ($q) => $q->where('type', 'expense')->where('status', 'settled')], 'amount')
-            ->withSum(['movimentos as paid_amount' => fn ($q) => $q->where('type', 'transfer')->where('status', 'settled')], 'amount')
-            ->withCount(['movimentos' => fn ($q) => $q->where('type', 'expense')->where('status', 'settled')])
+            ->with(['movimentos' => fn ($q) => $q->whereIn('type', ['expense', 'transfer'])->where('status', 'settled')
+                ->select('id', 'invoice_id', 'description', 'amount', 'movement_date', 'type', 'is_settlement_parent', 'reversal_of_id', 'settles_movement_id')])
+            ->withCount(['movimentos' => fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false)])
             ->orderByDesc('reference_month')->paginate(30)
             ->through(function (Fatura $invoice): Fatura {
-                $total = (float) $invoice->total_amount;
-                $paid = (float) ($invoice->paid_amount ?? 0);
+                $totalCents = 0;
+                $paidCents = 0;
+                foreach ($invoice->movimentos as $movement) {
+                    $cents = (int) round((float) $movement->amount * 100);
+                    if ($movement->type === 'expense' && !$movement->is_settlement_parent) $totalCents += $cents;
+                    if ($movement->type === 'transfer') $paidCents += $movement->reversal_of_id ? -$cents : $cents;
+                }
+                $total = $totalCents / 100;
+                $paid = $paidCents / 100;
                 $remaining = max(0, round($total - $paid, 2));
+                $invoice->setAttribute('total_amount', number_format($total, 2, '.', ''));
+                $invoice->setAttribute('paid_amount', number_format($paid, 2, '.', ''));
                 $invoice->setAttribute('remaining_amount', number_format($remaining, 2, '.', ''));
-                $invoice->setAttribute('display_status', $remaining <= 0 ? 'paid'
-                    : ($invoice->due_date->lt(today()) ? 'overdue'
-                        : ($paid > 0 ? 'partial'
-                            : ($invoice->closing_date && $invoice->closing_date->lt(today()) ? 'closed' : 'open'))));
+                $invoice->setAttribute('display_status', $invoice->status === 'carried' ? 'carried'
+                    : ($remaining <= 0 ? 'paid'
+                        : ($invoice->due_date->lt(today()) ? 'overdue'
+                            : ($paid > 0 ? 'partial'
+                                : ($invoice->closing_date && $invoice->closing_date->lt(today()) ? 'closed' : 'open')))));
                 return $invoice;
             });
+    }
+
+    public function addCharge(User $user, Fatura $invoice, array $data): Movimento
+    {
+        return DB::transaction(function () use ($user, $invoice, $data): Movimento {
+            $locked = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status === 'paid' || $locked->status === 'carried') {
+                throw ValidationException::withMessages(['invoice' => 'Não é possível adicionar encargos a uma fatura paga ou já transportada.']);
+            }
+            $card = $user->contasFinanceiras()->whereKey($locked->account_id)->lockForUpdate()->firstOrFail();
+            if ($card->type !== 'credit_card' || !$card->is_operational || $card->status !== 'active') {
+                throw ValidationException::withMessages(['invoice' => 'O cartão associado a esta fatura não está ativo.']);
+            }
+
+            $charge = $this->movements->create($user, [
+                'type' => 'expense',
+                'expense_behavior' => 'fixed',
+                'description' => $data['description'],
+                'notes' => 'Encargo de fatura: '.$data['charge_type'],
+                'payment_method' => 'credit',
+                'amount' => $data['amount'],
+                'movement_date' => $data['movement_date'],
+                'source_account_id' => $card->id,
+                'category_id' => $data['category_id'] ?? null,
+                'invoice_id' => $locked->id,
+            ]);
+            $this->movements->syncInvoiceSettlementParent($user, $locked);
+            return $charge;
+        });
     }
 
     public function pay(User $user, Fatura $invoice, string $sourceAccountId, string $date, ?string $requestedAmount = null): Movimento
