@@ -43,6 +43,7 @@
         if ($filter === 'overdue') $paymentItems = $paymentItems->filter(fn ($item) => \Illuminate\Support\Carbon::parse($item->due_date)->lt(today()))->values();
         if ($filter === 'upcoming') $paymentItems = $paymentItems->filter(fn ($item) => !\Illuminate\Support\Carbon::parse($item->due_date)->lt(today()))->values();
         if ($filter === 'paid') $paymentItems = collect();
+        $paymentGroups = $paymentItems->groupBy(fn ($item) => $item->commitment->id);
         $historyItems = collect();
         foreach ($commitments as $commitment) foreach ($commitment->parcelas as $part) if ((float) $part->paid_amount > 0) $historyItems->push((object) ['name' => $commitment->name.' · Parcela '.$part->installment_number, 'date' => $part->updated_at, 'amount' => (float) $part->paid_amount, 'detail' => 'Pagamento de prestação']);
         $historyItems = $historyItems->sortByDesc('date')->values();
@@ -54,7 +55,7 @@
         <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
             <div>
                 <h2 class="h5 fw-bold mb-1" id="paymentsSectionTitle">Próximas prestações</h2>
-                <p class="small text-secondary mb-0">Prestações pendentes ordenadas por vencimento.</p>
+                <p class="small text-secondary mb-0">Agrupadas por compra. Abre um parcelamento para consultar ou pagar as prestações.</p>
             </div>
             <span class="badge text-bg-secondary">{{ $paymentItems->count() }}</span>
         </div>
@@ -64,7 +65,18 @@
                 <a class="btn btn-sm {{ $filter === $key ? 'btn-primary' : 'btn-outline-secondary' }}" href="{{ route('financial.commitments.page',['filter'=>$key]) }}">{{ $label }}</a>
             @endforeach
         </nav>
-        @forelse ($paymentItems as $item)
+        @forelse ($paymentGroups as $group)
+            @php $groupFirst = $group->first(); $groupCommitment = $groupFirst->commitment; @endphp
+            <details class="commitment-group mb-2">
+                <summary class="commitment-group-summary">
+                    <span class="min-w-0"><strong class="d-block">{{ $groupCommitment->name }}</strong><span class="small text-secondary">Próxima: {{ $groupFirst->record->due_date->format('d/m/Y') }} · {{ $group->count() }} {{ $group->count() === 1 ? 'prestação neste filtro' : 'prestações neste filtro' }}</span></span>
+                    <span class="text-end flex-shrink-0"><strong class="d-block">{{ number_format($group->sum('remaining'), 2, ',', '.') }} {{ auth()->user()->currency }}</strong><span class="small text-secondary">Em falta neste filtro</span></span>
+                </summary>
+                <div class="commitment-group-items">
+                @foreach ($group as $item)
+                    @if ($loop->index === 3)
+                        <details class="commitment-more-items"><summary>Ver mais {{ $group->count() - 3 }} {{ $group->count() - 3 === 1 ? 'prestação' : 'prestações' }}</summary><div>
+                    @endif
             @if ($item->kind === 'invoice')
                 @php $invoice = $item->record; @endphp
                 <article class="commitment-payment-item commitment-compact-row border-bottom py-2">
@@ -137,6 +149,10 @@
                     </div>
                 </article>
             @endif
+                @endforeach
+                @if ($group->count() > 3)</div></details>@endif
+                </div>
+            </details>
         @empty
             <div class="commitment-empty-state d-flex align-items-center justify-content-between gap-3">
                 <div class="min-w-0"><strong class="d-block small">Não existem pagamentos pendentes</strong><span class="small text-secondary">As novas faturas e prestações aparecerão aqui.</span></div>
@@ -149,9 +165,13 @@
 
     <section class="commitment-section mb-4" aria-labelledby="historySectionTitle">
         <div class="d-flex justify-content-between align-items-center mb-2"><div><h2 class="h5 fw-bold mb-1" id="historySectionTitle">Histórico de pagamentos</h2><p class="small text-secondary mb-0">Pagamentos já registados.</p></div><span class="badge text-bg-secondary">{{ $historyItems->count() }}</span></div>
+        @if($historyItems->isNotEmpty()) <details class="commitment-history"><summary>Ver histórico de pagamentos ({{ $historyItems->count() }})</summary> @endif
         @forelse($historyItems as $history)
+            @if($loop->index === 10) <details class="commitment-more-items"><summary>Ver mais {{ $historyItems->count() - 10 }} pagamentos</summary><div> @endif
             <article class="d-flex justify-content-between align-items-center gap-3 border-bottom py-3"><div><strong class="d-block">{{ $history->name }}</strong><span class="small text-secondary">{{ $history->detail }} · {{ \Illuminate\Support\Carbon::parse($history->date)->format('d/m/Y') }}</span></div><strong class="text-success text-nowrap">{{ number_format($history->amount,2,',','.') }} {{ auth()->user()->currency }}</strong></article>
         @empty <p class="small text-secondary">Ainda não existem pagamentos no histórico.</p> @endforelse
+        @if($historyItems->count() > 10)</div></details>@endif
+        @if($historyItems->isNotEmpty()) </details> @endif
     </section>
 
     <section class="commitment-section mb-4" aria-labelledby="manageSectionTitle">
@@ -176,6 +196,15 @@
 <style>
 .commitments-page .commitment-summary-card .card-body{padding:1rem!important}
 .commitments-page .commitment-summary-card .h3{font-size:1.15rem;margin:0}
+.commitments-page .commitment-group{border:1px solid var(--bs-border-color);border-radius:.8rem;background:var(--bs-body-bg)}
+.commitments-page .commitment-group-summary{display:flex;justify-content:space-between;align-items:center;gap:.75rem;padding:.85rem 1rem;cursor:pointer;list-style:none}
+.commitments-page .commitment-group-summary::-webkit-details-marker{display:none}
+.commitments-page .commitment-group-summary:focus-visible,.commitments-page .commitment-more-items>summary:focus-visible,.commitments-page .commitment-history>summary:focus-visible{outline:3px solid var(--bs-primary);outline-offset:2px}
+.commitments-page .commitment-group-summary strong{overflow-wrap:anywhere}
+.commitments-page .commitment-group-summary:after{content:'▸';color:var(--bs-primary);flex:none}
+.commitments-page .commitment-group[open]>.commitment-group-summary:after{content:'▾'}
+.commitments-page .commitment-group-items{padding:0 1rem .75rem}
+.commitments-page .commitment-more-items>summary,.commitments-page .commitment-history>summary{cursor:pointer;color:var(--bs-primary);font-size:.85rem;font-weight:600;padding:.65rem 0}
 .commitments-page .commitment-payment-item{border-left:0!important;border-right:0!important;border-top:0!important;border-radius:0!important;padding:.55rem .15rem!important;margin:0!important}
 .commitments-page .commitment-payment-item h3{font-size:.9rem;overflow-wrap:anywhere}
 .commitments-page .commitment-installment-amount{max-width:50%;overflow-wrap:anywhere}

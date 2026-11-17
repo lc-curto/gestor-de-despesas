@@ -280,4 +280,30 @@ class FinancialCommitmentsPageTest extends TestCase
             ->assertSee('Compra própria')->assertSee('Conta própria')
             ->assertDontSee('Compra privada alheia')->assertDontSee('Conta privada alheia');
     }
+
+    public function test_large_installment_plan_is_grouped_and_remaining_parts_are_collapsed(): void
+    {
+        $user = User::factory()->create(['currency' => 'EUR']);
+        app(FinancialAccountService::class)->create($user, ['name' => 'Conta', 'type' => 'bank', 'opening_balance' => '200.00']);
+        $debt = app(FinancialCommitmentService::class)->create($user, [
+            'name' => 'Compra em 120 vezes', 'total_amount' => '120.00',
+            'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
+            'payment_condition' => 'installments', 'installments_count' => 120,
+        ]);
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+        $xpath = $this->document($this->actingAs($user)->get(route('financial.commitments.page'))->assertOk()->getContent());
+        $groups = $xpath->query('//section[@aria-labelledby="paymentsSectionTitle"]//details[contains(concat(" ", normalize-space(@class), " "), " commitment-group ")]');
+        $this->assertCount(1, $groups);
+        $group = $groups->item(0);
+        $this->assertFalse($group->hasAttribute('open'));
+        $this->assertStringContainsString('120 prestações neste filtro', $xpath->query('./summary', $group)->item(0)->textContent);
+        $this->assertCount(3, $xpath->query('./div[contains(@class,"commitment-group-items")]/article', $group));
+        $more = $xpath->query('./div/details[contains(@class,"commitment-more-items")]', $group)->item(0);
+        $this->assertNotNull($more);
+        $this->assertFalse($more->hasAttribute('open'));
+        $this->assertStringContainsString('Ver mais 117 prestações', $xpath->query('./summary', $more)->item(0)->textContent);
+        $this->assertCount(117, $xpath->query('.//article', $more));
+        $this->assertCount(120, $xpath->query('.//form[contains(@class,"js-api-form")]', $group));
+        $this->assertSame(120, $debt->fresh()->parcelas()->count());
+    }
 }
