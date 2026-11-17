@@ -127,7 +127,7 @@ class DashboardController extends Controller
 
         return view('dashboard', compact(
             'inicio', 'mes', 'movimentos', 'movimentosVisiveis', 'movimentosIniciais', 'categorias', 'categoriasDespesa',
-            'categoriasReceita', 'filtroTipo', 'filtroCategoria',
+            'categoriasReceita', 'expenseCategoryBehaviors', 'filtroTipo', 'filtroCategoria',
             'totalDespesas', 'totalReceitas', 'availableBalance', 'pendingPaymentTotal', 'pendingPaymentCount', 'totalMovimentos', 'totalDespesasFiltradas', 'totalReceitasFiltradas', 'limit'
         ))->with('moeda', $user->currency)->with('accounts', $accounts);
     }
