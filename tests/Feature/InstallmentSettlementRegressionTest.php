@@ -79,7 +79,7 @@ class InstallmentSettlementRegressionTest extends TestCase
         $this->assertSame('110.00', app(AccountBalanceService::class)->balance($bank->fresh()));
     }
 
-    public function test_partial_payment_reduces_forecast_and_rejects_stale_repeat_without_double_debit(): void
+    public function test_partial_payment_preserves_forecast_and_rejects_stale_repeat_without_double_debit(): void
     {
         [$user, $bank, $debt] = $this->setupDebt();
         $part = $debt->parcelas->sortBy('installment_number')->first();
@@ -98,10 +98,10 @@ class InstallmentSettlementRegressionTest extends TestCase
         $this->settle($user, $bank, $forecast->id, '12.00', null)->assertUnprocessable();
         $this->assertSame('188.00', app(AccountBalanceService::class)->balance($bank->fresh()));
         $this->assertSame(3, $user->movimentos()->where('debt_id', $debt->id)->count());
-        $this->settle($user, $bank, $forecast->id, '18.00', '18.00')->assertOk()->assertJsonPath('data.id', $forecast->id)->assertJsonPath('installment.status', 'paid');
+        $this->settle($user, $bank, $forecast->id, '18.00', '18.00')->assertOk()->assertJsonPath('data.settles_movement_id', $forecast->id)->assertJsonPath('installment.status', 'paid');
         $this->assertSame('170.00', app(AccountBalanceService::class)->balance($bank->fresh()));
         $this->assertSame('60.00', $this->openAmount($debt));
-        $this->assertSame(4, $user->movimentos()->where('debt_id', $debt->id)->count());
+        $this->assertSame(3, $user->movimentos()->where('debt_id', $debt->id)->count());
     }
 
     public function test_overpayment_and_credit_card_leave_everything_unchanged(): void
