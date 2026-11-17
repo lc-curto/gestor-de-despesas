@@ -256,16 +256,17 @@ class FinancialDeletionService
                         'movement' => 'O contador da dívida inicial do cartão não permite remover este pagamento com segurança. Reconcilia a dívida antes de continuar.',
                     ]);
                 }
-            } elseif (
-                $locked->type === 'transfer'
-                && ! $locked->invoice_id
-                && $locked->destination_account_id
-                && str_starts_with((string) $locked->description, 'Pagamento de dívida inicial · ')
-                && $user->contasFinanceiras()->whereKey($locked->destination_account_id)->where('type', 'credit_card')->exists()
-            ) {
-                throw ValidationException::withMessages([
-                    'movement' => 'Este pagamento antigo de dívida inicial não tem identificação suficiente. Reconcilia o cartão antes de o eliminar.',
-                ]);
+            } elseif ($locked->type === 'transfer' && ! $locked->invoice_id && $locked->destination_account_id) {
+                $legacyDestinationCard = ContaFinanceira::query()
+                    ->where('user_id', $user->id)
+                    ->whereKey($locked->destination_account_id)
+                    ->where('type', 'credit_card')
+                    ->first();
+                if ($legacyDestinationCard && (float) $legacyDestinationCard->opening_debt_paid > 0) {
+                    throw ValidationException::withMessages([
+                        'movement' => 'Esta transferência antiga para cartão não identifica se liquidou dívida inicial ou fatura. Reconcilia o cartão antes de a eliminar.',
+                    ]);
+                }
             }
 
             $children = collect();
