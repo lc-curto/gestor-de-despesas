@@ -86,6 +86,7 @@ class FinancialMovementService
                 'status' => 'pending',
                 'description' => $data['description'],
                 'notes' => $data['notes'] ?? null,
+                'payment_method' => $data['payment_method'] ?? null,
                 'amount' => $data['amount'],
                 'movement_date' => $data['movement_date'],
                 'source_account_id' => $data['source_account_id'] ?? null,
@@ -317,7 +318,7 @@ class FinancialMovementService
             }
             $this->assertNotCommitmentForecast($locked);
             $before = $locked->getAttributes();
-            $allowed = ['description', 'notes', 'amount', 'movement_date', 'category_id', 'expense_behavior'];
+            $allowed = ['description', 'notes', 'payment_method', 'amount', 'movement_date', 'category_id', 'expense_behavior'];
             $locked->fill(array_intersect_key($data, array_flip($allowed)));
             $locked->save();
             $this->audit($user, $locked, 'updated', $before, $locked->getAttributes());
