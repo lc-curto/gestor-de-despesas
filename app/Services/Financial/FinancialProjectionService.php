@@ -89,8 +89,7 @@ class FinancialProjectionService
                 // Projetar apenas parcelamentos ativos e visíveis na gestão de Parcelamentos.
                 // Compras de pagamento único e compromissos arquivados não são projetáveis.
                 ->whereNull('archived_at')
-                ->where('payment_condition', 'installments')
-                ->where('status', '!=', 'cancelled')
+                ->whereNotIn('status', ['cancelled', 'paid'])
                 ->where(fn ($query) => $query
                     ->whereNull('payment_method')
                     ->orWhereNotIn('payment_method', ['credit', 'card'])))
