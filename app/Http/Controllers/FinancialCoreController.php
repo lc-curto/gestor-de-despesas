@@ -603,7 +603,9 @@ class FinancialCoreController extends Controller
                 $service->deleteAsCorrection(
                     $user,
                     $target,
-                    'Ocorrência removida pelo utilizador na gestão de movimentos.'
+                    'Ocorrência removida pelo utilizador na gestão de movimentos.',
+                    true,
+                    true
                 );
             }
         });
