@@ -551,10 +551,14 @@ class FinancialCoreController extends Controller
 
     public function reverseMovement(Request $request, string $id, FinancialMovementService $service): JsonResponse
     {
-        $data = $request->validate(['reason' => 'nullable|string|max:1000']);
         $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
+        $service->deleteAsCorrection(
+            $request->user(),
+            $movement,
+            $request->input('reason') ?: 'Movimento eliminado pelo utilizador.'
+        );
 
-        return response()->json(['data' => $service->reverse($request->user(), $movement, $data['reason'] ?? null)]);
+        return response()->json(['ok' => true, 'message' => 'Movimento eliminado e saldos atualizados.']);
     }
 
     public function destroyRecurringOccurrence(Request $request, string $id, FinancialMovementService $service): JsonResponse
