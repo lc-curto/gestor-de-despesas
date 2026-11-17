@@ -88,6 +88,12 @@
                         <span class="commitment-card-details-label">Ver detalhes <span aria-hidden="true">⌄</span></span>
                     </button>
 
+                    <div class="commitment-history-trigger">
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#commitmentHistoryModal-{{ $commitment->id }}">
+                            Ver histórico ({{ $history->total() }})
+                        </button>
+                    </div>
+
                     <div class="commitment-details" id="commitment-details-{{ $commitment->id }}" hidden>
                         <div class="commitment-detail-summary">
                             <div><small>Valor total</small><strong>{{ auth()->user()->currency }} {{ number_format((float) $commitment->total_amount, 2, ',', '.') }}</strong></div>
@@ -112,7 +118,34 @@
                             </div>
                         @endif
 
-                        <div class="commitment-history">
+
+
+                        <div class="commitment-card-actions">
+                            <button type="button" class="btn btn-outline-secondary btn-sm js-edit-commitment"
+                                data-url="{{ route('financial.commitments.update', $commitment->id) }}"
+                                data-name="{{ $commitment->name }}"
+                                data-total="{{ number_format((float) $commitment->total_amount, 2, '.', '') }}"
+                                data-merchant="{{ $commitment->merchant }}"
+                                data-due="{{ $next?->due_date?->format('Y-m-d') ?? $commitment->due_date?->format('Y-m-d') }}">Editar compra</button>
+                            <button type="button" class="btn btn-outline-danger btn-sm js-cancel-commitment"
+                                data-url="{{ route('financial.commitments.cancel', $commitment->id) }}"
+                                data-name="{{ $commitment->name }}">Cancelar compra</button>
+                        </div>
+                    </div>
+                </article>
+
+                <div class="modal fade commitment-history-modal" id="commitmentHistoryModal-{{ $commitment->id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+                        <div class="modal-content rounded-4 border-0">
+                            <div class="modal-header">
+                                <div>
+                                    <h2 class="modal-title h5 fw-bold mb-1">Histórico de prestações</h2>
+                                    <small class="text-secondary">{{ $commitment->name }} · {{ $history->total() }} prestações</small>
+                                </div>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="commitment-history">
                             <div class="commitment-history-heading">
                                 <strong>Histórico de prestações</strong>
                                 <small>{{ $history->total() }} prestações</small>
@@ -142,11 +175,11 @@
                                             unset($historyQuery[$queryKey]);
                                         }
                                     }
-                                    $historyQuery['expanded'] = $commitment->id;
+                                    $historyQuery['history_modal'] = $commitment->id;
                                     $historyPageUrl = fn (int $page) => route('financial.commitments.page', array_merge(
                                         $historyQuery,
                                         [$history->getPageName() => $page]
-                                    )).'#commitment-'.$commitment->id;
+                                    )).'#commitmentHistoryModal-'.$commitment->id;
                                 @endphp
                                 <nav class="commitment-history-pagination" aria-label="Paginação do histórico de {{ $commitment->name }}">
                                     <span>Página {{ $history->currentPage() }} de {{ $history->lastPage() }}</span>
@@ -161,20 +194,13 @@
                                 </nav>
                             @endif
                         </div>
-
-                        <div class="commitment-card-actions">
-                            <button type="button" class="btn btn-outline-secondary btn-sm js-edit-commitment"
-                                data-url="{{ route('financial.commitments.update', $commitment->id) }}"
-                                data-name="{{ $commitment->name }}"
-                                data-total="{{ number_format((float) $commitment->total_amount, 2, '.', '') }}"
-                                data-merchant="{{ $commitment->merchant }}"
-                                data-due="{{ $next?->due_date?->format('Y-m-d') ?? $commitment->due_date?->format('Y-m-d') }}">Editar compra</button>
-                            <button type="button" class="btn btn-outline-danger btn-sm js-cancel-commitment"
-                                data-url="{{ route('financial.commitments.cancel', $commitment->id) }}"
-                                data-name="{{ $commitment->name }}">Cancelar compra</button>
+                            </div>
+                            <div class="modal-footer border-0">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+                            </div>
                         </div>
                     </div>
-                </article>
+                </div>
             @empty
                 <div class="commitment-empty-state">
                     <strong>Nenhuma compra encontrada.</strong>
@@ -288,6 +314,18 @@
  .commitment-summary{grid-template-columns:minmax(0,1fr)}
  .commitment-metric-primary{grid-column:auto}
 }
+.commitment-history-trigger{padding:0 .9rem .85rem;display:flex;justify-content:flex-end}
+.commitment-history-modal .modal-dialog{max-width:680px}
+.commitment-history-modal .modal-content{max-height:min(88vh,900px)}
+.commitment-history-modal .modal-body{overflow-y:auto}
+.commitment-history-modal .commitment-history{margin:0}
+.commitment-history-modal .commitment-installment{padding:.8rem 0}
+.commitment-history-modal .commitment-history-pagination{position:sticky;bottom:0;background:var(--bs-body-bg);padding:.65rem 0}
+@media(max-width:767.98px){
+ .commitment-history-modal .modal-dialog{margin:.5rem;max-width:none;min-height:calc(100% - 1rem)}
+ .commitment-history-modal .modal-content{max-height:calc(100dvh - 1rem);border-radius:1.1rem}
+ .commitment-history-modal .modal-body{padding:.85rem}
+}
 .commitment-history-pagination{flex-wrap:wrap}
 .commitment-history-pagination .pagination{display:flex;flex-wrap:wrap;gap:.25rem}
 .commitment-history-pagination .page-item{margin:0}
@@ -384,16 +422,11 @@
     syncPageSize();
 
     const cards = [...document.querySelectorAll('[data-commitment-card]')];
-    // Reopen the purchase whose installment history was paginated.
-    const expandedId = new URL(window.location.href).searchParams.get('expanded');
-    const expandedCard = expandedId
-        ? cards.find(card => card.dataset.commitmentId === expandedId)
-        : null;
-    if (expandedCard) {
-        const toggle = expandedCard.querySelector('.commitment-card-toggle');
-        const details = expandedCard.querySelector('.commitment-details');
-        toggle.setAttribute('aria-expanded', 'true');
-        details.hidden = false;
+    // Reopen the installment-history modal after navigating between its pages.
+    const historyModalId = new URL(window.location.href).searchParams.get('history_modal');
+    if (historyModalId) {
+        const historyModalElement = document.getElementById('commitmentHistoryModal-' + historyModalId);
+        if (historyModalElement) bootstrap.Modal.getOrCreateInstance(historyModalElement).show();
     }
 
     cards.forEach(card => {
