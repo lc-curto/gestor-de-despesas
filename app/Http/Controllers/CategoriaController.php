@@ -56,7 +56,7 @@ class CategoriaController extends Controller
     public function toggle(Request $request, string $id)
     {
         $categoria = $request->user()->categorias()->findOrFail($id);
-        $categoria->update(['is_active' => !$categoria->is_active]);
+        $categoria->update(['is_active' => ! $categoria->is_active]);
 
         return redirect()->route('categorias.index')->with('success', $categoria->is_active
             ? 'Categoria ativada.' : 'Categoria desativada. Os movimentos existentes foram preservados.');
@@ -113,7 +113,7 @@ class CategoriaController extends Controller
 
         while (Categoria::query()->where('user_id', $userId)->where('type', $type)
             ->where('slug', $slug)->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))->exists()) {
-            $slug = $base . '-' . $suffix++;
+            $slug = $base.'-'.$suffix++;
         }
 
         return $slug;

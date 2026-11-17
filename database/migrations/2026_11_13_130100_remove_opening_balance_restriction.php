@@ -15,7 +15,7 @@ return new class extends Migration
     public function down(): void
     {
         if (DB::getDriverName() === 'pgsql') {
-            DB::statement("ALTER TABLE contas_financeiras ADD CONSTRAINT contas_opening_balance_valid CHECK (opening_balance IS NULL OR opening_balance >= 0 OR allow_negative_balance = 1)");
+            DB::statement('ALTER TABLE contas_financeiras ADD CONSTRAINT contas_opening_balance_valid CHECK (opening_balance IS NULL OR opening_balance >= 0 OR allow_negative_balance = 1)');
         }
     }
 };

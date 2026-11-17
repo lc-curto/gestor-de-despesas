@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
-use Illuminate\Http\RedirectResponse;
 
 class FinancialDataReviewController extends Controller
 {
@@ -55,7 +54,7 @@ class FinancialDataReviewController extends Controller
         $user = $request->user();
         $review = DB::table('financial_data_reviews')->where('user_id', $user->id)->first();
 
-        if (!$review) {
+        if (! $review) {
             DB::table('financial_data_reviews')->insert([
                 'user_id' => $user->id,
                 'review_version' => 1,
@@ -73,7 +72,7 @@ class FinancialDataReviewController extends Controller
 
         // Captura a referência inicial de cada etapa na primeira apresentação.
         foreach (self::STEPS as $step) {
-            if (!isset($evidence[$step]['baseline_hash'])) {
+            if (! isset($evidence[$step]['baseline_hash'])) {
                 $snapshot = $this->snapshot($user, $step);
                 $evidence[$step] = [
                     'baseline_hash' => $snapshot['hash'],
@@ -146,8 +145,8 @@ class FinancialDataReviewController extends Controller
 
                 foreach (self::STEPS as $step) {
                     $current = $this->snapshot($user, $step);
-                    if (!in_array($step, $completed, true)
-                        || !isset($evidence[$step]['reviewed_hash'])
+                    if (! in_array($step, $completed, true)
+                        || ! isset($evidence[$step]['reviewed_hash'])
                         || $evidence[$step]['reviewed_hash'] !== $current['hash']) {
                         return false;
                     }
@@ -159,10 +158,11 @@ class FinancialDataReviewController extends Controller
                     'updated_at' => now(),
                 ]);
                 DB::table('users')->where('id', $user->id)->update(['financial_review_required' => false]);
+
                 return true;
             });
 
-            if (!$finalized) {
+            if (! $finalized) {
                 return back()->withErrors(['review' => 'Existem etapas por rever ou dados que mudaram depois da revisão. Volta a validar essas etapas.']);
             }
 
@@ -174,7 +174,7 @@ class FinancialDataReviewController extends Controller
         $baselineHash = $evidence[$step]['baseline_hash'] ?? null;
         $changed = $baselineHash !== null && $baselineHash !== $current['hash'];
 
-        if (!$changed && $data['decision'] === 'changes_reviewed') {
+        if (! $changed && $data['decision'] === 'changes_reviewed') {
             return back()->withErrors(['review' => 'Não foi detetada nenhuma alteração nesta etapa. Confirma que os dados já estavam corretos.']);
         }
 
@@ -190,7 +190,7 @@ class FinancialDataReviewController extends Controller
             'state' => $changed ? 'changes_reviewed' : 'confirmed_correct',
         ]);
 
-        if (!in_array($step, $completed, true)) {
+        if (! in_array($step, $completed, true)) {
             $completed[] = $step;
         }
 

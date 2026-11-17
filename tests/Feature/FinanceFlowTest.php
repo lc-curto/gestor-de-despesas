@@ -1,10 +1,19 @@
 <?php
+
 namespace Tests\Feature;
-use App\Models\User;
+
+use App\Http\Middleware\EnsureFinancialDataReviewed;
 use App\Models\ContaFinanceira;
+use App\Models\User;
+use App\Services\Financial\AccountBalanceService;
 use App\Services\Financial\FinancialAccountService;
+use App\Services\Financial\FinancialCommitmentService;
+use App\Services\Financial\RecurrenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
+
 class FinanceFlowTest extends TestCase
 {
     use RefreshDatabase;
@@ -21,14 +30,14 @@ class FinanceFlowTest extends TestCase
 
     public function test_authenticated_user_can_create_an_expense(): void
     {
-        $user=User::factory()->create();
+        $user = User::factory()->create();
         $accountId = $this->account($user);
-        $this->actingAs($user)->post(route('despesas.store'),[
-            'description'=>'Supermercado','amount'=>'45.90','currency'=>'EUR',
-            'category'=>'alimentacao','expense_date'=>'2026-11-09','account_id'=>$accountId,
+        $this->actingAs($user)->post(route('despesas.store'), [
+            'description' => 'Supermercado', 'amount' => '45.90', 'currency' => 'EUR',
+            'category' => 'alimentacao', 'expense_date' => '2026-11-09', 'account_id' => $accountId,
         ])->assertRedirect(route('despesas.index'));
-        $this->assertDatabaseHas('despesas',[
-            'user_id'=>$user->id,'description'=>'Supermercado','amount'=>'45.90',
+        $this->assertDatabaseHas('despesas', [
+            'user_id' => $user->id, 'description' => 'Supermercado', 'amount' => '45.90',
         ]);
         $legacyId = $user->despesas()->where('description', 'Supermercado')->value('id');
         $this->assertDatabaseHas('movimentos', [
@@ -40,17 +49,18 @@ class FinanceFlowTest extends TestCase
     public function test_credit_card_opening_debt_reduces_available_limit_and_can_be_paid_without_historical_purchases(): void
     {
         $user = User::factory()->create(['currency' => 'EUR']);
-        $bank = app(FinancialAccountService::class)->create($user, ['name'=>'Conta à ordem','type'=>'bank','opening_balance'=>'1000.00','opening_balance_date'=>'2026-11-01']);
-        $card = app(FinancialAccountService::class)->create($user, ['name'=>'Cartão','type'=>'credit_card','opening_debt_amount'=>'350.00','opening_balance_date'=>'2026-11-16','closing_day'=>10,'due_day'=>1,'credit_limit'=>'1000.00']);
-        $balances = app(\App\Services\Financial\AccountBalanceService::class);
+        $bank = app(FinancialAccountService::class)->create($user, ['name' => 'Conta à ordem', 'type' => 'bank', 'opening_balance' => '1000.00', 'opening_balance_date' => '2026-11-01']);
+        $card = app(FinancialAccountService::class)->create($user, ['name' => 'Cartão', 'type' => 'credit_card', 'opening_debt_amount' => '350.00', 'opening_balance_date' => '2026-11-16', 'closing_day' => 10, 'due_day' => 1, 'credit_limit' => '1000.00']);
+        $balances = app(AccountBalanceService::class);
         $this->assertSame('-350.00', $balances->balance($card));
-        $this->actingAs($user)->postJson(route('financial.cards.pay-opening-debt',$card->id), ['account_id'=>$bank->id,'amount'=>'200.00','payment_date'=>'2026-11-16'])->assertOk();
-        $card->refresh(); $bank->refresh();
-        $this->assertSame('200.00',(string)$card->opening_debt_paid);
-        $this->assertSame('-150.00',$balances->balance($card));
-        $this->assertSame('800.00',$balances->balance($bank));
-        $this->assertDatabaseCount('despesas',0);
-        $this->assertDatabaseCount('movimentos',1);
+        $this->actingAs($user)->postJson(route('financial.cards.pay-opening-debt', $card->id), ['account_id' => $bank->id, 'amount' => '200.00', 'payment_date' => '2026-11-16'])->assertOk();
+        $card->refresh();
+        $bank->refresh();
+        $this->assertSame('200.00', (string) $card->opening_debt_paid);
+        $this->assertSame('-150.00', $balances->balance($card));
+        $this->assertSame('800.00', $balances->balance($bank));
+        $this->assertDatabaseCount('despesas', 0);
+        $this->assertDatabaseCount('movimentos', 1);
     }
 
     public function test_credit_card_creation_accepts_zero_padded_billing_days(): void
@@ -101,43 +111,46 @@ class FinanceFlowTest extends TestCase
 
     public function test_authenticated_user_can_create_an_income(): void
     {
-        $user=User::factory()->create();
+        $user = User::factory()->create();
         $accountId = $this->account($user);
-        $this->actingAs($user)->post(route('receitas.store'),[
-            'description'=>'Salário','amount'=>'2200.00','currency'=>'EUR',
-            'category'=>'salario','income_date'=>'2026-11-09','account_id'=>$accountId,
+        $this->actingAs($user)->post(route('receitas.store'), [
+            'description' => 'Salário', 'amount' => '2200.00', 'currency' => 'EUR',
+            'category' => 'salario', 'income_date' => '2026-11-09', 'account_id' => $accountId,
         ])->assertRedirect(route('receitas.index'));
-        $this->assertDatabaseHas('receitas',['user_id'=>$user->id,'description'=>'Salário']);
+        $this->assertDatabaseHas('receitas', ['user_id' => $user->id, 'description' => 'Salário']);
         $this->assertDatabaseHas('movimentos', [
             'user_id' => $user->id, 'type' => 'income', 'destination_account_id' => $accountId,
             'legacy_type' => 'receita',
         ]);
     }
+
     public function test_invalid_expense_is_rejected_by_application_validation(): void
     {
-        $user=User::factory()->create();
+        $user = User::factory()->create();
         $accountId = $this->account($user);
-        $this->actingAs($user)->from(route('despesas.create'))->post(route('despesas.store'),[
-            'description'=>'Valor inválido','amount'=>'-1','currency'=>'EUR',
-            'category'=>'casa','expense_date'=>'2026-11-09','account_id'=>$accountId,
+        $this->actingAs($user)->from(route('despesas.create'))->post(route('despesas.store'), [
+            'description' => 'Valor inválido', 'amount' => '-1', 'currency' => 'EUR',
+            'category' => 'casa', 'expense_date' => '2026-11-09', 'account_id' => $accountId,
         ])->assertRedirect(route('despesas.create'))->assertSessionHasErrors('amount');
     }
+
     public function test_user_cannot_access_another_users_expense(): void
     {
-        $owner=User::factory()->create();
-        $other=User::factory()->create();
-        $expense=$owner->despesas()->create([
-            'description'=>'Privada','amount'=>20,'currency'=>'EUR',
-            'category'=>'casa','expense_date'=>'2026-11-09',
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $expense = $owner->despesas()->create([
+            'description' => 'Privada', 'amount' => 20, 'currency' => 'EUR',
+            'category' => 'casa', 'expense_date' => '2026-11-09',
         ]);
-        $this->actingAs($other)->get(route('despesas.edit',$expense->id))->assertNotFound();
-        $this->actingAs($other)->delete(route('despesas.destroy',$expense->id))->assertNotFound();
-        $this->assertDatabaseHas('despesas',['id'=>$expense->id,'user_id'=>$owner->id]);
+        $this->actingAs($other)->get(route('despesas.edit', $expense->id))->assertNotFound();
+        $this->actingAs($other)->delete(route('despesas.destroy', $expense->id))->assertNotFound();
+        $this->assertDatabaseHas('despesas', ['id' => $expense->id, 'user_id' => $owner->id]);
     }
+
     public function test_guest_cannot_create_financial_movements(): void
     {
-        $this->post(route('despesas.store'),[])->assertRedirect(route('login'));
-        $this->post(route('receitas.store'),[])->assertRedirect(route('login'));
+        $this->post(route('despesas.store'), [])->assertRedirect(route('login'));
+        $this->post(route('receitas.store'), [])->assertRedirect(route('login'));
     }
 
     public function test_movement_currency_always_uses_the_account_currency(): void
@@ -168,7 +181,7 @@ class FinanceFlowTest extends TestCase
 
         for ($i = 1; $i <= 8; $i++) {
             $user->despesas()->create([
-                'description' => 'Despesa ' . $i,
+                'description' => 'Despesa '.$i,
                 'amount' => $i,
                 'currency' => 'EUR',
                 'category' => 'casa',
@@ -241,7 +254,7 @@ class FinanceFlowTest extends TestCase
 
         for ($i = 1; $i <= 12; $i++) {
             $user->despesas()->create([
-                'description' => 'Despesa ' . $i,
+                'description' => 'Despesa '.$i,
                 'amount' => 10,
                 'currency' => 'EUR',
                 'category' => 'casa',
@@ -336,7 +349,7 @@ class FinanceFlowTest extends TestCase
         $movement = $user->movimentos()->where('legacy_type', 'despesa')->where('legacy_id', $legacy->id)->firstOrFail();
         $account = ContaFinanceira::query()->findOrFail($accountId);
 
-        $this->assertSame('85.00', app(\App\Services\Financial\AccountBalanceService::class)->balance($account));
+        $this->assertSame('85.00', app(AccountBalanceService::class)->balance($account));
 
         $this->delete(route('despesas.destroy', $legacy->id))
             ->assertRedirect();
@@ -347,12 +360,12 @@ class FinanceFlowTest extends TestCase
             'movement_id' => $movement->id,
             'action' => 'deleted_as_correction',
         ]);
-        $this->assertSame('100.00', app(\App\Services\Financial\AccountBalanceService::class)->balance($account));
+        $this->assertSame('100.00', app(AccountBalanceService::class)->balance($account));
     }
 
     public function test_recurring_credit_card_expense_is_forecast_and_settled_into_the_correct_invoice(): void
     {
-        \Illuminate\Support\Carbon::setTestNow('2026-11-16 10:00:00');
+        Carbon::setTestNow('2026-11-16 10:00:00');
 
         try {
             $user = User::factory()->create(['currency' => 'EUR']);
@@ -367,7 +380,7 @@ class FinanceFlowTest extends TestCase
             ]);
             $categoryId = $user->categorias()->where('slug', 'compras')->value('id');
 
-            $rule = app(\App\Services\Financial\RecurrenceService::class)->create($user, [
+            $rule = app(RecurrenceService::class)->create($user, [
                 'type' => 'expense',
                 'description' => 'Subscrição mensal',
                 'amount' => '30.00',
@@ -383,7 +396,7 @@ class FinanceFlowTest extends TestCase
             $this->assertSame('pending', $movement->status);
             $this->assertSame($card->id, $movement->source_account_id);
             $this->assertNull($movement->invoice_id);
-            $this->assertSame('0.00', app(\App\Services\Financial\AccountBalanceService::class)->balance($card));
+            $this->assertSame('0.00', app(AccountBalanceService::class)->balance($card));
 
             $this->actingAs($user)->putJson(route('financial.movements.settle', $movement->id), [
                 'source_account_id' => $card->id,
@@ -396,12 +409,12 @@ class FinanceFlowTest extends TestCase
                 'id' => $movement->invoice_id,
                 'account_id' => $card->id,
             ]);
-            $referenceMonth = \Illuminate\Support\Carbon::parse(
-                \Illuminate\Support\Facades\DB::table('faturas')->where('id', $movement->invoice_id)->value('reference_month')
+            $referenceMonth = Carbon::parse(
+                DB::table('faturas')->where('id', $movement->invoice_id)->value('reference_month')
             )->toDateString();
             $this->assertSame('2026-11-01', $referenceMonth);
         } finally {
-            \Illuminate\Support\Carbon::setTestNow();
+            Carbon::setTestNow();
         }
     }
 
@@ -430,7 +443,7 @@ class FinanceFlowTest extends TestCase
             'id' => $movement->id, 'status' => 'settled', 'source_account_id' => $accountId,
             'requires_account_assignment' => false,
         ]);
-        $this->assertSame('75.00', app(\App\Services\Financial\AccountBalanceService::class)->balance(
+        $this->assertSame('75.00', app(AccountBalanceService::class)->balance(
             ContaFinanceira::query()->findOrFail($accountId)
         ));
     }
@@ -464,7 +477,7 @@ class FinanceFlowTest extends TestCase
         $this->assertDatabaseHas('movimentos', [
             'id' => $movement->id, 'source_account_id' => $accountId, 'is_historical' => true,
         ]);
-        $this->assertSame('100.00', app(\App\Services\Financial\AccountBalanceService::class)->balance(
+        $this->assertSame('100.00', app(AccountBalanceService::class)->balance(
             ContaFinanceira::query()->findOrFail($accountId)
         ));
     }
@@ -485,16 +498,15 @@ class FinanceFlowTest extends TestCase
             'expense_date' => '2026-11-15', 'account_id' => $secondAccountId,
         ])->assertRedirect(route('despesas.index'));
 
-        $this->assertSame('500.00', app(\App\Services\Financial\AccountBalanceService::class)->balance(ContaFinanceira::query()->findOrFail($firstAccountId)));
-        $this->assertSame('50.00', app(\App\Services\Financial\AccountBalanceService::class)->balance(ContaFinanceira::query()->findOrFail($secondAccountId)));
+        $this->assertSame('500.00', app(AccountBalanceService::class)->balance(ContaFinanceira::query()->findOrFail($firstAccountId)));
+        $this->assertSame('50.00', app(AccountBalanceService::class)->balance(ContaFinanceira::query()->findOrFail($secondAccountId)));
         $this->assertDatabaseHas('historico_movimentos', ['action' => 'account_reassigned']);
     }
-
 
     public function test_credit_cards_page_renders_for_authenticated_user(): void
     {
         $user = User::factory()->create();
-        $this->withoutMiddleware(\App\Http\Middleware\EnsureFinancialDataReviewed::class);
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
 
         $this->actingAs($user)
             ->get(route('financial.cards.page'))
@@ -505,34 +517,42 @@ class FinanceFlowTest extends TestCase
     public function test_commitments_page_renders_for_authenticated_user(): void
     {
         $user = User::factory()->create();
-        $this->withoutMiddleware(\App\Http\Middleware\EnsureFinancialDataReviewed::class);
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
 
         $this->actingAs($user)
             ->get(route('financial.commitments.page'))
             ->assertOk()
             ->assertSee('Parcelamentos')
-            ->assertSee('Próximas prestações');
+            ->assertSee('Próxima prestação');
     }
 
-    public function test_commitments_page_shows_deferred_commitment(): void
+    public function test_commitments_page_excludes_single_deferred_expenses_and_shows_installment_plans(): void
     {
         $user = User::factory()->create();
-        app(\App\Services\Financial\FinancialCommitmentService::class)->create($user, [
+        $service = app(FinancialCommitmentService::class);
+        $service->create($user, [
             'name' => 'Fatura de eletricidade',
             'total_amount' => '90.00',
             'start_date' => '2026-11-01',
             'due_date' => '2026-11-25',
             'payment_condition' => 'deferred',
         ]);
-        $this->withoutMiddleware(\App\Http\Middleware\EnsureFinancialDataReviewed::class);
+        $service->create($user, [
+            'name' => 'Compra parcelada',
+            'total_amount' => '120.00',
+            'start_date' => '2026-11-01',
+            'due_date' => '2026-11-25',
+            'payment_condition' => 'installments',
+            'installments_count' => 3,
+        ]);
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
 
         $this->actingAs($user)
             ->get(route('financial.commitments.page'))
             ->assertOk()
-            ->assertSee('Fatura de eletricidade')
-            ->assertSee('Compra a prazo');
+            ->assertSee('Compra parcelada')
+            ->assertDontSee('Fatura de eletricidade');
     }
-
 
     public function test_account_creation_form_has_only_account_fields_and_creates_opening_balance(): void
     {
@@ -551,7 +571,7 @@ class FinanceFlowTest extends TestCase
         ]);
         $response->assertCreated();
         $account = ContaFinanceira::query()->where('name', 'Conta principal')->firstOrFail();
-        $this->assertSame('1250.50', app(\App\Services\Financial\AccountBalanceService::class)->balance($account));
+        $this->assertSame('1250.50', app(AccountBalanceService::class)->balance($account));
     }
 
     public function test_transfer_form_uses_transfer_movement_and_moves_balance_between_accounts(): void
@@ -574,7 +594,7 @@ class FinanceFlowTest extends TestCase
             'destination_account_id' => $destinationId,
         ])->assertCreated();
 
-        $balances = app(\App\Services\Financial\AccountBalanceService::class);
+        $balances = app(AccountBalanceService::class);
         $this->assertSame('425.00', $balances->balance(ContaFinanceira::query()->findOrFail($sourceId)));
         $this->assertSame('175.00', $balances->balance(ContaFinanceira::query()->findOrFail($destinationId)));
         $this->assertDatabaseHas('movimentos', [
@@ -585,7 +605,6 @@ class FinanceFlowTest extends TestCase
             'amount' => '75.00',
         ]);
     }
-
 
     public function test_credit_cards_page_handles_closed_cards_without_calling_operational_balance_service(): void
     {
@@ -608,5 +627,83 @@ class FinanceFlowTest extends TestCase
             ->assertSee('125,00');
     }
 
+    public function test_editing_partially_settled_original_preserves_payments_and_rejects_amount_below_paid_total(): void
+    {
+        $user = User::factory()->create();
+        $accountId = $this->account($user, '10000.00');
+
+        $this->actingAs($user)->postJson(route('despesas.store'), [
+            'description' => 'Despesa original',
+            'amount' => '100.00',
+            'category' => 'casa',
+            'expense_date' => '2026-11-09',
+            'paid_now' => '0',
+        ])->assertOk();
+
+        $legacy = $user->despesas()->where('description', 'Despesa original')->firstOrFail();
+        $movement = $user->movimentos()
+            ->where('legacy_type', 'despesa')
+            ->where('legacy_id', $legacy->id)
+            ->firstOrFail();
+
+        app(\App\Services\Financial\FinancialMovementService::class)->settle($user, $movement, [
+            'source_account_id' => $accountId,
+            'amount' => '40.00',
+            'movement_date' => '2026-11-16',
+        ]);
+
+        $payment = $movement->settlements()->where('status', 'settled')->firstOrFail();
+
+        $payload = [
+            'description' => 'Despesa revista',
+            'amount' => '120.00',
+            'category' => 'casa',
+            'expense_date' => '2026-11-09',
+            'account_id' => $accountId,
+            'paid_now' => '0',
+        ];
+
+        $this->actingAs($user)->putJson(route('despesas.update', $legacy->id), $payload)->assertOk();
+
+        $updated = $movement->fresh();
+        $this->assertSame($movement->id, $updated->id);
+        $this->assertSame('120.00', $updated->amount);
+        $this->assertSame('partial', $updated->status);
+        $this->assertSame('Despesa revista', $updated->description);
+        $this->assertSame('40.00', $payment->fresh()->amount);
+        $this->assertSame(1, $updated->settlements()->where('status', 'settled')->count());
+        $this->assertSame('120.00', (string) $legacy->fresh()->amount);
+        $this->assertSame('9960.00', app(AccountBalanceService::class)->balance(
+            $user->contasFinanceiras()->whereKey($accountId)->firstOrFail()
+        ));
+
+        app(\App\Services\Financial\FinancialMovementService::class)->settle($user, $updated, [
+            'source_account_id' => $accountId,
+            'amount' => '80.00',
+            'movement_date' => '2026-11-17',
+        ]);
+        $this->assertSame('settled', $movement->fresh()->status);
+
+        $this->actingAs($user)->putJson(route('despesas.update', $legacy->id), array_merge($payload, [
+            'amount' => '130.00',
+        ]))->assertOk();
+
+        $this->assertSame('130.00', $movement->fresh()->amount);
+        $this->assertSame('partial', $movement->fresh()->status);
+        $this->assertSame(2, $movement->settlements()->where('status', 'settled')->count());
+        $this->assertSame('130.00', (string) $legacy->fresh()->amount);
+        $this->assertSame('9880.00', app(AccountBalanceService::class)->balance(
+            $user->contasFinanceiras()->whereKey($accountId)->firstOrFail()
+        ));
+
+        $this->actingAs($user)->putJson(route('despesas.update', $legacy->id), array_merge($payload, [
+            'amount' => '110.00',
+        ]))->assertUnprocessable()->assertJsonValidationErrors('amount');
+
+        $this->assertSame('130.00', $movement->fresh()->amount);
+        $this->assertSame('130.00', (string) $legacy->fresh()->amount);
+        $this->assertSame('40.00', $payment->fresh()->amount);
+        $this->assertSame(2, $movement->settlements()->where('status', 'settled')->count());
+    }
 
 }

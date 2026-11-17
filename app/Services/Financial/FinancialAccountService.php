@@ -7,7 +7,6 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use RuntimeException;
 
 class FinancialAccountService
 {
@@ -19,7 +18,7 @@ class FinancialAccountService
             // Toda conta começa utilizável com saldo zero. O saldo real pode
             // ser corrigido mais tarde, inclusive depois de lançamentos.
             $openingDebt = $data['type'] === 'credit_card' ? (string) ($data['opening_debt_amount'] ?? '0.00') : '0.00';
-            $openingBalance = $data['type'] === 'credit_card' ? '-' . ltrim($openingDebt, '-') : ($data['opening_balance'] ?? '0.00');
+            $openingBalance = $data['type'] === 'credit_card' ? '-'.ltrim($openingDebt, '-') : ($data['opening_balance'] ?? '0.00');
             $allowNegative = true;
             if (($data['opening_balance_date'] ?? now()->toDateString()) > now()->toDateString()) {
                 throw ValidationException::withMessages(['opening_balance_date' => 'A data do saldo inicial não pode ser futura.']);
@@ -49,7 +48,7 @@ class FinancialAccountService
     {
         return DB::transaction(function () use ($user, $account, $amount, $date, $allowNegative) {
             $locked = ContaFinanceira::query()->where('user_id', $user->id)->whereKey($account->id)->lockForUpdate()->firstOrFail();
-            if (!$locked->is_operational || $locked->type === 'legacy') {
+            if (! $locked->is_operational || $locked->type === 'legacy') {
                 throw ValidationException::withMessages(['account' => 'Esta conta não aceita saldo inicial operacional.']);
             }
             if ($date > now()->toDateString()) {
@@ -70,11 +69,12 @@ class FinancialAccountService
     {
         return DB::transaction(function () use ($user, $account, $name) {
             $locked = ContaFinanceira::query()->where('user_id', $user->id)->whereKey($account->id)->lockForUpdate()->firstOrFail();
-            if (!$locked->is_operational || $locked->type === 'legacy' || $locked->status === 'closed') {
+            if (! $locked->is_operational || $locked->type === 'legacy' || $locked->status === 'closed') {
                 throw ValidationException::withMessages(['account' => 'Esta conta não pode ser editada.']);
             }
 
             $locked->update(['name' => $name]);
+
             return $locked->refresh();
         });
     }
@@ -83,15 +83,16 @@ class FinancialAccountService
     {
         return DB::transaction(function () use ($user, $account, $allowed) {
             $locked = ContaFinanceira::query()->where('user_id', $user->id)->whereKey($account->id)->lockForUpdate()->firstOrFail();
-            if (!$locked->is_operational || $locked->status === 'closed' || !in_array($locked->type, ['bank', 'cash'], true)) {
+            if (! $locked->is_operational || $locked->status === 'closed' || ! in_array($locked->type, ['bank', 'cash'], true)) {
                 throw ValidationException::withMessages(['account' => 'Esta configuração só se aplica a contas bancárias e de dinheiro ativas.']);
             }
-            if (!$allowed && $locked->opening_balance !== null && $this->balances->toCents((string) $locked->opening_balance) < 0) {
+            if (! $allowed && $locked->opening_balance !== null && $this->balances->toCents((string) $locked->opening_balance) < 0) {
                 throw ValidationException::withMessages(['allow_negative_balance' => 'Não é possível desativar esta opção enquanto o saldo inicial for negativo.']);
             }
             $locked->update([
                 'allow_negative_balance' => $allowed || ($locked->opening_balance !== null && $this->balances->toCents((string) $locked->opening_balance) < 0),
             ]);
+
             return $locked->refresh();
         });
     }
@@ -100,13 +101,14 @@ class FinancialAccountService
     {
         return DB::transaction(function () use ($user, $account, $status) {
             $locked = ContaFinanceira::query()->where('user_id', $user->id)->whereKey($account->id)->where('type', 'credit_card')->lockForUpdate()->firstOrFail();
-            if ($locked->status === 'closed' || !$locked->is_operational) {
+            if ($locked->status === 'closed' || ! $locked->is_operational) {
                 throw ValidationException::withMessages(['status' => 'Um cartão encerrado não pode ser reativado.']);
             }
-            if (!in_array($status, ['active', 'suspended'], true)) {
+            if (! in_array($status, ['active', 'suspended'], true)) {
                 throw ValidationException::withMessages(['status' => 'Estado inválido.']);
             }
             $locked->update(['status' => $status]);
+
             return $locked->refresh();
         });
     }
@@ -119,6 +121,7 @@ class FinancialAccountService
                 throw ValidationException::withMessages(['card' => 'Este cartão não está encerrado.']);
             }
             $locked->update(['status' => 'active', 'is_operational' => true]);
+
             return $locked->refresh();
         });
     }
@@ -160,7 +163,7 @@ class FinancialAccountService
     {
         DB::transaction(function () use ($user, $account, $transferToAccountId) {
             $locked = ContaFinanceira::query()->where('user_id', $user->id)->whereKey($account->id)->lockForUpdate()->firstOrFail();
-            if (!$locked->is_operational || $locked->type === 'legacy') {
+            if (! $locked->is_operational || $locked->type === 'legacy') {
                 throw ValidationException::withMessages(['account' => 'A conta já está encerrada ou é histórica.']);
             }
             $balance = $this->balances->balance($locked);
@@ -171,11 +174,11 @@ class FinancialAccountService
             }
 
             if ($cents > 0) {
-                if (!$transferToAccountId || $transferToAccountId === $locked->id) {
+                if (! $transferToAccountId || $transferToAccountId === $locked->id) {
                     throw ValidationException::withMessages(['transfer_to_account_id' => 'Transfira o saldo positivo para outra conta antes de encerrar.']);
                 }
                 app(FinancialMovementService::class)->transfer($user, [
-                    'description' => 'Transferência de encerramento: ' . $locked->name,
+                    'description' => 'Transferência de encerramento: '.$locked->name,
                     'amount' => $balance,
                     'movement_date' => now()->toDateString(),
                     'source_account_id' => $locked->id,

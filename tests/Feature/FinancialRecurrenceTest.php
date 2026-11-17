@@ -7,8 +7,10 @@ use App\Models\User;
 use App\Services\Financial\AccountBalanceService;
 use App\Services\Financial\FinancialAccountService;
 use App\Services\Financial\RecurrenceService;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class FinancialRecurrenceTest extends TestCase
@@ -18,7 +20,7 @@ class FinancialRecurrenceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class);
+        $this->withoutMiddleware(PreventRequestForgery::class);
         Carbon::setTestNow('2026-11-15 12:00:00');
     }
 
@@ -197,8 +199,7 @@ class FinancialRecurrenceTest extends TestCase
         ]);
     }
 
-
-    public function test_settling_pending_expense_updates_effective_amount_date_and_legacy_record(): void
+    public function test_settling_pending_expense_preserves_original_and_records_effective_payment_separately(): void
     {
         $user = User::factory()->create();
         $account = $this->account($user);
@@ -209,46 +210,56 @@ class FinancialRecurrenceTest extends TestCase
             'amount' => '35.00',
             'movement_date' => '2026-11-16',
             'source_account_id' => $account->id,
-        ])->assertOk()->assertJsonPath('data.status', 'settled')->assertJsonPath('data.amount', '35.00');
+        ])->assertUnprocessable()->assertJsonValidationErrors('amount');
 
-        $this->assertSame('2026-11-16', $movement->fresh()->movement_date->toDateString());
-        $this->assertDatabaseHas('despesas', [
-            'id' => $movement->legacy_id,
-            'amount' => '35.00',
-            'expense_date' => '2026-11-16',
-        ]);
-        $this->assertSame('65.00', app(AccountBalanceService::class)->balance($account));
+        $this->putJson('/api/financial/movements/'.$movement->id.'/settle', [
+            'amount' => '30.00',
+            'movement_date' => '2026-11-16',
+            'source_account_id' => $account->id,
+        ])->assertOk()->assertJsonPath('data.status', 'settled')->assertJsonPath('data.amount', '30.00');
+
+        $this->assertSame('2026-11-15', $movement->fresh()->movement_date->toDateString());
+        $this->assertSame('30.00', $movement->fresh()->amount);
+        $event = $user->movimentos()->where('settles_movement_id', $movement->id)->firstOrFail();
+        $this->assertSame('2026-11-16', $event->movement_date->toDateString());
+        $this->assertSame('30.00', $event->amount);
+        $this->assertTrue(DB::table('despesas')
+            ->where('id', $movement->legacy_id)
+            ->where('amount', 30)
+            ->whereDate('expense_date', '2026-11-15')
+            ->exists());
+        $this->assertSame('70.00', app(AccountBalanceService::class)->balance($account));
     }
 
-    public function test_settling_pending_income_uses_destination_account(): void
+    public function test_settling_pending_income_preserves_original_and_uses_destination_account(): void
     {
         $user = User::factory()->create();
         $account = $this->account($user);
         $category = $user->categorias()->where('type', 'receita')->firstOrFail();
         $this->actingAs($user)->postJson('/api/financial/recurrences', [
-            'type' => 'income',
-            'description' => 'Salário',
-            'amount' => '100.00',
-            'category_id' => $category->id,
-            'account_id' => $account->id,
-            'frequency' => 'monthly',
-            'interval_value' => 1,
-            'start_date' => '2026-11-15',
+            'type' => 'income', 'description' => 'Salário', 'amount' => '100.00',
+            'category_id' => $category->id, 'account_id' => $account->id,
+            'frequency' => 'monthly', 'interval_value' => 1, 'start_date' => '2026-11-15',
         ])->assertCreated();
 
         $movement = $user->movimentos()->where('type', 'income')->whereNotNull('recurrence_id')->firstOrFail();
         $this->putJson('/api/financial/movements/'.$movement->id.'/settle', [
-            'amount' => '125.00',
-            'movement_date' => '2026-11-16',
-            'destination_account_id' => $account->id,
-        ])->assertOk()->assertJsonPath('data.status', 'settled')->assertJsonPath('data.amount', '125.00');
+            'amount' => '125.00', 'movement_date' => '2026-11-16', 'destination_account_id' => $account->id,
+        ])->assertUnprocessable()->assertJsonValidationErrors('amount');
 
-        $this->assertDatabaseHas('receitas', [
-            'id' => $movement->legacy_id,
-            'amount' => '125.00',
-            'income_date' => '2026-11-16',
-        ]);
-        $this->assertSame('225.00', app(AccountBalanceService::class)->balance($account));
+        $this->putJson('/api/financial/movements/'.$movement->id.'/settle', [
+            'amount' => '100.00', 'movement_date' => '2026-11-16', 'destination_account_id' => $account->id,
+        ])->assertOk()->assertJsonPath('data.status', 'settled')->assertJsonPath('data.amount', '100.00');
+
+        $event = $user->movimentos()->where('settles_movement_id', $movement->id)->firstOrFail();
+        $this->assertSame('2026-11-16', $event->movement_date->toDateString());
+        $this->assertSame('100.00', $event->amount);
+        $this->assertTrue(DB::table('receitas')
+            ->where('id', $movement->legacy_id)
+            ->where('amount', 100)
+            ->whereDate('income_date', '2026-11-15')
+            ->exists());
+        $this->assertSame('200.00', app(AccountBalanceService::class)->balance($account));
     }
 
     public function test_recurring_delete_scope_only_removes_selected_occurrence(): void
@@ -294,6 +305,4 @@ class FinancialRecurrenceTest extends TestCase
         $this->assertTrue($rule->fresh()->is_active);
         $this->assertSame(3, $user->movimentos()->where('recurrence_id', $rule->id)->where('status', 'pending')->count());
     }
-
-
 }

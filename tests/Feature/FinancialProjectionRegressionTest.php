@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\EnsureFinancialDataReviewed;
 use App\Models\ContaFinanceira;
 use App\Models\Divida;
 use App\Models\Movimento;
@@ -172,7 +173,7 @@ class FinancialProjectionRegressionTest extends TestCase
         $minus = $this->adjust($user, $bank, 'decrease', '2.00', '2026-12-05');
         $this->adjust($user, $bank, 'increase', '90.00', '2026-12-05', true);
 
-        $this->withoutMiddleware(\App\Http\Middleware\EnsureFinancialDataReviewed::class);
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
         $response = $this->actingAs($user)->get(route('financial.route', ['mes' => '2026-12', 'modo' => 1]));
         $response->assertOk();
         $this->assertSame(120.0, $response->viewData('openingBalance'));
@@ -204,7 +205,9 @@ class FinancialProjectionRegressionTest extends TestCase
             'account_id' => $bank->id, 'amount' => '12.00', 'payment_date' => '2026-11-30',
         ]);
         $this->assertSame('partial', $part->fresh()->status);
-        $this->assertSame(1, $user->movimentos()->where('installment_id', $part->id)->where('status', 'settled')->count());
+        $forecast = $user->movimentos()->where('installment_id', $part->id)->firstOrFail();
+        $this->assertSame('partial', $forecast->status);
+        $this->assertSame('12.00', number_format((float) $forecast->settlements()->where('status', 'settled')->sum('amount'), 2, '.', ''));
         $this->assertSame(0, $user->movimentos()->where('installment_id', $part->id)->where('status', 'pending')->count());
 
         $result = $this->project($user);
@@ -243,8 +246,12 @@ class FinancialProjectionRegressionTest extends TestCase
         $this->assertSame(100.0, $result['openingBalance']);
         $this->assertCount(2, $result['movements']);
         $this->assertSame(-30.0, $result['movements']->sum('projection_delta'));
-        $this->assertSame(-18.0, $result['movements']->firstWhere('id', $forecast->id)->projection_delta);
-        $this->assertNull($result['movements']->firstWhere('id', 'debt-'.$part->id));
+        $effective = $result['movements']->firstWhere('settles_movement_id', $forecast->id);
+        $remaining = $result['movements']->firstWhere('id', 'debt-'.$part->id);
+        $this->assertNotNull($effective);
+        $this->assertNotNull($remaining);
+        $this->assertSame(-12.0, $effective->projection_delta);
+        $this->assertSame(-18.0, $remaining->projection_delta);
         $this->assertSame('88.00', app(AccountBalanceService::class)->balance($bank));
         $this->assertSame(88.0, $this->project($user, '2026-12-03', '2026-12-31')['openingBalance']);
     }
@@ -397,4 +404,79 @@ class FinancialProjectionRegressionTest extends TestCase
         $this->assertSame(-75.0, $result['movements']->firstWhere('id', 'invoice-'.$invoice->id)->projection_delta);
         $this->assertSame('200.00', app(AccountBalanceService::class)->balance($bank));
     }
+
+    public function test_archived_commitment_forecasts_are_excluded_from_financial_route(): void
+    {
+        $user = User::factory()->create();
+        $this->account($user, 'bank', '100.00');
+        $commitments = app(FinancialCommitmentService::class);
+        $debt = $commitments->create($user, [
+            'name' => 'Compra arquivada',
+            'total_amount' => '60.00',
+            'start_date' => '2026-11-01',
+            'due_date' => '2026-12-10',
+            'payment_condition' => 'installments',
+            'installments_count' => 2,
+            'installment_frequency' => 'monthly',
+            'payment_method' => 'transfer',
+        ]);
+        $forecastIds = $user->movimentos()->where('debt_id', $debt->id)->pluck('id')->all();
+
+        $commitments->archive($user, $debt);
+
+        $result = $this->project($user);
+
+        foreach ($forecastIds as $forecastId) {
+            $this->assertNull($result['movements']->firstWhere('id', $forecastId));
+        }
+        foreach ($debt->parcelas as $installment) {
+            $this->assertNull($result['movements']->firstWhere('id', 'debt-'.$installment->id));
+        }
+        $this->assertSame(100.0, $result['openingBalance']);
+        $this->assertCount(0, $result['movements']);
+    }
+
+
+    public function test_archiving_commitment_hides_forecasts_but_keeps_effective_payments_in_cash_route(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->account($user, 'bank', '100.00');
+        $commitments = app(FinancialCommitmentService::class);
+        $debt = $commitments->create($user, [
+            'name' => 'Compra parcialmente paga e arquivada',
+            'total_amount' => '60.00',
+            'start_date' => '2026-11-01',
+            'due_date' => '2026-12-10',
+            'payment_condition' => 'installments',
+            'installments_count' => 2,
+            'installment_frequency' => 'monthly',
+            'payment_method' => 'transfer',
+        ]);
+        $firstInstallment = $debt->parcelas->sortBy('installment_number')->first();
+        $firstForecast = $user->movimentos()->where('installment_id', $firstInstallment->id)->firstOrFail();
+        $secondInstallment = $debt->parcelas->sortBy('installment_number')->last();
+        $secondForecast = $user->movimentos()->where('installment_id', $secondInstallment->id)->firstOrFail();
+
+        $commitments->payInstallment($user, $debt, $firstInstallment, [
+            'account_id' => $bank->id,
+            'amount' => '10.00',
+            'payment_date' => '2026-12-02',
+        ]);
+        $payment = $firstForecast->settlements()->where('status', 'settled')->firstOrFail();
+
+        $commitments->archive($user, $debt);
+
+        $result = $this->project($user);
+        $effectivePayment = $result['movements']->firstWhere('id', $payment->id);
+
+        $this->assertNotNull($effectivePayment);
+        $this->assertSame(-10.0, $effectivePayment->projection_delta);
+        $this->assertNull($result['movements']->firstWhere('id', $firstForecast->id));
+        $this->assertNull($result['movements']->firstWhere('id', $secondForecast->id));
+        $this->assertNull($result['movements']->firstWhere('id', 'debt-'.$firstInstallment->id));
+        $this->assertNull($result['movements']->firstWhere('id', 'debt-'.$secondInstallment->id));
+        $this->assertSame(90.0, $result['openingBalance'] + $result['movements']->sum('projection_delta'));
+        $this->assertSame('90.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+    }
+
 }

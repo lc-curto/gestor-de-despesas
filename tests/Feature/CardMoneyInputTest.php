@@ -17,7 +17,7 @@ class CardMoneyInputTest extends TestCase
         $user = User::factory()->create();
         $response = $this->actingAs($user)->get('/cartoes')->assertOk();
         $html = $response->getContent();
-        $dom = new \DOMDocument();
+        $dom = new \DOMDocument;
         @$dom->loadHTML($html);
         $xpath = new \DOMXPath($dom);
 

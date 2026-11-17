@@ -14,7 +14,7 @@ class AccountBalanceService
      */
     public function balance(ContaFinanceira $account): string
     {
-        if (!$account->is_operational || $account->opening_balance === null || !$account->opening_balance_date) {
+        if (! $account->is_operational || $account->opening_balance === null || ! $account->opening_balance_date) {
             throw new RuntimeException('A conta ainda não está configurada para cálculo de saldo.');
         }
 
@@ -22,6 +22,7 @@ class AccountBalanceService
             ->where('user_id', $account->user_id)
             ->where('status', 'settled')
             ->where('is_historical', false)
+            ->where('is_settlement_parent', false)
             ->where(function ($query) use ($account) {
                 $query->where('source_account_id', $account->id)
                     ->orWhere('destination_account_id', $account->id);
@@ -50,7 +51,7 @@ class AccountBalanceService
 
     public function toCents(string $amount): int
     {
-        if (!preg_match('/^-?\d+(?:\.\d{1,2})?$/', $amount)) {
+        if (! preg_match('/^-?\d+(?:\.\d{1,2})?$/', $amount)) {
             throw new RuntimeException('Valor monetário inválido.');
         }
 
@@ -64,6 +65,6 @@ class AccountBalanceService
 
     private function fromCents(int $cents): string
     {
-        return ($cents < 0 ? '-' : '') . intdiv(abs($cents), 100) . '.' . str_pad((string) (abs($cents) % 100), 2, '0', STR_PAD_LEFT);
+        return ($cents < 0 ? '-' : '').intdiv(abs($cents), 100).'.'.str_pad((string) (abs($cents) % 100), 2, '0', STR_PAD_LEFT);
     }
 }

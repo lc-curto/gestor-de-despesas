@@ -173,10 +173,10 @@ return new class extends Migration
 
         // SQLite não suporta ADD CONSTRAINT; a validação da aplicação continua ativa.
         if (DB::getDriverName() !== 'sqlite') {
-        DB::statement("ALTER TABLE contas_financeiras ADD CONSTRAINT contas_opening_balance_valid CHECK (opening_balance IS NULL OR opening_balance >= 0 OR allow_negative_balance = 1)");
-        DB::statement("ALTER TABLE movimentos ADD CONSTRAINT movimentos_amount_positive CHECK (amount > 0)");
-        DB::statement("ALTER TABLE historico_movimentos ADD CONSTRAINT historico_actor_owner CHECK (changed_by IS NULL OR changed_by = user_id)");
-        DB::statement("ALTER TABLE movimentos ADD CONSTRAINT movimentos_account_shape CHECK (
+            DB::statement('ALTER TABLE contas_financeiras ADD CONSTRAINT contas_opening_balance_valid CHECK (opening_balance IS NULL OR opening_balance >= 0 OR allow_negative_balance = 1)');
+            DB::statement('ALTER TABLE movimentos ADD CONSTRAINT movimentos_amount_positive CHECK (amount > 0)');
+            DB::statement('ALTER TABLE historico_movimentos ADD CONSTRAINT historico_actor_owner CHECK (changed_by IS NULL OR changed_by = user_id)');
+            DB::statement("ALTER TABLE movimentos ADD CONSTRAINT movimentos_account_shape CHECK (
             (requires_account_assignment = 1 AND source_account_id IS NULL AND destination_account_id IS NULL)
             OR (type = 'income' AND source_account_id IS NULL AND destination_account_id IS NOT NULL)
             OR (type = 'expense' AND source_account_id IS NOT NULL AND destination_account_id IS NULL)
@@ -186,10 +186,10 @@ return new class extends Migration
                 OR (adjustment_direction = 'decrease' AND source_account_id IS NOT NULL AND destination_account_id IS NULL)
             ))
         )");
-        DB::statement("ALTER TABLE dividas ADD CONSTRAINT dividas_total_positive CHECK (total_amount > 0)");
-        DB::statement("ALTER TABLE parcelas_divida ADD CONSTRAINT parcelas_amount_positive CHECK (amount > 0)");
-        DB::statement("ALTER TABLE parcelas_divida ADD CONSTRAINT parcelas_paid_valid CHECK (paid_amount >= 0 AND paid_amount <= amount)");
-        DB::statement("ALTER TABLE parcelas_divida ADD CONSTRAINT parcelas_interest_nonnegative CHECK (interest_amount >= 0)");
+            DB::statement('ALTER TABLE dividas ADD CONSTRAINT dividas_total_positive CHECK (total_amount > 0)');
+            DB::statement('ALTER TABLE parcelas_divida ADD CONSTRAINT parcelas_amount_positive CHECK (amount > 0)');
+            DB::statement('ALTER TABLE parcelas_divida ADD CONSTRAINT parcelas_paid_valid CHECK (paid_amount >= 0 AND paid_amount <= amount)');
+            DB::statement('ALTER TABLE parcelas_divida ADD CONSTRAINT parcelas_interest_nonnegative CHECK (interest_amount >= 0)');
         }
     }
 

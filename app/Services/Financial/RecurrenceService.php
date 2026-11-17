@@ -4,8 +4,9 @@ namespace App\Services\Financial;
 
 use App\Models\Categoria;
 use App\Models\Despesa;
-use App\Models\Recorrencia;
+use App\Models\Movimento;
 use App\Models\Receita;
+use App\Models\Recorrencia;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,7 @@ use Illuminate\Validation\ValidationException;
 class RecurrenceService
 {
     public const FORECAST_DAYS = 90;
+
     private const MAX_OCCURRENCES_PER_RUN = 500;
 
     public function __construct(private readonly FinancialMovementService $movements) {}
@@ -21,7 +23,7 @@ class RecurrenceService
     public function create(User $user, array $data): Recorrencia
     {
         $category = Categoria::query()->where('user_id', $user->id)->whereKey($data['category_id'])->first();
-        if (!$category || !$category->is_active || $category->type !== ($data['type'] === 'expense' ? 'despesa' : 'receita')) {
+        if (! $category || ! $category->is_active || $category->type !== ($data['type'] === 'expense' ? 'despesa' : 'receita')) {
             throw ValidationException::withMessages(['category_id' => 'A categoria não corresponde ao tipo de movimento.']);
         }
         $this->assertDefaultAccount($user, $data['type'], $data['account_id'] ?? null);
@@ -42,25 +44,25 @@ class RecurrenceService
                 'is_active' => true,
             ]);
             $this->generateRule($user, $rule->id);
+
             return $rule->fresh(['categoria', 'conta']);
         });
 
         return $rule;
     }
 
-
-    public function syncEditedMovement(User $user, \App\Models\Movimento $movement, array $data, bool $enabled): void
+    public function syncEditedMovement(User $user, Movimento $movement, array $data, bool $enabled): void
     {
         DB::transaction(function () use ($user, $movement, $data, $enabled): void {
             $movement = $user->movimentos()->whereKey($movement->id)->lockForUpdate()->firstOrFail();
             $rule = $movement->recurrence_id ? $user->recorrencias()->whereKey($movement->recurrence_id)->lockForUpdate()->first() : null;
-            if (!$enabled) {
+            if (! $enabled) {
                 if ($rule) {
                     $rule->update(['is_active' => false]);
                     $date = Carbon::parse($movement->recurrence_occurrence_date ?: $movement->movement_date)->toDateString();
                     $forecasts = $user->movimentos()->where('recurrence_id', $rule->id)
                         ->where('status', 'pending')->whereDate('recurrence_occurrence_date', '>', $date)->lockForUpdate()->get()
-                        ->filter(fn ($forecast) => !$forecast->historico()->where('action', 'confirmed')->exists());
+                        ->filter(fn ($forecast) => ! $forecast->historico()->where('action', 'confirmed')->exists());
                     $firstCancelledDate = $forecasts->pluck('recurrence_occurrence_date')
                         ->filter()
                         ->map(fn ($date) => Carbon::parse($date)->toDateString())
@@ -69,8 +71,12 @@ class RecurrenceService
 
                     foreach ($forecasts as $forecast) {
                         $this->assertNotCommitmentForecast($forecast);
-                        if ($forecast->legacy_type === 'despesa') Despesa::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
-                        if ($forecast->legacy_type === 'receita') Receita::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
+                        if ($forecast->legacy_type === 'despesa') {
+                            Despesa::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
+                        }
+                        if ($forecast->legacy_type === 'receita') {
+                            Receita::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
+                        }
                         $forecast->historico()->delete();
                         $forecast->delete();
                     }
@@ -80,36 +86,48 @@ class RecurrenceService
                         $rule->update(['next_occurrence' => $firstCancelledDate]);
                     }
                 }
+
                 return;
             }
             $category = Categoria::query()->where('user_id', $user->id)->whereKey($data['category_id'])->first();
-            if (!$category || !$category->is_active || $category->type !== ($movement->type === 'expense' ? 'despesa' : 'receita')) {
+            if (! $category || ! $category->is_active || $category->type !== ($movement->type === 'expense' ? 'despesa' : 'receita')) {
                 throw ValidationException::withMessages(['category_id' => 'A categoria não corresponde ao tipo de movimento.']);
             }
             $this->assertDefaultAccount($user, $movement->type, $data['account_id'] ?? null);
             $date = Carbon::parse($movement->movement_date)->toDateString();
             $values = ['type' => $movement->type, 'expense_behavior' => $movement->type === 'expense' ? ($category->expense_behavior ?? 'variable') : 'variable', 'description' => $data['description'], 'amount' => $data['amount'], 'category_id' => $data['category_id'], 'account_id' => $data['account_id'] ?? null, 'frequency' => $data['frequency'], 'interval_value' => (int) $data['interval_value'], 'anchor_date' => $date, 'ends_at' => $data['ends_at'] ?? null, 'is_active' => true];
-            if (!$rule) {
+            if (! $rule) {
                 $rule = $user->recorrencias()->create($values + ['next_occurrence' => $date]);
                 $movement->recurrence_id = $rule->id;
                 $movement->recurrence_occurrence_date = $date;
                 $movement->save();
             } else {
                 $forecasts = $user->movimentos()->where('recurrence_id', $rule->id)->where('status', 'pending')->whereDate('recurrence_occurrence_date', '>', $date)->lockForUpdate()->get()
-                    ->filter(fn ($forecast) => !$forecast->historico()->where('action', 'confirmed')->exists());
+                    ->filter(fn ($forecast) => ! $forecast->historico()->where('action', 'confirmed')->exists());
                 foreach ($forecasts as $forecast) {
                     $this->assertNotCommitmentForecast($forecast);
-                    if ($forecast->legacy_type === 'despesa') Despesa::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
-                    if ($forecast->legacy_type === 'receita') Receita::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
-                    $forecast->historico()->delete(); $forecast->delete();
+                    if ($forecast->legacy_type === 'despesa') {
+                        Despesa::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
+                    }
+                    if ($forecast->legacy_type === 'receita') {
+                        Receita::query()->where('user_id', $user->id)->whereKey($forecast->legacy_id)->delete();
+                    }
+                    $forecast->historico()->delete();
+                    $forecast->delete();
                 }
-                $rule->fill($values); $rule->next_occurrence = $date; $rule->save();
-                $movement->recurrence_occurrence_date = $date; $movement->save();
+                $rule->fill($values);
+                $rule->next_occurrence = $date;
+                $rule->save();
+                $movement->recurrence_occurrence_date = $date;
+                $movement->save();
             }
-            $rule->next_occurrence = $this->nextDate($rule, Carbon::parse($date))->toDateString(); $rule->save();
+            $rule->next_occurrence = $this->nextDate($rule, Carbon::parse($date))->toDateString();
+            $rule->save();
         });
         $ruleId = $user->movimentos()->whereKey($movement->id)->value('recurrence_id');
-        if ($enabled && $ruleId) $this->generateRule($user, (string) $ruleId);
+        if ($enabled && $ruleId) {
+            $this->generateRule($user, (string) $ruleId);
+        }
     }
 
     public function generateForUser(User $user): int
@@ -119,6 +137,7 @@ class RecurrenceService
         foreach ($ids as $id) {
             $created += $this->generateRule($user, (string) $id);
         }
+
         return $created;
     }
 
@@ -132,6 +151,7 @@ class RecurrenceService
                 }
             }
         });
+
         return $created;
     }
 
@@ -152,14 +172,14 @@ class RecurrenceService
 
             // Pausar também elimina previsões futuras ainda não confirmadas.
             // Movimentos já liquidados permanecem intactos para preservar o histórico.
-            if (!$active) {
+            if (! $active) {
                 $forecasts = $user->movimentos()
                     ->where('recurrence_id', $rule->id)
                     ->where('status', 'pending')
                     ->whereDate('recurrence_occurrence_date', '>=', today()->toDateString())
                     ->lockForUpdate()
                     ->get()
-                    ->filter(fn ($forecast) => !$forecast->historico()->where('action', 'confirmed')->exists());
+                    ->filter(fn ($forecast) => ! $forecast->historico()->where('action', 'confirmed')->exists());
 
                 $firstCancelledDate = $forecasts->pluck('recurrence_occurrence_date')
                     ->filter()
@@ -198,14 +218,17 @@ class RecurrenceService
     {
         return DB::transaction(function () use ($user, $recurrenceId): int {
             $rule = Recorrencia::query()->where('user_id', $user->id)->whereKey($recurrenceId)->lockForUpdate()->firstOrFail();
-            if (!$rule->is_active) return 0;
+            if (! $rule->is_active) {
+                return 0;
+            }
 
             if ($rule->account_id) {
                 $account = $user->contasFinanceiras()->whereKey($rule->account_id)->first();
-                if (!$account || !$account->is_operational || $account->status !== 'active'
+                if (! $account || ! $account->is_operational || $account->status !== 'active'
                     || $account->currency !== $user->currency
-                    || ($account->type === 'credit_card' && (!$account->closing_day || !$account->due_day))) {
+                    || ($account->type === 'credit_card' && (! $account->closing_day || ! $account->due_day))) {
                     $rule->update(['is_active' => false]);
+
                     return 0;
                 }
             }
@@ -217,14 +240,16 @@ class RecurrenceService
             $processed = 0;
 
             while ($cursor->lte($through) && $processed < self::MAX_OCCURRENCES_PER_RUN) {
-                if ($rule->ends_at && $cursor->gt(Carbon::parse($rule->ends_at))) break;
+                if ($rule->ends_at && $cursor->gt(Carbon::parse($rule->ends_at))) {
+                    break;
+                }
                 $scheduledDate = $cursor->toDateString();
                 $exists = $user->movimentos()
                     ->where('recurrence_id', $rule->id)
                     ->where('recurrence_occurrence_date', $scheduledDate)
                     ->exists();
 
-                if (!$exists) {
+                if (! $exists) {
                     $legacy = $this->createLegacyRecord($user, $rule, $category, $scheduledDate);
                     $this->movements->createPending($user, [
                         'type' => $rule->type,
@@ -274,6 +299,7 @@ class RecurrenceService
                 'category_id' => $category->id,
                 'expense_date' => $date,
             ]);
+
             return ['type' => 'despesa', 'id' => $legacy->id];
         }
 
@@ -286,6 +312,7 @@ class RecurrenceService
             'category_id' => $category->id,
             'income_date' => $date,
         ]);
+
         return ['type' => 'receita', 'id' => $legacy->id];
     }
 
@@ -307,16 +334,18 @@ class RecurrenceService
     private function monthAtAnchor(Carbon $date, Carbon $anchor, int $interval): Carbon
     {
         $next = $date->copy()->startOfMonth()->addMonthsNoOverflow($interval);
+
         return $next->day(min($anchor->day, $next->daysInMonth));
     }
 
     private function yearAtAnchor(Carbon $date, Carbon $anchor, int $interval): Carbon
     {
         $next = $date->copy()->startOfYear()->addYears($interval)->month($anchor->month);
+
         return $next->day(min($anchor->day, $next->daysInMonth));
     }
 
-    private function assertNotCommitmentForecast(\App\Models\Movimento $forecast): void
+    private function assertNotCommitmentForecast(Movimento $forecast): void
     {
         if ($forecast->installment_id || $forecast->debt_id) {
             throw ValidationException::withMessages(['movement' => 'Esta previsão também está ligada a um compromisso. Revê-a em Parcelamentos antes de alterar a recorrência.']);
@@ -325,13 +354,15 @@ class RecurrenceService
 
     private function assertDefaultAccount(User $user, string $type, ?string $accountId): void
     {
-        if (!$accountId) return;
+        if (! $accountId) {
+            return;
+        }
         $account = $user->contasFinanceiras()->whereKey($accountId)->first();
         $allowedTypes = $type === 'expense' ? ['bank', 'cash', 'credit_card'] : ['bank', 'cash'];
-        if (!$account || !$account->is_operational || $account->status !== 'active' || $account->currency !== $user->currency || !in_array($account->type, $allowedTypes, true)) {
+        if (! $account || ! $account->is_operational || $account->status !== 'active' || $account->currency !== $user->currency || ! in_array($account->type, $allowedTypes, true)) {
             throw ValidationException::withMessages(['account_id' => 'A conta predefinida não pode ser usada neste tipo de movimento.']);
         }
-        if ($account->type === 'credit_card' && (!$account->closing_day || !$account->due_day)) {
+        if ($account->type === 'credit_card' && (! $account->closing_day || ! $account->due_day)) {
             throw ValidationException::withMessages(['account_id' => 'Configura os dias de fecho e vencimento do cartão antes de criar uma recorrência.']);
         }
     }

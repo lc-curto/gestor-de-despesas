@@ -51,11 +51,11 @@ class FinancialAccountsPageTest extends TestCase
             'opening_balance_date' => '2026-11-01',
         ]);
 
-        $this->actingAs($user)->putJson('/api/financial/accounts/' . $account->id, [
+        $this->actingAs($user)->putJson('/api/financial/accounts/'.$account->id, [
             'name' => 'Conta principal',
         ])->assertOk()->assertJsonPath('data.name', 'Conta principal');
 
-        $this->postJson('/api/financial/accounts/' . $account->id . '/close')
+        $this->postJson('/api/financial/accounts/'.$account->id.'/close')
             ->assertOk();
 
         $this->assertDatabaseHas('contas_financeiras', [
@@ -72,12 +72,12 @@ class FinancialAccountsPageTest extends TestCase
             'opening_balance_date' => '2026-11-01', 'allow_negative_balance' => false,
         ]);
 
-        $this->actingAs($user)->putJson('/api/financial/accounts/' . $account->id . '/settings', [
+        $this->actingAs($user)->putJson('/api/financial/accounts/'.$account->id.'/settings', [
             'allow_negative_balance' => true,
         ])->assertOk();
         $this->assertDatabaseHas('contas_financeiras', ['id' => $account->id, 'allow_negative_balance' => true]);
 
-        $this->putJson('/api/financial/accounts/' . $account->id . '/settings', [
+        $this->putJson('/api/financial/accounts/'.$account->id.'/settings', [
             'allow_negative_balance' => false,
         ])->assertOk();
         $this->assertDatabaseHas('contas_financeiras', ['id' => $account->id, 'allow_negative_balance' => false]);
@@ -91,7 +91,7 @@ class FinancialAccountsPageTest extends TestCase
             'opening_balance_date' => '2026-11-01', 'allow_negative_balance' => true,
         ]);
 
-        $this->actingAs($user)->putJson('/api/financial/accounts/' . $account->id . '/settings', [
+        $this->actingAs($user)->putJson('/api/financial/accounts/'.$account->id.'/settings', [
             'allow_negative_balance' => false,
         ])->assertUnprocessable();
 
@@ -111,7 +111,7 @@ class FinancialAccountsPageTest extends TestCase
             'opening_balance_date' => '2026-11-01',
         ]);
 
-        $this->actingAs($user)->postJson('/api/financial/accounts/' . $source->id . '/close', [
+        $this->actingAs($user)->postJson('/api/financial/accounts/'.$source->id.'/close', [
             'transfer_to_account_id' => $target->id,
         ])->assertOk();
 
@@ -127,22 +127,22 @@ class FinancialAccountsPageTest extends TestCase
     public function test_credit_cards_are_not_displayed_on_accounts_page(): void
     {
         $user = User::factory()->create();
-        app(FinancialAccountService::class)->create($user, ['name'=>'Cartão principal','type'=>'credit_card','opening_debt_amount'=>'350.00','credit_limit'=>'1000.00','closing_day'=>10,'due_day'=>1]);
+        app(FinancialAccountService::class)->create($user, ['name' => 'Cartão principal', 'type' => 'credit_card', 'opening_debt_amount' => '350.00', 'credit_limit' => '1000.00', 'closing_day' => 10, 'due_day' => 1]);
         $this->actingAs($user)->get('/contas')->assertOk()->assertDontSee('Os meus cartões')->assertDontSee('Cartão principal');
     }
 
     public function test_credit_cards_are_displayed_on_their_own_page(): void
     {
-        $user=User::factory()->create();
-        app(FinancialAccountService::class)->create($user,['name'=>'Cartão principal','type'=>'credit_card','opening_debt_amount'=>'350.00','credit_limit'=>'1000.00','closing_day'=>10,'due_day'=>1]);
+        $user = User::factory()->create();
+        app(FinancialAccountService::class)->create($user, ['name' => 'Cartão principal', 'type' => 'credit_card', 'opening_debt_amount' => '350.00', 'credit_limit' => '1000.00', 'closing_day' => 10, 'due_day' => 1]);
         $this->actingAs($user)->get('/cartoes')->assertOk()->assertSee('Cartões')->assertSee('Cartão principal')->assertSee('Utilizado')->assertSee('Disponível');
     }
 
     public function test_card_limit_cannot_be_reduced_below_current_utilization(): void
     {
-        $user=User::factory()->create();
-        $card=app(FinancialAccountService::class)->create($user,['name'=>'Cartão principal','type'=>'credit_card','opening_debt_amount'=>'350.00','credit_limit'=>'1000.00','closing_day'=>10,'due_day'=>1]);
-        $this->actingAs($user)->putJson('/api/financial/accounts/'.$card->id.'/card-settings',['credit_limit'=>'300.00','closing_day'=>10,'due_day'=>1])->assertUnprocessable();
+        $user = User::factory()->create();
+        $card = app(FinancialAccountService::class)->create($user, ['name' => 'Cartão principal', 'type' => 'credit_card', 'opening_debt_amount' => '350.00', 'credit_limit' => '1000.00', 'closing_day' => 10, 'due_day' => 1]);
+        $this->actingAs($user)->putJson('/api/financial/accounts/'.$card->id.'/card-settings', ['credit_limit' => '300.00', 'closing_day' => 10, 'due_day' => 1])->assertUnprocessable();
     }
 
     public function test_initial_card_debt_can_be_corrected_before_any_movement(): void

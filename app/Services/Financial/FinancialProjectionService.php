@@ -40,23 +40,71 @@ class FinancialProjectionService
         $items = $user->movimentos()
             ->with('categoria:id,name')
             ->whereIn('type', ['income', 'expense', 'transfer', 'adjustment'])
-            ->whereIn('status', ['pending', 'settled'])
+            ->whereIn('status', ['pending', 'partial', 'settled'])
             ->where('is_historical', false)
+            ->where('is_settlement_parent', false)
+            // Previsões associadas a compromissos arquivados ou encerrados
+            // não entram na Rota Financeira. Liquidações efetivas permanecem
+            // visíveis porque são eventos independentes, sem debt_id.
+            ->where(function ($query) {
+                $query->whereNull('debt_id')
+                    ->orWhereExists(function ($subquery) {
+                        $subquery->selectRaw('1')
+                            ->from('dividas')
+                            ->whereColumn('dividas.id', 'movimentos.debt_id')
+                            ->whereColumn('dividas.user_id', 'movimentos.user_id')
+                            ->whereNull('dividas.archived_at')
+                            ->whereNotIn('dividas.status', ['cancelled', 'paid']);
+                    });
+            })
             ->where('movement_date', '>=', $rangeStart->toDateString())
             ->where('movement_date', '<', $rangeEndExclusive)
             ->orderBy('movement_date')
-            ->get(['id', 'type', 'status', 'description', 'notes', 'amount', 'movement_date', 'expense_behavior', 'category_id', 'source_account_id', 'destination_account_id', 'recurrence_id', 'adjustment_direction']);
+            ->get(['id', 'type', 'status', 'description', 'notes', 'amount', 'movement_date', 'expense_behavior', 'category_id', 'source_account_id', 'destination_account_id', 'recurrence_id', 'adjustment_direction', 'settles_movement_id']);
 
         $items = $items->map(function (Movimento $movement) use ($accountTypes): Movimento {
             $movement->setAttribute('projection_delta', $this->cashDelta($movement, $accountTypes));
+
             return $movement;
         })->filter(fn (Movimento $movement) => (float) $movement->projection_delta !== 0.0)->values();
 
+        // Uma obrigação parcialmente liquidada projeta apenas o saldo não pago.
+        $partiallySettled = $user->movimentos()
+            ->where('is_settlement_parent', true)
+            ->whereNull('installment_id')
+            ->whereNull('invoice_id')
+            ->where('status', 'partial')
+            ->where('is_historical', false)
+            ->whereIn('type', ['expense', 'income'])
+            ->where('movement_date', '>=', $rangeStart->toDateString())
+            ->where('movement_date', '<', $rangeEndExclusive)
+            ->get();
+        foreach ($partiallySettled as $original) {
+            $netSettled = $original->settlements()
+                ->where('status', 'settled')
+                ->get(['amount', 'reversal_of_id'])
+                ->sum(fn (Movimento $event) => ($event->reversal_of_id ? -1 : 1) * (float) $event->amount);
+            $remaining = round((float) $original->amount - $netSettled, 2);
+            if ($remaining <= 0) {
+                continue;
+            }
+            $synthetic = $this->syntheticExpense(
+                'settlement-'.$original->id,
+                $original->description.' · Saldo pendente',
+                $remaining,
+                $original->movement_date,
+                $original->expense_behavior ?? 'variable'
+            );
+            $synthetic->type = $original->type;
+            $synthetic->source_account_id = $original->source_account_id;
+            $synthetic->destination_account_id = $original->destination_account_id;
+            $synthetic->setAttribute('projection_delta', $original->type === 'income' ? $remaining : -$remaining);
+            $items->push($synthetic);
+        }
+
         $installments = $user->parcelasDivida()
             ->with('divida')
-            ->whereHas('divida', fn ($query) => $query
-                ->where('status', '!=', 'cancelled')
-                ->where(fn ($query) => $query->whereNull('payment_method')->orWhereNotIn('payment_method', ['credit', 'card'])))
+            ->whereHas('divida')
             ->whereIn('status', ['pending', 'partial'])
             ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('movimentos as linked_movements')
                 ->whereColumn('linked_movements.installment_id', 'parcelas_divida.id')
@@ -66,10 +114,17 @@ class FinancialProjectionService
                 ->where('linked_movements.is_historical', false))
             ->where('due_date', '>=', $rangeStart->toDateString())
             ->where('due_date', '<', $rangeEndExclusive)
-            ->get();
+            ->get()
+            ->filter(fn ($installment) => $installment->divida
+                && $installment->divida->archived_at === null
+                && ! in_array($installment->divida->status, ['cancelled', 'paid'], true)
+                && ! in_array($installment->divida->payment_method, ['credit', 'card'], true))
+            ->values();
         foreach ($installments as $installment) {
             $remaining = round((float) $installment->amount - (float) $installment->paid_amount, 2);
-            if ($remaining <= 0) continue;
+            if ($remaining <= 0) {
+                continue;
+            }
             $synthetic = $this->syntheticExpense(
                 'debt-'.$installment->id,
                 $installment->divida->name.' · Parcela '.$installment->installment_number.'/'.$installment->divida->installments_count,
@@ -83,15 +138,27 @@ class FinancialProjectionService
 
         $invoices = Fatura::query()
             ->where('user_id', $user->id)
+            ->where('status', '!=', 'carried')
             ->where('due_date', '>=', $rangeStart->toDateString())
             ->where('due_date', '<', $rangeEndExclusive)
-            ->with(['conta', 'movimentos' => fn ($query) => $query->where('status', 'settled')])
+            ->with([
+                'conta',
+                'movimentos' => fn ($query) => $query->where('status', 'settled'),
+                'creditos' => fn ($query) => $query->where('status', 'settled')->select('id', 'invoice_id', 'amount', 'invoice_charge_type'),
+                'saldosTransportados:id,user_id,source_invoice_id,target_invoice_id,amount',
+            ])
             ->get();
         foreach ($invoices as $invoice) {
-            $total = (float) $invoice->movimentos->where('type', 'expense')->sum('amount');
-            $paid = (float) $invoice->movimentos->where('type', 'transfer')->sum('amount');
+            $total = (float) $invoice->movimentos
+                ->where('type', 'expense')->where('is_settlement_parent', false)->sum('amount')
+                + (float) $invoice->saldosTransportados->sum('amount')
+                - (float) $invoice->creditos->sum('amount');
+            $paid = (float) $invoice->movimentos->where('type', 'transfer')
+                ->sum(fn (Movimento $movement) => $movement->reversal_of_id ? -(float) $movement->amount : (float) $movement->amount);
             $remaining = round($total - $paid, 2);
-            if ($remaining <= 0) continue;
+            if ($remaining <= 0) {
+                continue;
+            }
             $synthetic = $this->syntheticExpense(
                 'invoice-'.$invoice->id,
                 'Pagamento de fatura · '.($invoice->conta?->name ?? 'Cartão'),
@@ -117,16 +184,28 @@ class FinancialProjectionService
         $sourceIsCash = in_array($sourceType, ['bank', 'cash'], true);
         $destinationIsCash = in_array($destinationType, ['bank', 'cash'], true);
 
-        if ($movement->type === 'income' && $destinationIsCash) $delta += (float) $movement->amount;
-        if ($movement->type === 'expense' && ($movement->status === 'pending' || $sourceIsCash)) $delta -= (float) $movement->amount;
+        if ($movement->type === 'income' && $destinationIsCash) {
+            $delta += (float) $movement->amount;
+        }
+        if ($movement->type === 'expense' && ($movement->status === 'pending' || $sourceIsCash)) {
+            $delta -= (float) $movement->amount;
+        }
         if ($movement->type === 'transfer') {
-            if ($sourceIsCash) $delta -= (float) $movement->amount;
-            if ($destinationIsCash) $delta += (float) $movement->amount;
+            if ($sourceIsCash) {
+                $delta -= (float) $movement->amount;
+            }
+            if ($destinationIsCash) {
+                $delta += (float) $movement->amount;
+            }
         }
         // Ajustes representam correções já liquidadas, não novas receitas ou despesas.
         if ($movement->type === 'adjustment' && $movement->status === 'settled') {
-            if ($movement->adjustment_direction === 'increase' && $destinationIsCash) $delta += (float) $movement->amount;
-            if ($movement->adjustment_direction === 'decrease' && $sourceIsCash) $delta -= (float) $movement->amount;
+            if ($movement->adjustment_direction === 'increase' && $destinationIsCash) {
+                $delta += (float) $movement->amount;
+            }
+            if ($movement->adjustment_direction === 'decrease' && $sourceIsCash) {
+                $delta -= (float) $movement->amount;
+            }
         }
 
         return round($delta, 2);
@@ -148,6 +227,7 @@ class FinancialProjectionService
         ]);
         // O id não é preenchível em massa no modelo, mas identifica eventos virtuais na rota.
         $movement->setAttribute('id', $id);
+
         return $movement;
     }
 }

@@ -40,7 +40,7 @@ class Despesa extends Model
     {
         static::saving(function (self $movement): void {
             // Compatibilidade com integrações e testes que ainda enviam a chave textual antiga.
-            if ($movement->category_id || !$movement->user_id || !$movement->category) {
+            if ($movement->category_id || ! $movement->user_id || ! $movement->category) {
                 return;
             }
 

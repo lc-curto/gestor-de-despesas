@@ -2,15 +2,21 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\EnsureFinancialDataReviewed;
 use App\Models\ContaFinanceira;
+use App\Models\Divida;
 use App\Models\User;
 use App\Services\Financial\AccountBalanceService;
 use App\Services\Financial\CardInvoiceService;
 use App\Services\Financial\FinancialAccountService;
 use App\Services\Financial\FinancialCommitmentService;
+use App\Services\Financial\FinancialDataDiagnosticService;
+use App\Services\Financial\FinancialDataMigrationService;
 use App\Services\Financial\FinancialMovementService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class FinancialAcceptanceTest extends TestCase
@@ -186,13 +192,11 @@ class FinancialAcceptanceTest extends TestCase
             'payment_date' => '2026-11-16',
         ]);
 
-        $this->assertDatabaseHas('movimentos', [
-            'debt_id' => $debt->id,
-            'installment_id' => $installment->id,
-            'amount' => '20.00',
-            'type' => 'expense',
-            'status' => 'settled',
-        ]);
+        $forecast = $user->movimentos()->where('installment_id', $installment->id)->firstOrFail();
+        $this->assertSame('50.00', (string) $forecast->amount);
+        $this->assertSame('partial', $forecast->fresh()->status);
+        $this->assertTrue((bool) $forecast->fresh()->is_settlement_parent);
+        $this->assertSame('20.00', number_format((float) $forecast->settlements()->where('status', 'settled')->sum('amount'), 2, '.', ''));
         $this->assertDatabaseMissing('movimentos', ['amount' => '100.00']);
     }
 
@@ -222,7 +226,7 @@ class FinancialAcceptanceTest extends TestCase
 
         $this->assertSame('0.00', app(AccountBalanceService::class)->balance($card->fresh()));
         $this->assertSame('0.00', app(AccountBalanceService::class)->balance($bank->fresh()));
-        $this->assertSame(1, $user->movimentos()->where('type', 'expense')->count());
+        $this->assertSame(1, $user->movimentos()->where('type', 'expense')->where('is_settlement_parent', false)->count());
         $this->assertSame(1, $user->movimentos()->where('type', 'transfer')->count());
     }
 
@@ -270,15 +274,28 @@ class FinancialAcceptanceTest extends TestCase
                 'total_amount' => '10.00',
                 'start_date' => '2026-11-01',
                 'due_date' => '2026-12-01',
-                'payment_condition' => 'deferred',
+                'payment_condition' => 'installments',
+                'installments_count' => 2,
             ]);
         }
 
-        $this->withoutMiddleware(\App\Http\Middleware\EnsureFinancialDataReviewed::class);
-        $this->actingAs($user)
+        // Uma obrigação única com vencimento futuro não integra os indicadores de parcelamentos.
+        $service->create($user, [
+            'name' => 'Despesa única futura',
+            'total_amount' => '75.00',
+            'start_date' => '2026-11-01',
+            'due_date' => '2026-12-01',
+            'payment_condition' => 'deferred',
+        ]);
+
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+        $response = $this->actingAs($user)
             ->get(route('financial.commitments.page'))
             ->assertOk()
-            ->assertSee('210,00');
+            ->assertSee('210,00')
+            ->assertDontSee('Despesa única futura');
+
+        $this->assertSame(210.0, $response->viewData('summary')['open']);
     }
 
     public function test_acceptance_financial_route_excludes_card_balance_and_projects_future_obligations(): void
@@ -308,7 +325,7 @@ class FinancialAcceptanceTest extends TestCase
             'payment_condition' => 'deferred',
         ]);
 
-        $this->withoutMiddleware(\App\Http\Middleware\EnsureFinancialDataReviewed::class);
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
         $response = $this->actingAs($user)->get(route('financial.route', ['mes' => '2026-12', 'modo' => 1]));
 
         $response->assertOk();
@@ -322,7 +339,7 @@ class FinancialAcceptanceTest extends TestCase
     {
         $user = User::factory()->create();
         $account = $this->bank($user, balance: '1000.00');
-        $service = app(\App\Services\Financial\FinancialMovementService::class);
+        $service = app(FinancialMovementService::class);
         $service->create($user, [
             'type' => 'income', 'description' => 'Salário canónico', 'amount' => '200.00',
             'movement_date' => '2026-11-09', 'destination_account_id' => $account->id,
@@ -332,7 +349,7 @@ class FinancialAcceptanceTest extends TestCase
             'movement_date' => '2026-11-09', 'source_account_id' => $account->id,
         ]);
 
-        $this->withoutMiddleware(\App\Http\Middleware\EnsureFinancialDataReviewed::class);
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
         $dashboard = $this->actingAs($user)->get(route('dashboard', ['mes' => '2026-11']));
         $dashboard->assertOk()->assertSee('Salário canónico')->assertSee('Despesa canónica');
         $this->assertSame(50.0, $dashboard->viewData('totalDespesas'));
@@ -377,15 +394,15 @@ class FinancialAcceptanceTest extends TestCase
             'description' => 'Legado sem ligação', 'amount' => '20.00', 'currency' => 'EUR',
             'category' => 'casa', 'expense_date' => '2026-11-16',
         ]);
-        $debt = \App\Models\Divida::query()->create([
+        $debt = Divida::query()->create([
             'user_id' => $user->id, 'name' => 'Obrigação incompleta', 'type' => 'purchase',
             'payment_condition' => 'deferred', 'total_amount' => '90.00',
             'start_date' => '2026-11-16', 'due_date' => '2026-11-25', 'status' => 'active',
         ]);
 
-        $before = [$user->despesas()->count(), \App\Models\Divida::query()->whereKey($debt->id)->count()];
-        $report = app(\App\Services\Financial\FinancialDataDiagnosticService::class)->report($user->id);
-        $after = [$user->despesas()->count(), \App\Models\Divida::query()->whereKey($debt->id)->count()];
+        $before = [$user->despesas()->count(), Divida::query()->whereKey($debt->id)->count()];
+        $report = app(FinancialDataDiagnosticService::class)->report($user->id);
+        $after = [$user->despesas()->count(), Divida::query()->whereKey($debt->id)->count()];
 
         $this->assertSame(1, $report[0]['counts']['orphan_legacy_expenses']);
         $this->assertSame(1, $report[0]['counts']['incomplete_debts']);
@@ -422,7 +439,7 @@ class FinancialAcceptanceTest extends TestCase
             'user_id' => $user->id, 'action' => 'deterministic_legacy_migration',
         ]);
 
-        app(\App\Services\Financial\FinancialDataMigrationService::class)->migrate($user->id);
+        app(FinancialDataMigrationService::class)->migrate($user->id);
         $this->assertDatabaseCount('movimentos', 1);
         $this->assertDatabaseCount('historico_movimentos', 1);
     }
@@ -430,18 +447,18 @@ class FinancialAcceptanceTest extends TestCase
     public function test_acceptance_migration_reconstructs_only_single_installment_and_reports_ambiguous_debts(): void
     {
         $user = User::factory()->create();
-        $safeDebt = \App\Models\Divida::query()->create([
+        $safeDebt = Divida::query()->create([
             'user_id' => $user->id, 'name' => 'Conta a prazo', 'type' => 'purchase', 'payment_condition' => 'deferred',
             'payment_method' => 'bank', 'installments_count' => 1, 'total_amount' => '90.00',
             'start_date' => '2026-11-01', 'due_date' => '2026-11-25', 'status' => 'active',
         ]);
-        $ambiguousDebt = \App\Models\Divida::query()->create([
+        $ambiguousDebt = Divida::query()->create([
             'user_id' => $user->id, 'name' => 'Compra parcelada sem plano', 'type' => 'purchase', 'payment_condition' => 'installments',
             'payment_method' => 'card', 'installments_count' => 3, 'total_amount' => '300.00',
             'start_date' => '2026-11-01', 'due_date' => '2026-11-25', 'status' => 'active',
         ]);
 
-        $service = app(\App\Services\Financial\FinancialDataMigrationService::class);
+        $service = app(FinancialDataMigrationService::class);
         $plan = $service->plan($user->id)[0];
         $this->assertSame(1, $plan['counts']['deterministic']);
         $this->assertSame(1, $plan['counts']['ambiguous']);
@@ -452,7 +469,7 @@ class FinancialAcceptanceTest extends TestCase
             'user_id' => $user->id, 'debt_id' => $safeDebt->id, 'installment_number' => 1,
             'amount' => '90.00', 'status' => 'pending',
         ]);
-        $installmentDate = \Illuminate\Support\Carbon::parse(\Illuminate\Support\Facades\DB::table('parcelas_divida')->where('debt_id', $safeDebt->id)->value('due_date'))->toDateString();
+        $installmentDate = Carbon::parse(DB::table('parcelas_divida')->where('debt_id', $safeDebt->id)->value('due_date'))->toDateString();
         $this->assertSame('2026-11-25', $installmentDate);
         $this->assertDatabaseCount('parcelas_divida', 1);
         $this->assertDatabaseMissing('parcelas_divida', ['debt_id' => $ambiguousDebt->id]);
@@ -509,19 +526,24 @@ class FinancialAcceptanceTest extends TestCase
         $user = User::factory()->create();
         $account = $this->bank($user, balance: '500.00');
 
-        $this->actingAs($user)->postJson(route('financial.commitments.store'), [
+        $response = $this->actingAs($user)->postJson(route('financial.commitments.store'), [
             'name' => 'Conta parcialmente paga', 'total_amount' => '90.00',
             'start_date' => '2026-11-01', 'due_date' => '2026-11-25', 'payment_condition' => 'deferred',
             'paid_now' => '0',
             'initial_payment' => ['account_id' => $account->id, 'amount' => '40.00', 'payment_date' => '2026-11-16'],
         ])->assertCreated()->assertJsonPath('data.parcelas.0.status', 'partial');
+        $debtId = $response->json('data.id');
+        $installmentId = $response->json('data.parcelas.0.id');
 
         $this->assertDatabaseCount('dividas', 1);
         $this->assertDatabaseCount('movimentos', 2);
         $this->assertDatabaseHas('movimentos', [
             'type' => 'expense', 'status' => 'settled', 'amount' => '40.00', 'source_account_id' => $account->id,
         ]);
-        $this->assertDatabaseHas('movimentos', ['type' => 'expense', 'status' => 'pending', 'amount' => '50.00']);
+        $forecast = $user->movimentos()->where('debt_id', $debtId)->where('installment_id', $installmentId)->firstOrFail();
+        $this->assertSame('partial', $forecast->status);
+        $this->assertSame('90.00', (string) $forecast->amount);
+        $this->assertSame('40.00', number_format((float) $forecast->settlements()->where('status', 'settled')->sum('amount'), 2, '.', ''));
         $this->assertSame('460.00', app(AccountBalanceService::class)->balance($account->fresh()));
     }
 
@@ -555,7 +577,7 @@ class FinancialAcceptanceTest extends TestCase
 
         // Simula um pagamento antigo criado antes da coluna tipada; a inferência exige
         // correspondência exata entre descrição gerada e cartão de destino.
-        \Illuminate\Support\Facades\DB::table('movimentos')->where('id', $payment->id)->update(['opening_debt_card_id' => null]);
+        DB::table('movimentos')->where('id', $payment->id)->update(['opening_debt_card_id' => null]);
         app(FinancialMovementService::class)->reverse($user, $payment->fresh(), 'Correção do pagamento');
 
         $this->assertDatabaseHas('contas_financeiras', ['id' => $card->id, 'opening_debt_paid' => '0.00']);

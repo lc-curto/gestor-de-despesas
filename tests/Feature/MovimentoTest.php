@@ -2,13 +2,13 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
 use App\Models\Despesa;
 use App\Models\Receita;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
+use App\Models\User;
 use Illuminate\Database\QueryException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\TestCase;
 
 class MovimentoTest extends TestCase
 {
@@ -162,6 +162,7 @@ class MovimentoTest extends TestCase
             'id' => $receita->id,
         ]);
     }
+
     /**
      * Verifica se o MySQL rejeita despesas com valores negativos.
      */

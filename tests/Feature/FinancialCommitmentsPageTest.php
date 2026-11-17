@@ -8,9 +8,9 @@ use App\Services\Financial\AccountBalanceService;
 use App\Services\Financial\FinancialAccountService;
 use App\Services\Financial\FinancialCommitmentService;
 use DOMDocument;
-use DOMElement;
 use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class FinancialCommitmentsPageTest extends TestCase
@@ -25,7 +25,7 @@ class FinancialCommitmentsPageTest extends TestCase
         return new DOMXPath($document);
     }
 
-    public function test_six_installment_payment_forms_are_independently_closed_and_accessible(): void
+    public function test_purchase_card_has_one_primary_payment_action_and_six_history_rows(): void
     {
         $user = User::factory()->create(['currency' => 'EUR']);
         $account = app(FinancialAccountService::class)->create($user, ['name' => 'Conta principal', 'type' => 'bank', 'opening_balance' => '200.00']);
@@ -34,8 +34,9 @@ class FinancialCommitmentsPageTest extends TestCase
         $xpath = $this->document($this->actingAs($user)->get(route('financial.commitments.page'))->assertOk()->getContent());
         $this->assertCount(1, $xpath->query('//article[contains(@class,"commitment-card")]'));
         $this->assertStringContainsString('0/6', $xpath->query('//article[contains(@class,"commitment-card")]')->item(0)->textContent);
-        $this->assertCount(6, $xpath->query('//details[contains(@class,"commitment-payment-disclosure")]'));
-        $this->assertCount(6, $xpath->query('//form[contains(@class,"js-api-form")]'));
+        $this->assertCount(1, $xpath->query('//button[contains(@class,"commitment-pay-next")]'));
+        $this->assertCount(1, $xpath->query('//form[contains(@class,"js-api-form")]')); // Apenas o formulário único do modal de pagamento.
+        $this->assertCount(6, $xpath->query('//div[contains(concat(" ", normalize-space(@class), " "), " commitment-installment ")]'));
         $this->assertSame('0.00', $debt->fresh()->parcelas->first()->paid_amount);
     }
 
@@ -49,12 +50,13 @@ class FinancialCommitmentsPageTest extends TestCase
         $endpoint = route('financial.commitments.installments.pay', [$debt->id, $first->id]);
         $this->actingAs($user)->postJson($endpoint, ['amount' => '5.00', 'account_id' => $account->id, 'payment_date' => now()->toDateString()])->assertOk();
         $xpath = $this->document($this->get(route('financial.commitments.page'))->assertOk()->getContent());
-        $form = $xpath->query('//form[@data-endpoint="'.$endpoint.'"]')->item(0);
-        $this->assertNotNull($form);
-        $this->assertSame('15,00', $xpath->query('.//input[@name="amount"]', $form)->item(0)->getAttribute('value'));
-        $this->assertCount(3, $xpath->query('//form[contains(@class,"js-api-form")]'));
+        $paymentButton = $xpath->query('//button[contains(@class,"commitment-pay-next")]')->item(0);
+        $this->assertNotNull($paymentButton);
+        $this->assertSame('15.00', $paymentButton->getAttribute('data-remaining'));
         $this->postJson($endpoint, ['amount' => '15.00', 'account_id' => $account->id, 'payment_date' => now()->toDateString()])->assertOk();
-        $this->assertCount(2, $this->document($this->get(route('financial.commitments.page'))->getContent())->query('//form[contains(@class,"js-api-form")]'));
+        $updatedButton = $this->document($this->get(route('financial.commitments.page'))->getContent())->query('//button[contains(@class,"commitment-pay-next")]')->item(0);
+        $this->assertNotNull($updatedButton);
+        $this->assertSame('20.00', $updatedButton->getAttribute('data-remaining'));
     }
 
     public function test_canonical_payment_changes_only_the_requested_amount_and_rejects_excess(): void
@@ -82,10 +84,12 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->postJson($endpoint, $data + ['amount' => '90.50'])->assertOk();
         $this->assertSame('90.50', $part->fresh()->paid_amount);
         $this->assertSame('109.50', app(AccountBalanceService::class)->balance($account->fresh()));
-        $this->assertDatabaseHas('movimentos', [
-            'user_id' => $user->id, 'debt_id' => $debt->id, 'installment_id' => $part->id,
-            'status' => 'settled', 'amount' => '90.50',
-        ]);
+        $forecast = $user->movimentos()->where('installment_id', $part->id)->firstOrFail();
+        $payment = $forecast->settlements()->where('status', 'settled')->firstOrFail();
+        $this->assertSame('100.00', (string) $forecast->amount);
+        $this->assertSame('partial', $forecast->status);
+        $this->assertSame('90.50', (string) $payment->amount);
+        $this->assertSame($account->id, $payment->source_account_id);
         $this->postJson($endpoint, $data + ['amount' => '9.51'])->assertUnprocessable();
         $this->assertSame('90.50', $part->fresh()->paid_amount);
         $this->assertSame('109.50', app(AccountBalanceService::class)->balance($account->fresh()));
@@ -93,39 +97,42 @@ class FinancialCommitmentsPageTest extends TestCase
 
     public function test_installment_due_today_is_upcoming_and_agrees_with_summary_and_filters(): void
     {
-        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-17 12:00:00'));
+        $this->travelTo(Carbon::parse('2026-11-17 12:00:00'));
         $user = User::factory()->create();
         $service = app(FinancialCommitmentService::class);
         foreach ([
-            ['Ontem', '10.00', '2026-11-16'],
-            ['Hoje', '20.00', '2026-11-17'],
-            ['Amanhã', '30.00', '2026-11-18'],
+            ['Ontem', '20.00', '2026-11-16'],
+            ['Hoje', '40.00', '2026-11-17'],
+            ['Amanhã', '60.00', '2026-11-18'],
         ] as [$name, $amount, $date]) {
             $service->create($user, [
                 'name' => $name, 'total_amount' => $amount, 'start_date' => '2026-11-16',
-                'due_date' => $date, 'payment_condition' => 'deferred',
+                'due_date' => $date, 'payment_condition' => 'installments', 'installments_count' => 2,
             ]);
         }
+        $service->create($user, [
+            'name' => 'Despesa única futura', 'total_amount' => '75.00',
+            'start_date' => '2026-11-17', 'due_date' => '2026-12-17',
+            'payment_condition' => 'deferred',
+        ]);
         $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
         $response = $this->actingAs($user)->get(route('financial.commitments.page'))->assertOk();
         $summary = $response->viewData('summary');
-        $this->assertSame(60.0, $summary['open']);
+        $this->assertSame(120.0, $summary['open']);
         $this->assertSame(10.0, $summary['overdue']);
-        $this->assertSame(50.0, $summary['upcoming']);
+        $this->assertSame(110.0, $summary['upcoming']);
+        $response->assertDontSee('Despesa única futura');
         $xpath = $this->document($response->getContent());
-        foreach (['Ontem' => 'Atrasada', 'Hoje' => 'Próxima', 'Amanhã' => 'Próxima'] as $name => $status) {
-            $badges = $xpath->query('//section[@aria-labelledby="paymentsSectionTitle"]//article[contains(@class,"commitment-card") and .//strong[normalize-space(.)="'.$name.'"]]//span[contains(concat(" ", normalize-space(@class), " "), " badge ")]');
+        foreach (['Ontem' => ['16/11/2026', 'Atrasada'], 'Hoje' => ['17/11/2026', 'Próxima'], 'Amanhã' => ['18/11/2026', 'Próxima']] as $name => [$dueDate, $status]) {
+            $badges = $xpath->query('//div[contains(@class,"commitment-history-modal")]//div[contains(@class,"commitment-installment") and .//small[normalize-space(.)="'.$dueDate.'"]]//span[contains(concat(" ", normalize-space(@class), " "), " badge ")]');
             $this->assertCount(1, $badges, $name);
             $this->assertSame($status, trim($badges->item(0)->textContent), $name);
         }
 
-        foreach (['upcoming' => ['Hoje', 'Amanhã'], 'overdue' => ['Ontem']] as $filter => $expected) {
-            $filtered = $this->get(route('financial.commitments.page', ['filter' => $filter]))->assertOk();
-            $xpath = $this->document($filtered->getContent());
-            $headings = $xpath->query('//section[@aria-labelledby="paymentsSectionTitle"]//article[contains(@class,"commitment-card")]//strong[normalize-space(.)="'.implode('" or normalize-space(.)="',$expected).'"]');
-            $this->assertCount(count($expected), $headings);
-            $this->assertSame($expected, array_map(fn ($heading) => trim($heading->textContent), iterator_to_array($headings)));
-        }
+        $activeView = $this->get(route('financial.commitments.page', ['status' => 'active']))->assertOk();
+        $this->assertSame(3, $activeView->viewData('commitments')->total());
+        $this->assertSame(120.0, $activeView->viewData('summary')['open']);
+        $this->assertSame(0, $this->get(route('financial.commitments.page', ['status' => 'completed']))->viewData('commitments')->total());
     }
 
     public function test_missing_payment_account_keeps_guidance_and_accounts_link_visible(): void
@@ -134,7 +141,7 @@ class FinancialCommitmentsPageTest extends TestCase
         app(FinancialCommitmentService::class)->create($user, [
             'name' => 'Compra a prazo', 'total_amount' => '90.00',
             'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
-            'payment_condition' => 'deferred',
+            'payment_condition' => 'installments', 'installments_count' => 2,
         ]);
         $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
         $response = $this->actingAs($user)->get(route('financial.commitments.page'))
@@ -160,10 +167,12 @@ class FinancialCommitmentsPageTest extends TestCase
             $debt = $service->create($user, [
                 'name' => $name, 'payment_method' => in_array($method, ['card', 'credit'], true) ? null : $method, 'total_amount' => $amount,
                 'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
-                'payment_condition' => 'deferred',
+                'payment_condition' => 'installments', 'installments_count' => 2,
             ]);
             // Simula registos antigos, pois a criação atual já rejeita esses métodos.
-            if (in_array($method, ['card', 'credit'], true)) $debt->update(['payment_method' => $method]);
+            if (in_array($method, ['card', 'credit'], true)) {
+                $debt->update(['payment_method' => $method]);
+            }
             $debts[] = $debt;
         }
         $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
@@ -192,7 +201,7 @@ class FinancialCommitmentsPageTest extends TestCase
             $commitments->create($owner, [
                 'name' => $name, 'total_amount' => '90.00',
                 'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
-                'payment_condition' => 'deferred',
+                'payment_condition' => 'installments', 'installments_count' => 2,
             ]);
         }
         $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
@@ -216,7 +225,168 @@ class FinancialCommitmentsPageTest extends TestCase
         $cards = $xpath->query('//article[contains(@class,"commitment-card")]');
         $this->assertCount(1, $cards);
         $this->assertStringContainsString('0/120', $cards->item(0)->textContent);
-        $this->assertCount(120, $xpath->query('//form[contains(@class,"js-api-form")]'));
+        $this->assertCount(1, $xpath->query('//button[contains(@class,"commitment-pay-next")]'));
+        $this->assertCount(6, $xpath->query('//div[contains(concat(" ", normalize-space(@class), " "), " commitment-installment ")]'));
         $this->assertSame(120, $debt->fresh()->parcelas()->count());
+
+        $firstXPath = $this->document($this->get(route('financial.commitments.page'))->assertOk()->getContent());
+        $nextHistoryLink = $firstXPath->query('//div[@id="commitmentHistoryModal-'.$debt->id.'"]//nav[contains(@class,"commitment-history-pagination")]//a[contains(., "Seguinte")]')->item(0);
+        $this->assertCount(1, $firstXPath->query('//button[@data-bs-target="#commitmentHistoryModal-'.$debt->id.'"]'));
+        $this->assertCount(1, $firstXPath->query('//div[@id="commitmentHistoryModal-'.$debt->id.'"]'));
+        $this->assertNotNull($nextHistoryLink);
+        $this->assertStringContainsString('installments_'.$debt->id.'=2', $nextHistoryLink->getAttribute('href'));
+        $this->assertStringContainsString('history_modal='.$debt->id, $nextHistoryLink->getAttribute('href'));
+        $this->assertStringContainsString('#commitmentHistoryModal-'.$debt->id, $nextHistoryLink->getAttribute('href'));
+
+        $secondHistoryPage = $this->get(route('financial.commitments.page', ['installments_'.$debt->id => 2, 'history_modal' => $debt->id]))->assertOk();
+        $secondXPath = $this->document($secondHistoryPage->getContent());
+        $this->assertCount(6, $secondXPath->query('//div[contains(concat(" ", normalize-space(@class), " "), " commitment-installment ")]'));
+        $this->assertSame('2', (string) $secondHistoryPage->viewData('commitments')->first()->installmentsPage->currentPage());
+        $this->assertSame('7/120', trim($secondXPath->query('//div[contains(@class,"commitment-installment")]/div/strong')->item(0)->textContent));
+    }
+
+    public function test_purchase_pagination_is_server_side_and_summary_uses_all_commitments(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-17 12:00:00'));
+        $user = User::factory()->create();
+        $service = app(FinancialCommitmentService::class);
+
+        for ($index = 1; $index <= 12; $index++) {
+            $service->create($user, [
+                'name' => 'Compra '.$index,
+                'total_amount' => '20.00',
+                'start_date' => '2026-11-17',
+                'due_date' => '2026-12-17',
+                'payment_condition' => 'installments',
+                'installments_count' => 2,
+            ]);
+        }
+
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+        $desktop = $this->actingAs($user)->get(route('financial.commitments.page', ['per_page' => 10]))->assertOk();
+        $this->assertSame(12, $desktop->viewData('commitments')->total());
+        $this->assertSame(10, $desktop->viewData('commitments')->count());
+        $this->assertSame(240.0, $desktop->viewData('summary')['open']);
+
+        $mobile = $this->get(route('financial.commitments.page', ['per_page' => 6]))->assertOk();
+        $this->assertSame(12, $mobile->viewData('commitments')->total());
+        $this->assertSame(6, $mobile->viewData('commitments')->count());
+        $this->assertSame(240.0, $mobile->viewData('summary')['open']);
+    }
+
+    public function test_edit_purchase_changes_only_name_and_merchant(): void
+    {
+        $user = User::factory()->create();
+        $debt = app(FinancialCommitmentService::class)->create($user, [
+            'name' => 'Móvel', 'merchant' => 'Loja antiga', 'total_amount' => '60.00',
+            'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
+            'payment_condition' => 'installments', 'installments_count' => 3,
+        ]);
+        $originalParts = $debt->parcelas()->get()->map(fn ($part) => [$part->amount, $part->due_date->toDateString()])->all();
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+
+        $this->actingAs($user)->putJson(route('financial.commitments.update', $debt->id), [
+            'name' => 'Móvel atualizado', 'merchant' => 'Nova loja',
+        ])->assertOk();
+
+        $this->assertSame('Móvel atualizado', $debt->fresh()->name);
+        $this->assertSame('Nova loja', $debt->fresh()->merchant);
+        $this->assertSame('60.00', $debt->fresh()->total_amount);
+        $this->assertSame($originalParts, $debt->fresh()->parcelas()->get()->map(fn ($part) => [$part->amount, $part->due_date->toDateString()])->all());
+    }
+
+    public function test_renegotiation_preserves_paid_parts_and_replaces_only_future_installments(): void
+    {
+        $user = User::factory()->create();
+        $account = app(FinancialAccountService::class)->create($user, ['name' => 'Conta', 'type' => 'bank', 'opening_balance' => '200.00']);
+        $debt = app(FinancialCommitmentService::class)->create($user, [
+            'name' => 'Computador', 'total_amount' => '120.00',
+            'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
+            'payment_condition' => 'installments', 'installments_count' => 12,
+        ]);
+        $first = $debt->parcelas()->where('installment_number', 1)->firstOrFail();
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+        $this->actingAs($user)->postJson(route('financial.commitments.installments.pay', [$debt->id, $first->id]), [
+            'account_id' => $account->id, 'amount' => '10.00', 'payment_date' => now()->toDateString(),
+        ])->assertOk();
+
+        $this->postJson(route('financial.commitments.renegotiate', $debt->id), [
+            'remaining_amount' => '110.00',
+            'installments_count' => 11,
+            'installment_frequency' => 'monthly',
+            'due_date' => now()->addMonths(2)->toDateString(),
+        ])->assertOk();
+
+        $this->assertSame('paid', $first->fresh()->status);
+        $this->assertSame('10.00', $first->fresh()->paid_amount);
+        $this->assertSame('120.00', $debt->fresh()->total_amount);
+        $this->assertSame(12, (int) $debt->fresh()->installments_count);
+        $this->assertSame(11, $debt->fresh()->parcelas()->where('status', 'pending')->count());
+        $this->assertSame(0, $debt->fresh()->parcelas()->where('status', 'cancelled')->count());
+        $this->assertEquals(110.0, (float) $debt->fresh()->parcelas()->where('status', 'pending')->sum('amount'));
+        $this->assertSame(11, $user->movimentos()->where('debt_id', $debt->id)->where('status', 'pending')->count());
+        $this->assertDatabaseHas('dividas_renegociacoes', ['debt_id' => $debt->id, 'user_id' => $user->id]);
+        $this->assertSame('190.00', app(AccountBalanceService::class)->balance($account->fresh()));
+    }
+
+    public function test_archive_hides_purchase_and_delete_soft_deletes_only_without_payments(): void
+    {
+        $user = User::factory()->create();
+        $service = app(FinancialCommitmentService::class);
+        $archived = $service->create($user, [
+            'name' => 'Compra arquivada', 'total_amount' => '60.00',
+            'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
+            'payment_condition' => 'installments', 'installments_count' => 3,
+        ]);
+        $deleted = $service->create($user, [
+            'name' => 'Compra eliminável', 'total_amount' => '30.00',
+            'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
+            'payment_condition' => 'installments', 'installments_count' => 3,
+        ]);
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+        $this->actingAs($user)->postJson(route('financial.commitments.archive', $archived->id))->assertOk();
+        $this->get(route('financial.commitments.page'))->assertOk()->assertDontSee('Compra arquivada');
+
+        $this->deleteJson(route('financial.commitments.destroy', $deleted->id))->assertOk();
+        $this->assertSoftDeleted('dividas', ['id' => $deleted->id]);
+        $this->assertSame(3, $deleted->parcelas()->count());
+        $this->assertSame(0, $user->movimentos()->where('debt_id', $deleted->id)->where('status', 'pending')->count());
+    }
+
+    public function test_purchase_card_renders_four_management_actions_and_dedicated_modals(): void
+    {
+        $user = User::factory()->create();
+        app(FinancialCommitmentService::class)->create($user, [
+            'name' => 'Compra com gestão completa',
+            'total_amount' => '120.00',
+            'start_date' => now()->toDateString(),
+            'due_date' => now()->addMonth()->toDateString(),
+            'payment_condition' => 'installments',
+            'installments_count' => 6,
+        ]);
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+        $xpath = $this->document($this->actingAs($user)->get(route('financial.commitments.page'))->assertOk()->getContent());
+        $this->assertCount(4, $xpath->query('//div[contains(@class,"commitment-card-actions")]/button'));
+        foreach (['editCommitmentModal', 'renegotiateCommitmentModal', 'archiveCommitmentModal', 'cancelCommitmentModal'] as $modalId) {
+            $this->assertCount(1, $xpath->query('//*[@id="'.$modalId.'"]'));
+        }
+        $this->assertCount(1, $xpath->query('//button[contains(@class,"commitment-history-trigger")]'));
+    }
+
+    public function test_commitment_merchant_is_saved_and_displayed_on_purchase_card(): void
+    {
+        $user = User::factory()->create();
+        app(FinancialCommitmentService::class)->create($user, [
+            'name' => 'Frigorífico',
+            'merchant' => 'Radio Popular',
+            'total_amount' => '600.00',
+            'start_date' => '2026-11-17',
+            'due_date' => '2026-12-17',
+            'payment_condition' => 'installments',
+            'installments_count' => 6,
+        ]);
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+        $this->actingAs($user)->get(route('financial.commitments.page'))->assertOk()
+            ->assertSee('Frigorífico')->assertSee('Radio Popular');
     }
 }

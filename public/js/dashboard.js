@@ -410,6 +410,7 @@
         article.dataset.date = normalizedDate;
         article.dataset.description = item.description;
         article.dataset.amount = item.amount;
+        article.dataset.remainingAmount = item.remaining_amount ?? item.amount;
         article.dataset.currency = item.currency || cfg.currency || 'EUR';
         article.dataset.categoryId = item.category;
         article.dataset.accountId = item.account_id || '';
@@ -491,7 +492,7 @@
             edit.title = 'Editar';
             edit.innerHTML = '<i data-lucide="pencil" aria-hidden="true"></i>';
             actions.append(edit);
-            if (item.movement_status === 'pending' && item.financial_movement_id) {
+            if (['pending', 'partial'].includes(item.movement_status) && item.financial_movement_id) {
                 const settle = document.createElement('button');
                 settle.type = 'button';
                 settle.className = 'btn btn-outline-success';
@@ -994,7 +995,7 @@
         const isExpense = row.dataset.movementType === 'despesa';
         document.getElementById('settleMovementTitle').textContent = isExpense ? 'Confirmar despesa' : 'Confirmar receita';
         document.getElementById('settleMovementDescription').textContent = row.dataset.description || '';
-        document.getElementById('settleMovementAmount').value = row.dataset.amount || '';
+        document.getElementById('settleMovementAmount').value = row.dataset.remainingAmount || row.dataset.amount || '';
         document.getElementById('settleMovementDate').value = row.dataset.date || localDate();
         document.getElementById('settleMovementAccountLabel').textContent = isExpense ? 'Conta de saída' : 'Conta de destino';
         document.getElementById('settleMovementAccount').value = row.dataset.accountId || '';
@@ -1076,7 +1077,7 @@
         const accountId = document.getElementById('settleMovementAccount').value;
         const payload = {
             amount: normalizedAmount,
-            expected_amount: actionMovement.dataset.amount,
+            expected_amount: actionMovement.dataset.remainingAmount || actionMovement.dataset.amount,
             movement_date: document.getElementById('settleMovementDate').value,
             source_account_id: isExpense ? accountId : null,
             destination_account_id: isExpense ? null : accountId
