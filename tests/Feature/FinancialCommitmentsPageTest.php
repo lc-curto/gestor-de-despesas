@@ -226,7 +226,9 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->assertSame(120, $debt->fresh()->parcelas()->count());
 
         $firstXPath = $this->document($this->get(route('financial.commitments.page'))->assertOk()->getContent());
-        $nextHistoryLink = $firstXPath->query('//article[@data-commitment-id="'.$debt->id.'"]//nav[contains(@class,"commitment-history-pagination")]//a[contains(., "Seguinte")]')->item(0);
+        $nextHistoryLink = $firstXPath->query('//div[@id="commitmentHistoryModal-'.$debt->id.'"]//nav[contains(@class,"commitment-history-pagination")]//a[contains(., "Seguinte")]')->item(0);
+        $this->assertCount(1, $firstXPath->query('//button[@data-bs-target="#commitmentHistoryModal-'.$debt->id.'"]'));
+        $this->assertCount(1, $firstXPath->query('//div[@id="commitmentHistoryModal-'.$debt->id.'"]'));
         $this->assertNotNull($nextHistoryLink);
         $this->assertStringContainsString('installments_'.$debt->id.'=2', $nextHistoryLink->getAttribute('href'));
         $this->assertStringContainsString('expanded='.$debt->id, $nextHistoryLink->getAttribute('href'));
