@@ -433,6 +433,11 @@ class FinancialDeletionService
             $invoices = $invoiceIds->isNotEmpty()
                 ? Fatura::query()->where('user_id', $user->id)->whereIn('id', $invoiceIds)->orderBy('id')->lockForUpdate()->get()
                 : collect();
+            if ($invoiceIds->diff($invoices->pluck('id'))->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    'commitment' => 'Existe um movimento associado a uma fatura arquivada ou inexistente. Reconcilia a fatura antes de eliminar o parcelamento.',
+                ]);
+            }
             $hasInvoiceCarry = $invoiceIds->isNotEmpty() && DB::table('fatura_saldos_transportados')
                 ->where('user_id', $user->id)
                 ->where(function ($query) use ($invoiceIds): void {
