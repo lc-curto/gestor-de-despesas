@@ -506,17 +506,29 @@ class FinancialMovementService
             $lockedDebt = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
             $lockedPart = ParcelaDivida::query()->where('user_id', $user->id)->where('debt_id', $lockedDebt->id)->whereKey($part->id)->lockForUpdate()->firstOrFail();
             $locked = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
+            $validForecastState = $locked->status === 'pending'
+                || ($locked->status === 'partial' && $locked->is_settlement_parent);
             if (in_array($lockedDebt->status, ['cancelled', 'paid'], true) || !in_array($lockedPart->status, ['pending', 'partial'], true)
-                || $locked->status !== 'pending' || $locked->debt_id !== $lockedDebt->id || $locked->installment_id !== $lockedPart->id) {
+                || !$validForecastState || $locked->debt_id !== $lockedDebt->id || $locked->installment_id !== $lockedPart->id) {
                 throw ValidationException::withMessages(['movement' => 'Não é possível sincronizar esta previsão. Revê o parcelamento em Parcelamentos.']);
             }
             $before = $locked->getAttributes();
-            $remaining = max(0, round((float) $lockedPart->amount - (float) $lockedPart->paid_amount, 2));
-            $locked->update([
+            $legacyPaidCents = Movimento::query()->where('user_id', $user->id)
+                ->where('installment_id', $lockedPart->id)->whereNull('settles_movement_id')
+                ->whereNull('reversal_of_id')->where('status', 'settled')->get(['amount'])
+                ->sum(fn (Movimento $item) => $this->balances->toCents((string) $item->amount));
+            $remainingCents = max(0, $this->balances->toCents((string) $lockedPart->amount) - $this->balances->toCents((string) $lockedPart->paid_amount));
+            $forecastAmountCents = $locked->is_settlement_parent
+                ? max(0, $this->balances->toCents((string) $lockedPart->amount) - (int) $legacyPaidCents)
+                : $remainingCents;
+            $changes = [
                 'description' => $lockedDebt->name.' · Parcela '.$lockedPart->installment_number.'/'.$lockedDebt->installments_count,
-                'amount' => number_format($remaining, 2, '.', ''),
                 'movement_date' => $lockedPart->due_date->toDateString(),
-            ]);
+            ];
+            if (!$locked->is_settlement_parent || $forecastAmountCents !== $this->balances->toCents((string) $locked->amount)) {
+                $changes['amount'] = number_format($forecastAmountCents / 100, 2, '.', '');
+            }
+            $locked->update($changes);
             $this->audit($user, $locked, 'updated', $before, $locked->getAttributes());
             return $locked->refresh();
         });
@@ -624,7 +636,10 @@ class FinancialMovementService
             }
             $original = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
             if ($original->is_settlement_parent) {
-                throw ValidationException::withMessages(['movement' => 'O movimento original não pode ser estornado enquanto obrigação. Estorna os eventos de liquidação associados.']);
+                $message = $original->installment_id
+                    ? 'Esta previsão pertence a uma prestação e não pode ser estornada enquanto obrigação. Estorna os pagamentos associados em Parcelamentos.'
+                    : 'O movimento original não pode ser estornado enquanto obrigação. Estorna os eventos de liquidação associados.';
+                throw ValidationException::withMessages(['movement' => $message]);
             }
             if ($original->installment_id) {
                 throw ValidationException::withMessages(['movement' => 'Este movimento está ligado a uma prestação e não pode ser estornado isoladamente. Revê o compromisso em Parcelamentos.']);
