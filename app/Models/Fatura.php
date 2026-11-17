@@ -16,4 +16,5 @@ class Fatura extends Model
     public function user(): BelongsTo { return $this->belongsTo(User::class); }
     public function conta(): BelongsTo { return $this->belongsTo(ContaFinanceira::class, 'account_id'); }
     public function movimentos(): HasMany { return $this->hasMany(Movimento::class, 'invoice_id'); }
+    public function pagamentos(): HasMany { return $this->hasMany(Movimento::class, 'invoice_id')->where('type', 'transfer'); }
 }
