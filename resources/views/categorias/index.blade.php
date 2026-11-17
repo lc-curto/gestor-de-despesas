@@ -68,7 +68,7 @@
                                             <button type="button" class="btn btn-sm btn-outline-secondary" title="Editar {{ $item->name }}" aria-label="Editar {{ $item->name }}"
                                                 data-bs-toggle="modal" data-bs-target="#categoryModal" data-mode="edit"
                                                 data-id="{{ $item->id }}" data-name="{{ $item->name }}" data-type="{{ $item->type }}"
-                                                data-icon="{{ $item->icon }}" data-color="{{ $item->color }}"
+                                                data-icon="{{ $item->icon }}" data-color="{{ $item->color }}" data-expense-behavior="{{ $item->expense_behavior ?? 'variable' }}"
                                                 data-update-url="{{ route('categorias.update', $item->id) }}">
                                                 <i class="bi bi-pencil" aria-hidden="true"></i>
                                             </button>
@@ -119,6 +119,14 @@
                         <select class="form-select" id="categoryType" name="type" required>
                             <option value="despesa">Despesa</option><option value="receita">Receita</option>
                         </select>
+                    </div>
+                    <div class="mb-3" id="categoryExpenseBehaviorField">
+                        <label for="categoryExpenseBehavior" class="form-label">Comportamento da despesa</label>
+                        <select class="form-select" id="categoryExpenseBehavior" name="expense_behavior">
+                            <option value="variable">Variável</option>
+                            <option value="fixed">Fixa</option>
+                        </select>
+                        <small class="form-text text-secondary">As despesas desta categoria serão classificadas automaticamente com este comportamento.</small>
                     </div>
                     <div class="mb-3">
                         <label for="categoryIconSearch" class="form-label">Ícone</label>
@@ -193,10 +201,19 @@
         categoryId.value=edit?trigger.dataset.id:'';title.textContent=edit?'Editar categoria':'Nova categoria';
         submit.textContent=edit?'Guardar alterações':'Guardar categoria';
         document.getElementById('categoryName').value=edit?trigger.dataset.name:'';
-        document.getElementById('categoryType').value=edit?trigger.dataset.type:(trigger?.dataset.type||'despesa');
+        const categoryType=document.getElementById('categoryType');
+        categoryType.value=edit?trigger.dataset.type:(trigger?.dataset.type||'despesa');
+        const behaviorField=document.getElementById('categoryExpenseBehaviorField');
+        const behaviorSelect=document.getElementById('categoryExpenseBehavior');
+        if(behaviorSelect)behaviorSelect.value=edit?(trigger.dataset.expenseBehavior||'variable'):'variable';
+        if(behaviorField)behaviorField.hidden=categoryType.value!=='despesa';
         const color=edit?trigger.dataset.color:'#635BFF';
         const selected=colorInputs.find(input=>input.value.toUpperCase()===color.toUpperCase());if(selected)selected.checked=true;
         iconSearch.value='';selectIcon(edit?trigger.dataset.icon:'tag');renderIconCatalog();
+    });
+    document.getElementById('categoryType')?.addEventListener('change',event=>{
+        const field=document.getElementById('categoryExpenseBehaviorField');
+        if(field)field.hidden=event.target.value!=='despesa';
     });
     const search=document.getElementById('categorySearch');
     document.querySelectorAll('[data-bs-toggle="pill"]').forEach(tab=>tab.addEventListener('shown.bs.tab',()=>search?.dispatchEvent(new Event('input'))));
@@ -207,7 +224,10 @@
         form.action=editId?updateBase+'/'+encodeURIComponent(editId):baseAction;
         title.textContent=editId?'Editar categoria':'Nova categoria';submit.textContent=editId?'Guardar alterações':'Guardar categoria';
         document.getElementById('categoryName').value=@json(old('name',''));
-        document.getElementById('categoryType').value=@json(old('type','despesa'));
+        const categoryType=document.getElementById('categoryType');
+        categoryType.value=@json(old('type','despesa'));
+        document.getElementById('categoryExpenseBehavior').value=@json(old('expense_behavior','variable'));
+        document.getElementById('categoryExpenseBehaviorField').hidden=categoryType.value!=='despesa';
         const oldColor=@json(old('color','#635BFF'));
         const selected=colorInputs.find(input=>input.value.toUpperCase()===oldColor.toUpperCase());if(selected)selected.checked=true;
         iconInput.value=@json(old('icon','tag'));renderIconCatalog();selectIcon(iconInput.value);
