@@ -108,18 +108,11 @@
                             @if ($editRoute)
                                 <a class="btn btn-outline-secondary btn-sm" href="{{ $editRoute }}" aria-label="Editar {{ $movement->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></a>
                             @endif
-                            @if ($movement->status === 'settled')
-                                <form method="POST" action="{{ route('financial.accounts.movement.reverse', $movement->id) }}" onsubmit="return confirm('Estornar este movimento? O saldo será recalculado sem apagar o histórico.')">
-                                    @csrf
-                                    <button class="btn btn-outline-warning btn-sm" type="submit" aria-label="Estornar movimento" title="Estornar"><i data-lucide="rotate-ccw" aria-hidden="true"></i><span class="d-none d-md-inline ms-1">Estornar</span></button>
-                                </form>
-                            @else
-                                <form method="POST" action="{{ $deleteRoute }}" onsubmit="return confirm('Eliminar este movimento?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-outline-danger btn-sm" type="submit" aria-label="Eliminar movimento" title="Eliminar movimento"><i data-lucide="trash-2" aria-hidden="true"></i></button>
-                                </form>
-                            @endif
+                            <form method="POST" action="{{ $deleteRoute }}" onsubmit="return confirm('Eliminar este movimento e atualizar todos os movimentos dependentes e saldos associados?')">
+                                @csrf
+                                @method('DELETE')
+                                <button class="btn btn-outline-danger btn-sm" type="submit" aria-label="Eliminar movimento" title="Eliminar movimento"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                            </form>
                         </div>
                     </article>
                 @empty
