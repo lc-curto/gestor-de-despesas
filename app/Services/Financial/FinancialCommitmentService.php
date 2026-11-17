@@ -317,20 +317,11 @@ class FinancialCommitmentService
 
     public function deleteUnused(User $user, Divida $debt): void
     {
-        DB::transaction(function () use ($user, $debt): void {
-            $locked = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
-            $hasPayments = $locked->parcelas()->where('paid_amount', '>', 0)->exists()
-                || Movimento::query()->where('user_id', $user->id)->where('debt_id', $locked->id)->where('status', 'settled')->exists();
-            if ($hasPayments) {
-                throw ValidationException::withMessages(['commitment' => 'Esta compra já tem pagamentos registados. Arquiva ou cancela-a; não pode ser eliminada.']);
-            }
-            $locked->update(['status' => 'cancelled']);
-            $locked->parcelas()->whereIn('status', ['pending', 'partial'])->update(['status' => 'cancelled']);
-            Movimento::query()->where('user_id', $user->id)->where('debt_id', $locked->id)->where('status', 'pending')->get()
-                ->each(fn (Movimento $forecast) => $this->movements->voidCancelledCommitmentForecast($user, $locked, $forecast));
-            // Soft delete: preserve installments and renegotiation audit history.
-            $locked->delete();
-        });
+        app(FinancialDeletionService::class)->deleteCommitment(
+            $user,
+            $debt,
+            'Parcelamento eliminado pelo utilizador.'
+        );
     }
 
     public function cancel(User $user, Divida $debt): Divida
