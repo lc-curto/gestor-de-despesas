@@ -136,7 +136,7 @@ class CardInvoiceService
         return Fatura::query()->where('user_id', $user->id)
             ->whereHas('movimentos', fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false))
             ->with('conta:id,name,type,currency,credit_limit')
-            ->with(['movimentos' => fn ($q) => $q->whereIn('type', ['expense', 'transfer'])->where('status', 'settled')
+            ->with(['movimentos' => fn ($q) => $q->whereIn('type', ['expense', 'transfer'])->where('status', 'settled')->where('is_settlement_parent', false)
                 ->select('id', 'invoice_id', 'description', 'amount', 'movement_date', 'type', 'is_settlement_parent', 'reversal_of_id', 'settles_movement_id')])
             ->withCount(['movimentos' => fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false)])
             ->orderByDesc('reference_month')->paginate(30)
