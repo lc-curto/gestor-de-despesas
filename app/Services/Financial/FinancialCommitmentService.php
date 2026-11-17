@@ -177,7 +177,9 @@ class FinancialCommitmentService
                 throw ValidationException::withMessages(['commitment' => 'Este parcelamento já não tem saldo por pagar.']);
             }
 
-            $historicalCount = (int) $parts->filter(fn ($part) => $part->status === 'paid' || (float) $part->paid_amount > 0)->count();
+            $historicalLastNumber = (int) ($parts
+                ->filter(fn ($part) => $part->status === 'paid' || (float) $part->paid_amount > 0)
+                ->max('installment_number') ?? 0);
             $count = (int) $data['installments_count'];
             $frequency = $data['installment_frequency'];
             $remainingCents = array_key_exists('remaining_amount', $data)
@@ -228,11 +230,11 @@ class FinancialCommitmentService
 
             $base = intdiv($remainingCents, $count);
             $remainder = $remainingCents % $count;
-            $firstNumber = $historicalCount + 1;
+            $firstNumber = $historicalLastNumber + 1;
             $firstDue = Carbon::parse($data['due_date']);
             $locked->update([
                 'total_amount' => number_format(($paidCents + $remainingCents) / 100, 2, '.', ''),
-                'installments_count' => $historicalCount + $count,
+                'installments_count' => $historicalLastNumber + $count,
                 'installment_frequency' => $frequency,
                 'due_date' => $firstDue->toDateString(),
                 'status' => 'open',
