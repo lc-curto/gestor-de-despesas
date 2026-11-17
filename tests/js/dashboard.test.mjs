@@ -252,7 +252,7 @@ test('edição envia ao backend o valor com vírgula convertido em decimal canó
         if (options.method === 'POST') { sent = options.body; return jsonResponse(200, { ok: true }); }
         return jsonResponse(200, { data: [] });
     }, [existingMovement]);
-    ui.form.querySelector('[name="payment_condition"][value="cash"]').checked = true;
+    ui.element('movementPaymentCondition').value = 'cash';
     ui.element('expensesList').querySelector('[data-acao="editar"]').click();
     assert.equal(ui.element('movementAmount').value, '90.50');
     ui.element('movementAmount').value = '90,50';
