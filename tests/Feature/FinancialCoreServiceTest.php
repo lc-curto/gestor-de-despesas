@@ -502,4 +502,35 @@ class FinancialCoreServiceTest extends TestCase
     }
 
 
+
+    public function test_financial_projection_counts_effective_payment_and_only_remaining_obligation(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->account($user, 'Banco', '100.00');
+        $service = app(FinancialMovementService::class);
+        $original = $service->createPending($user, [
+            'type' => 'expense', 'description' => 'Seguro anual',
+            'amount' => '100.00', 'movement_date' => '2026-11-30',
+        ]);
+        $service->settle($user, $original, [
+            'source_account_id' => $account->id, 'amount' => '40.00', 'movement_date' => '2026-11-18',
+        ]);
+
+        $projection = app(\App\Services\Financial\FinancialProjectionService::class)->build(
+            $user,
+            \Illuminate\Support\Carbon::parse('2026-11-18'),
+            \Illuminate\Support\Carbon::parse('2026-11-30')
+        );
+        $events = $projection['movements'];
+        $effective = $events->firstWhere('settles_movement_id', $original->id);
+        $forecast = $events->firstWhere('id', 'settlement-'.$original->id);
+
+        $this->assertNotNull($effective);
+        $this->assertNotNull($forecast);
+        $this->assertSame(-40.0, (float) $effective->projection_delta);
+        $this->assertSame(-60.0, (float) $forecast->projection_delta);
+        $this->assertSame(-100.0, (float) $events->sum('projection_delta'));
+    }
+
+
 }

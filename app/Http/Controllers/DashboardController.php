@@ -57,7 +57,7 @@ class DashboardController extends Controller
         // A lista e os seus contadores abaixo têm, deliberadamente, outro âmbito.
         // Registos novos vivem no núcleo; o legado acima permanece apenas para compatibilidade.
         $totalDespesas += (float) $user->movimentos()->whereNull('legacy_type')->where('type', 'expense')
-            ->whereIn('status', ['pending', 'settled'])->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
+            ->whereIn('status', ['pending', 'partial', 'settled'])->whereNull('settles_movement_id')->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
         $totalReceitas += (float) $user->movimentos()->whereNull('legacy_type')->where('type', 'income')
             ->whereIn('status', ['pending', 'settled'])->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
 
@@ -288,7 +288,7 @@ class DashboardController extends Controller
             ->where('canonical_movements.user_id', $userId)
             ->whereNull('canonical_movements.legacy_type')
             ->whereIn('canonical_movements.type', ['income', 'expense'])
-            ->whereIn('canonical_movements.status', ['pending', 'settled'])
+            ->whereIn('canonical_movements.status', ['pending', 'partial', 'settled'])
             // Oculta apenas compras associadas a fatura, não receitas nem
             // previsões ainda sem fatura (mesmo quando têm conta de cartão).
             ->where(fn ($query) => $query->where('canonical_movements.type', '!=', 'expense')->orWhereNull('canonical_movements.invoice_id'))
