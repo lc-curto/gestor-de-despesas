@@ -133,9 +133,31 @@
                                 </div>
                             @endforeach
                             @if ($history->hasPages())
+                                @php
+                                    // Each purchase owns an isolated history page parameter.
+                                    // Remove other history cursors so they cannot interfere with this navigation.
+                                    $historyQuery = request()->query();
+                                    foreach (array_keys($historyQuery) as $queryKey) {
+                                        if (str_starts_with($queryKey, 'installments_')) {
+                                            unset($historyQuery[$queryKey]);
+                                        }
+                                    }
+                                    $historyQuery['expanded'] = $commitment->id;
+                                    $historyPageUrl = fn (int $page) => route('financial.commitments.page', array_merge(
+                                        $historyQuery,
+                                        [$history->getPageName() => $page]
+                                    )).'#commitment-'.$commitment->id;
+                                @endphp
                                 <nav class="commitment-history-pagination" aria-label="Paginação do histórico de {{ $commitment->name }}">
                                     <span>Página {{ $history->currentPage() }} de {{ $history->lastPage() }}</span>
-                                    <div>{{ $history->onEachSide(0)->links('pagination::bootstrap-5') }}</div>
+                                    <div class="btn-group btn-group-sm" role="group" aria-label="Navegar no histórico">
+                                        <a class="btn btn-outline-secondary {{ $history->onFirstPage() ? 'disabled' : '' }}"
+                                           href="{{ $history->onFirstPage() ? '#' : $historyPageUrl($history->currentPage() - 1) }}"
+                                           @if ($history->onFirstPage()) aria-disabled="true" tabindex="-1" @endif>« Anterior</a>
+                                        <a class="btn btn-outline-primary {{ $history->hasMorePages() ? '' : 'disabled' }}"
+                                           href="{{ $history->hasMorePages() ? $historyPageUrl($history->currentPage() + 1) : '#' }}"
+                                           @if (!$history->hasMorePages()) aria-disabled="true" tabindex="-1" @endif>Seguinte »</a>
+                                    </div>
                                 </nav>
                             @endif
                         </div>
@@ -248,10 +270,16 @@
 @push('styles')
 <style>
 .commitments-page{max-width:1500px;margin-inline:auto}
-.commitment-summary{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:1rem}
-.commitment-metric{min-width:0;padding:1.1rem 1.25rem;background:var(--bs-body-bg);border:1px solid var(--bs-border-color);border-radius:1rem;display:flex;flex-direction:column;gap:.3rem}
+.commitment-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
+.commitment-metric{min-width:0;padding:1.1rem 1.25rem;background:var(--bs-body-bg);border:1px solid var(--bs-border-color);border-radius:1rem;display:flex;flex-direction:column;justify-content:center;gap:.35rem}
 .commitment-metric span,.commitment-metric small{font-size:.8rem;color:var(--bs-secondary-color)}
-.commitment-metric strong{font-size:1.45rem;line-height:1.3;font-weight:750;overflow-wrap:anywhere}
+.commitment-metric strong{font-size:1.35rem;line-height:1.3;font-weight:750;overflow-wrap:anywhere}
+.commitment-metric-primary{grid-column:auto}
+.commitment-metric small{line-height:1.4}
+.commitment-history-pagination{flex-wrap:wrap}
+.commitment-history-pagination .pagination{display:flex;flex-wrap:wrap;gap:.25rem}
+.commitment-history-pagination .page-item{margin:0}
+.commitment-history-pagination .page-link{white-space:nowrap}
 .commitment-list-panel{background:var(--bs-body-bg);border:1px solid var(--bs-border-color);border-radius:1.15rem;padding:1.25rem}
 .commitment-tabs{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem}
 .commitment-tabs .btn{border-radius:999px;padding:.45rem .85rem}
@@ -303,11 +331,15 @@
 .commitment-purchase-pagination .pagination{justify-content:center;margin:.5rem 0 0}
 .commitment-purchase-pagination .page-link{border-radius:.5rem;margin:0 .1rem}
 @media(max-width:767.98px){
- .commitment-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
- .commitment-metric{padding:.8rem;border-radius:.85rem}
- .commitment-metric-primary{grid-column:1/-1}
- .commitment-metric strong{font-size:1.2rem}
- .commitment-metric-primary strong{font-size:1.55rem}
+ .commitment-summary{grid-template-columns:minmax(0,1fr);gap:.55rem}
+ .commitment-metric{padding:.75rem .9rem;border-radius:.85rem}
+ .commitment-metric-primary{grid-column:auto}
+ .commitment-metric strong{font-size:1.15rem}
+ .commitment-metric-primary strong{font-size:1.45rem}
+ .commitment-metric small{font-size:.76rem}
+ .commitment-history-pagination{flex-direction:row;align-items:center;justify-content:space-between}
+ .commitment-history-pagination .pagination{max-width:100%}
+ .commitment-history-pagination .page-link{padding:.3rem .55rem}
  .commitment-list-panel{padding:.85rem;border-radius:1rem}
  .commitment-tabs{gap:.35rem;margin-bottom:.85rem}
  .commitment-tabs .btn{flex:1 1 auto;padding:.45rem .55rem;font-size:.78rem}
@@ -346,6 +378,18 @@
     syncPageSize();
 
     const cards = [...document.querySelectorAll('[data-commitment-card]')];
+    // Reopen the purchase whose installment history was paginated.
+    const expandedId = new URL(window.location.href).searchParams.get('expanded');
+    const expandedCard = expandedId
+        ? cards.find(card => card.dataset.commitmentId === expandedId)
+        : null;
+    if (expandedCard) {
+        const toggle = expandedCard.querySelector('.commitment-card-toggle');
+        const details = expandedCard.querySelector('.commitment-details');
+        toggle.setAttribute('aria-expanded', 'true');
+        details.hidden = false;
+    }
+
     cards.forEach(card => {
         const toggle = card.querySelector('.commitment-card-toggle');
         const details = card.querySelector('.commitment-details');
