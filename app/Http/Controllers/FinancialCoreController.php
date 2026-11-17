@@ -197,6 +197,34 @@ class FinancialCoreController extends Controller
         ], 201);
     }
 
+    public function closeInvoice(Request $request, string $id, CardInvoiceService $service): JsonResponse
+    {
+        $data = $request->validate([
+            'statement_amount' => 'required|numeric|gte:0|decimal:0,2|max:9999999999.99',
+        ]);
+        $invoice = $request->user()->faturas()->whereKey($id)->firstOrFail();
+        return response()->json([
+            'data' => $service->closeInvoice($request->user(), $invoice, (string) $data['statement_amount']),
+            'message' => 'Fatura fechada e reconciliada com o extrato.',
+        ]);
+    }
+
+    public function addInvoiceCredit(Request $request, string $id, CardInvoiceService $service): JsonResponse
+    {
+        $data = $request->validate([
+            'purchase_movement_id' => ['required', 'uuid', Rule::exists('movimentos', 'id')->where('user_id', $request->user()->id)],
+            'origin_invoice_id' => ['nullable', 'uuid', Rule::exists('faturas', 'id')->where('user_id', $request->user()->id)],
+            'description' => 'required|string|max:255',
+            'amount' => 'required|numeric|gt:0|decimal:0,2|max:9999999999.99',
+            'movement_date' => 'required|date|before_or_equal:today',
+        ]);
+        $invoice = $request->user()->faturas()->whereKey($id)->firstOrFail();
+        return response()->json([
+            'data' => $service->addCredit($request->user(), $invoice, $data),
+            'message' => 'Crédito associado à compra e imputado à fatura.',
+        ], 201);
+    }
+
     public function updateCardSettings(Request $request, string $id, AccountBalanceService $balances): JsonResponse
     {
         foreach (['closing_day', 'due_day'] as $field) {
