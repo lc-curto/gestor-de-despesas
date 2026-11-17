@@ -148,3 +148,54 @@ Em `FinanceController::update`, num ramo alternativo, `$movement->historico()->d
 - [ ] Auditoria integral de serviços, modelos, migrations, UI e testes.
 - [ ] Findings confirmados com referências linha a linha e classificação final.
 - [ ] Correções e testes regressivos.
+
+## Decisão de produto/arquitetura — exclusão propagada, sem operação de estorno
+
+**Requisito do utilizador (17/11/2026):** não disponibilizar nem estruturar o fluxo de negócio em torno do conceito de estorno. O utilizador quer trabalhar com exclusões, com propagação integral e garantia de que não ficam eventos órfãos.
+
+### Princípio
+
+A operação apresentada ao utilizador é **Eliminar**. Internamente, o sistema executa uma exclusão de domínio controlada, transacional, auditável e com propagação explícita pelas dependências. Não se trata de executar `DELETE CASCADE` indiscriminadamente nem de apagar fisicamente todos os registos.
+
+### Política por tipo de relação
+
+Cada dependência deve ter uma política explícita:
+
+- **CASCADE (exclusão propagada):** dependente sem significado autónomo fora do agregado eliminado, como previsões geradas por uma ocorrência/compromisso, ou eventos técnicos exclusivos dessa entidade. Excluir logicamente todos os dependentes na mesma transação.
+- **RESTRICT (bloquear):** dependente partilhado, obrigação com pagamentos não reconciliados, fatura com pagamentos/alocações, conta com movimentos ou qualquer caso em que não exista propagação determinística e sem perda de informação. Explicar ao utilizador o que tem de ser resolvido primeiro.
+- **DETACH (desassociar):** apenas quando o dependente tem significado financeiro autónomo e a matriz permite preservar a entidade sem a origem. Exige validação explícita, atualização de referências e auditoria; nunca deixar FK inválida.
+- **RECALCULATE (recalcular):** projeções e agregados derivados (saldo da conta, saldo de obrigação, total de fatura, montantes pagos, estado da parcela/compromisso) são reconstruídos a partir dos eventos sobreviventes, na mesma transação. Não criar um movimento inverso visível ao utilizador.
+
+### Movimentos liquidados
+
+A exclusão de um movimento liquidado só pode ocorrer quando o serviço conseguir propagar a remoção a todas as consequências contabilísticas internas e dependências, recalcular os saldos e preservar a prova de auditoria. Se o movimento tiver dependências não propagáveis, a operação é bloqueada — não se substitui por uma operação chamada estorno.
+
+O sistema não deve manter um evento de pagamento ativo apontando para uma obrigação removida, nem conservar um efeito no saldo de uma conta quando o evento que o originou foi eliminado. Quando necessário, os eventos dependentes exclusivos são também excluídos logicamente e as projeções são recalculadas.
+
+### Auditoria e integridade
+
+- Preferir **soft delete / tombstone** para entidades financeiras e dependentes: guardar quem eliminou, quando, motivo, operação/agregado de origem e snapshot mínimo necessário para auditoria e recuperação.
+- O registo de auditoria é imutável e não deve ser apagado em cascata com a entidade de negócio.
+- Toda a propagação ocorre numa única transação DB, com bloqueios das entidades relacionadas em ordem consistente.
+- A operação deve ser idempotente: repetir o pedido não pode duplicar exclusões nem alterar saldos novamente.
+- Depois da operação, validar invariantes: zero referências órfãs, zero eventos ativos dependentes de entidade eliminada e saldos/estados iguais à soma dos eventos sobreviventes.
+- Hard delete só para dados sem relevância financeira, sem referências e sem obrigação de auditoria, após confirmação das constraints.
+
+### Implicação para o desenho atual
+
+Os métodos e rotas denominados `reverse`, `estorno` ou `reversal_of_id` devem ser revistos. O utilizador não quer um fluxo de estorno. Não remover colunas/dados de reversões antigas sem migração e análise dos registos existentes; definir compatibilidade histórica e plano de migração. Novas exclusões devem usar uma operação de domínio central (por exemplo, `DeletionOrchestrator`) que resolva o grafo de dependências com políticas explícitas, execute soft deletes, preserve auditoria e recalcule agregados.
+
+### Casos de aceitação adicionais
+
+1. Eliminar movimento pendente comum: excluir logicamente o movimento e respetivas projeções exclusivas; saldo não muda se nunca teve impacto.
+2. Eliminar movimento liquidado simples: excluir logicamente o evento e recalcular saldo da conta; não criar contra-movimento.
+3. Eliminar pagamento parcial: propagar a exclusão do evento, recalcular montante pago, saldo em aberto, estado da prestação/obrigação e previsão.
+4. Eliminar compromisso: bloquear se houver pagamentos cuja propagação não esteja explicitamente autorizada; caso autorizado, excluir compromisso, parcelas, previsões e eventos exclusivos, e recalcular as contas afetadas.
+5. Eliminar compra de cartão: se não houver pagamentos/alocações/transportes dependentes, excluir compra e recalcular a fatura; se existirem, propagar por uma regra validada ou bloquear. Nunca deixar pagamento/alocação órfão.
+6. Eliminar uma ocorrência recorrente: respeitar o escopo; remover apenas a ocorrência ou as ocorrências futuras pendentes conforme pedido. Ocorrências liquidadas só podem ser removidas se a propagação financeira completa for válida.
+7. Eliminar transferência: remover o evento único de transferência e recalcular ambas as contas na mesma transação.
+8. Eliminar ajuste de saldo: remover o evento e recalcular a conta; manter trilho de auditoria.
+9. Falha em qualquer dependência/recalculo: rollback integral; nenhum registo parcialmente eliminado.
+10. Repetir uma exclusão: resposta idempotente e nenhum segundo efeito financeiro.
+
+**Nota de rigor:** “exclusão propagada” não significa que qualquer operação possa sempre ser concluída. Quando houver uma dependência partilhada ou uma consequência externa/ambígua que não possa ser recalculada com segurança, o sistema deve bloquear a exclusão e explicar a dependência, em vez de criar órfãos ou corromper saldos.
