@@ -180,6 +180,22 @@ class FinancialCoreController extends Controller
         )]);
     }
 
+    public function addInvoiceCharge(Request $request, string $id, CardInvoiceService $service): JsonResponse
+    {
+        $data = $request->validate([
+            'charge_type' => ['required', Rule::in(['interest', 'late_fee', 'commission', 'tax', 'other'])],
+            'description' => 'required|string|max:255',
+            'amount' => 'required|numeric|gt:0|decimal:0,2|max:9999999999.99',
+            'movement_date' => 'required|date|before_or_equal:today',
+            'category_id' => ['nullable', 'uuid', Rule::exists('categorias', 'id')->where('user_id', $request->user()->id)->where('type', 'despesa')],
+        ]);
+        $invoice = $request->user()->faturas()->whereKey($id)->firstOrFail();
+        return response()->json([
+            'data' => $service->addCharge($request->user(), $invoice, $data),
+            'message' => 'Encargo registado na fatura.',
+        ], 201);
+    }
+
     public function updateCardSettings(Request $request, string $id, AccountBalanceService $balances): JsonResponse
     {
         foreach (['closing_day', 'due_day'] as $field) {
