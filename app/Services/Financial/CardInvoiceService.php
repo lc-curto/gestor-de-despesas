@@ -174,12 +174,23 @@ class CardInvoiceService
             if ($card->type !== 'credit_card' || !$card->is_operational || $card->status !== 'active') {
                 throw ValidationException::withMessages(['invoice' => 'O cartão associado a esta fatura não está ativo.']);
             }
+            $originInvoice = null;
+            if (!empty($data['origin_invoice_id'])) {
+                $originInvoice = Fatura::query()->where('user_id', $user->id)
+                    ->whereKey($data['origin_invoice_id'])->lockForUpdate()->firstOrFail();
+                if ($originInvoice->account_id !== $locked->account_id
+                    || !$originInvoice->reference_month->lt($locked->reference_month)) {
+                    throw ValidationException::withMessages(['origin_invoice_id' => 'A fatura de origem deve pertencer ao mesmo cartão e a um ciclo anterior.']);
+                }
+            }
 
             $charge = $this->movements->create($user, [
                 'type' => 'expense',
                 'expense_behavior' => 'fixed',
                 'description' => $data['description'],
                 'notes' => 'Encargo de fatura: '.$data['charge_type'],
+                'invoice_charge_type' => $data['charge_type'],
+                'origin_invoice_id' => $originInvoice?->id,
                 'payment_method' => 'credit',
                 'amount' => $data['amount'],
                 'movement_date' => $data['movement_date'],
