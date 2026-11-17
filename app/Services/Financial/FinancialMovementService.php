@@ -865,18 +865,7 @@ class FinancialMovementService
         );
     }
 
-    /**
-     * Compatibilidade com chamadas antigas. A operação já não cria movimentos
-     * inversos: encaminha o pedido para a exclusão financeira propagada.
-     */
-    public function reverse(User $user, Movimento $movement, ?string $reason = null): Movimento
-    {
-        return app(FinancialDeletionService::class)->deleteMovement(
-            $user,
-            $movement,
-            $reason ?? 'Movimento eliminado pelo utilizador.'
-        );
-    }
+
 
     private function account(User $user, ?string $id): ?ContaFinanceira
     {
