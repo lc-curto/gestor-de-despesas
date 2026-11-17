@@ -402,6 +402,15 @@ class FinancialDeletionService
                 ->lockForUpdate()
                 ->get();
 
+            $ambiguousPartial = $related->first(
+                fn (Movimento $item): bool => $item->status === 'partial' && ! $item->is_settlement_parent
+            );
+            if ($ambiguousPartial) {
+                throw ValidationException::withMessages([
+                    'commitment' => 'Existe uma parcela parcialmente paga sem eventos de liquidação identificáveis. Reconcilia esse movimento antes de eliminar o parcelamento.',
+                ]);
+            }
+
             $parentIds = $related->where('is_settlement_parent', true)->pluck('id');
             $paymentEvents = $parentIds->isNotEmpty()
                 ? Movimento::query()->where('user_id', $user->id)->whereIn('settles_movement_id', $parentIds)->orderBy('id')->lockForUpdate()->get()
