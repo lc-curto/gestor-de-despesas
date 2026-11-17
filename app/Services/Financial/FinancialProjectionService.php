@@ -55,8 +55,14 @@ class FinancialProjectionService
         $installments = $user->parcelasDivida()
             ->with('divida')
             ->whereHas('divida', fn ($query) => $query
+                // Projetar apenas parcelamentos ativos e visíveis na gestão de Parcelamentos.
+                // Compras de pagamento único e compromissos arquivados não são projetáveis.
+                ->whereNull('archived_at')
+                ->where('payment_condition', 'installments')
                 ->where('status', '!=', 'cancelled')
-                ->where(fn ($query) => $query->whereNull('payment_method')->orWhereNotIn('payment_method', ['credit', 'card'])))
+                ->where(fn ($query) => $query
+                    ->whereNull('payment_method')
+                    ->orWhereNotIn('payment_method', ['credit', 'card'])))
             ->whereIn('status', ['pending', 'partial'])
             ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('movimentos as linked_movements')
                 ->whereColumn('linked_movements.installment_id', 'parcelas_divida.id')
