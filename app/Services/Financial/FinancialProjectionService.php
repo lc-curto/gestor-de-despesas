@@ -57,6 +57,7 @@ class FinancialProjectionService
         $partiallySettled = $user->movimentos()
             ->where('is_settlement_parent', true)
             ->whereNull('installment_id')
+            ->whereNull('invoice_id')
             ->where('status', 'partial')
             ->where('is_historical', false)
             ->whereIn('type', ['expense', 'income'])
