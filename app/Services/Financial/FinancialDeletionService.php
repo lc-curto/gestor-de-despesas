@@ -845,6 +845,7 @@ class FinancialDeletionService
             $verifiedPaidCents = $parentEventCents + $legacyEventCents;
 
             if ($recordedPaidCents !== $verifiedPaidCents
+                || ($installment->status === 'pending' && $recordedPaidCents > 0)
                 || (in_array($installment->status, ['partial', 'paid'], true) && $recordedPaidCents <= 0)) {
                 throw ValidationException::withMessages([
                     'commitment' => 'O valor pago da prestação não corresponde aos eventos financeiros identificáveis. Reconcilia os dados antes de eliminar ou cancelar o parcelamento.',
