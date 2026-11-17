@@ -209,13 +209,21 @@ class FinancialMovementService
                 $creditCents += $this->balances->toCents((string) $credit->amount);
             }
             $totalCents += $carriedCents - $creditCents;
-            if ($totalCents <= 0) return null;
 
             $parent = Movimento::query()->where('user_id', $user->id)
                 ->where('invoice_id', $lockedInvoice->id)
                 ->where('is_settlement_parent', true)
                 ->where('type', 'expense')
                 ->lockForUpdate()->first();
+            if ($totalCents <= 0) {
+                if ($parent) {
+                    $before = $parent->getAttributes();
+                    $parent->update(['status' => 'void', 'is_settlement_parent' => false, 'settled_at' => null]);
+                    $this->audit($user, $parent, 'invoice_obligation_cancelled_by_credit', $before, $parent->getAttributes());
+                }
+                $lockedInvoice->update(['status' => 'paid']);
+                return null;
+            }
 
             $paidCents = 0;
             $payments = $lockedInvoice->movimentos()->where('type', 'transfer')->where('status', 'settled')
