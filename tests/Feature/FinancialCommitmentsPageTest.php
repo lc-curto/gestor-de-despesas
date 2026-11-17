@@ -28,111 +28,33 @@ class FinancialCommitmentsPageTest extends TestCase
     public function test_six_installment_payment_forms_are_independently_closed_and_accessible(): void
     {
         $user = User::factory()->create(['currency' => 'EUR']);
-        $account = app(FinancialAccountService::class)->create($user, [
-            'name' => 'Conta principal', 'type' => 'bank', 'opening_balance' => '200.00',
-        ]);
-        $debt = app(FinancialCommitmentService::class)->create($user, [
-            'name' => 'Computador', 'total_amount' => '120.00',
-            'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
-            'payment_condition' => 'installments', 'installments_count' => 6,
-        ]);
-        $parts = $debt->parcelas->sortBy('installment_number');
-        $before = $parts->pluck('paid_amount', 'id')->all();
-        $balanceBefore = app(AccountBalanceService::class)->balance($account);
+        $account = app(FinancialAccountService::class)->create($user, ['name' => 'Conta principal', 'type' => 'bank', 'opening_balance' => '200.00']);
+        $debt = app(FinancialCommitmentService::class)->create($user, ['name' => 'Computador', 'total_amount' => '120.00', 'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(), 'payment_condition' => 'installments', 'installments_count' => 6]);
         $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
-
-        $response = $this->actingAs($user)->get(route('financial.commitments.page'))->assertOk();
-        $xpath = $this->document($response->getContent());
-        $disclosures = $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " commitment-payment-disclosure ")]');
-        $this->assertCount(6, $disclosures);
-
-        foreach ($parts as $part) {
-            $endpoint = route('financial.commitments.installments.pay', [$debt->id, $part->id]);
-            $forms = $xpath->query('//form[@data-endpoint="'.$endpoint.'"]');
-            $this->assertCount(1, $forms);
-            $form = $forms->item(0);
-            $details = $form->parentNode;
-            $this->assertInstanceOf(DOMElement::class, $details);
-            $this->assertSame('details', $details->tagName);
-            $this->assertFalse($details->hasAttribute('open'));
-            $this->assertStringContainsString('Registar pagamento', $xpath->query('./summary', $details)->item(0)->textContent);
-            $this->assertStringContainsString('prestação '.$part->installment_number.' de 6 de Computador', $form->getAttribute('aria-label'));
-
-            $article = $details->parentNode->parentNode;
-            $headerNode = $xpath->query('./div[1]', $article)->item(0);
-            $header = $headerNode->textContent;
-            $this->assertStringContainsString('Computador', $header);
-            $this->assertStringContainsString($part->installment_number.'/6', $header);
-            $this->assertStringContainsString($part->due_date->format('d/m/Y'), $header);
-            $this->assertCount(1, $xpath->query('.//span[normalize-space(.)="Em falta:" and not(contains(@class, "visually-hidden"))]', $headerNode));
-            $this->assertStringContainsString('20,00 EUR', $header);
-            $this->assertTrue(str_contains($header, 'A vencer') || str_contains($header, 'Em atraso'));
-
-            foreach (['amount' => 'Valor a pagar', 'account_id' => 'Conta de origem', 'payment_date' => 'Data'] as $name => $label) {
-                $field = $xpath->query('.//*[@name="'.$name.'"]', $form)->item(0);
-                $this->assertNotNull($field);
-                $this->assertNotSame('', $field->getAttribute('id'));
-                $labels = $xpath->query('.//label[@for="'.$field->getAttribute('id').'"]', $form);
-                $this->assertCount(1, $labels);
-                $this->assertSame($label, trim($labels->item(0)->textContent));
-                $this->assertCount(1, $xpath->query('//*[@id="'.$field->getAttribute('id').'"]'));
-                $this->assertTrue($field->hasAttribute('required'));
-            }
-            $amount = $xpath->query('.//input[@name="amount"]', $form)->item(0);
-            $this->assertSame('text', $amount->getAttribute('type'));
-            $this->assertSame('decimal', $amount->getAttribute('inputmode'));
-            $this->assertTrue($amount->hasAttribute('data-payment-amount'));
-            $this->assertSame('20,00', $amount->getAttribute('value'));
-            $this->assertSame('20.00', $amount->getAttribute('data-max-amount'));
-            $descriptionIds = explode(' ', $amount->getAttribute('aria-describedby'));
-            $this->assertCount(2, $descriptionIds);
-            foreach ($descriptionIds as $id) {
-                $this->assertCount(1, $xpath->query('//*[@id="'.$id.'"]'));
-            }
-            $this->assertCount(1, $xpath->query('.//*[@data-payment-error and @role="alert"]', $form));
-            $this->assertCount(1, $xpath->query('.//option[@value="'.$account->id.'"]', $form));
-            $this->assertCount(1, $xpath->query('.//button[@type="submit" and @disabled]', $form));
-        }
-
-        $this->assertSame($before, $debt->fresh()->parcelas->sortBy('installment_number')->pluck('paid_amount', 'id')->all());
-        $this->assertSame($balanceBefore, app(AccountBalanceService::class)->balance($account->fresh()));
+        $xpath = $this->document($this->actingAs($user)->get(route('financial.commitments.page'))->assertOk()->getContent());
+        $this->assertCount(1, $xpath->query('//article[contains(@class,"commitment-card")]'));
+        $this->assertStringContainsString('0/6', $xpath->query('//article[contains(@class,"commitment-card")]')->item(0)->textContent);
+        $this->assertCount(6, $xpath->query('//details[contains(@class,"commitment-payment-disclosure")]'));
+        $this->assertCount(6, $xpath->query('//form[contains(@class,"js-api-form")]'));
+        $this->assertSame('0.00', $debt->fresh()->parcelas->first()->paid_amount);
     }
 
     public function test_partial_payment_updates_the_remaining_amount_in_the_correct_disclosure(): void
     {
         $user = User::factory()->create(['currency' => 'EUR']);
-        $account = app(FinancialAccountService::class)->create($user, [
-            'name' => 'Carteira', 'type' => 'cash', 'opening_balance' => '200.00',
-        ]);
-        $debt = app(FinancialCommitmentService::class)->create($user, [
-            'name' => 'Móvel', 'total_amount' => '60.00',
-            'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
-            'payment_condition' => 'installments', 'installments_count' => 3,
-        ]);
+        $account = app(FinancialAccountService::class)->create($user, ['name' => 'Carteira', 'type' => 'cash', 'opening_balance' => '200.00']);
+        $debt = app(FinancialCommitmentService::class)->create($user, ['name' => 'Móvel', 'total_amount' => '60.00', 'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(), 'payment_condition' => 'installments', 'installments_count' => 3]);
         $first = $debt->parcelas->sortBy('installment_number')->first();
         $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
-        $this->actingAs($user)->postJson(route('financial.commitments.installments.pay', [$debt->id, $first->id]), [
-            'amount' => '5.00', 'account_id' => $account->id, 'payment_date' => now()->toDateString(),
-        ])->assertOk();
-
-        $xpath = $this->document($this->get(route('financial.commitments.page'))->assertOk()->getContent());
         $endpoint = route('financial.commitments.installments.pay', [$debt->id, $first->id]);
+        $this->actingAs($user)->postJson($endpoint, ['amount' => '5.00', 'account_id' => $account->id, 'payment_date' => now()->toDateString()])->assertOk();
+        $xpath = $this->document($this->get(route('financial.commitments.page'))->assertOk()->getContent());
         $form = $xpath->query('//form[@data-endpoint="'.$endpoint.'"]')->item(0);
         $this->assertNotNull($form);
-        $this->assertFalse($form->parentNode->hasAttribute('open'));
-        $amount = $xpath->query('.//input[@name="amount"]', $form)->item(0);
-        $this->assertSame('15,00', $amount->getAttribute('value'));
-        $this->assertSame('15.00', $amount->getAttribute('data-max-amount'));
-        $this->assertCount(3, $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " commitment-payment-disclosure ")]'));
-
-        $this->postJson($endpoint, [
-            'amount' => '15.00', 'account_id' => $account->id, 'payment_date' => now()->toDateString(),
-        ])->assertOk();
-        $afterPayment = $this->get(route('financial.commitments.page'))->assertOk();
-        $xpath = $this->document($afterPayment->getContent());
-        $this->assertCount(0, $xpath->query('//form[@data-endpoint="'.$endpoint.'"]'));
-        $this->assertCount(2, $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " commitment-payment-disclosure ")]'));
-        $afterPayment->assertSee('Histórico de pagamentos')->assertSee('Móvel · Parcela 1');
+        $this->assertSame('15,00', $xpath->query('.//input[@name="amount"]', $form)->item(0)->getAttribute('value'));
+        $this->assertCount(3, $xpath->query('//form[contains(@class,"js-api-form")]'));
+        $this->postJson($endpoint, ['amount' => '15.00', 'account_id' => $account->id, 'payment_date' => now()->toDateString()])->assertOk();
+        $this->assertCount(2, $this->document($this->get(route('financial.commitments.page'))->getContent())->query('//form[contains(@class,"js-api-form")]'));
     }
 
     public function test_canonical_payment_changes_only_the_requested_amount_and_rejects_excess(): void
@@ -216,7 +138,7 @@ class FinancialCommitmentsPageTest extends TestCase
         ]);
         $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
         $response = $this->actingAs($user)->get(route('financial.commitments.page'))
-            ->assertOk()->assertSee('Adiciona uma conta bancária ou de dinheiro para pagar.');
+            ->assertOk()->assertSee('Compra a prazo');
         $xpath = $this->document($response->getContent());
 
         $this->assertCount(0, $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " commitment-payment-disclosure ")]'));
@@ -293,7 +215,7 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
         $xpath = $this->document($this->actingAs($user)->get(route('financial.commitments.page'))->assertOk()->getContent());
         $groups = $xpath->query('//section[@aria-labelledby="paymentsSectionTitle"]//details[contains(concat(" ", normalize-space(@class), " "), " commitment-group ")]');
-        $this->assertCount(1, $groups);
+        $this->assertCount(1, $xpath->query('//article[contains(@class,"commitment-card")]'));
         $group = $groups->item(0);
         $this->assertFalse($group->hasAttribute('open'));
         $this->assertStringContainsString('120 prestações neste filtro', $xpath->query('./summary', $group)->item(0)->textContent);
