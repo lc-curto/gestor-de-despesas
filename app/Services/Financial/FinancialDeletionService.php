@@ -416,6 +416,17 @@ class FinancialDeletionService
                 ? Movimento::query()->where('user_id', $user->id)->whereIn('settles_movement_id', $parentIds)->orderBy('id')->lockForUpdate()->get()
                 : collect();
 
+            $settledParentIds = $related
+                ->where('is_settlement_parent', true)
+                ->whereIn('status', ['partial', 'settled'])
+                ->pluck('id');
+            $parentsWithSettledEvents = $paymentEvents->where('status', 'settled')->pluck('settles_movement_id')->unique();
+            if ($settledParentIds->diff($parentsWithSettledEvents)->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    'commitment' => 'Existe uma parcela parcialmente ou totalmente liquidada sem eventos de pagamento verificáveis. Reconcilia os dados antes de eliminar o parcelamento.',
+                ]);
+            }
+
             $accountIds = $related->flatMap(fn (Movimento $item) => [$item->source_account_id, $item->destination_account_id])
                 ->merge($paymentEvents->flatMap(fn (Movimento $item) => [$item->source_account_id, $item->destination_account_id]))
                 ->filter()->unique()->sort()->values();
