@@ -138,7 +138,7 @@
                                 <button type="button" class="btn btn-outline-secondary js-archive-commitment"
                                     data-url="{{ route('financial.commitments.archive', $commitment->id) }}"
                                     data-name="{{ $commitment->name }}"
-                                    data-has-payments="{{ (float) $commitment->paid_amount_total > 0 ? '1' : '0' }}">Arquivar</button>
+                                    data-delete-url="{{ route('financial.commitments.destroy', $commitment->id) }}">Arquivar</button>
                                 <button type="button" class="btn btn-outline-danger js-cancel-commitment" @disabled($isCompleted)
                                     data-url="{{ route('financial.commitments.cancel', $commitment->id) }}"
                                     data-name="{{ $commitment->name }}">Cancelar</button>
@@ -332,7 +332,7 @@
         <div class="modal-footer border-0">
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button>
             <button type="button" class="btn btn-primary" id="confirmArchiveCommitment">Arquivar compra</button>
-            <button type="button" class="btn btn-outline-danger d-none" id="deleteUnusedCommitment">Eliminar compra sem pagamentos</button>
+            <button type="button" class="btn btn-outline-danger" id="deleteUnusedCommitment">Eliminar compra</button>
         </div>
     </div></div>
 </div>
@@ -647,11 +647,14 @@
     const archiveButton = document.getElementById('confirmArchiveCommitment');
     const deleteButton = document.getElementById('deleteUnusedCommitment');
     let archiveActionUrl = null;
+    let deleteActionUrl = null;
+    let archiveActionName = '';
     document.querySelectorAll('.js-archive-commitment').forEach(button => button.addEventListener('click', () => {
         archiveActionUrl = button.dataset.url;
-        document.getElementById('archiveCommitmentMessage').textContent = 'Pretendes arquivar "' + button.dataset.name + '"?';
+        deleteActionUrl = button.dataset.deleteUrl;
+        archiveActionName = button.dataset.name;
+        document.getElementById('archiveCommitmentMessage').textContent = 'Pretendes arquivar "' + archiveActionName + '"?';
         document.getElementById('archiveCommitmentError').textContent = '';
-        deleteButton.classList.toggle('d-none', button.dataset.hasPayments !== '0');
         archiveModal.show();
     }));
     archiveButton.addEventListener('click', async () => {
@@ -668,11 +671,10 @@
         }
     });
     deleteButton.addEventListener('click', async () => {
-        if (!archiveActionUrl || !window.confirm('Eliminar definitivamente esta compra? Esta ação não pode ser desfeita.')) return;
-        const deleteUrl = archiveActionUrl.replace('/archive', '');
+        if (!deleteActionUrl || !window.confirm('Eliminar "' + archiveActionName + '"? As previsões pendentes/parciais serão anuladas. Os pagamentos realizados serão preservados como movimentos independentes. O histórico será mantido; se existirem dados inconsistentes ou dependências não reconciliadas, a operação será bloqueada.')) return;
         deleteButton.disabled = true;
         try {
-            const response = await fetch(deleteUrl,{method:'DELETE',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({})});
+            const response = await fetch(deleteActionUrl,{method:'DELETE',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({})});
             const result = await response.json().catch(()=>({}));
             if (!response.ok) throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível eliminar.');
             window.location.reload();

@@ -373,6 +373,34 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->assertCount(1, $xpath->query('//button[contains(@class,"commitment-history-trigger")]'));
     }
 
+
+    public function test_delete_action_remains_available_for_partially_paid_commitments_with_explicit_endpoint(): void
+    {
+        $user = User::factory()->create();
+        $account = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Conta', 'type' => 'bank', 'opening_balance' => '200.00',
+        ]);
+        $debt = app(FinancialCommitmentService::class)->create($user, [
+            'name' => 'Compra parcialmente paga', 'total_amount' => '60.00',
+            'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
+            'payment_condition' => 'installments', 'installments_count' => 3,
+        ]);
+        $part = $debt->parcelas->sortBy('installment_number')->first();
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+        $this->actingAs($user)->postJson(
+            route('financial.commitments.installments.pay', [$debt->id, $part->id]),
+            ['account_id' => $account->id, 'amount' => '5.00', 'payment_date' => now()->toDateString()]
+        )->assertOk();
+
+        $xpath = $this->document($this->get(route('financial.commitments.page'))->assertOk()->getContent());
+        $deleteButton = $xpath->query('//*[@id="deleteUnusedCommitment" and not(contains(concat(" ", normalize-space(@class), " "), " d-none "))]')->item(0);
+        $this->assertNotNull($deleteButton);
+        $archiveButton = $xpath->query('//button[contains(@class,"js-archive-commitment")]')->item(0);
+        $this->assertNotNull($archiveButton);
+        $this->assertSame(route('financial.commitments.destroy', $debt->id), $archiveButton->getAttribute('data-delete-url'));
+        $this->assertSame('1', $archiveButton->getAttribute('data-has-payments') === '' ? '0' : '1');
+    }
+
     public function test_commitment_merchant_is_saved_and_displayed_on_purchase_card(): void
     {
         $user = User::factory()->create();
