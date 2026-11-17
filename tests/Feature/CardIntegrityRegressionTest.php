@@ -73,7 +73,10 @@ class CardIntegrityRegressionTest extends TestCase
         $card = $this->card($user);
         $purchase = $this->purchase($user, $card);
         $invoice = $user->faturas()->firstOrFail();
+        $invoice->update(['status' => 'closed']);
 
+        // A fatura fechada continua a ser uma projeção: sem pagamentos ou saldo transportado,
+        // eliminar a compra recalcula o período e retira a fatura vazia.
         $this->actingAs($user)->deleteJson('/api/financial/movements/'.$purchase->id)->assertOk();
         $this->assertSame('void', $purchase->fresh()->status);
         $this->assertDatabaseHas('historico_movimentos', ['movement_id' => $purchase->id, 'action' => 'deleted']);
