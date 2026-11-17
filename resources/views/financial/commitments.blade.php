@@ -403,6 +403,10 @@
 .commitment-list-heading,.commitment-history-heading{display:flex;justify-content:space-between;align-items:center;gap:.75rem;margin-bottom:.85rem}
 .commitment-cards{display:grid;grid-template-columns:minmax(0,1fr);gap:.85rem}
 .commitment-card{min-width:0;border:1px solid var(--bs-border-color);border-radius:1rem;background:var(--bs-body-bg);box-shadow:0 2px 8px rgba(0,0,0,.035);overflow:hidden}
+/* Alternância quase impercetível entre cards, adaptável aos temas claro e escuro. */
+.commitment-card:nth-child(even){
+    background:color-mix(in srgb,var(--bs-body-color) 2.5%,var(--bs-body-bg));
+}
 .commitment-card-toggle{display:flex;width:100%;flex-direction:column;gap:.85rem;padding:1rem 1.1rem .8rem;text-align:left;border:0;background:transparent;color:inherit}
 .commitment-card-toggle:hover{background:var(--bs-tertiary-bg)}
 .commitment-card-heading,.commitment-card-balances,.commitment-card-foot{display:flex;justify-content:space-between;align-items:center;gap:.75rem;width:100%}
