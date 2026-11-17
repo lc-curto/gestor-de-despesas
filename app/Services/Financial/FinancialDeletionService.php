@@ -45,7 +45,7 @@ class FinancialDeletionService
             })->exists();
             $hasDebt = Divida::withTrashed()->where('user_id', $user->id)->where('account_id', $locked->id)->exists();
             $hasRecurrence = $user->recorrencias()->where('account_id', $locked->id)->exists();
-            $invoices = Fatura::query()->where('user_id', $user->id)->where('account_id', $locked->id)
+            $invoices = Fatura::withTrashed()->where('user_id', $user->id)->where('account_id', $locked->id)
                 ->orderBy('id')->lockForUpdate()->get();
             $invoiceIds = $invoices->pluck('id');
             $hasInvoiceMovements = $invoiceIds->isNotEmpty()
