@@ -39,7 +39,7 @@ class FinancialCommitmentsPageController extends Controller
 
         $invoicePage = $invoices->listInvoices($user);
         $commitments = $user->dividas()
-            ->whereIn('payment_condition', ['deferred', 'installments'])
+            ->where('payment_condition', 'installments')
             ->where(fn ($query) => $query->whereNull('payment_method')->orWhereNotIn('payment_method', ['credit', 'card']))
             ->where('status', '!=', 'cancelled')
             ->with(['parcelas' => fn ($query) => $query->orderBy('due_date')])
@@ -48,7 +48,7 @@ class FinancialCommitmentsPageController extends Controller
 
         $commitmentOpen = (float) $user->parcelasDivida()
             ->whereHas('divida', fn ($query) => $query
-                ->whereIn('payment_condition', ['deferred', 'installments'])
+                ->where('payment_condition', 'installments')
                 ->where(fn ($query) => $query->whereNull('payment_method')->orWhereNotIn('payment_method', ['credit', 'card']))
                 ->where('status', '!=', 'cancelled'))
             ->where('status', '!=', 'paid')
