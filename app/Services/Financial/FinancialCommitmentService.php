@@ -177,7 +177,7 @@ class FinancialCommitmentService
                 throw ValidationException::withMessages(['commitment' => 'Este parcelamento já não tem saldo por pagar.']);
             }
 
-            $historicalCount = (int) $parts->whereIn('status', ['paid', 'partial'])->count();
+            $historicalCount = (int) $parts->filter(fn ($part) => $part->status === 'paid' || (float) $part->paid_amount > 0)->count();
             $count = (int) $data['installments_count'];
             $frequency = $data['installment_frequency'];
             $remainingCents = array_key_exists('remaining_amount', $data)
