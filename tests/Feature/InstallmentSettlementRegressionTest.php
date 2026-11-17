@@ -54,7 +54,7 @@ class InstallmentSettlementRegressionTest extends TestCase
         $part = $debt->parcelas->sortBy('installment_number')->first();
         $forecast = $user->movimentos()->where('installment_id', $part->id)->firstOrFail();
         $this->settle($user, $bank, $forecast->id, '30.00', '30.00')
-            ->assertOk()->assertJsonPath('data.id', $forecast->id)->assertJsonPath('data.status', 'settled')
+            ->assertOk()->assertJsonPath('data.settles_movement_id', $forecast->id)->assertJsonPath('data.status', 'settled')
             ->assertJsonPath('installment.status', 'paid')->assertJsonPath('installment.paid_amount', '30.00');
         $this->assertSame('paid', $part->fresh()->status);
         $this->assertSame('60.00', $this->openAmount($debt));
@@ -87,8 +87,8 @@ class InstallmentSettlementRegressionTest extends TestCase
         $this->settle($user, $bank, $forecast->id, '12.00', '30.00')
             ->assertOk()->assertJsonPath('data.status', 'settled')->assertJsonPath('data.amount', '12.00')
             ->assertJsonPath('installment.status', 'partial')->assertJsonPath('installment.paid_amount', '12.00');
-        $this->assertSame('18.00', $forecast->fresh()->amount);
-        $this->assertSame('pending', $forecast->fresh()->status);
+        $this->assertSame('30.00', $forecast->fresh()->amount);
+        $this->assertSame('partial', $forecast->fresh()->status);
         $this->assertSame('78.00', $this->openAmount($debt));
         $this->assertSame('188.00', app(AccountBalanceService::class)->balance($bank->fresh()));
         $this->assertSame(-12.0, $this->projectedAmount($user, '2026-11-01', '2026-11-30'));
@@ -97,7 +97,7 @@ class InstallmentSettlementRegressionTest extends TestCase
         $this->settle($user, $bank, $forecast->id, '12.00', '30.00')->assertUnprocessable();
         $this->settle($user, $bank, $forecast->id, '12.00', null)->assertUnprocessable();
         $this->assertSame('188.00', app(AccountBalanceService::class)->balance($bank->fresh()));
-        $this->assertSame(4, $user->movimentos()->where('debt_id', $debt->id)->count());
+        $this->assertSame(3, $user->movimentos()->where('debt_id', $debt->id)->count());
         $this->settle($user, $bank, $forecast->id, '18.00', '18.00')->assertOk()->assertJsonPath('data.id', $forecast->id)->assertJsonPath('installment.status', 'paid');
         $this->assertSame('170.00', app(AccountBalanceService::class)->balance($bank->fresh()));
         $this->assertSame('60.00', $this->openAmount($debt));
@@ -130,7 +130,7 @@ class InstallmentSettlementRegressionTest extends TestCase
         $forecast = $user->movimentos()->where('installment_id', $part->id)->firstOrFail();
         $this->settle($user, $bank, $forecast->id, '20.00', '30.00')->assertOk();
         $this->assertSame('-10.00', app(AccountBalanceService::class)->balance($bank->fresh()));
-        $this->assertSame('10.00', $forecast->fresh()->amount);
+        $this->assertSame('30.00', $forecast->fresh()->amount);
         $this->assertSame('70.00', $this->openAmount($debt));
     }
 
@@ -143,18 +143,18 @@ class InstallmentSettlementRegressionTest extends TestCase
         $third = $user->movimentos()->where('installment_id', $parts[2]->id)->firstOrFail();
         $this->settle($user, $bank, $first->id, '30.00', '30.00')->assertOk();
         $this->settle($user, $bank, $second->id, '10.00', '30.00')->assertOk();
-        $paidPartial = $user->movimentos()->where('installment_id', $parts[1]->id)->where('status', 'settled')->firstOrFail();
+        $paidPartial = $second->settlements()->where('status', 'settled')->firstOrFail();
 
         $this->actingAs($user)->putJson(route('financial.commitments.update', $debt->id), [
             'name' => 'Compra editada', 'due_date' => '2027-03-10',
         ])->assertOk();
         $this->assertSame('Compra · Parcela 1/3', $first->fresh()->description);
         $this->assertSame('2026-11-17', $first->fresh()->movement_date->toDateString());
-        $this->assertSame('Pagamento: Compra', $paidPartial->fresh()->description);
+        $this->assertSame('Liquidação: Compra · Parcela 2/3', $paidPartial->fresh()->description);
         $this->assertSame('2026-11-17', $paidPartial->fresh()->movement_date->toDateString());
         $this->assertSame('Compra editada · Parcela 2/3', $second->fresh()->description);
         $this->assertSame('2027-03-10', $second->fresh()->movement_date->toDateString());
-        $this->assertSame('20.00', $second->fresh()->amount);
+        $this->assertSame('30.00', $second->fresh()->amount);
         $this->assertSame('2027-03-10', $parts[1]->fresh()->due_date->toDateString());
         $this->assertSame('Compra editada · Parcela 3/3', $third->fresh()->description);
         $this->assertSame('2027-04-10', $third->fresh()->movement_date->toDateString());
