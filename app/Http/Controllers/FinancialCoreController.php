@@ -367,7 +367,8 @@ class FinancialCoreController extends Controller
             'account_id' => 'nullable|uuid',
         ]);
 
-        $query = $request->user()->movimentos()->with(['contaOrigem:id,name,type', 'contaDestino:id,name,type', 'categoria:id,name']);
+        $query = $request->user()->movimentos()->with(['contaOrigem:id,name,type', 'contaDestino:id,name,type', 'categoria:id,name'])
+            ->where(fn ($builder) => $builder->whereNull('invoice_id')->orWhere('is_settlement_parent', false));
         if (!empty($data['month'])) {
             $query->whereBetween('movement_date', [
                 $data['month'] . '-01',
