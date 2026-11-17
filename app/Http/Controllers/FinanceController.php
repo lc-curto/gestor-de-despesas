@@ -83,7 +83,7 @@ class FinanceController extends Controller
             'paid_now' => ['nullable', Rule::in(['0', '1', 'partial'])],
             'payment_amount' => 'nullable|numeric|gt:0|decimal:0,2',
             'payment_date' => 'nullable|date',
-            'actual_payment_method' => 'nullable|string|max:30',
+            'actual_payment_method' => ['nullable', Rule::in(['cash', 'debit', 'transfer', 'mbway', 'direct_debit', 'credit'])],
             'payment_condition' => ['nullable', Rule::in(['cash', 'deferred', 'installments'])],
             'payment_method' => 'nullable|string|max:30',
             'due_date' => 'nullable|date',
@@ -122,6 +122,21 @@ class FinanceController extends Controller
             ->where('is_operational', true)->where('status', 'active')->whereNotNull('opening_balance')->first() : null;
         if ((!$account && !$isPendingExpense) || ($account && $account->currency !== $request->user()->currency)) {
             throw ValidationException::withMessages(['payment_account_id' => 'Seleciona uma conta ativa, configurada e na moeda da tua conta.']);
+        }
+
+        $paymentMethod = $data['actual_payment_method'] ?? null;
+        if ($paymentMethod !== null && $paymentMethod !== '') {
+            $allowedMethods = match ($account?->type) {
+                'bank' => ['debit', 'transfer', 'mbway', 'direct_debit'],
+                'cash' => ['cash'],
+                'credit_card' => ['credit'],
+                default => [],
+            };
+            if (!in_array($paymentMethod, $allowedMethods, true)) {
+                throw ValidationException::withMessages([
+                    'actual_payment_method' => 'O método de pagamento não corresponde ao tipo de conta selecionado.',
+                ]);
+            }
         }
         if ($account) $data['account_id'] = $account->id;
 
@@ -163,6 +178,7 @@ class FinanceController extends Controller
             'expense_behavior' => $tipo === 'despesa' ? ($data['expense_behavior'] ?? 'variable') : 'variable',
             'description' => $data['description'],
             'notes' => $data['notes'] ?? null,
+            'payment_method' => $data['actual_payment_method'] ?? null,
             'amount' => $data['amount'],
             'movement_date' => $data[$tipo === 'despesa' ? 'expense_date' : 'income_date'],
             'source_account_id' => $source,
@@ -260,7 +276,7 @@ class FinanceController extends Controller
                 'start_date' => $data['expense_date'],
                 'due_date' => $data['due_date'] ?? $data['expense_date'],
                 'payment_condition' => $data['payment_condition'],
-                'payment_method' => $data['payment_method'] ?? null,
+                'payment_method' => $data['payment_method'] ?? $data['actual_payment_method'] ?? null,
                 'account_id' => $data['account_id'] ?? null,
                 'category_id' => $data['category_id'],
                 'installments_count' => $data['installments_count'] ?? null,
@@ -302,7 +318,7 @@ class FinanceController extends Controller
         }
         $expenseBehavior = $data['expense_behavior'] ?? 'variable';
         $notes = $data['notes'] ?? null;
-        unset($data['notes'], $data['expense_behavior'], $data['account_id'], $data['payment_account_id'], $data['paid_now'], $data['payment_amount'], $data['payment_date'], $data['actual_payment_method'], $data['payment_condition'], $data['payment_method'], $data['installments_count'], $data['installment_frequency'], $data['card_only'], $data['recurrence_enabled'], $data['recurrence_frequency'], $data['recurrence_interval'], $data['recurrence_ends_at']);
+        unset($data['notes'], $data['expense_behavior'], $data['account_id'], $data['payment_account_id'], $data['paid_now'], $data['payment_amount'], $data['payment_date'], $data[$data['payment_condition'], $data['payment_method'], $data['installments_count'], $data['installment_frequency'], $data['card_only'], $data['recurrence_enabled'], $data['recurrence_frequency'], $data['recurrence_interval'], $data['recurrence_ends_at']);
         if ($tipo !== 'despesa') unset($data['due_date']);
         $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
 
