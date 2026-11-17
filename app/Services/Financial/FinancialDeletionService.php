@@ -427,6 +427,28 @@ class FinancialDeletionService
                 ]);
             }
 
+            $invoiceIds = $related->pluck('invoice_id')
+                ->merge($paymentEvents->pluck('invoice_id'))
+                ->filter()->unique()->sort()->values();
+            $invoices = $invoiceIds->isNotEmpty()
+                ? Fatura::query()->where('user_id', $user->id)->whereIn('id', $invoiceIds)->orderBy('id')->lockForUpdate()->get()
+                : collect();
+            $hasInvoiceCarry = $invoiceIds->isNotEmpty() && DB::table('fatura_saldos_transportados')
+                ->where('user_id', $user->id)
+                ->where(function ($query) use ($invoiceIds): void {
+                    $query->whereIn('source_invoice_id', $invoiceIds)
+                        ->orWhereIn('target_invoice_id', $invoiceIds);
+                })->exists();
+            if ($hasInvoiceCarry) {
+                throw ValidationException::withMessages([
+                    'commitment' => 'O parcelamento está associado a uma fatura com saldo transportado. Resolve a cadeia de faturas antes de eliminar o parcelamento.',
+                ]);
+            }
+            $invoiceSnapshots = $invoices->mapWithKeys(fn (Fatura $invoice) => [$invoice->id => $invoice->getAttributes()]);
+            $invoiceParentSnapshots = $invoices->mapWithKeys(fn (Fatura $invoice) => [
+                $invoice->id => $invoice->movimentos()->where('is_settlement_parent', true)->first()?->getAttributes(),
+            ]);
+
             $accountIds = $related->flatMap(fn (Movimento $item) => [$item->source_account_id, $item->destination_account_id])
                 ->merge($paymentEvents->flatMap(fn (Movimento $item) => [$item->source_account_id, $item->destination_account_id]))
                 ->filter()->unique()->sort()->values();
@@ -503,6 +525,19 @@ class FinancialDeletionService
                 }
                 $this->recordMovementHistory($user, $event, $action === 'voided' ? 'deleted' : 'detached', $before, $event->fresh()->getAttributes(), 'Evento de pagamento resolvido durante a eliminação do parcelamento.');
                 $this->recordItem($user, $operationId, 'Movimento', $event->id, $action, $before, $event->fresh()->getAttributes());
+            }
+
+            foreach ($invoices as $invoice) {
+                $this->movements->syncInvoiceSettlementParent($user, $invoice);
+                $invoiceAfter = Fatura::withTrashed()->where('user_id', $user->id)->whereKey($invoice->id)->first()?->getAttributes();
+                $invoiceAction = $invoiceAfter && ! empty($invoiceAfter['deleted_at']) ? 'soft_deleted' : 'recalculated';
+                $this->recordItem($user, $operationId, 'Fatura', $invoice->id, $invoiceAction, $invoiceSnapshots->get($invoice->id), $invoiceAfter);
+
+                $parentAfter = $invoice->movimentos()->where('is_settlement_parent', true)->first();
+                $parentBefore = $invoiceParentSnapshots->get($invoice->id);
+                if ($parentBefore && $parentAfter) {
+                    $this->recordItem($user, $operationId, 'Movimento', $parentAfter->id, 'recalculated', $parentBefore, $parentAfter->getAttributes());
+                }
             }
 
             DB::table('deletion_operations')->where('id', $operationId)->update([
