@@ -10,6 +10,7 @@ return new class extends Migration
     {
         Schema::table('dividas', function (Blueprint $table): void {
             $table->timestamp('archived_at')->nullable()->index();
+            $table->softDeletes();
         });
 
         Schema::create('dividas_renegociacoes', function (Blueprint $table): void {
@@ -28,7 +29,7 @@ return new class extends Migration
         Schema::dropIfExists('dividas_renegociacoes');
         Schema::table('dividas', function (Blueprint $table): void {
             $table->dropIndex(['archived_at']);
-            $table->dropColumn('archived_at');
+            $table->dropColumn(['archived_at', 'deleted_at']);
         });
     }
 };
