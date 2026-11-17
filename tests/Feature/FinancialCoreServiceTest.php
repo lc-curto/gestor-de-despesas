@@ -693,4 +693,65 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('-45.00', app(AccountBalanceService::class)->balance($card->fresh()));
     }
 
+
+    public function test_overdue_invoice_balance_moves_to_next_cycle_without_new_expense_or_cash_event(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->account($user, 'Conta principal', '500.00');
+        $card = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Visa', 'type' => 'credit_card', 'opening_balance' => '0.00',
+            'opening_balance_date' => '2026-11-01', 'closing_day' => 25, 'due_day' => 5,
+            'credit_limit' => '1000.00',
+        ]);
+        $invoices = app(CardInvoiceService::class);
+        $invoices->purchase($user, [
+            'account_id' => $card->id, 'description' => 'Compra novembro', 'amount' => '100.00',
+            'movement_date' => '2026-11-12',
+        ]);
+        $sourceInvoice = $user->faturas()->firstOrFail();
+        $this->travelTo(\\Illuminate\\Support\\Carbon::parse('2026-12-06 12:00:00'));
+
+        $invoices->purchase($user, [
+            'account_id' => $card->id, 'description' => 'Compra dezembro', 'amount' => '50.00',
+            'movement_date' => '2026-12-06',
+        ]);
+        $targetInvoice = $user->faturas()->where('id', '!=', $sourceInvoice->id)->firstOrFail();
+
+        $charge = $invoices->addCharge($user, $targetInvoice, [
+            'charge_type' => 'interest',
+            'description' => 'Juros da fatura anterior',
+            'amount' => '5.00',
+            'movement_date' => '2026-12-06',
+            'origin_invoice_id' => $sourceInvoice->id,
+        ]);
+
+        $this->assertSame('carried', $sourceInvoice->fresh()->status);
+        $this->assertSame('155.00', (string) $targetInvoice->fresh()->movimentos()->where('is_settlement_parent', true)->value('amount'));
+        $this->assertSame('interest', $charge->invoice_charge_type);
+        $this->assertSame($sourceInvoice->id, $charge->origin_invoice_id);
+
+        $carry = \\App\\Models\\FaturaSaldoTransportado::query()
+            ->where('source_invoice_id', $sourceInvoice->id)
+            ->where('target_invoice_id', $targetInvoice->id)->firstOrFail();
+        $this->assertSame('100.00', (string) $carry->amount);
+
+        $invoiceData = collect($invoices->listInvoices($user)->items())->keyBy('id');
+        $this->assertSame('0.00', $invoiceData[$sourceInvoice->id]->remaining_amount);
+        $this->assertSame('carried', $invoiceData[$sourceInvoice->id]->display_status);
+        $this->assertSame('155.00', $invoiceData[$targetInvoice->id]->total_amount);
+        $this->assertSame('155.00', $invoiceData[$targetInvoice->id]->remaining_amount);
+        $this->assertSame('500.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+        $this->assertSame('-155.00', app(AccountBalanceService::class)->balance($card->fresh()));
+        $this->assertSame(3, $user->movimentos()->where('type', 'expense')->where('is_settlement_parent', false)->count());
+
+        $projection = app(\\App\\Services\\Financial\\FinancialProjectionService::class)->build(
+            $user,
+            \\Illuminate\\Support\\Carbon::parse('2027-01-01'),
+            \\Illuminate\\Support\\Carbon::parse('2027-01-31')
+        );
+        $invoiceProjection = $projection['movements']->filter(fn ($item) => str_starts_with((string) $item->id, 'invoice-'));
+        $this->assertCount(1, $invoiceProjection);
+        $this->assertSame(-155.0, (float) $invoiceProjection->first()->projection_delta);
+    }
+
 }
