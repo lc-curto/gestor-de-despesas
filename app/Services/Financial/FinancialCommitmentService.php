@@ -62,6 +62,7 @@ class FinancialCommitmentService
                         'movement_date' => $installment->due_date,
                         'source_account_id' => $data['account_id'] ?? null,
                         'category_id' => $data['category_id'] ?? null,
+                        'expense_behavior' => $expenseBehavior,
                         'debt_id' => $debt->id,
                         'installment_id' => $installment->id,
                     ]);
