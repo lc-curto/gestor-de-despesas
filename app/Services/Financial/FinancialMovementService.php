@@ -214,29 +214,6 @@ class FinancialMovementService
         return DB::transaction(function () use ($user, $movement, $accounts): Movimento {
             $locked = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
 
-            // Mantém o comportamento histórico de liquidação de previsões de prestações.
-            if ($locked->installment_id || $locked->debt_id) {
-                if ($locked->status !== 'pending') {
-                    throw ValidationException::withMessages(['movement' => 'Só é possível liquidar previsões pendentes de prestações.']);
-                }
-                $source = $this->account($user, $accounts['source_account_id'] ?? $locked->source_account_id);
-                $destination = $this->account($user, $accounts['destination_account_id'] ?? $locked->destination_account_id);
-                $this->assertShape($locked->type, $source, $destination, $locked->adjustment_direction);
-                $this->assertNoGenericCardMovement($locked->type, $source, $destination);
-                if ($source) $this->balances->assertCanDebit($source, (string) $locked->amount);
-                $before = $locked->getAttributes();
-                $locked->update([
-                    'source_account_id' => $source?->id,
-                    'destination_account_id' => $destination?->id,
-                    'movement_date' => $accounts['movement_date'] ?? $locked->movement_date,
-                    'requires_account_assignment' => false,
-                    'status' => 'settled',
-                    'settled_at' => now(),
-                ]);
-                $this->audit($user, $locked, 'settled', $before, $locked->getAttributes());
-                return $locked->refresh();
-            }
-
             // Compra em cartão é reconhecimento da despesa na fatura, não liquidação de caixa.
             if ($locked->type === 'expense' && !empty($accounts['invoice_id'])) {
                 $card = $this->account($user, $accounts['source_account_id'] ?? $locked->source_account_id);
@@ -260,6 +237,30 @@ class FinancialMovementService
                 return $locked->refresh();
             }
 
+
+            // Mantém o comportamento histórico de liquidação de previsões de prestações.
+            if ($locked->installment_id || $locked->debt_id) {
+                if ($locked->status !== 'pending') {
+                    throw ValidationException::withMessages(['movement' => 'Só é possível liquidar previsões pendentes de prestações.']);
+                }
+                $source = $this->account($user, $accounts['source_account_id'] ?? $locked->source_account_id);
+                $destination = $this->account($user, $accounts['destination_account_id'] ?? $locked->destination_account_id);
+                $this->assertShape($locked->type, $source, $destination, $locked->adjustment_direction);
+                $this->assertNoGenericCardMovement($locked->type, $source, $destination);
+                if ($source) $this->balances->assertCanDebit($source, (string) $locked->amount);
+                $before = $locked->getAttributes();
+                $locked->update([
+                    'source_account_id' => $source?->id,
+                    'destination_account_id' => $destination?->id,
+                    'movement_date' => $accounts['movement_date'] ?? $locked->movement_date,
+                    'requires_account_assignment' => false,
+                    'status' => 'settled',
+                    'settled_at' => now(),
+                ]);
+                $this->audit($user, $locked, 'settled', $before, $locked->getAttributes());
+                return $locked->refresh();
+            }
+
             if ($locked->is_settlement_parent) {
                 if ($locked->status !== 'partial') {
                     throw ValidationException::withMessages(['movement' => 'Esta obrigação já está totalmente liquidada ou encerrada.']);
@@ -268,7 +269,7 @@ class FinancialMovementService
                 throw ValidationException::withMessages(['movement' => 'Só é possível liquidar movimentos pendentes ou parcialmente liquidados.']);
             }
             if (!in_array($locked->type, ['expense', 'income'], true)) {
-                throw ValidationException::withMessages(['type' => 'A liquidação aplica-se a despesas e receitas.']);
+                throw ValidationException::withMessages(['type' => 'Transferências e ajustes não podem usar o fluxo de liquidação de despesas/receitas; operações com cartão devem passar pela fatura.']);
             }
 
             $source = $locked->type === 'expense'
@@ -313,6 +314,8 @@ class FinancialMovementService
             $newSettledCents = $alreadySettled + $paymentCents;
             $locked->update([
                 'status' => $newSettledCents >= $originalCents ? 'settled' : 'partial',
+                'source_account_id' => $locked->type === 'expense' ? ($locked->source_account_id ?? $source->id) : null,
+                'destination_account_id' => $locked->type === 'income' ? ($locked->destination_account_id ?? $destination->id) : null,
                 'is_settlement_parent' => true,
                 'requires_account_assignment' => false,
                 'settled_at' => $newSettledCents >= $originalCents ? now() : null,

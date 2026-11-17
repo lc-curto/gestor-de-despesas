@@ -85,14 +85,7 @@ class FinancialProjectionService
 
         $installments = $user->parcelasDivida()
             ->with('divida')
-            ->whereHas('divida', fn ($query) => $query
-                // Projetar apenas parcelamentos ativos e visíveis na gestão de Parcelamentos.
-                // Compras de pagamento único e compromissos arquivados não são projetáveis.
-                ->whereNull('archived_at')
-                ->whereNotIn('status', ['cancelled', 'paid'])
-                ->where(fn ($query) => $query
-                    ->whereNull('payment_method')
-                    ->orWhereNotIn('payment_method', ['credit', 'card'])))
+            ->whereHas('divida')
             ->whereIn('status', ['pending', 'partial'])
             ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('movimentos as linked_movements')
                 ->whereColumn('linked_movements.installment_id', 'parcelas_divida.id')
@@ -102,7 +95,12 @@ class FinancialProjectionService
                 ->where('linked_movements.is_historical', false))
             ->where('due_date', '>=', $rangeStart->toDateString())
             ->where('due_date', '<', $rangeEndExclusive)
-            ->get();
+            ->get()
+            ->filter(fn ($installment) => $installment->divida
+                && $installment->divida->archived_at === null
+                && !in_array($installment->divida->status, ['cancelled', 'paid'], true)
+                && !in_array($installment->divida->payment_method, ['credit', 'card'], true))
+            ->values();
         foreach ($installments as $installment) {
             $remaining = round((float) $installment->amount - (float) $installment->paid_amount, 2);
             if ($remaining <= 0) continue;

@@ -13,7 +13,7 @@ return new class extends Migration
             $table->uuid('settles_movement_id')->nullable()->after('is_settlement_parent');
             $table->index(['user_id', 'settles_movement_id', 'status'], 'movimentos_settlement_events_index');
             $table->foreign(['user_id', 'settles_movement_id'], 'movimentos_user_settlement_parent_fk')
-                ->references(['user_id', 'id'])->on('movimentos')->restrictOnDelete();
+                ->references(['user_id', 'id'])->on('movimentos')->cascadeOnDelete();
         });
     }
 
