@@ -54,6 +54,7 @@ class FinancialMovementService
                 'invoice_id' => $data['invoice_id'] ?? null,
                 'invoice_charge_type' => $data['invoice_charge_type'] ?? null,
                 'origin_invoice_id' => $data['origin_invoice_id'] ?? null,
+                'invoice_credit_for_movement_id' => $data['invoice_credit_for_movement_id'] ?? null,
                 'opening_debt_card_id' => $data['opening_debt_card_id'] ?? null,
                 'adjustment_direction' => $data['adjustment_direction'] ?? null,
                 'is_historical' => $isHistorical,
@@ -120,6 +121,22 @@ class FinancialMovementService
     }
 
     /** A única entrada para transferir para uma fatura também atualiza o seu estado. */
+    public function createInvoiceCredit(User $user, Fatura $invoice, ContaFinanceira $card, Movimento $purchase, array $data): Movimento
+    {
+        return $this->createMovement($user, [
+            'type' => 'adjustment',
+            'adjustment_direction' => 'increase',
+            'description' => $data['description'],
+            'amount' => $data['amount'],
+            'movement_date' => $data['movement_date'],
+            'destination_account_id' => $card->id,
+            'invoice_id' => $invoice->id,
+            'invoice_charge_type' => 'credit',
+            'origin_invoice_id' => $purchase->invoice_id,
+            'invoice_credit_for_movement_id' => $purchase->id,
+        ], true);
+    }
+
     public function payCardInvoice(User $user, Fatura $invoice, string $sourceAccountId, string $date, ?string $requestedAmount = null): Movimento
     {
         return DB::transaction(function () use ($user, $invoice, $sourceAccountId, $date, $requestedAmount): Movimento {
@@ -187,7 +204,11 @@ class FinancialMovementService
             foreach ($expenses as $expense) $totalCents += $this->balances->toCents((string) $expense->amount);
             $carriedCents = $this->balances->toCents(number_format((float) DB::table('fatura_saldos_transportados')
                 ->where('user_id', $user->id)->where('target_invoice_id', $lockedInvoice->id)->sum('amount'), 2, '.', ''));
-            $totalCents += $carriedCents;
+            $creditCents = 0;
+            foreach ($lockedInvoice->creditos()->where('status', 'settled')->get(['amount']) as $credit) {
+                $creditCents += $this->balances->toCents((string) $credit->amount);
+            }
+            $totalCents += $carriedCents - $creditCents;
             if ($totalCents <= 0) return null;
 
             $parent = Movimento::query()->where('user_id', $user->id)
@@ -238,7 +259,9 @@ class FinancialMovementService
                     $this->audit($user, $parent, 'invoice_obligation_updated', $before, $parent->getAttributes());
                 }
             }
-            $lockedInvoice->update(['status' => $status === 'settled' ? 'paid' : ($status === 'partial' ? 'partial' : 'open')]);
+            $invoiceStatus = $status === 'settled' ? 'paid'
+                : ($lockedInvoice->closed_at ? 'closed' : ($status === 'partial' ? 'partial' : 'open'));
+            $lockedInvoice->update(['status' => $invoiceStatus]);
             return $parent->refresh();
         });
     }
@@ -441,8 +464,12 @@ class FinancialMovementService
             'settled_at' => $parentStatus === 'settled' ? now() : null,
         ]);
         if ($isInvoiceParent) {
-            Fatura::query()->where('user_id', $user->id)->whereKey($parent->invoice_id)
-                ->update(['status' => $parentStatus === 'settled' ? 'paid' : ($parentStatus === 'partial' ? 'partial' : 'open')]);
+            $invoice = Fatura::query()->where('user_id', $user->id)->whereKey($parent->invoice_id)->first();
+            if ($invoice) {
+                $invoiceStatus = $parentStatus === 'settled' ? 'paid'
+                    : ($invoice->closed_at ? 'closed' : ($parentStatus === 'partial' ? 'partial' : 'open'));
+                $invoice->update(['status' => $invoiceStatus]);
+            }
         }
         $this->audit($user, $parent, 'settlement_recalculated', null, $parent->getAttributes(), 'Estado recalculado após estorno de liquidação.');
         $this->syncInstallmentFromSettlementParent($user, $parent);
