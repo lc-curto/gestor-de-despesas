@@ -52,7 +52,7 @@ class CardInvoiceService
             $invoice = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
             $this->movements->assertInvoiceReconciled($user, $invoice);
             $this->carryOverdueInvoices($user, $invoice);
-            if (in_array($invoice->status, ['paid', 'carried'], true) || ($invoice->closing_date && $invoice->closing_date->lt(today()))) {
+            if (in_array($invoice->status, ['paid', 'carried', 'closed'], true) || ($invoice->closing_date && $invoice->closing_date->lt(today()))) {
                 throw ValidationException::withMessages(['invoice' => 'A fatura deste ciclo já foi fechada. A compra deve entrar no ciclo seguinte.']);
             }
 
@@ -144,6 +144,8 @@ class CardInvoiceService
                     ->select('id', 'invoice_id', 'description', 'amount', 'movement_date', 'type', 'is_settlement_parent'),
                 'pagamentos' => fn ($q) => $q->where('status', 'settled')
                     ->select('id', 'invoice_id', 'amount', 'reversal_of_id', 'type'),
+                'creditos' => fn ($q) => $q->where('status', 'settled')
+                    ->select('id', 'invoice_id', 'amount', 'invoice_credit_for_movement_id', 'invoice_charge_type'),
                 'saldosTransportados:id,user_id,source_invoice_id,target_invoice_id,amount',
             ])
             ->withCount(['movimentos' => fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false)])
@@ -158,6 +160,9 @@ class CardInvoiceService
                 $carriedCents = 0;
                 foreach ($invoice->saldosTransportados as $carried) {
                     $carriedCents += (int) round((float) $carried->amount * 100);
+                }
+                foreach ($invoice->creditos as $credit) {
+                    $totalCents -= (int) round((float) $credit->amount * 100);
                 }
                 foreach ($invoice->pagamentos as $payment) {
                     $cents = (int) round((float) $payment->amount * 100);
@@ -175,7 +180,7 @@ class CardInvoiceService
                     : ($remaining <= 0 ? 'paid'
                         : ($invoice->due_date->lt(today()) ? 'overdue'
                             : ($paid > 0 ? 'partial'
-                                : ($invoice->closing_date && $invoice->closing_date->lt(today()) ? 'closed' : 'open')))));
+                                : ($invoice->closed_at || $invoice->status === 'closed' ? 'closed' : 'open')))));
                 return $invoice;
             });
     }
@@ -184,8 +189,8 @@ class CardInvoiceService
     {
         return DB::transaction(function () use ($user, $invoice, $data): Movimento {
             $locked = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
-            if ($locked->status === 'paid' || $locked->status === 'carried') {
-                throw ValidationException::withMessages(['invoice' => 'Não é possível adicionar encargos a uma fatura paga ou já transportada.']);
+            if (in_array($locked->status, ['paid', 'carried', 'closed'], true)) {
+                throw ValidationException::withMessages(['invoice' => 'A fatura está fechada, paga ou já foi transportada. Regista o encargo no ciclo seguinte.']);
             }
             $this->carryOverdueInvoices($user, $locked);
             $card = $user->contasFinanceiras()->whereKey($locked->account_id)->lockForUpdate()->firstOrFail();
@@ -242,19 +247,7 @@ class CardInvoiceService
             }
             $this->movements->assertInvoiceReconciled($user, $source);
 
-            $expenseCents = 0;
-            foreach ($source->movimentos()->where('type', 'expense')->where('status', 'settled')
-                ->where('is_settlement_parent', false)->get(['amount']) as $expense) {
-                $expenseCents += (int) round((float) $expense->amount * 100);
-            }
-            $carriedInCents = (int) round((float) DB::table('fatura_saldos_transportados')
-                ->where('user_id', $user->id)->where('target_invoice_id', $source->id)->sum('amount') * 100);
-            $paidCents = 0;
-            foreach ($source->pagamentos()->where('status', 'settled')->get(['amount', 'reversal_of_id']) as $payment) {
-                $cents = (int) round((float) $payment->amount * 100);
-                $paidCents += $payment->reversal_of_id ? -$cents : $cents;
-            }
-            $remainingCents = $expenseCents + $carriedInCents - $paidCents;
+            $remainingCents = $this->invoiceTotalCents($source) - $this->invoicePaidCents($source);
             if ($remainingCents <= 0) {
                 $source->update(['status' => 'paid']);
                 continue;
@@ -268,6 +261,109 @@ class CardInvoiceService
             ]);
             $source->update(['status' => 'carried']);
         }
+    }
+
+    private function invoiceTotalCents(Fatura $invoice): int
+    {
+        $total = 0;
+        foreach ($invoice->movimentos()->where('type', 'expense')->where('status', 'settled')
+            ->where('is_settlement_parent', false)->get(['amount']) as $expense) {
+            $total += (int) round((float) $expense->amount * 100);
+        }
+        $total += (int) round((float) DB::table('fatura_saldos_transportados')
+            ->where('user_id', $invoice->user_id)->where('target_invoice_id', $invoice->id)->sum('amount') * 100);
+        foreach ($invoice->creditos()->where('status', 'settled')->get(['amount']) as $credit) {
+            $total -= (int) round((float) $credit->amount * 100);
+        }
+        return $total;
+    }
+
+    private function invoicePaidCents(Fatura $invoice): int
+    {
+        $paid = 0;
+        foreach ($invoice->pagamentos()->where('status', 'settled')->get(['amount', 'reversal_of_id']) as $payment) {
+            $cents = (int) round((float) $payment->amount * 100);
+            $paid += $payment->reversal_of_id ? -$cents : $cents;
+        }
+        return $paid;
+    }
+
+    public function closeInvoice(User $user, Fatura $invoice, string $statementAmount): Fatura
+    {
+        return DB::transaction(function () use ($user, $invoice, $statementAmount): Fatura {
+            $locked = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+            if (in_array($locked->status, ['paid', 'carried', 'closed'], true)) {
+                throw ValidationException::withMessages(['invoice' => 'Esta fatura já está fechada, paga ou transportada.']);
+            }
+            if ($locked->closing_date && $locked->closing_date->gt(today())) {
+                throw ValidationException::withMessages(['invoice' => 'A data de fecho deste ciclo ainda não chegou.']);
+            }
+            $this->movements->assertInvoiceReconciled($user, $locked);
+            $expectedCents = $this->invoiceTotalCents($locked);
+            $statementCents = (int) round((float) $statementAmount * 100);
+            if ($statementCents !== $expectedCents) {
+                throw ValidationException::withMessages([
+                    'statement_amount' => 'O extrato difere dos lançamentos registados. Regista primeiro os encargos, créditos ou correções em falta.',
+                ]);
+            }
+            if ($this->invoicePaidCents($locked) > $statementCents) {
+                throw ValidationException::withMessages(['statement_amount' => 'O valor do extrato não pode ser inferior aos pagamentos já imputados.']);
+            }
+
+            $locked->update([
+                'statement_amount' => number_format($statementCents / 100, 2, '.', ''),
+                'closed_at' => now(),
+                'status' => 'closed',
+            ]);
+            $this->movements->syncInvoiceSettlementParent($user, $locked);
+            return $locked->refresh();
+        });
+    }
+
+    public function addCredit(User $user, Fatura $invoice, array $data): Movimento
+    {
+        return DB::transaction(function () use ($user, $invoice, $data): Movimento {
+            $locked = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+            if (in_array($locked->status, ['paid', 'carried', 'closed'], true)) {
+                throw ValidationException::withMessages(['invoice' => 'A fatura está fechada, paga ou já foi transportada. Regista o crédito no ciclo seguinte.']);
+            }
+            $this->carryOverdueInvoices($user, $locked);
+            $card = $user->contasFinanceiras()->whereKey($locked->account_id)->lockForUpdate()->firstOrFail();
+            if ($card->type !== 'credit_card' || !$card->is_operational || $card->status !== 'active') {
+                throw ValidationException::withMessages(['invoice' => 'O cartão associado a esta fatura não está ativo.']);
+            }
+            $purchase = Movimento::query()->where('user_id', $user->id)->whereKey($data['purchase_movement_id'])
+                ->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false)->firstOrFail();
+            $originInvoice = Fatura::query()->where('user_id', $user->id)->whereKey($purchase->invoice_id)->firstOrFail();
+            if ($originInvoice->account_id !== $locked->account_id
+                || $originInvoice->reference_month->gt($locked->reference_month)
+                || (!empty($data['origin_invoice_id']) && $data['origin_invoice_id'] !== $originInvoice->id)) {
+                throw ValidationException::withMessages(['purchase_movement_id' => 'A compra deve pertencer a este cartão e a um ciclo igual ou anterior ao da fatura que recebe o crédito.']);
+            }
+
+            $alreadyCreditedCents = 0;
+            foreach (Movimento::query()->where('user_id', $user->id)->where('invoice_credit_for_movement_id', $purchase->id)
+                ->where('status', 'settled')->get(['amount']) as $credit) {
+                $alreadyCreditedCents += (int) round((float) $credit->amount * 100);
+            }
+            $creditCents = (int) round((float) $data['amount'] * 100);
+            $purchaseCents = (int) round((float) $purchase->amount * 100);
+            if ($creditCents <= 0 || $creditCents > $purchaseCents - $alreadyCreditedCents) {
+                throw ValidationException::withMessages(['amount' => 'O crédito excede o valor ainda não creditado desta compra.']);
+            }
+            $remainingCents = $this->invoiceTotalCents($locked) - $this->invoicePaidCents($locked);
+            if ($creditCents > $remainingCents) {
+                throw ValidationException::withMessages(['amount' => 'O crédito não pode exceder o saldo ainda em dívida nesta fatura.']);
+            }
+
+            $credit = $this->movements->createInvoiceCredit($user, $locked, $card, $purchase, [
+                'description' => $data['description'],
+                'amount' => number_format($creditCents / 100, 2, '.', ''),
+                'movement_date' => $data['movement_date'],
+            ]);
+            $this->movements->syncInvoiceSettlementParent($user, $locked);
+            return $credit;
+        });
     }
 
     public function pay(User $user, Fatura $invoice, string $sourceAccountId, string $date, ?string $requestedAmount = null): Movimento
