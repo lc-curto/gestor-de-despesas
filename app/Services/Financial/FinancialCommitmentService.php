@@ -145,7 +145,10 @@ class FinancialCommitmentService
                 $previousRemaining = max(0, round((float) $part->amount - (float) $part->paid_amount, 2));
                 $part->update($changes);
                 $forecasts = Movimento::query()->where('user_id', $user->id)->where('debt_id', $locked->id)
-                    ->where('installment_id', $part->id)->where('status', 'pending')->get();
+                    ->where('installment_id', $part->id)
+                    ->where(fn ($query) => $query->where('status', 'pending')
+                        ->orWhere(fn ($partial) => $partial->where('status', 'partial')->where('is_settlement_parent', true)))
+                    ->get();
                 foreach ($forecasts as $forecast) {
                     if ((int) round((float) $forecast->amount * 100) !== (int) round($previousRemaining * 100)) {
                         throw ValidationException::withMessages(['movement' => 'A previsão financeira não corresponde ao saldo da prestação. Revê os dados antes de editar.']);
@@ -351,13 +354,28 @@ class FinancialCommitmentService
             $remaining = round((float) $locked->amount - (float) $locked->paid_amount, 2);
             $amount = round((float) ($data['amount'] ?? $remaining), 2);
             if ($remaining <= 0 || $amount <= 0 || $amount > $remaining) throw ValidationException::withMessages(['amount' => 'O valor do pagamento excede o saldo da parcela.']);
-            $forecast = Movimento::query()->where('user_id', $user->id)->where('debt_id', $lockedDebt->id)
+            $forecastQuery = fn () => Movimento::query()->where('user_id', $user->id)->where('debt_id', $lockedDebt->id)
                 ->where('installment_id', $locked->id)
                 ->where(function ($query) {
                     $query->where('status', 'pending')
                         ->orWhere(fn ($partial) => $partial->where('status', 'partial')->where('is_settlement_parent', true));
-                })
+                });
+            $forecast = $forecastQuery()
                 ->when($expectedForecastId, fn ($query) => $query->whereKey($expectedForecastId))->lockForUpdate()->first();
+
+            // Dados históricos podem ter uma prestação sem previsão associada.
+            // Cria-se a previsão pelo saldo atual antes de registar a primeira liquidação.
+            if (!$forecast && !$expectedForecastId) {
+                $forecast = $this->movements->createPending($user, [
+                    'type' => 'expense',
+                    'description' => $lockedDebt->name.' · Parcela '.$locked->installment_number.'/'.$lockedDebt->installments_count,
+                    'amount' => number_format($remaining, 2, '.', ''),
+                    'movement_date' => $locked->due_date->toDateString(),
+                    'source_account_id' => $lockedDebt->account_id,
+                    'debt_id' => $lockedDebt->id,
+                    'installment_id' => $locked->id,
+                ]);
+            }
             if ($expectedForecastId && !$forecast) {
                 throw ValidationException::withMessages(['movement' => 'Esta previsão já foi liquidada ou deixou de estar disponível. Atualiza a página.']);
             }
@@ -372,7 +390,7 @@ class FinancialCommitmentService
                 throw ValidationException::withMessages(['movement' => 'Atualiza a página antes de fazer um pagamento parcial.']);
             }
             if ($expectedForecastId && isset($data['expected_amount'])
-                && (int) round((float) $data['expected_amount'] * 100) !== (int) round((float) $forecast->amount * 100)) {
+                && (int) round((float) $data['expected_amount'] * 100) !== (int) round($remaining * 100)) {
                 throw ValidationException::withMessages(['movement' => 'O valor pendente desta prestação foi alterado. Atualiza a página antes de pagar.']);
             }
             $payment = $this->movements->settle($user, $forecast, [
