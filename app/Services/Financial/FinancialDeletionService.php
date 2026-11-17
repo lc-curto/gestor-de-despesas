@@ -832,6 +832,28 @@ class FinancialDeletionService
                     ? -$this->balances->toCents((string) $event->amount)
                     : $this->balances->toCents((string) $event->amount));
 
+            foreach ($related->where('installment_id', $installment->id)->where('is_settlement_parent', true) as $parent) {
+                if ($parent->status === 'void') {
+                    continue;
+                }
+                $parentPaidCents = $paymentEvents
+                    ->where('settles_movement_id', $parent->id)
+                    ->where('status', 'settled')
+                    ->sum(fn (Movimento $event): int => $event->reversal_of_id
+                        ? -$this->balances->toCents((string) $event->amount)
+                        : $this->balances->toCents((string) $event->amount));
+                $parentAmountCents = $this->balances->toCents((string) $parent->amount);
+                $expectedParentStatus = $parentPaidCents <= 0
+                    ? 'pending'
+                    : ($parentPaidCents >= $parentAmountCents ? 'settled' : 'partial');
+
+                if ($parentPaidCents < 0 || $parentPaidCents > $parentAmountCents || $parent->status !== $expectedParentStatus) {
+                    throw ValidationException::withMessages([
+                        'commitment' => 'O estado da previsão não corresponde aos eventos de pagamento da prestação. Reconcilia os dados antes de eliminar ou cancelar o parcelamento.',
+                    ]);
+                }
+            }
+
             $legacyEventCents = $related
                 ->filter(fn (Movimento $event): bool => $event->installment_id === $installment->id
                     && ! $event->is_settlement_parent
