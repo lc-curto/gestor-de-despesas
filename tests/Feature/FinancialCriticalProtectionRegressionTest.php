@@ -204,6 +204,42 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
     }
 
 
+
+    public function test_commitment_propagation_is_blocked_when_paid_amount_does_not_match_settlement_events(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->bank($user);
+        $debt = $this->debt($user, $bank);
+        $part = $debt->parcelas->sortBy('installment_number')->first();
+        $forecast = $user->movimentos()->where('installment_id', $part->id)->firstOrFail();
+
+        $this->actingAs($user)->postJson(route('financial.commitments.installments.pay', [$debt->id, $part->id]), [
+            'account_id' => $bank->id, 'amount' => '10.00', 'payment_date' => '2026-11-17',
+        ])->assertOk();
+        $payment = $forecast->settlements()->where('status', 'settled')->firstOrFail();
+
+        // Simula corrupção/edição manual do contador materializado da prestação.
+        $part->update(['paid_amount' => '9.00']);
+
+        $this->deleteJson(route('financial.commitments.destroy', $debt->id))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('commitment');
+        $this->postJson(route('financial.commitments.cancel', $debt->id))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('commitment');
+
+        $this->assertSame('open', $debt->fresh()->status);
+        $this->assertSame('partial', $forecast->fresh()->status);
+        $this->assertSame('settled', $payment->fresh()->status);
+        $this->assertSame('9.00', $part->fresh()->paid_amount);
+        $this->assertSame('190.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+        $this->assertDatabaseMissing('deletion_operations', [
+            'user_id' => $user->id,
+            'root_entity_id' => $debt->id,
+            'status' => 'completed',
+        ]);
+    }
+
     public function test_deleting_fully_paid_commitment_preserves_payment_event_and_detaches_all_aggregate_links(): void
     {
         $user = User::factory()->create();
