@@ -114,7 +114,7 @@ class FinancialCoreController extends Controller
     public function deleteCommitment(Request $request, string $id, FinancialCommitmentService $service): JsonResponse
     {
         $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();
-        $service->deleteUnused($request->user(), $debt);
+        $service->delete($request->user(), $debt);
 
         return response()->json(['message' => 'Compra eliminada.']);
     }
