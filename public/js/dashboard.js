@@ -135,12 +135,12 @@
             if (selectedType === 'cash') methodField.value = 'cash';
             if (selectedType === 'credit_card') methodField.value = 'credit';
         }
+        if (plannedMethod && methodField) plannedMethod.value = methodField.value || '';
         if (recurrenceFields) recurrenceFields.hidden = !recurrence?.checked;
         if (installmentsFields) installmentsFields.hidden = !installmentsToggle?.checked;
         if (dueField) dueField.hidden = !dueToggle?.checked;
         if (dueInput) dueInput.required = Boolean(dueToggle?.checked);
         if (hiddenDueDate) hiddenDueDate.value = dueToggle?.checked ? (dueInput?.value || '') : '';
-        if (plannedMethod && methodField) plannedMethod.value = methodField.value || '';
 
         if (recurrence && installmentsToggle) {
             recurrence.disabled = Boolean(installmentsToggle.checked);
