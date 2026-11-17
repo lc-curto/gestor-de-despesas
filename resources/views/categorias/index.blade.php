@@ -63,7 +63,7 @@
                                         <span class="badge {{ $item->is_active ? 'text-bg-success' : 'text-bg-secondary' }}">{{ $item->is_active ? 'Ativa' : 'Inativa' }}</span>
                                     </div>
                                     <div class="d-flex align-items-center justify-content-between mt-auto pt-2 border-top">
-                                        <span class="small text-secondary">{{ $type === 'despesa' ? 'Despesa' : 'Receita' }}</span>
+                                        <span class="small text-secondary">{{ $type === 'despesa' ? (($item->expense_behavior ?? 'variable') === 'fixed' ? 'Despesa fixa' : 'Despesa variável') : 'Receita' }}</span>
                                         <div class="d-flex gap-1">
                                             <button type="button" class="btn btn-sm btn-outline-secondary" title="Editar {{ $item->name }}" aria-label="Editar {{ $item->name }}"
                                                 data-bs-toggle="modal" data-bs-target="#categoryModal" data-mode="edit"
@@ -218,7 +218,7 @@
     const search=document.getElementById('categorySearch');
     document.querySelectorAll('[data-bs-toggle="pill"]').forEach(tab=>tab.addEventListener('shown.bs.tab',()=>search?.dispatchEvent(new Event('input'))));
     const oldCategoryId=@json(old('category_id'));
-    @if ($errors->hasAny(['name','type','icon','color']))
+    @if ($errors->hasAny(['name','type','expense_behavior','icon','color']))
     document.addEventListener('DOMContentLoaded',()=>{
         const editId=oldCategoryId;categoryId.value=editId||'';method.value=editId?'PUT':'POST';
         form.action=editId?updateBase+'/'+encodeURIComponent(editId):baseAction;
