@@ -332,3 +332,56 @@ O método verifica movimentos associados, dívidas, recorrências, movimentos de
 ## Estado da auditoria ampliada
 
 Esta matriz é um inventário confirmado das rotas e dos principais caminhos destrutivos encontrados até agora. Ainda falta fechar o cruzamento de todas as relações indiretas, consultas de cada página, constraints completas, testes de regressão e operações destrutivas executadas por edição/importação. A auditoria não deve ser declarada concluída antes dessa validação.
+
+
+## 8. Modelo aprovado para exclusões financeiras
+
+Decisão funcional aprovada:
+
+- Não existe operação de estorno como conceito de produto. O utilizador elimina movimentos; o sistema altera o estado financeiro e recalcula dependências.
+- Não criar movimentos inversos para compensar exclusões novas.
+- O campo legado `reversal_of_id` e os registos históricos existentes permanecem por compatibilidade e auditoria; não remover sem migração específica.
+- A fatura do cartão é uma agregação automática de movimentos por período. Não existe exclusão manual de fatura.
+- Compras, encargos e pagamentos são movimentos de origem. A exclusão de movimentos de origem recalcula a obrigação da fatura.
+- Faturas fechadas/pagas ou com pagamentos/saldos transportados não permitem eliminar isoladamente uma compra sem uma operação de reconstrução financeira.
+- Eliminar um pagamento remove o seu efeito financeiro ativo, recalcula a obrigação e o saldo da conta; não cria um movimento inverso.
+- Eliminar um parcelamento anula previsões e parcelas, preserva pagamentos reais como movimentos independentes e desassocia-os do agregado eliminado.
+- Recorrências mantêm ocorrências já realizadas; ao pausar/alterar a regra, previsões futuras não confirmadas são anuladas com auditoria, sem apagar o histórico.
+- Contas e cartões com histórico devem ser encerrados/desativados, não eliminados. Cartões sem utilização podem ser eliminados.
+- Categorias com movimentos históricos são desativadas; só categorias sem referências podem ser eliminadas.
+
+## 9. Implementação iniciada na branch
+
+Foi criado `App\\Services\\Financial\\FinancialDeletionService` como orquestrador de exclusões e a migration `2026_11_17_230000_create_financial_deletion_audit_tables.php`, com:
+
+- `deletion_operations`: raiz, utilizador, motivo, estado e metadados da operação.
+- `deletion_operation_items`: entidades abrangidas, ação aplicada e snapshots antes/depois.
+- Movimentos mantidos como registos canónicos com estado `void`; não são removidos fisicamente.
+- Histórico `historico_movimentos` preservado e complementado com a auditoria da operação.
+
+Integrações já alteradas:
+
+- `FinancialMovementService::deleteAsCorrection` encaminha para o orquestrador.
+- Exclusão de eventos de pagamento atualiza a obrigação pai, a parcela e a projeção da fatura.
+- Pagamentos identificados da dívida inicial atualizam o contador do cartão.
+- `FinancialCommitmentService::deleteUnused` encaminha para exclusão propagada; pagamentos liquidados são preservados e desassociados.
+- `FinancialAccountService::deleteUnusedCard` encaminha para a política central; cartões com histórico/dependências são bloqueados.
+- `CategoriaController::destroy` encaminha para a política central e considera movimentos canónicos e legacy.
+- `RecurrenceService` deixou de apagar fisicamente previsões e respetivo histórico ao pausar/alterar recorrências.
+- Detalhe da conta e Rota Financeira utilizam a mesma semântica de eliminação.
+- Substituição de movimentos legacy na edição deixa de apagar o movimento canónico e o histórico.
+- Endpoints de estorno foram removidos das rotas de produto; os dados antigos permanecem compatíveis.
+
+Testes de regressão atualizados/adicionados para pagamentos parciais, pagamentos de faturas, dívida inicial, transferência, exclusão de parcelamento parcialmente pago, idempotência e preservação de pagamentos.
+
+## 10. Pendências antes de declarar a auditoria/implementação concluída
+
+1. Executar a suíte Laravel completa e corrigir regressões observadas em CI.
+2. Rever a persistência de faturas vazias: a listagem pode ocultar uma fatura sem movimentos, mas a linha ainda pode permanecer na tabela. A regra aprovada é que uma fatura sem movimentos/componentes financeiros não exista como fatura ativa; avaliar soft delete e restauração segura por período.
+3. Rever todos os fluxos de edição/substituição e importação para garantir que nenhum outro caminho apaga movimentos ou histórico diretamente.
+4. Remover métodos internos de compatibilidade de estorno quando não houver consumidores restantes; preservar os dados legados.
+5. Completar testes de rollback, concorrência, isolamento entre utilizadores, relações de saldo transportado, recorrências e categorias.
+6. Validar todas as listagens/projeções (Dashboard, Movimentos, Rota Financeira, Contas, Parcelamentos, Cartões e Faturas) após cada operação.
+7. Não fazer merge nem deploy antes da validação e aprovação.
+
+A implementação permanece em andamento. Esta documentação não declara a auditoria concluída.
