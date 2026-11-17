@@ -532,7 +532,10 @@ class FinancialAcceptanceTest extends TestCase
         $this->assertDatabaseHas('movimentos', [
             'type' => 'expense', 'status' => 'settled', 'amount' => '40.00', 'source_account_id' => $account->id,
         ]);
-        $this->assertDatabaseHas('movimentos', ['type' => 'expense', 'status' => 'pending', 'amount' => '50.00']);
+        $forecast = $user->movimentos()->where('debt_id', $debt->id)->where('installment_id', $debt->parcelas->first()->id)->firstOrFail();
+        $this->assertSame('partial', $forecast->status);
+        $this->assertSame('90.00', (string) $forecast->amount);
+        $this->assertSame('40.00', number_format((float) $forecast->settlements()->where('status', 'settled')->sum('amount'), 2, '.', ''));
         $this->assertSame('460.00', app(AccountBalanceService::class)->balance($account->fresh()));
     }
 
