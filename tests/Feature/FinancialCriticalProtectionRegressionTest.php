@@ -220,7 +220,7 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
         $this->deleteJson(route('financial.commitments.destroy', $debt->id))->assertOk();
 
         $this->assertSoftDeleted('dividas', ['id' => $debt->id]);
-        $this->assertSame('cancelled', $part->fresh()->status);
+        $this->assertSame('paid', $part->fresh()->status);
         $this->assertSame('30.00', $part->fresh()->paid_amount);
         $this->assertSame('void', $forecast->fresh()->status);
         $this->assertNull($forecast->fresh()->debt_id);

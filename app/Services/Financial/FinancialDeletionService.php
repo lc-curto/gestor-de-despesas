@@ -442,6 +442,7 @@ class FinancialDeletionService
                     'commitment' => 'Existe uma parcela parcialmente ou totalmente liquidada sem eventos de pagamento verificáveis. Reconcilia os dados antes de cancelar o parcelamento.',
                 ]);
             }
+            $this->assertInstallmentPaymentsReconciled($installments, $related, $paymentEvents);
 
             $invoiceIds = $related->whereIn('status', ['pending', 'partial', 'settled'])->pluck('invoice_id')
                 ->merge($paymentEvents->whereIn('status', ['pending', 'partial', 'settled'])->pluck('invoice_id'))
@@ -685,6 +686,7 @@ class FinancialDeletionService
                     'commitment' => 'Existe uma parcela parcialmente ou totalmente liquidada sem eventos de pagamento verificáveis. Reconcilia os dados antes de eliminar o parcelamento.',
                 ]);
             }
+            $this->assertInstallmentPaymentsReconciled($installments, $related, $paymentEvents);
 
             $invoiceIds = $related->whereIn('status', ['pending', 'partial', 'settled'])->pluck('invoice_id')
                 ->merge($paymentEvents->whereIn('status', ['pending', 'partial', 'settled'])->pluck('invoice_id'))
@@ -733,6 +735,10 @@ class FinancialDeletionService
             $this->recordItem($user, $operationId, 'Divida', $lockedDebt->id, 'soft_deleted', $beforeDebt, $lockedDebt->getAttributes());
 
             foreach ($installments as $installment) {
+                // Prestações pagas continuam historicamente pagas; só o saldo futuro é cancelado.
+                if (! in_array($installment->status, ['pending', 'partial'], true)) {
+                    continue;
+                }
                 $before = $installment->getAttributes();
                 $installment->update(['status' => 'cancelled']);
                 $this->recordItem($user, $operationId, 'ParcelaDivida', $installment->id, 'cancelled', $before, $installment->fresh()->getAttributes());
@@ -805,6 +811,46 @@ class FinancialDeletionService
                 'updated_at' => now(),
             ]);
         });
+    }
+
+    /**
+     * Compara o montante pago materializado na prestação com os eventos efetivos.
+     * Não permite propagar exclusões sobre dados legados incompletos ou divergentes.
+     */
+    private function assertInstallmentPaymentsReconciled($installments, $related, $paymentEvents): void
+    {
+        foreach ($installments as $installment) {
+            $parentIds = $related
+                ->where('installment_id', $installment->id)
+                ->where('is_settlement_parent', true)
+                ->pluck('id');
+
+            $parentEventCents = $paymentEvents
+                ->whereIn('settles_movement_id', $parentIds)
+                ->where('status', 'settled')
+                ->sum(fn (Movimento $event): int => $event->reversal_of_id
+                    ? -$this->balances->toCents((string) $event->amount)
+                    : $this->balances->toCents((string) $event->amount));
+
+            $legacyEventCents = $related
+                ->filter(fn (Movimento $event): bool => $event->installment_id === $installment->id
+                    && ! $event->is_settlement_parent
+                    && ! $event->settles_movement_id
+                    && $event->status === 'settled')
+                ->sum(fn (Movimento $event): int => $event->reversal_of_id
+                    ? -$this->balances->toCents((string) $event->amount)
+                    : $this->balances->toCents((string) $event->amount));
+
+            $recordedPaidCents = $this->balances->toCents((string) $installment->paid_amount);
+            $verifiedPaidCents = $parentEventCents + $legacyEventCents;
+
+            if ($recordedPaidCents !== $verifiedPaidCents
+                || (in_array($installment->status, ['partial', 'paid'], true) && $recordedPaidCents <= 0)) {
+                throw ValidationException::withMessages([
+                    'commitment' => 'O valor pago da prestação não corresponde aos eventos financeiros identificáveis. Reconcilia os dados antes de eliminar ou cancelar o parcelamento.',
+                ]);
+            }
+        }
     }
 
     private function deleteLegacyForMovement(
