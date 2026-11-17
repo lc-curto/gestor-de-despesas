@@ -236,7 +236,7 @@
 .commitment-search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--bs-body-color);padding:.6rem 0}
 .commitment-clear-search{font-size:1.3rem;text-decoration:none;color:var(--bs-secondary-color)}
 .commitment-list-heading,.commitment-history-heading{display:flex;justify-content:space-between;align-items:center;gap:.75rem;margin-bottom:.85rem}
-.commitment-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.85rem}
+.commitment-cards{display:grid;grid-template-columns:minmax(0,1fr);gap:.85rem}
 .commitment-card{min-width:0;border:1px solid var(--bs-border-color);border-radius:1rem;background:var(--bs-body-bg);box-shadow:0 2px 8px rgba(0,0,0,.035);overflow:hidden}
 .commitment-card-toggle{display:flex;width:100%;flex-direction:column;gap:.7rem;padding:1rem 1.1rem;text-align:left;border:0;background:transparent;color:inherit}
 .commitment-card-toggle:hover{background:var(--bs-tertiary-bg)}
@@ -296,7 +296,7 @@
  .commitment-history-pagination{align-items:flex-start;flex-direction:column}
  .commitment-pagination-meta{align-items:flex-start;flex-direction:column}
 }
-@media(min-width:768px) and (max-width:1100px){.commitment-cards{grid-template-columns:minmax(0,1fr)}}
+
 </style>
 @endpush
 
@@ -390,7 +390,6 @@
         showError(feedback, 'Não foi possível carregar a validação de valores. Atualiza a página antes de pagar.');
     }
 
-    window.addEventListener('resize',()=>{});
 })();
 </script>
 @endpush
