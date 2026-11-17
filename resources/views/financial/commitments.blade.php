@@ -72,7 +72,7 @@
                 <article class="commitment-card" data-commitment-card data-commitment-id="{{ $commitment->id }}">
                     <button class="commitment-card-toggle" type="button" aria-expanded="false" aria-controls="commitment-details-{{ $commitment->id }}">
                         <span class="commitment-card-heading">
-                            <span class="commitment-card-name">{{ $commitment->name }}</span>
+                            <span class="commitment-card-name">{{ $commitment->name }}@if ($commitment->merchant)<small class="commitment-merchant">{{ $commitment->merchant }}</small>@endif</span>
                             <span class="badge {{ $isCompleted ? 'text-bg-success' : ($commitment->has_overdue_installment ? 'text-bg-danger' : 'text-bg-success') }}">{{ $isCompleted ? 'Concluído' : ($commitment->has_overdue_installment ? 'Em atraso' : 'Em dia') }}</span>
                         </span>
                         <span class="commitment-card-balances">
@@ -146,6 +146,7 @@
                                 data-url="{{ route('financial.commitments.update', $commitment->id) }}"
                                 data-name="{{ $commitment->name }}"
                                 data-total="{{ number_format((float) $commitment->total_amount, 2, '.', '') }}"
+                                data-merchant="{{ $commitment->merchant }}"
                                 data-due="{{ $next?->due_date?->format('Y-m-d') ?? $commitment->due_date?->format('Y-m-d') }}">Editar compra</button>
                             <button type="button" class="btn btn-outline-danger btn-sm js-cancel-commitment"
                                 data-url="{{ route('financial.commitments.cancel', $commitment->id) }}"
@@ -182,6 +183,7 @@
                 <div class="modal-header border-0"><h2 class="modal-title h5 fw-bold">Nova compra parcelada</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
                 <div class="modal-body">
                     <label class="form-label" for="newCommitmentName">Nome da compra</label><input class="form-control mb-3" id="newCommitmentName" name="name" maxlength="160" required>
+                    <label class="form-label" for="newCommitmentMerchant">Comerciante (opcional)</label><input class="form-control mb-3" id="newCommitmentMerchant" name="merchant" maxlength="160">
                     <label class="form-label" for="newCommitmentTotal">Valor total (€)</label><input class="form-control mb-3" id="newCommitmentTotal" name="total_amount" type="number" min="0.01" step="0.01" required>
                     <label class="form-label" for="newCommitmentCount">Número de prestações</label><input class="form-control mb-3" id="newCommitmentCount" name="installments_count" type="number" min="2" max="120" value="3" required>
                     <label class="form-label" for="newCommitmentFrequency">Frequência</label><select class="form-select mb-3" id="newCommitmentFrequency" name="installment_frequency"><option value="monthly">Mensal</option><option value="weekly">Semanal</option><option value="biweekly">Quinzenal</option></select>
@@ -234,6 +236,7 @@
         <div class="modal-header border-0"><h2 class="modal-title h5 fw-bold">Editar compra</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
         <div class="modal-body">
             <label class="form-label" for="editCommitmentName">Nome da compra</label><input class="form-control mb-3" id="editCommitmentName" name="name" required maxlength="160">
+            <label class="form-label" for="editCommitmentMerchant">Comerciante (opcional)</label><input class="form-control mb-3" id="editCommitmentMerchant" name="merchant" maxlength="160">
             <label class="form-label" for="editCommitmentTotal">Valor total (€)</label><input class="form-control mb-3" id="editCommitmentTotal" name="total_amount" type="number" min="0.01" step="0.01" required>
             <label class="form-label" for="editCommitmentDue">Próximo vencimento</label><input class="form-control" id="editCommitmentDue" name="due_date" type="date" required>
             <div id="editCommitmentError" class="small text-danger mt-2"></div>
@@ -263,7 +266,8 @@
 .commitment-card-toggle{display:flex;width:100%;flex-direction:column;gap:.7rem;padding:1rem 1.1rem;text-align:left;border:0;background:transparent;color:inherit}
 .commitment-card-toggle:hover{background:var(--bs-tertiary-bg)}
 .commitment-card-heading,.commitment-card-balances,.commitment-card-foot{display:flex;justify-content:space-between;align-items:center;gap:.75rem;width:100%}
-.commitment-card-name{font-weight:700;font-size:1rem;overflow-wrap:anywhere}
+.commitment-card-name{font-weight:700;font-size:1rem;overflow-wrap:anywhere;display:flex;flex-direction:column;gap:.15rem}
+.commitment-merchant{font-size:.76rem;font-weight:400;color:var(--bs-secondary-color)}
 .commitment-card-balances>span{display:flex;flex-direction:column;gap:.2rem}
 .commitment-card-balances>span:last-child{text-align:right}
 .commitment-card-balances small,.commitment-detail-summary small{font-size:.75rem;color:var(--bs-secondary-color)}
@@ -366,6 +370,7 @@
         const form=event.currentTarget,button=form.querySelector('[type="submit"]');
         button.disabled=true;
         const values=Object.fromEntries(new FormData(form).entries());
+        values.merchant=values.merchant||null;
         values.payment_condition='installments';
         values.paid_now='0';
         values.installments_count=Number(values.installments_count);
@@ -382,6 +387,7 @@
         const form = document.getElementById('editCommitmentForm');
         form.dataset.url = button.dataset.url;
         form.elements.name.value = button.dataset.name;
+        form.elements.merchant.value = button.dataset.merchant || '';
         form.elements.total_amount.value = button.dataset.total;
         form.elements.due_date.value = button.dataset.due || '';
         document.getElementById('editCommitmentError').textContent = '';
@@ -392,7 +398,7 @@
         const form = event.currentTarget, button = form.querySelector('[type="submit"]');
         button.disabled = true;
         try {
-            const response = await fetch(form.dataset.url,{method:'PUT',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({name:form.elements.name.value,total_amount:form.elements.total_amount.value,due_date:form.elements.due_date.value})});
+            const response = await fetch(form.dataset.url,{method:'PUT',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({name:form.elements.name.value,merchant:form.elements.merchant.value,total_amount:form.elements.total_amount.value,due_date:form.elements.due_date.value})});
             const result = await response.json().catch(()=>({}));
             if (!response.ok) throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível atualizar.');
             window.location.reload();
