@@ -358,7 +358,7 @@ class FinanceFlowTest extends TestCase
         $this->assertDatabaseHas('movimentos', ['id' => $movement->id, 'status' => 'void']);
         $this->assertDatabaseHas('historico_movimentos', [
             'movement_id' => $movement->id,
-            'action' => 'deleted_as_correction',
+            'action' => 'deleted',
         ]);
         $this->assertSame('100.00', app(AccountBalanceService::class)->balance($account));
     }

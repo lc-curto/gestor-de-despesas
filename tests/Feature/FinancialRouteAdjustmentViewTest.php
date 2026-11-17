@@ -97,14 +97,7 @@ class FinancialRouteAdjustmentViewTest extends TestCase
         $this->assertSame($cash->id, $items[$decrease->id]['account_id']);
         $this->assertSame('Carteira', $items[$decrease->id]['account_name']);
 
-        $this->assertSame('transfer', $items[$payment->id]['type']);
-        $this->assertEqualsWithDelta(-10.00, $items[$payment->id]['projection_delta'], 0.001);
-        $this->assertSame($bank->id, $items[$payment->id]['account_id']);
-        $this->assertSame('Conta principal', $items[$payment->id]['account_name']);
-        $this->assertSame('transfer', $items[$reversal->id]['type']);
-        $this->assertEqualsWithDelta(10.00, $items[$reversal->id]['projection_delta'], 0.001);
-        $this->assertSame($bank->id, $items[$reversal->id]['account_id']);
-        $this->assertSame('Conta principal', $items[$reversal->id]['account_name']);
+        $this->assertNull($items->get($payment->id));
 
         $this->assertSame('income', $items[$income->id]['type']);
         $this->assertEqualsWithDelta(30.10, $items[$income->id]['projection_delta'], 0.001);

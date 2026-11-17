@@ -240,7 +240,7 @@ class FinancialMovementService
                 if ($parent) {
                     $before = $parent->getAttributes();
                     $parent->update(['status' => 'void', 'is_settlement_parent' => true, 'settled_at' => null]);
-                    $this->audit($user, $parent, 'invoice_obligation_cancelled_by_credit', $before, $parent->getAttributes());
+                    $this->audit($user, $parent, 'invoice_cancelled', $before, $parent->getAttributes());
                 }
 
                 $hasActiveComponents = $lockedInvoice->movimentos()

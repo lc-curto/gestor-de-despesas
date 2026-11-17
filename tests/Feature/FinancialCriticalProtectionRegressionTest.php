@@ -61,10 +61,11 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
         $forecast = $user->movimentos()->where('installment_id', $part->id)->firstOrFail();
         $this->actingAs($user);
 
+        $this->putJson('/api/financial/movements/'.$forecast->id.'/void')->assertNotFound();
+
         $responses = [
             $this->putJson(route('financial.movements.update', $forecast->id), ['amount' => '1.00']),
             $this->putJson(route('financial.movements.confirm', $forecast->id), ['source_account_id' => $bank->id]),
-            $this->putJson(route('financial.movements.void', $forecast->id)),
             $this->deleteJson(route('financial.movements.destroy', $forecast->id)),
             $this->deleteJson(route('financial.accounts.movement.destroy', $forecast->id)),
         ];
