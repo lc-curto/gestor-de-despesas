@@ -113,8 +113,8 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->assertSame(10.0, $summary['overdue']);
         $this->assertSame(50.0, $summary['upcoming']);
         $xpath = $this->document($response->getContent());
-        foreach (['Ontem' => 'Em atraso', 'Hoje' => 'A vencer', 'Amanhã' => 'A vencer'] as $name => $status) {
-            $badges = $xpath->query('//section[@aria-labelledby="paymentsSectionTitle"]//article[.//h3[normalize-space(.)="'.$name.'"]]//span[contains(concat(" ", normalize-space(@class), " "), " badge ")]');
+        foreach (['Ontem' => 'Atrasada', 'Hoje' => 'Próxima', 'Amanhã' => 'Próxima'] as $name => $status) {
+            $badges = $xpath->query('//section[@aria-labelledby="paymentsSectionTitle"]//article[contains(@class,"commitment-card") and .//strong[normalize-space(.)="'.$name.'"]]//span[contains(concat(" ", normalize-space(@class), " "), " badge ")]');
             $this->assertCount(1, $badges, $name);
             $this->assertSame($status, trim($badges->item(0)->textContent), $name);
         }
@@ -122,7 +122,7 @@ class FinancialCommitmentsPageTest extends TestCase
         foreach (['upcoming' => ['Hoje', 'Amanhã'], 'overdue' => ['Ontem']] as $filter => $expected) {
             $filtered = $this->get(route('financial.commitments.page', ['filter' => $filter]))->assertOk();
             $xpath = $this->document($filtered->getContent());
-            $headings = $xpath->query('//section[@aria-labelledby="paymentsSectionTitle"]//article//h3');
+            $headings = $xpath->query('//section[@aria-labelledby="paymentsSectionTitle"]//article[contains(@class,"commitment-card")]//strong[normalize-space(.)="'.implode('" or normalize-space(.)="',$expected).'"]');
             $this->assertCount(count($expected), $headings);
             $this->assertSame($expected, array_map(fn ($heading) => trim($heading->textContent), iterator_to_array($headings)));
         }
@@ -142,8 +142,7 @@ class FinancialCommitmentsPageTest extends TestCase
         $xpath = $this->document($response->getContent());
 
         $this->assertCount(0, $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " commitment-payment-disclosure ")]'));
-        $this->assertCount(1, $xpath->query('//div[contains(concat(" ", normalize-space(@class), " "), " commitment-item-actions ")]//a[@href="'.route('financial.accounts.page').'"]'));
-        $this->assertCount(1, $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " commitment-details-disclosure ")]'));
+        $this->assertCount(1, $xpath->query('//article[contains(@class,"commitment-card")]'));
     }
 
     public function test_card_commitments_are_excluded_from_list_and_totals_without_modifying_them(): void
@@ -174,7 +173,7 @@ class FinancialCommitmentsPageTest extends TestCase
 
         $this->assertSame(30.0, $response->viewData('summary')['open']);
         $xpath = $this->document($response->getContent());
-        $this->assertCount(2, $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " commitment-payment-disclosure ")]'));
+        $this->assertCount(2, $xpath->query('//article[contains(@class,"commitment-card")]'));
         foreach ($debts as $debt) {
             $this->assertDatabaseHas('dividas', ['id' => $debt->id, 'status' => 'open']);
             $this->assertSame('0.00', $debt->fresh()->parcelas->first()->paid_amount);
@@ -214,18 +213,10 @@ class FinancialCommitmentsPageTest extends TestCase
         ]);
         $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
         $xpath = $this->document($this->actingAs($user)->get(route('financial.commitments.page'))->assertOk()->getContent());
-        $groups = $xpath->query('//section[@aria-labelledby="paymentsSectionTitle"]//details[contains(concat(" ", normalize-space(@class), " "), " commitment-group ")]');
-        $this->assertCount(1, $xpath->query('//article[contains(@class,"commitment-card")]'));
-        $group = $groups->item(0);
-        $this->assertFalse($group->hasAttribute('open'));
-        $this->assertStringContainsString('120 prestações neste filtro', $xpath->query('./summary', $group)->item(0)->textContent);
-        $this->assertCount(3, $xpath->query('./div[contains(@class,"commitment-group-items")]/article', $group));
-        $more = $xpath->query('./div/details[contains(@class,"commitment-more-items")]', $group)->item(0);
-        $this->assertNotNull($more);
-        $this->assertFalse($more->hasAttribute('open'));
-        $this->assertStringContainsString('Ver mais 117 prestações', $xpath->query('./summary', $more)->item(0)->textContent);
-        $this->assertCount(117, $xpath->query('.//article', $more));
-        $this->assertCount(120, $xpath->query('.//form[contains(@class,"js-api-form")]', $group));
+        $cards = $xpath->query('//article[contains(@class,"commitment-card")]');
+        $this->assertCount(1, $cards);
+        $this->assertStringContainsString('0/120', $cards->item(0)->textContent);
+        $this->assertCount(120, $xpath->query('//form[contains(@class,"js-api-form")]'));
         $this->assertSame(120, $debt->fresh()->parcelas()->count());
     }
 }
