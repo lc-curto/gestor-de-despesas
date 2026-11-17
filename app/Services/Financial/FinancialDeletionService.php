@@ -724,7 +724,7 @@ class FinancialDeletionService
                 }
             } else {
                 $this->assertInstallmentPaymentsReconciled($installments, $related, $paymentEvents);
-
+            }
 
             $invoiceIds = $related->whereIn('status', ['pending', 'partial', 'settled'])->pluck('invoice_id')
                 ->merge($paymentEvents->whereIn('status', ['pending', 'partial', 'settled'])->pluck('invoice_id'))
