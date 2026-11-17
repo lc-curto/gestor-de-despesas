@@ -410,6 +410,35 @@
  .commitment-pagination-meta{align-items:flex-start;flex-direction:column}
 }
 
+
+/* Final mobile KPI layout: two equal columns, with no unused third track. */
+.commitments-page .commitment-metric-primary{
+    background:var(--bs-body-bg);
+    border-color:var(--bs-border-color);
+}
+.commitments-page .commitment-metric:not(.commitment-metric-primary){
+    background:var(--bs-body-bg);
+}
+@media (max-width:767.98px){
+    .commitments-page .commitment-summary{
+        display:grid;
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:.65rem;
+        width:100%;
+    }
+    .commitments-page .commitment-metric-primary{
+        grid-column:1 / -1;
+    }
+    .commitments-page .commitment-metric:not(.commitment-metric-primary){
+        grid-column:span 1;
+        width:100%;
+        min-width:0;
+        min-height:126px;
+        padding:.9rem;
+        background:var(--bs-body-bg);
+    }
+}
+
 </style>
 @endpush
 
