@@ -80,7 +80,7 @@ class CategoriaController extends Controller
 
     private function validated(Request $request, ?Categoria $categoria = null): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'name' => [
                 'required', 'string', 'max:100',
                 Rule::unique('categorias', 'name')
@@ -89,6 +89,7 @@ class CategoriaController extends Controller
                     ->ignore($categoria?->id),
             ],
             'type' => ['required', Rule::in(['despesa', 'receita'])],
+            'expense_behavior' => ['nullable', Rule::in(['fixed', 'variable'])],
             'icon' => ['required', 'string', 'max:60', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
             'color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
         ], [
@@ -96,6 +97,12 @@ class CategoriaController extends Controller
             'icon.regex' => 'Seleciona um ícone válido.',
             'color.regex' => 'Seleciona uma cor hexadecimal válida.',
         ]);
+
+        $data['expense_behavior'] = $data['type'] === 'despesa'
+            ? ($data['expense_behavior'] ?? 'variable')
+            : 'variable';
+
+        return $data;
     }
 
     private function uniqueSlug(string $userId, string $type, string $name, ?string $ignoreId = null): string
