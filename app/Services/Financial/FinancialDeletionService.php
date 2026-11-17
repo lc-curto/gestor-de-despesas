@@ -442,44 +442,8 @@ class FinancialDeletionService
                     'commitment' => 'Existe uma parcela parcialmente ou totalmente liquidada sem eventos de pagamento verificáveis. Reconcilia os dados antes de cancelar o parcelamento.',
                 ]);
             }
-            $priorCancellation = DB::table('deletion_operations')
-                ->where('user_id', $user->id)
-                ->where('root_entity_type', 'commitment_cancel')
-                ->where('root_entity_id', $lockedDebt->id)
-                ->where('status', 'completed')
-                ->orderByDesc('created_at')
-                ->first();
+            $this->assertInstallmentPaymentsReconciled($installments, $related, $paymentEvents);
 
-            if ($priorCancellation) {
-                $auditedMovements = DB::table('deletion_operation_items')
-                    ->where('user_id', $user->id)
-                    ->where('deletion_operation_id', $priorCancellation->id)
-                    ->where('entity_type', 'Movimento')
-                    ->whereIn('action', ['voided', 'detached'])
-                    ->get();
-
-                foreach ($installments->where('paid_amount', '>', 0) as $installment) {
-                    $hasPaymentResolution = $auditedMovements->contains(function ($item) use ($installment): bool {
-                        $before = is_array($item->before_data)
-                            ? $item->before_data
-                            : json_decode((string) $item->before_data, true);
-
-                        if (! is_array($before) || ($before['installment_id'] ?? null) !== $installment->id) {
-                            return false;
-                        }
-
-                        return (bool) ($before['is_settlement_parent'] ?? false)
-                            || (($before['status'] ?? null) === 'settled');
-                    });
-
-                    if (! $hasPaymentResolution) {
-                        throw ValidationException::withMessages([
-                            'commitment' => 'O cancelamento anterior não contém auditoria suficiente para verificar os pagamentos desta prestação. Reconcilia os dados antes de eliminar o parcelamento.',
-                        ]);
-                    }
-                }
-            } else {
-                $this->assertInstallmentPaymentsReconciled($installments, $related, $paymentEvents);
             }
 
             $invoiceIds = $related->whereIn('status', ['pending', 'partial', 'settled'])->pluck('invoice_id')
@@ -724,7 +688,45 @@ class FinancialDeletionService
                     'commitment' => 'Existe uma parcela parcialmente ou totalmente liquidada sem eventos de pagamento verificáveis. Reconcilia os dados antes de eliminar o parcelamento.',
                 ]);
             }
-            $this->assertInstallmentPaymentsReconciled($installments, $related, $paymentEvents);
+            $priorCancellation = DB::table('deletion_operations')
+                ->where('user_id', $user->id)
+                ->where('root_entity_type', 'commitment_cancel')
+                ->where('root_entity_id', $lockedDebt->id)
+                ->where('status', 'completed')
+                ->orderByDesc('created_at')
+                ->first();
+
+            if ($priorCancellation) {
+                $auditedMovements = DB::table('deletion_operation_items')
+                    ->where('user_id', $user->id)
+                    ->where('deletion_operation_id', $priorCancellation->id)
+                    ->where('entity_type', 'Movimento')
+                    ->whereIn('action', ['voided', 'detached'])
+                    ->get();
+
+                foreach ($installments->where('paid_amount', '>', 0) as $installment) {
+                    $hasPaymentResolution = $auditedMovements->contains(function ($item) use ($installment): bool {
+                        $before = is_array($item->before_data)
+                            ? $item->before_data
+                            : json_decode((string) $item->before_data, true);
+
+                        if (! is_array($before) || ($before['installment_id'] ?? null) !== $installment->id) {
+                            return false;
+                        }
+
+                        return (bool) ($before['is_settlement_parent'] ?? false)
+                            || (($before['status'] ?? null) === 'settled');
+                    });
+
+                    if (! $hasPaymentResolution) {
+                        throw ValidationException::withMessages([
+                            'commitment' => 'O cancelamento anterior não contém auditoria suficiente para verificar os pagamentos desta prestação. Reconcilia os dados antes de eliminar o parcelamento.',
+                        ]);
+                    }
+                }
+            } else {
+                $this->assertInstallmentPaymentsReconciled($installments, $related, $paymentEvents);
+
 
             $invoiceIds = $related->whereIn('status', ['pending', 'partial', 'settled'])->pluck('invoice_id')
                 ->merge($paymentEvents->whereIn('status', ['pending', 'partial', 'settled'])->pluck('invoice_id'))
