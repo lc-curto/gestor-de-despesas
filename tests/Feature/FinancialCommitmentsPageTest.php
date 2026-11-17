@@ -97,21 +97,27 @@ class FinancialCommitmentsPageTest extends TestCase
         $user = User::factory()->create();
         $service = app(FinancialCommitmentService::class);
         foreach ([
-            ['Ontem', '10.00', '2026-11-16'],
-            ['Hoje', '20.00', '2026-11-17'],
-            ['Amanhã', '30.00', '2026-11-18'],
+            ['Ontem', '20.00', '2026-11-16'],
+            ['Hoje', '40.00', '2026-11-17'],
+            ['Amanhã', '60.00', '2026-11-18'],
         ] as [$name, $amount, $date]) {
             $service->create($user, [
                 'name' => $name, 'total_amount' => $amount, 'start_date' => '2026-11-16',
-                'due_date' => $date, 'payment_condition' => 'deferred',
+                'due_date' => $date, 'payment_condition' => 'installments', 'installments_count' => 2,
             ]);
         }
+        $service->create($user, [
+            'name' => 'Despesa única futura', 'total_amount' => '75.00',
+            'start_date' => '2026-11-17', 'due_date' => '2026-12-17',
+            'payment_condition' => 'deferred',
+        ]);
         $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
         $response = $this->actingAs($user)->get(route('financial.commitments.page'))->assertOk();
         $summary = $response->viewData('summary');
-        $this->assertSame(60.0, $summary['open']);
-        $this->assertSame(10.0, $summary['overdue']);
-        $this->assertSame(50.0, $summary['upcoming']);
+        $this->assertSame(120.0, $summary['open']);
+        $this->assertSame(20.0, $summary['overdue']);
+        $this->assertSame(100.0, $summary['upcoming']);
+        $response->assertDontSee('Despesa única futura');
         $xpath = $this->document($response->getContent());
         foreach (['Ontem' => 'Atrasada', 'Hoje' => 'Próxima', 'Amanhã' => 'Próxima'] as $name => $status) {
             $badges = $xpath->query('//section[@aria-labelledby="paymentsSectionTitle"]//article[contains(@class,"commitment-card") and .//strong[normalize-space(.)="'.$name.'"]]//span[contains(concat(" ", normalize-space(@class), " "), " badge ")]');
@@ -134,7 +140,7 @@ class FinancialCommitmentsPageTest extends TestCase
         app(FinancialCommitmentService::class)->create($user, [
             'name' => 'Compra a prazo', 'total_amount' => '90.00',
             'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
-            'payment_condition' => 'deferred',
+            'payment_condition' => 'installments', 'installments_count' => 2,
         ]);
         $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
         $response = $this->actingAs($user)->get(route('financial.commitments.page'))
@@ -160,7 +166,7 @@ class FinancialCommitmentsPageTest extends TestCase
             $debt = $service->create($user, [
                 'name' => $name, 'payment_method' => in_array($method, ['card', 'credit'], true) ? null : $method, 'total_amount' => $amount,
                 'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
-                'payment_condition' => 'deferred',
+                'payment_condition' => 'installments', 'installments_count' => 2,
             ]);
             // Simula registos antigos, pois a criação atual já rejeita esses métodos.
             if (in_array($method, ['card', 'credit'], true)) $debt->update(['payment_method' => $method]);
@@ -192,7 +198,7 @@ class FinancialCommitmentsPageTest extends TestCase
             $commitments->create($owner, [
                 'name' => $name, 'total_amount' => '90.00',
                 'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
-                'payment_condition' => 'deferred',
+                'payment_condition' => 'installments', 'installments_count' => 2,
             ]);
         }
         $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
