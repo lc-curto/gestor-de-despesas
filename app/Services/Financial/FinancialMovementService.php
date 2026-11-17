@@ -691,6 +691,7 @@ class FinancialMovementService
                 || $locked->installment_id
                 || $locked->debt_id
                 || $locked->invoice_id
+                || $locked->recurrence_id
                 || ! in_array($locked->type, ['expense', 'income'], true)) {
                 throw ValidationException::withMessages([
                     'movement' => 'Este movimento não pode ser ajustado por esta operação. Revê a origem da obrigação.',
