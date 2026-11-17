@@ -343,7 +343,7 @@ Decisão funcional aprovada:
 - O campo legado `reversal_of_id` e os registos históricos existentes permanecem por compatibilidade e auditoria; não remover sem migração específica.
 - A fatura do cartão é uma agregação automática de movimentos por período. Não existe exclusão manual de fatura.
 - Compras, encargos e pagamentos são movimentos de origem. A exclusão de movimentos de origem recalcula a obrigação da fatura.
-- Faturas fechadas/pagas ou com pagamentos/saldos transportados não permitem eliminar isoladamente uma compra sem uma operação de reconstrução financeira.
+- Faturas com pagamentos ativos ou saldos transportados bloqueiam a exclusão isolada de compras. Uma fatura fechada sem pagamentos nem saldo transportado pode ser recalculada; se ficar vazia, recebe soft delete.
 - Eliminar um pagamento remove o seu efeito financeiro ativo, recalcula a obrigação e o saldo da conta; não cria um movimento inverso.
 - Eliminar um parcelamento anula previsões e parcelas, preserva pagamentos reais como movimentos independentes e desassocia-os do agregado eliminado.
 - Recorrências mantêm ocorrências já realizadas; ao pausar/alterar a regra, previsões futuras não confirmadas são anuladas com auditoria, sem apagar o histórico.
