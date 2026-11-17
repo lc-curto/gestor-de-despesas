@@ -80,7 +80,7 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
         $this->putJson(route('financial.movements.settle', $forecast->id), [
             'source_account_id' => $bank->id, 'amount' => '30.00', 'expected_amount' => '30.00',
             'movement_date' => '2026-11-17',
-        ])->assertOk()->assertJsonPath('data.settles_movement_id', $forecast->id)
+        ])->assertOk()->assertJsonPath('data.id', $forecast->id)->assertJsonPath('data.status', 'settled')
             ->assertJsonPath('installment.paid_amount', '30.00')->assertJsonPath('installment.status', 'paid');
 
         foreach ([
