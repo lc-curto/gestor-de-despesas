@@ -170,7 +170,7 @@ class FinancialCoreController extends Controller
             'account_id' => ['required', 'uuid', Rule::exists('contas_financeiras', 'id')->where('user_id', $request->user()->id)],
             'amount' => 'nullable|numeric|gt:0|decimal:0,2|max:9999999999.99',
             'payment_date' => 'required|date',
-            'allocation' => 'sometimes|array',
+            'allocation' => 'sometimes|array:principal,interest,fees,taxes,other',
             'allocation.principal' => 'nullable|numeric|gte:0|decimal:0,2',
             'allocation.interest' => 'nullable|numeric|gte:0|decimal:0,2',
             'allocation.fees' => 'nullable|numeric|gte:0|decimal:0,2',
