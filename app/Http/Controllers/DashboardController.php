@@ -57,7 +57,9 @@ class DashboardController extends Controller
         // A lista e os seus contadores abaixo têm, deliberadamente, outro âmbito.
         // Registos novos vivem no núcleo; o legado acima permanece apenas para compatibilidade.
         $totalDespesas += (float) $user->movimentos()->whereNull('legacy_type')->where('type', 'expense')
-            ->whereIn('status', ['pending', 'partial', 'settled'])->whereNull('settles_movement_id')->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
+            ->whereIn('status', ['pending', 'partial', 'settled'])->whereNull('settles_movement_id')
+            ->where(fn ($query) => $query->whereNull('invoice_id')->orWhere('is_settlement_parent', false))
+            ->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
         $totalReceitas += (float) $user->movimentos()->whereNull('legacy_type')->where('type', 'income')
             ->whereIn('status', ['pending', 'partial', 'settled'])->whereNull('settles_movement_id')->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
 
@@ -181,7 +183,9 @@ class DashboardController extends Controller
             })->sum('amount');
 
         $totalDespesas += (float) $user->movimentos()->whereNull('legacy_type')->where('type', 'expense')
-            ->whereIn('status', ['pending', 'partial', 'settled'])->whereNull('settles_movement_id')->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
+            ->whereIn('status', ['pending', 'partial', 'settled'])->whereNull('settles_movement_id')
+            ->where(fn ($query) => $query->whereNull('invoice_id')->orWhere('is_settlement_parent', false))
+            ->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
         $totalReceitas += (float) $user->movimentos()->whereNull('legacy_type')->where('type', 'income')
             ->whereIn('status', ['pending', 'partial', 'settled'])->whereNull('settles_movement_id')->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
 
@@ -274,7 +278,7 @@ class DashboardController extends Controller
             ->where('card_payments.status', 'settled')
             ->whereNotNull('card_payments.invoice_id')
             ->whereBetween('card_payments.movement_date', [$inicio->toDateString(), $fim->toDateString()])
-            ->selectRaw("card_payments.id, card_payments.id AS financial_movement_id, 1 AS is_invoice_payment, 'despesa' AS tipo, card_payments.description, card_payments.amount, card_payments.amount AS remaining_amount, movement_users.currency, NULL AS category, 'Pagamento de fatura' AS category_label, 'credit-card' AS category_icon, '#64748b' AS category_color, card_payments.movement_date AS data_movimento, card_payments.source_account_id AS account_id, card_payments.status AS movement_status, 0 AS requires_account_assignment, 0 AS is_historical, 'variable' AS expense_behavior, NULL AS due_date, NULL AS recurrence_id, NULL AS recurrence_frequency, NULL AS recurrence_interval, NULL AS recurrence_ends_at");
+            ->selectRaw("card_payments.id, card_payments.id AS financial_movement_id, 1 AS is_invoice_payment, CASE WHEN source_accounts.type = 'credit_card' THEN 'receita' ELSE 'despesa' END AS tipo, card_payments.description, card_payments.amount, card_payments.amount AS remaining_amount, movement_users.currency, NULL AS category, CASE WHEN source_accounts.type = 'credit_card' THEN 'Estorno de pagamento de fatura' ELSE 'Pagamento de fatura' END AS category_label, 'credit-card' AS category_icon, '#64748b' AS category_color, card_payments.movement_date AS data_movimento, card_payments.source_account_id AS account_id, card_payments.status AS movement_status, 0 AS requires_account_assignment, 0 AS is_historical, 'variable' AS expense_behavior, NULL AS due_date, NULL AS recurrence_id, NULL AS recurrence_frequency, NULL AS recurrence_interval, NULL AS recurrence_ends_at");
 
         $receitas = DB::table('receitas')
             ->join('categorias', 'categorias.id', '=', 'receitas.category_id')
