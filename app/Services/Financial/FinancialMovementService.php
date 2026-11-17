@@ -185,6 +185,9 @@ class FinancialMovementService
                 ->where('type', 'expense')->where('status', 'settled')
                 ->where('is_settlement_parent', false)->get(['amount']);
             foreach ($expenses as $expense) $totalCents += $this->balances->toCents((string) $expense->amount);
+            $carriedCents = $this->balances->toCents(number_format((float) DB::table('fatura_saldos_transportados')
+                ->where('user_id', $user->id)->where('target_invoice_id', $lockedInvoice->id)->sum('amount'), 2, '.', ''));
+            $totalCents += $carriedCents;
             if ($totalCents <= 0) return null;
 
             $parent = Movimento::query()->where('user_id', $user->id)
@@ -756,6 +759,12 @@ class FinancialMovementService
                 if (!$invoicePayment) {
                     throw ValidationException::withMessages([
                         'movement' => 'Não é possível estornar uma compra diretamente na fatura. Regista um crédito identificado ou corrige a fatura antes de continuar.',
+                    ]);
+                }
+                $invoice = Fatura::query()->where('user_id', $user->id)->whereKey($original->invoice_id)->firstOrFail();
+                if ($invoice->status === 'carried') {
+                    throw ValidationException::withMessages([
+                        'movement' => 'O saldo desta fatura já foi transportado para um ciclo seguinte. Corrige o pagamento na fatura de destino.',
                     ]);
                 }
             }
