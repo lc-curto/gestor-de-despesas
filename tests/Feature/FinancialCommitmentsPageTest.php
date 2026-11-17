@@ -86,8 +86,8 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->assertSame('109.50', app(AccountBalanceService::class)->balance($account->fresh()));
         $forecast = $user->movimentos()->where('installment_id', $part->id)->firstOrFail();
         $payment = $forecast->settlements()->where('status', 'settled')->firstOrFail();
-        $this->assertSame('90.50', (string) $forecast->amount);
-        $this->assertSame('settled', $forecast->status);
+        $this->assertSame('100.00', (string) $forecast->amount);
+        $this->assertSame('partial', $forecast->status);
         $this->assertSame('90.50', (string) $payment->amount);
         $this->assertSame($account->id, $payment->source_account_id);
         $this->postJson($endpoint, $data + ['amount' => '9.51'])->assertUnprocessable();
