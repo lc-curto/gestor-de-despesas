@@ -231,3 +231,104 @@ As páginas não estão a consultar uma única entidade: Parcelamentos apresenta
 ### Correção exigida pela decisão de arquitetura
 
 A exclusão deve resolver o grafo completo: obrigação → parcelas → previsões → eventos de pagamento → contas afetadas. Se a propagação financeira for permitida pela matriz, todos os eventos exclusivos devem ser logicamente eliminados na mesma transação e os saldos recalculados. Se não for possível fazê-lo com segurança, a exclusão deve ser bloqueada. Não basta soft-delete da obrigação nem cancelar apenas previsões pendentes. A consulta de Movimentos também deve respeitar a política de visibilidade de agregados eliminados, sem ocultar silenciosamente pagamentos válidos.
+
+
+## E-12 — [CRÍTICA] Rota Financeira apresenta eventos de liquidação do parcelamento como movimentos independentes e permite ação individual
+
+**Página:** `/rota-financeira`  
+**Controller de leitura:** `FinancialRouteController`  
+**Projeção:** `FinancialProjectionService::build`  
+**Interface:** `resources/views/financial-route.blade.php`
+
+### Fluxo confirmado
+
+- A Rota Financeira não usa a mesma consulta da página Movimentos. Ela consome `FinancialProjectionService::build`.
+- A projeção exclui previsões ligadas a obrigações arquivadas/encerradas através de `debt_id`, mas preserva eventos efetivos de liquidação.
+- `FinancialMovementService::settle` cria o evento de pagamento com `settles_movement_id`, mas não copia `debt_id` nem `installment_id` para esse evento.
+- Assim, o evento de pagamento fica ligado à previsão, mas não carrega diretamente a referência da obrigação/parcela.
+- A interface da Rota Financeira mostra ação diferente pelo estado: para movimentos `settled` chama `POST /api/financial/movements/{id}/reverse`; para previsões recorrentes chama `PUT /api/financial/movements/{id}/void`; nos restantes casos chama `DELETE /api/financial/movements/{id}`.
+- O método `FinancialMovementService::reverse` bloqueia movimentos que tenham `installment_id` ou sejam `is_settlement_parent`, mas não bloqueia o evento que tenha apenas `settles_movement_id`. Esse evento é, precisamente, o registo criado para representar o pagamento da parcela.
+- O método de reversão recalcula o movimento pai e chama `syncInstallmentFromSettlementParent`, pelo que a operação pode alterar o valor pago/estado da parcela. Ou seja, a Rota Financeira tem um caminho de alteração de pagamento de parcela que não está expresso como operação sobre o parcelamento.
+
+### Impacto
+
+A Rota Financeira pode apresentar um pagamento de parcela como movimento autónomo e oferecer uma ação individual sobre ele. Isso explica por que páginas diferentes podem dar experiências diferentes para o mesmo fluxo: uma página bloqueia a previsão ligada à parcela; a Rota Financeira opera sobre o evento filho, que não tem `installment_id` nem `debt_id` direto.
+
+Esta é uma quebra de consistência de interface e de domínio. A operação deve resolver o agregado de origem, não depender apenas dos campos diretos do evento selecionado.
+
+**Decisão necessária na implementação futura:** a Rota Financeira deve encaminhar qualquer ação sobre evento com `settles_movement_id` para o orquestrador do agregado correspondente. Não deve oferecer exclusão isolada nem criar um movimento inverso visível como substituto da exclusão propagada.
+
+## E-13 — [ALTA] Exclusões em páginas de conta têm semântica diferente e um caminho de hard delete fora do serviço financeiro
+
+**Página:** detalhe de conta/cartão, `resources/views/financial/account-show.blade.php`.
+
+- Movimentos legados de despesa/receita encaminham para `FinanceController::destroy`.
+- Movimentos canónicos encaminham para `FinancialAccountsPageController::destroyMovement`.
+- Para estado `settled`, a interface oferece a rota POST de reversão; para outros estados, oferece DELETE.
+- `FinancialAccountsPageController::destroyMovement` apaga diretamente o histórico e o movimento (`historico()->delete()`, `delete()`) dentro de transação, sem passar por `FinancialMovementService`.
+- A validação bloqueia movimentos com `installment_id` e previsões pendentes com `debt_id`, e bloqueia estado `settled`; não valida explicitamente `settles_movement_id`, nem trata o estado `partial` como dependência protegida.
+- O comportamento é diferente do endpoint JSON de movimentos, que usa `deleteAsCorrection` e marca o movimento como `void`.
+
+**Impacto:** o mesmo movimento pode ser eliminado logicamente por uma página, fisicamente por outra ou bloqueado por outra. O hard delete também remove o histórico antes de apagar o movimento, eliminando evidência de auditoria.
+
+## E-14 — [ALTA] Recorrências executam hard delete de previsões e histórico em vários fluxos
+
+**Serviço:** `RecurrenceService`.
+
+Os métodos de pausa, edição/desativação de recorrência e sincronização de movimento removem previsões pendentes, representação legacy e histórico por hard delete. Os fluxos repetem a lógica em vários pontos, em vez de chamar uma política de exclusão central.
+
+A regra atual filtra previsões pendentes e tenta preservar ocorrências confirmadas; ainda assim, apagar o histórico associado contradiz a exigência de trilho de auditoria imutável. Deve ser revisto também o comportamento para ocorrências com relações adicionais, e a atomicidade entre a regra, previsões, representação legacy e histórico.
+
+## E-15 — [ALTA] Atualização de despesa/receita pode apagar movimento e histórico para o substituir
+
+**Controller:** `FinanceController::update`.
+
+Foi identificado um ramo que executa `$movement->historico()->delete()` e `$movement->delete()` antes de criar a nova representação. Não é uma rota DELETE, mas é uma operação destrutiva disparada por edição e, portanto, faz parte do âmbito desta auditoria.
+
+Deve ser analisado contra os estados `pending/partial/settled`, pagamentos associados, referências por `settles_movement_id`, relações com faturas/parcelas e auditoria. A substituição física não pode eliminar dependências nem apagar a prova do registo anterior.
+
+## E-16 — [MÉDIA/ALTA] Exclusão de categoria valida apenas tabelas legacy e ignora movimentos canónicos
+
+**Controller:** `CategoriaController::destroy`.
+
+A contagem verifica apenas `despesas` ou `receitas` legacy. Não verifica `movimentos.category_id`. A migração financeira define FK composta de `movimentos` para `categorias` com `restrictOnDelete`. Se houver apenas movimentos canónicos, a aplicação não apresenta a validação de domínio esperada e pode falhar ao executar a exclusão por restrição da base de dados.
+
+A validação deve considerar todas as representações e relações antes de permitir excluir; na presença de histórico, desativar deve ser a operação normal.
+
+## E-17 — [MÉDIA] Exclusão de cartão apaga faturas fisicamente após validações próprias
+
+**Service:** `FinancialAccountService::deleteUnusedCard`.
+
+O método verifica movimentos associados, dívidas, recorrências, movimentos de fatura, dívida inicial e saldo; se não encontrar dependências, executa hard delete de todas as faturas do cartão e do próprio cartão. É um fluxo próprio, não centralizado, e precisa de ser cruzado com saldos transportados, histórico de faturas, créditos, encargos, alocações e referências indiretas. A validação atual de movimentos de fatura não prova, por si só, que todos os dependentes de fatura estão ausentes.
+
+## Matriz inicial página → rota → operação → serviço
+
+| Página/área | Ação | Endpoint/rota | Comportamento atual |
+|---|---|---|---|
+| Movimentos | Eliminar movimento | `DELETE /api/financial/movements/{id}` | `deleteAsCorrection`; marca `void`, bloqueia algumas relações |
+| Movimentos recorrentes | Eliminar ocorrência/âmbito | `DELETE /api/financial/movements/{id}/recurrence-scope` | Remove previsões pendentes por âmbito via `deleteAsCorrection` |
+| Rota Financeira | Eliminar previsão | `DELETE /api/financial/movements/{id}` | Mesmo endpoint, mas UI decide a ação por estado |
+| Rota Financeira | Anular recorrência | `PUT /api/financial/movements/{id}/void` | `voidPending`; ação separada da exclusão |
+| Rota Financeira | Ação sobre movimento liquidado | `POST /api/financial/movements/{id}/reverse` | Opera sobre evento individual; evento de pagamento de parcela pode não ter `debt_id/installment_id` direto |
+| Parcelamentos | Eliminar obrigação | `DELETE /api/financial/commitments/{id}` | `deleteUnused`; soft delete apenas da obrigação após validação |
+| Parcelamentos | Cancelar obrigação | `POST /api/financial/commitments/{id}/cancel` | Cancela pendências, preserva pagamentos |
+| Parcelamentos | Arquivar obrigação | `POST /api/financial/commitments/{id}/archive` | Define `archived_at` |
+| Contas — detalhe | Eliminar movimento canónico | `DELETE /contas/movimentos/{id}` | Hard delete direto + delete do histórico |
+| Contas — detalhe | Eliminar despesa/receita legacy | `DELETE /despesas/{id}`, `DELETE /receitas/{id}` | Serviço marca canónico como `void` e apaga legacy |
+| Contas — detalhe | Ação sobre liquidado | `POST /contas/movimentos/{id}/estornar` | Serviço de reversão |
+| Cartões | Eliminar cartão | `DELETE /api/financial/cards/{id}` | Hard delete de faturas e cartão, após validações |
+| Categorias | Eliminar categoria | `DELETE /categorias/{id}` | Verifica apenas legacy; FK restringe movimentos canónicos |
+| Recorrências | Pausar/desativar | `PATCH /api/financial/recurrences/{id}/status` | Hard delete de previsões pendentes e respetivo histórico |
+| Despesas/receitas | Editar substituindo movimento | `PUT/PATCH /despesas/{id}`, `PUT/PATCH /receitas/{id}` | Em ramo específico, hard delete do movimento e histórico antes de recriar |
+
+## Observações sobre integridade referencial encontradas nas migrations
+
+- `parcelas_divida.debt_id` usa `cascadeOnDelete` para `dividas`, mas `Divida` usa SoftDeletes; o soft delete não aciona a FK. As parcelas permanecem fisicamente.
+- `movimentos.debt_id` e `movimentos.installment_id` usam `restrictOnDelete`, impedindo hard delete da obrigação/parcela enquanto movimentos diretamente ligados existirem.
+- `historico_movimentos.movement_id` usa `restrictOnDelete`; apagar histórico manualmente antes do movimento é uma forma de contornar essa proteção, mas destrói trilho de auditoria.
+- `movimentos.settles_movement_id` usa `cascadeOnDelete` para o movimento pai. Hard delete do pai pode propagar aos eventos filhos; esta cascata não substitui uma política de exclusão auditável e deve ser testada em conjunto com as FKs do histórico dos filhos.
+- Faturas ligadas a contas e movimentos usam restrições; a exclusão de cartão contorna a dependência apagando faturas explicitamente após as verificações.
+
+## Estado da auditoria ampliada
+
+Esta matriz é um inventário confirmado das rotas e dos principais caminhos destrutivos encontrados até agora. Ainda falta fechar o cruzamento de todas as relações indiretas, consultas de cada página, constraints completas, testes de regressão e operações destrutivas executadas por edição/importação. A auditoria não deve ser declarada concluída antes dessa validação.
