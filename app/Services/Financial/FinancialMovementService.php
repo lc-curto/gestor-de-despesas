@@ -218,7 +218,7 @@ class FinancialMovementService
             if ($totalCents <= 0) {
                 if ($parent) {
                     $before = $parent->getAttributes();
-                    $parent->update(['status' => 'void', 'is_settlement_parent' => false, 'settled_at' => null]);
+                    $parent->update(['status' => 'void', 'is_settlement_parent' => true, 'settled_at' => null]);
                     $this->audit($user, $parent, 'invoice_obligation_cancelled_by_credit', $before, $parent->getAttributes());
                 }
                 $lockedInvoice->update(['status' => 'paid']);
