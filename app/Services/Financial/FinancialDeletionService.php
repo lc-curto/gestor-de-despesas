@@ -309,6 +309,8 @@ class FinancialDeletionService
                 }
             }
 
+            $legacyType = $locked->legacy_type;
+            $legacyId = $locked->legacy_id;
             $this->voidMovement(
                 $user,
                 $operationId,
@@ -317,22 +319,8 @@ class FinancialDeletionService
                 $detachRecurrence
             );
 
-            if ($deleteLegacy && $locked->legacy_type && $locked->legacy_id) {
-                if ($locked->legacy_type === 'despesa') {
-                    $legacy = Despesa::query()->where('user_id', $user->id)->whereKey($locked->legacy_id)->first();
-                    if ($legacy) {
-                        $beforeLegacy = $legacy->getAttributes();
-                        $legacy->delete();
-                        $this->recordItem($user, $operationId, 'Despesa', $legacy->id, 'hard_deleted', $beforeLegacy, null);
-                    }
-                } elseif ($locked->legacy_type === 'receita') {
-                    $legacy = Receita::query()->where('user_id', $user->id)->whereKey($locked->legacy_id)->first();
-                    if ($legacy) {
-                        $beforeLegacy = $legacy->getAttributes();
-                        $legacy->delete();
-                        $this->recordItem($user, $operationId, 'Receita', $legacy->id, 'hard_deleted', $beforeLegacy, null);
-                    }
-                }
+            if ($deleteLegacy) {
+                $this->deleteLegacyForMovement($user, $operationId, $legacyType, $legacyId);
             }
 
             if ($parent) {
@@ -443,15 +431,20 @@ class FinancialDeletionService
                 $isForecastOrParent = $movementItem->is_settlement_parent
                     || in_array($movementItem->status, ['pending', 'partial'], true);
                 if ($isForecastOrParent) {
+                    $legacyType = $movementItem->legacy_type;
+                    $legacyId = $movementItem->legacy_id;
                     $movementItem->update([
                         'status' => 'void',
                         'debt_id' => null,
                         'installment_id' => null,
+                        'legacy_type' => null,
+                        'legacy_id' => null,
                         'is_settlement_parent' => false,
                         'settled_at' => null,
                     ]);
                     $this->recordMovementHistory($user, $movementItem, 'deleted', $before, $movementItem->fresh()->getAttributes(), 'Previsão eliminada com o parcelamento.');
                     $this->recordItem($user, $operationId, 'Movimento', $movementItem->id, 'voided', $before, $movementItem->fresh()->getAttributes());
+                    $this->deleteLegacyForMovement($user, $operationId, $legacyType, $legacyId);
                 } else {
                     // Movimento pago diretamente à parcela: preserva o efeito na conta,
                     // mas deixa de depender do agregado que foi eliminado.
@@ -481,6 +474,33 @@ class FinancialDeletionService
         });
     }
 
+    private function deleteLegacyForMovement(
+        User $user,
+        string $operationId,
+        ?string $legacyType,
+        ?string $legacyId,
+    ): void {
+        if (! $legacyType || ! $legacyId) {
+            return;
+        }
+
+        if ($legacyType === 'despesa') {
+            $legacy = Despesa::query()->where('user_id', $user->id)->whereKey($legacyId)->lockForUpdate()->first();
+        } elseif ($legacyType === 'receita') {
+            $legacy = Receita::query()->where('user_id', $user->id)->whereKey($legacyId)->lockForUpdate()->first();
+        } else {
+            return;
+        }
+
+        if (! $legacy) {
+            return;
+        }
+
+        $before = $legacy->getAttributes();
+        $legacy->delete();
+        $this->recordItem($user, $operationId, ucfirst($legacyType), $legacyId, 'hard_deleted', $before, null);
+    }
+
     private function voidMovement(
         User $user,
         string $operationId,
@@ -489,7 +509,7 @@ class FinancialDeletionService
         bool $detachRecurrence = false,
     ): void {
         $before = $movement->getAttributes();
-        $changes = ['status' => 'void'];
+        $changes = ['status' => 'void', 'legacy_type' => null, 'legacy_id' => null];
         if ($detachRecurrence) {
             $changes['recurrence_id'] = null;
             $changes['recurrence_occurrence_date'] = null;
