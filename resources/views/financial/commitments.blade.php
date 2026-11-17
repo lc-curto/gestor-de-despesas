@@ -146,10 +146,6 @@
                             </div>
                             <div class="modal-body">
                                 <div class="commitment-history">
-                            <div class="commitment-history-heading">
-                                <strong>Histórico de prestações</strong>
-                                <small>{{ $history->total() }} prestações</small>
-                            </div>
                             @foreach ($history as $installment)
                                 @php
                                     $remaining = max(0, (float) $installment->amount - (float) $installment->paid_amount);
@@ -313,6 +309,18 @@
 @container (max-width: 360px){
  .commitment-summary{grid-template-columns:minmax(0,1fr)}
  .commitment-metric-primary{grid-column:auto}
+}
+.commitment-history-trigger{padding:0 .9rem .85rem;display:flex;justify-content:flex-end}
+.commitment-history-modal .modal-dialog{max-width:680px}
+.commitment-history-modal .modal-content{max-height:min(88vh,900px)}
+.commitment-history-modal .modal-body{overflow-y:auto}
+.commitment-history-modal .commitment-history{margin:0}
+.commitment-history-modal .commitment-installment{padding:.8rem 0}
+.commitment-history-modal .commitment-history-pagination{position:sticky;bottom:0;background:var(--bs-body-bg);padding:.65rem 0}
+@media(max-width:767.98px){
+ .commitment-history-modal .modal-dialog{margin:.5rem;max-width:none;min-height:calc(100% - 1rem)}
+ .commitment-history-modal .modal-content{max-height:calc(100dvh - 1rem);border-radius:1.1rem}
+ .commitment-history-modal .modal-body{padding:.85rem}
 }
 .commitment-history-trigger{padding:0 .9rem .85rem;display:flex;justify-content:flex-end}
 .commitment-history-modal .modal-dialog{max-width:680px}
