@@ -16,7 +16,7 @@ class Movimento extends Model
     protected $fillable = ['user_id',
         'type', 'expense_behavior', 'status', 'description', 'notes', 'payment_method', 'amount', 'movement_date',
         'source_account_id', 'destination_account_id', 'category_id',
-        'invoice_id', 'opening_debt_card_id', 'recurrence_id', 'recurrence_occurrence_date', 'debt_id', 'installment_id',
+        'invoice_id', 'invoice_charge_type', 'origin_invoice_id', 'opening_debt_card_id', 'recurrence_id', 'recurrence_occurrence_date', 'debt_id', 'installment_id',
         'adjustment_direction', 'is_historical', 'requires_account_assignment', 'legacy_type', 'legacy_id', 'reversal_of_id', 'settles_movement_id', 'is_settlement_parent', 'settled_at',
     ];
 
