@@ -67,13 +67,14 @@ class FinancialCommitmentsPageController extends Controller
             ->orderBy('installment_number')
             ->first();
 
-        $activeCount = (clone $eligibleDebts())
+        $eligibleQuery = $eligibleDebts();
+        $activeCount = (clone $eligibleQuery)
             ->whereHas('parcelas', fn ($query) => $query
                 ->whereColumn('amount', '>', 'paid_amount')
                 ->where('status', '!=', 'cancelled'))
             ->count();
 
-        $completedCount = (clone $eligibleDebts())
+        $completedCount = (clone $eligibleQuery)
             ->whereDoesntHave('parcelas', fn ($query) => $query
                 ->whereColumn('amount', '>', 'paid_amount')
                 ->where('status', '!=', 'cancelled'))
