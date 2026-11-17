@@ -124,11 +124,11 @@
                         <div class="commitment-management">
                             <h3 class="small fw-bold mb-2">Gestão da compra</h3>
                             <div class="commitment-card-actions">
-                                <button type="button" class="btn btn-outline-secondary js-edit-commitment"
+                                <button type="button" class="btn btn-outline-secondary js-edit-commitment" @disabled($isCompleted)
                                     data-url="{{ route('financial.commitments.update', $commitment->id) }}"
                                     data-name="{{ $commitment->name }}"
                                     data-merchant="{{ $commitment->merchant }}">Editar compra</button>
-                                <button type="button" class="btn btn-outline-primary js-renegotiate-commitment"
+                                <button type="button" class="btn btn-outline-primary js-renegotiate-commitment" @disabled($isCompleted)
                                     data-url="{{ route('financial.commitments.renegotiate', $commitment->id) }}"
                                     data-name="{{ $commitment->name }}"
                                     data-remaining="{{ number_format((float) $commitment->remaining_amount, 2, '.', '') }}"
@@ -139,7 +139,7 @@
                                     data-url="{{ route('financial.commitments.archive', $commitment->id) }}"
                                     data-name="{{ $commitment->name }}"
                                     data-has-payments="{{ (float) $commitment->paid_amount_total > 0 ? '1' : '0' }}">Arquivar</button>
-                                <button type="button" class="btn btn-outline-danger js-cancel-commitment"
+                                <button type="button" class="btn btn-outline-danger js-cancel-commitment" @disabled($isCompleted)
                                     data-url="{{ route('financial.commitments.cancel', $commitment->id) }}"
                                     data-name="{{ $commitment->name }}">Cancelar</button>
                             </div>
