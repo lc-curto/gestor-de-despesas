@@ -136,7 +136,16 @@
         if (paymentAmount) paymentAmount.required = paymentState === 'partial' && isExpense;
         if (paymentDate) paymentDate.required = hasPayment && isExpense;
         if (paymentAmount) {
-            if (paymentState === '1') paymentAmount.value = document.getElementById('movementAmount')?.value || '';
+            if (paymentState === '1') {
+                const total = parseMoney(document.getElementById('movementAmount')?.value || '');
+                const count = Math.max(2, Number(document.getElementById('dashboardInstallments')?.value || 2));
+                if (condition === 'installments' && total) {
+                    const cents = Math.round(Number(total) * 100);
+                    paymentAmount.value = (Math.ceil(cents / count) / 100).toFixed(2);
+                } else {
+                    paymentAmount.value = total || '';
+                }
+            }
             if (paymentState !== 'partial' && paymentState !== '1') paymentAmount.value = '';
         }
         if (amountField) amountField.hidden = paymentState === '1';
@@ -823,8 +832,16 @@
             values.amount = normalizedAmount;
             if (paidState !== '0' && values.payment_amount) {
                 const normalizedPayment = parseMoney(values.payment_amount);
-                if (!normalizedPayment || Number(normalizedPayment) > Number(normalizedAmount)) {
-                    throw new Error('Introduz um valor pago válido que não exceda o valor do movimento.');
+                let paymentLimit = Number(normalizedAmount);
+                if (isInstallment) {
+                    const count = Math.max(2, Number(values.installments_count || 2));
+                    const totalCents = Math.round(Number(normalizedAmount) * 100);
+                    paymentLimit = Math.ceil(totalCents / count) / 100;
+                }
+                if (!normalizedPayment || Number(normalizedPayment) > paymentLimit) {
+                    throw new Error(isInstallment
+                        ? 'O pagamento inicial não pode exceder o valor da primeira prestação.'
+                        : 'Introduz um valor pago válido que não exceda o valor do movimento.');
                 }
                 values.payment_amount = normalizedPayment;
             }
@@ -834,10 +851,6 @@
             if (isNewExpense && paidState === 'partial' && !isInstallment) {
                 throw new Error('O registo de pagamentos parciais para despesas sem parcelamento ainda não está disponível. Seleciona “Ainda não paguei” ou “Já paguei tudo”.');
             }
-            if (isInstallment && paidState !== '0') {
-                throw new Error('O registo de pagamentos iniciais de parcelamentos ainda não está integrado. Guarda primeiro o parcelamento como pendente.');
-            }
-
             let response;
             let payload;
 
@@ -859,7 +872,14 @@
                             account_id: values.account_id || null,
                             category_id: values.category_id || null,
                             installments_count: values.installments_count,
-                            installment_frequency: values.installment_frequency || 'monthly'
+                            installment_frequency: values.installment_frequency || 'monthly',
+                            ...(paidState !== '0' ? {
+                                initial_payment: {
+                                    account_id: values.payment_account_id || null,
+                                    amount: values.payment_amount || null,
+                                    payment_date: values.payment_date || localDate()
+                                }
+                            } : {})
                         })
                     });
                 } catch (_) {
