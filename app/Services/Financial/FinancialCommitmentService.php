@@ -40,7 +40,7 @@ class FinancialCommitmentService
             }
             $remainder = $totalCents % $count;
             $debt = Divida::query()->create([
-                'user_id' => $user->id, 'name' => $data['name'], 'type' => 'purchase',
+                'user_id' => $user->id, 'name' => $data['name'], 'merchant' => $data['merchant'] ?? null, 'type' => 'purchase',
                 'payment_condition' => $condition, 'payment_method' => $data['payment_method'] ?? null,
                 'installments_count' => $count, 'installment_frequency' => $data['installment_frequency'] ?? 'monthly', 'account_id' => $data['account_id'] ?? null,
                 'total_amount' => $data['total_amount'], 'start_date' => $start->toDateString(),
@@ -119,6 +119,7 @@ class FinancialCommitmentService
 
             $locked->update([
                 'name' => $data['name'],
+                'merchant' => $data['merchant'] ?? $locked->merchant,
                 'due_date' => $newDue->toDateString(),
                 'total_amount' => $locked->total_amount,
             ]);
