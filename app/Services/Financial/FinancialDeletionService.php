@@ -95,8 +95,8 @@ class FinancialDeletionService
         DB::transaction(function () use ($user, $category): void {
             $locked = Categoria::query()->where('user_id', $user->id)->whereKey($category->id)->lockForUpdate()->firstOrFail();
             $legacyCount = $locked->type === 'despesa'
-                ? $locked->despesas()->count()
-                : $locked->receitas()->count();
+                ? $locked->despesas()->where('user_id', $user->id)->count()
+                : $locked->receitas()->where('user_id', $user->id)->count();
             $canonicalCount = Movimento::query()
                 ->where('user_id', $user->id)
                 ->where('category_id', $locked->id)
