@@ -152,11 +152,12 @@ Em `FinanceController::update`, num ramo alternativo, `$movement->historico()->d
 - [x] Políticas centrais para compromissos, cartões, categorias e recorrências.
 - [x] Remoção das rotas de produto para estorno/anulação isolada.
 - [x] Testes de regressão para pagamentos, faturas, dívida inicial, parcelamentos e recorrências.
-- [x] CI aprovado no commit `cf113bf5ba1ba50ec850f9a0e725075ef87d3519` (202 testes aprovados, 1.633 assertions; 2 testes classificados como risky, sem falhas).
+- [x] CI aprovado no commit `7ecf586c2498deb580071ccfb9f6390a1f4ba22d` (202 testes aprovados, 1.633 assertions; 2 testes classificados como `risky`, sem falhas).
 - [x] Cancelamento de parcelamento parcialmente pago: previsão parcial anulada, pagamentos preservados/desassociados e auditoria concluída.
 - [x] Eliminação de parcelamento totalmente pago: evento preservado, prestação mantém estado `paid` e ligações ao agregado removidas.
 - [x] Eliminação de parcelamento previamente cancelado: auditoria anterior validada e pagamentos preservados como movimentos independentes.
 - [x] Renegociação de prestação parcialmente paga: previsão antiga anulada, pagamento real desassociado e prestação histórica cancelada.
+- [x] Rollback transacional testado quando o recálculo de um agregado falha após o início da exclusão.
 - [x] Eliminação de cartão sem uso auditada; cartão com movimento histórico `void` continua protegido.
 - [x] Categoria referenciada apenas por movimento canónico não pode ser eliminada.
 - [x] Idempotência: repetição da exclusão não duplica operações nem itens de auditoria.
@@ -344,6 +345,7 @@ O método verifica movimentos associados, dívidas, recorrências, movimentos de
 | Rota Financeira | Eliminar movimento | `DELETE /api/financial/movements/{id}` | Usa a mesma política central; a UI já não chama endpoints de reverse/void |
 | Parcelamentos | Eliminar obrigação | `DELETE /api/financial/commitments/{id}` | `FinancialCommitmentService::delete` → `deleteCommitment`; soft delete da obrigação, anula previsões, cancela prestações futuras e preserva/desassocia pagamentos liquidados |
 | Parcelamentos | Cancelar obrigação | `POST /api/financial/commitments/{id}/cancel` | `FinancialCommitmentService::cancel` → `cancelCommitment`; mantém a obrigação cancelada, anula previsões pendentes/parciais e preserva pagamentos reais autónomos |
+| Parcelamentos | Renegociar obrigação | `POST /api/financial/commitments/{id}/renegotiate` | `FinancialCommitmentService::renegotiate` → `FinancialDeletionService::renegotiateCommitmentInstallment`; anula previsões antigas, desassocia pagamentos reais de prestações parcialmente pagas e cria o novo plano sem deixar previsões órfãs |
 | Parcelamentos | Arquivar obrigação | `POST /api/financial/commitments/{id}/archive` | Define `archived_at`; as projeções excluem previsões do agregado arquivado sem apagar eventos de pagamento |
 | Contas — detalhe | Eliminar movimento canónico | `DELETE /contas/movimentos/{id}` | `FinancialAccountsPageController::destroyMovement` encaminha para `deleteAsCorrection`; sem hard delete direto |
 | Despesas/receitas legacy | Eliminar registo | `DELETE /despesas/{id}`, `DELETE /receitas/{id}` | `FinanceController::destroy` elimina movimento canónico pela política central e grava snapshot do registo legacy; se não existir movimento canónico, audita a eliminação legacy isolada |
