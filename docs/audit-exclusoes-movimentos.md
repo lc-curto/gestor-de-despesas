@@ -152,8 +152,10 @@ Em `FinanceController::update`, num ramo alternativo, `$movement->historico()->d
 - [x] Políticas centrais para compromissos, cartões, categorias e recorrências.
 - [x] Remoção das rotas de produto para estorno/anulação isolada.
 - [x] Testes de regressão para pagamentos, faturas, dívida inicial, parcelamentos e recorrências.
-- [x] CI aprovado no commit `d776831516aa0250d480a25a84079a1310fdb0ae`.
-- [ ] Validar cancelamento de parcelamento parcialmente pago (implementação/teste no commit atual; CI pendente).
+- [x] CI aprovado no commit `d800fefca844c101fdcf17b5ea50f97edb35fe41` (194 testes aprovados, 1.564 assertions; 2 testes risky sem falhas).
+- [x] Cancelamento de parcelamento parcialmente pago: previsão parcial anulada, pagamentos preservados/desassociados e auditoria concluída.
+- [x] Eliminação de parcelamento totalmente pago: evento preservado, prestação mantém estado `paid` e ligações ao agregado removidas.
+- [x] Bloqueio de exclusão/cancelamento quando `paid_amount` diverge dos eventos de pagamento ou quando o estado da previsão não corresponde aos eventos.
 - [ ] Completar testes de rollback, concorrência, isolamento entre utilizadores e referências órfãs.
 - [ ] Rever todos os fluxos de edição/importação e projeções das páginas.
 - [ ] Auditoria integral e critérios de aceitação finais.
@@ -243,7 +245,9 @@ As páginas não estão a consultar uma única entidade: Parcelamentos apresenta
 A exclusão deve resolver o grafo completo: obrigação → parcelas → previsões → eventos de pagamento → contas afetadas. Se a propagação financeira for permitida pela matriz, todos os eventos exclusivos devem ser logicamente eliminados na mesma transação e os saldos recalculados. Se não for possível fazê-lo com segurança, a exclusão deve ser bloqueada. Não basta soft-delete da obrigação nem cancelar apenas previsões pendentes. A consulta de Movimentos também deve respeitar a política de visibilidade de agregados eliminados, sem ocultar silenciosamente pagamentos válidos.
 
 
-## E-12 — [CRÍTICA] Rota Financeira apresenta eventos de liquidação do parcelamento como movimentos independentes e permite ação individual
+## E-12 — [CRÍTICA, baseline da main; mitigado na branch] Rota Financeira apresentava eventos de liquidação do parcelamento como movimentos independentes e permitia ação individual
+
+> Este finding descreve o estado anterior à implementação. Os endpoints de reversão/anulação isolada foram removidos e a interface passou a utilizar a exclusão central.
 
 **Página:** `/rota-financeira`  
 **Controller de leitura:** `FinancialRouteController`  
@@ -268,7 +272,9 @@ Esta é uma quebra de consistência de interface e de domínio. A operação dev
 
 **Decisão necessária na implementação futura:** a Rota Financeira deve encaminhar qualquer ação sobre evento com `settles_movement_id` para o orquestrador do agregado correspondente. Não deve oferecer exclusão isolada nem criar um movimento inverso visível como substituto da exclusão propagada.
 
-## E-13 — [ALTA] Exclusões em páginas de conta têm semântica diferente e um caminho de hard delete fora do serviço financeiro
+## E-13 — [ALTA, baseline da main; corrigido na branch] Exclusões em páginas de conta tinham semântica diferente e um caminho de hard delete fora do serviço financeiro
+
+> Este finding descreve o estado anterior à implementação. `FinancialAccountsPageController::destroyMovement` agora encaminha para `FinancialMovementService::deleteAsCorrection`.
 
 **Página:** detalhe de conta/cartão, `resources/views/financial/account-show.blade.php`.
 
@@ -281,7 +287,9 @@ Esta é uma quebra de consistência de interface e de domínio. A operação dev
 
 **Impacto:** o mesmo movimento pode ser eliminado logicamente por uma página, fisicamente por outra ou bloqueado por outra. O hard delete também remove o histórico antes de apagar o movimento, eliminando evidência de auditoria.
 
-## E-14 — [ALTA] Recorrências executam hard delete de previsões e histórico em vários fluxos
+## E-14 — [ALTA, baseline da main; corrigido na branch] Recorrências executavam hard delete de previsões e histórico em vários fluxos
+
+> Este finding descreve o estado anterior à implementação. As previsões elegíveis agora são anuladas pelo orquestrador e o histórico é preservado.
 
 **Serviço:** `RecurrenceService`.
 
@@ -289,7 +297,9 @@ Os métodos de pausa, edição/desativação de recorrência e sincronização d
 
 A regra atual filtra previsões pendentes e tenta preservar ocorrências confirmadas; ainda assim, apagar o histórico associado contradiz a exigência de trilho de auditoria imutável. Deve ser revisto também o comportamento para ocorrências com relações adicionais, e a atomicidade entre a regra, previsões, representação legacy e histórico.
 
-## E-15 — [ALTA] Atualização de despesa/receita pode apagar movimento e histórico para o substituir
+## E-15 — [ALTA, baseline da main; corrigido na branch] Atualização de despesa/receita podia apagar movimento e histórico para o substituir
+
+> Este finding descreve o estado anterior à implementação. A substituição agora preserva o movimento canónico e o histórico, libertando apenas a associação legacy.
 
 **Controller:** `FinanceController::update`.
 
@@ -297,7 +307,9 @@ Foi identificado um ramo que executa `$movement->historico()->delete()` e `$move
 
 Deve ser analisado contra os estados `pending/partial/settled`, pagamentos associados, referências por `settles_movement_id`, relações com faturas/parcelas e auditoria. A substituição física não pode eliminar dependências nem apagar a prova do registo anterior.
 
-## E-16 — [MÉDIA/ALTA] Exclusão de categoria valida apenas tabelas legacy e ignora movimentos canónicos
+## E-16 — [MÉDIA/ALTA, baseline da main; corrigido na branch] Exclusão de categoria validava apenas tabelas legacy e ignorava movimentos canónicos
+
+> Este finding descreve o estado anterior à implementação. A política central verifica movimentos legacy e canónicos.
 
 **Controller:** `CategoriaController::destroy`.
 
@@ -305,7 +317,9 @@ A contagem verifica apenas `despesas` ou `receitas` legacy. Não verifica `movim
 
 A validação deve considerar todas as representações e relações antes de permitir excluir; na presença de histórico, desativar deve ser a operação normal.
 
-## E-17 — [MÉDIA] Exclusão de cartão apaga faturas fisicamente após validações próprias
+## E-17 — [MÉDIA, baseline da main; mitigado na branch] Exclusão de cartão apagava faturas fisicamente após validações próprias
+
+> Este finding descreve o estado anterior à implementação. A exclusão de cartão está centralizada e bloqueia histórico/dependências; a eliminação de faturas vazias ocorre apenas dentro da política validada.
 
 **Service:** `FinancialAccountService::deleteUnusedCard`.
 
@@ -376,6 +390,8 @@ Integrações já alteradas:
 - Pagamentos identificados da dívida inicial atualizam o contador do cartão.
 - `FinancialCommitmentService::delete` encaminha para exclusão propagada; pagamentos liquidados são preservados e desassociados.
 - `FinancialCommitmentService::cancel` encaminha para `FinancialDeletionService::cancelCommitment`; previsões pendentes/parciais são anuladas, pagamentos liquidados são preservados e desassociados, e a operação recebe auditoria própria.
+- Cancelamento e eliminação reconciliam `parcelas_divida.paid_amount` com a soma líquida dos eventos liquidados (eventos associados e pagamentos legacy); divergências bloqueiam a operação antes de qualquer mutação.
+- O estado `paid` das prestações liquidadas é preservado; apenas prestações `pending/partial` passam a `cancelled`.
 - `FinancialAccountService::deleteUnusedCard` encaminha para a política central; cartões com histórico/dependências são bloqueados.
 - `CategoriaController::destroy` encaminha para a política central e considera movimentos canónicos e legacy.
 - `RecurrenceService` deixou de apagar fisicamente previsões e respetivo histórico ao pausar/alterar recorrências.
@@ -383,11 +399,11 @@ Integrações já alteradas:
 - Substituição de movimentos legacy na edição deixa de apagar o movimento canónico e o histórico.
 - Endpoints de estorno foram removidos das rotas de produto; os dados antigos permanecem compatíveis.
 
-Testes de regressão atualizados/adicionados para pagamentos parciais, pagamentos de faturas, dívida inicial, transferência, exclusão de parcelamento parcialmente pago, idempotência e preservação de pagamentos. Foi acrescentado teste específico para cancelar um parcelamento parcialmente pago e confirmar que a previsão parcial é anulada enquanto o pagamento permanece autónomo.
+Testes de regressão atualizados/adicionados para pagamentos parciais, pagamentos de faturas, dívida inicial, transferência, exclusão de parcelamentos parcial e totalmente pagos, cancelamento parcial, divergência entre contador e eventos, idempotência e preservação de pagamentos. O CI mais recente executou 194 testes aprovados e 1.564 assertions; 2 testes foram classificados como risky, sem falhas.
 
 ## 10. Pendências antes de declarar a auditoria/implementação concluída
 
-1. Executar a suíte Laravel completa e corrigir regressões observadas em CI.
+1. Reexecutar a suíte completa após as próximas alterações e investigar os 2 testes classificados como risky.
 2. Validar em testes a exclusão lógica de faturas vazias e a restauração da mesma fatura quando surge uma nova compra no mesmo ciclo. A implementação foi adicionada com migration e helper de recuperação por cartão/período.
 3. Rever todos os fluxos de edição/substituição e importação para garantir que nenhum outro caminho apaga movimentos ou histórico diretamente.
 4. Remover métodos internos de compatibilidade de estorno quando não houver consumidores restantes; preservar os dados legados.
