@@ -310,6 +310,32 @@
  .commitment-summary{grid-template-columns:minmax(0,1fr)}
  .commitment-metric-primary{grid-column:auto}
 }
+
+/* Mobile: the two secondary KPIs share the full row evenly. */
+@media (max-width: 767.98px){
+ .commitment-summary{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:.6rem;
+ }
+ .commitment-metric-primary{grid-column:1/-1}
+ .commitment-metric:not(.commitment-metric-primary){
+  min-height:138px;
+  justify-content:space-between;
+  padding:.85rem;
+ }
+ .commitment-metric:not(.commitment-metric-primary) span{
+  min-height:2.2em;
+  line-height:1.35;
+ }
+ .commitment-metric:not(.commitment-metric-primary) strong{
+  font-size:1.08rem;
+  line-height:1.25;
+  overflow-wrap:anywhere;
+ }
+ .commitment-metric:not(.commitment-metric-primary) small{
+  line-height:1.35;
+ }
+}
 .commitment-history-trigger{padding:0 .9rem .85rem;display:flex;justify-content:flex-end}
 .commitment-history-modal .modal-dialog{max-width:680px}
 .commitment-history-modal .modal-content{max-height:min(88vh,900px)}
