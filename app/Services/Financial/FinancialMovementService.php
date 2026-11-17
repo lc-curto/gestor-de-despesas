@@ -550,6 +550,10 @@ class FinancialMovementService
     public function reverse(User $user, Movimento $movement, ?string $reason = null): Movimento
     {
         return DB::transaction(function () use ($user, $movement, $reason) {
+            // Mantém a mesma ordem de bloqueio usada nas liquidações: obrigação antes do evento.
+            if ($movement->settles_movement_id) {
+                Movimento::query()->where('user_id', $user->id)->whereKey($movement->settles_movement_id)->lockForUpdate()->firstOrFail();
+            }
             $original = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
             if ($original->is_settlement_parent) {
                 throw ValidationException::withMessages(['movement' => 'O movimento original não pode ser estornado enquanto obrigação. Estorna os eventos de liquidação associados.']);
