@@ -288,4 +288,22 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->assertSame('5.00', $user->movimentos()->where('installment_id', $first->id)->where('status', 'settled')->value('amount'));
     }
 
+
+    public function test_commitment_merchant_is_saved_and_displayed_on_purchase_card(): void
+    {
+        $user = User::factory()->create();
+        app(FinancialCommitmentService::class)->create($user, [
+            'name' => 'Frigorífico',
+            'merchant' => 'Radio Popular',
+            'total_amount' => '600.00',
+            'start_date' => '2026-11-17',
+            'due_date' => '2026-12-17',
+            'payment_condition' => 'installments',
+            'installments_count' => 6,
+        ]);
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+        $this->actingAs($user)->get(route('financial.commitments.page'))->assertOk()
+            ->assertSee('Frigorífico')->assertSee('Radio Popular');
+    }
+
 }
