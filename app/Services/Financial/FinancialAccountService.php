@@ -128,35 +128,7 @@ class FinancialAccountService
 
     public function deleteUnusedCard(User $user, ContaFinanceira $account): void
     {
-        DB::transaction(function () use ($user, $account): void {
-            $locked = ContaFinanceira::query()->where('user_id', $user->id)->whereKey($account->id)->where('type', 'credit_card')->lockForUpdate()->firstOrFail();
-            $hasMovements = $user->movimentos()->where(function ($query) use ($locked) {
-                $query->where('source_account_id', $locked->id)->orWhere('destination_account_id', $locked->id);
-            })->exists();
-            $hasDebt = $user->dividas()->where('account_id', $locked->id)->exists();
-            $hasRecurrence = $user->recorrencias()->where('account_id', $locked->id)->exists();
-            $hasInvoiceMovements = DB::table('movimentos')->where('user_id', $user->id)
-                ->whereIn('invoice_id', DB::table('faturas')->select('id')->where('user_id', $user->id)->where('account_id', $locked->id))->exists();
-
-            // Cartões encerrados não podem passar pelo cálculo de saldo operacional.
-            // Sem configuração de saldo inicial, o saldo contabilístico de referência é zero.
-            $balanceCents = 0;
-            if ($locked->is_operational && $locked->opening_balance !== null && $locked->opening_balance_date) {
-                $balanceCents = $this->balances->toCents($this->balances->balance($locked));
-            } elseif ($locked->opening_balance !== null) {
-                $balanceCents = $this->balances->toCents((string) $locked->opening_balance);
-            }
-
-            if ($hasMovements || $hasDebt || $hasRecurrence || $hasInvoiceMovements
-                || (float) $locked->opening_debt_amount > 0
-                || (float) $locked->opening_debt_paid > 0
-                || $balanceCents !== 0) {
-                throw ValidationException::withMessages(['card' => 'Este cartão tem movimentos, dívida ou registos associados e não pode ser eliminado. Podes encerrá-lo ou mantê-lo arquivado.']);
-            }
-
-            DB::table('faturas')->where('user_id', $user->id)->where('account_id', $locked->id)->delete();
-            $locked->delete();
-        });
+        app(FinancialDeletionService::class)->deleteUnusedCard($user, $account);
     }
 
     public function close(User $user, ContaFinanceira $account, ?string $transferToAccountId = null): void
