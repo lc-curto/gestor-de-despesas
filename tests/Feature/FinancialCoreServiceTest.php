@@ -755,4 +755,87 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame(-155.0, (float) $invoiceProjection->first()->projection_delta);
     }
 
+
+    public function test_invoice_credit_is_linked_to_purchase_reduces_card_balance_and_nets_expenses(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->account($user, 'Conta principal', '500.00');
+        $card = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Visa', 'type' => 'credit_card', 'opening_balance' => '0.00',
+            'opening_balance_date' => '2026-11-01', 'closing_day' => 25, 'due_day' => 5,
+            'credit_limit' => '1000.00',
+        ]);
+        $invoices = app(CardInvoiceService::class);
+        $purchase = $invoices->purchase($user, [
+            'account_id' => $card->id, 'description' => 'Compra com devolução parcial', 'amount' => '100.00',
+            'movement_date' => '2026-11-12',
+        ]);
+        $invoice = $user->faturas()->firstOrFail();
+        $invoices->pay($user, $invoice, $bank->id, '2026-11-17', '20.00');
+
+        $response = $this->postJson('/api/financial/invoices/'.$invoice->id.'/credits', [
+            'purchase_movement_id' => $purchase->id,
+            'origin_invoice_id' => $invoice->id,
+            'description' => 'Devolução parcial',
+            'amount' => '10.00',
+            'movement_date' => '2026-11-17',
+        ])->assertCreated()->assertJsonPath('data.type', 'adjustment')
+            ->assertJsonPath('data.invoice_charge_type', 'credit')
+            ->assertJsonPath('data.invoice_credit_for_movement_id', $purchase->id);
+
+        $invoiceData = $this->getJson('/api/financial/invoices')->assertOk()->json('data.data.0');
+        $this->assertSame('90.00', $invoiceData['total_amount']);
+        $this->assertSame('20.00', $invoiceData['paid_amount']);
+        $this->assertSame('70.00', $invoiceData['remaining_amount']);
+        $this->assertSame('-70.00', app(AccountBalanceService::class)->balance($card->fresh()));
+        $this->assertSame('480.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+
+        $dashboard = $this->get(route('dashboard'));
+        $dashboard->assertOk();
+        $this->assertSame(90.0, $dashboard->viewData('totalDespesas'));
+        $this->assertSame(0.0, $dashboard->viewData('totalReceitas'));
+    }
+
+    public function test_closed_invoice_reconciles_to_statement_and_accepts_payments_without_changing_closed_state(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->account($user, 'Conta principal', '500.00');
+        $card = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Visa', 'type' => 'credit_card', 'opening_balance' => '0.00',
+            'opening_balance_date' => '2026-11-01', 'closing_day' => 25, 'due_day' => 5,
+            'credit_limit' => '1000.00',
+        ]);
+        $invoices = app(CardInvoiceService::class);
+        $invoices->purchase($user, [
+            'account_id' => $card->id, 'description' => 'Compra do ciclo', 'amount' => '80.00',
+            'movement_date' => '2026-11-12',
+        ]);
+        $invoice = $user->faturas()->firstOrFail();
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-26 12:00:00'));
+
+        $this->postJson('/api/financial/invoices/'.$invoice->id.'/close', [
+            'statement_amount' => '81.00',
+        ])->assertUnprocessable()->assertJsonValidationErrors('statement_amount');
+        $this->assertSame('open', $invoice->fresh()->status);
+
+        $this->postJson('/api/financial/invoices/'.$invoice->id.'/close', [
+            'statement_amount' => '80.00',
+        ])->assertOk()->assertJsonPath('data.status', 'closed')
+            ->assertJsonPath('data.statement_amount', '80.00');
+
+        $this->postJson('/api/financial/invoices/'.$invoice->id.'/charges', [
+            'charge_type' => 'late_fee', 'description' => 'Multa posterior ao fecho',
+            'amount' => '5.00', 'movement_date' => '2026-11-26',
+        ])->assertUnprocessable()->assertJsonValidationErrors('invoice');
+
+        $invoices->pay($user, $invoice, $bank->id, '2026-11-26', '30.00');
+        $this->assertSame('closed', $invoice->fresh()->status);
+        $this->assertSame('partial', $invoices->listInvoices($user)->items()[0]->display_status);
+        $invoices->pay($user, $invoice, $bank->id, '2026-11-27', '50.00');
+        $this->assertSame('paid', $invoice->fresh()->status);
+        $this->assertSame('80.00', (string) $invoice->fresh()->statement_amount);
+        $this->assertSame('0.00', app(AccountBalanceService::class)->balance($card->fresh()));
+        $this->assertSame('420.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+    }
+
 }
