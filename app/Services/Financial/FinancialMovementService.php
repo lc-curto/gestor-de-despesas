@@ -280,6 +280,9 @@ class FinancialMovementService
             $this->assertShape($locked->type, $source, $destination, null);
             $this->assertNoGenericCardMovement($locked->type, $source, $destination);
             $account = $locked->type === 'expense' ? $source : $destination;
+            if ($account?->type === 'credit_card') {
+                throw ValidationException::withMessages(['type' => 'Compras em cartão devem ser reconhecidas através da fatura do cartão.']);
+            }
             if (!$account || !in_array($account->type, ['bank', 'cash'], true) || !$account->is_operational || $account->status !== 'active') {
                 throw ValidationException::withMessages(['account_id' => 'Seleciona uma conta bancária ou de dinheiro ativa para registar a liquidação.']);
             }
