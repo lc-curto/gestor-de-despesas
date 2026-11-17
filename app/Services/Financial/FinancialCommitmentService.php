@@ -87,20 +87,67 @@ class FinancialCommitmentService
     {
         return DB::transaction(function () use ($user, $debt, $data): Divida {
             $locked = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
-            if (in_array($locked->status, ['cancelled', 'paid'], true)) throw ValidationException::withMessages(['commitment' => 'Este compromisso já está encerrado.']);
-            $firstPending = $locked->parcelas()->whereIn('status', ['pending', 'partial'])->orderBy('installment_number')->first();
-            $firstNumber = $firstPending?->installment_number ?? 1;
+            if (in_array($locked->status, ['cancelled', 'paid'], true)) {
+                throw ValidationException::withMessages(['commitment' => 'Este compromisso já está encerrado.']);
+            }
+
+            $pendingParts = $locked->parcelas()
+                ->whereIn('status', ['pending', 'partial'])
+                ->orderBy('installment_number')
+                ->lockForUpdate()
+                ->get();
+            $firstNumber = $pendingParts->first()?->installment_number ?? 1;
             $newDue = Carbon::parse($data['due_date']);
-            $locked->update(['name' => $data['name'], 'due_date' => $newDue->toDateString()]);
-            foreach ($locked->parcelas()->whereIn('status', ['pending', 'partial'])->get() as $part) {
+
+            if (array_key_exists('total_amount', $data)) {
+                $newTotalCents = (int) round(((float) $data['total_amount']) * 100);
+                $paidCents = (int) round((float) $locked->parcelas()->sum('paid_amount') * 100);
+                if ($newTotalCents < $paidCents) {
+                    throw ValidationException::withMessages(['total_amount' => 'O valor total não pode ser inferior ao montante já pago.']);
+                }
+                if ($pendingParts->isEmpty() && $newTotalCents !== $paidCents) {
+                    throw ValidationException::withMessages(['total_amount' => 'Não existem prestações pendentes para redistribuir o novo valor.']);
+                }
+                $remainingCents = $newTotalCents - $paidCents;
+                if ($pendingParts->isNotEmpty() && $remainingCents < $pendingParts->count()) {
+                    throw ValidationException::withMessages(['total_amount' => 'O valor restante não permite atribuir pelo menos 0,01 € a cada prestação pendente.']);
+                }
+                $baseCents = $pendingParts->isNotEmpty() ? intdiv($remainingCents, $pendingParts->count()) : 0;
+                $remainderCents = $pendingParts->isNotEmpty() ? $remainingCents % $pendingParts->count() : 0;
+                $locked->total_amount = number_format($newTotalCents / 100, 2, '.', '');
+            }
+
+            $locked->update([
+                'name' => $data['name'],
+                'due_date' => $newDue->toDateString(),
+                ... (array_key_exists('total_amount', $data) ? ['total_amount' => $locked->total_amount] : []),
+            ]);
+
+            foreach ($pendingParts as $index => $part) {
                 $offset = max(0, $part->installment_number - $firstNumber);
-                $part->update(['due_date' => $this->installmentDate($newDue->copy(), $offset, $locked->installment_frequency ?? 'monthly')->toDateString()]);
+                $changes = [
+                    'due_date' => $this->installmentDate($newDue->copy(), $offset, $locked->installment_frequency ?? 'monthly')->toDateString(),
+                ];
+
+                if (array_key_exists('total_amount', $data)) {
+                    $paidPartCents = (int) round((float) $part->paid_amount * 100);
+                    $partAmountCents = $paidPartCents + $baseCents + ($index < $remainderCents ? 1 : 0);
+                    $interestCents = (int) round((float) $part->interest_amount * 100);
+                    if ($partAmountCents < $interestCents) {
+                        throw ValidationException::withMessages(['total_amount' => 'O novo valor não cobre os juros já associados a uma prestação.']);
+                    }
+                    $changes['amount'] = number_format($partAmountCents / 100, 2, '.', '');
+                    $changes['principal_amount'] = number_format(($partAmountCents - $interestCents) / 100, 2, '.', '');
+                }
+
+                $part->update($changes);
                 $forecasts = Movimento::query()->where('user_id', $user->id)->where('debt_id', $locked->id)
                     ->where('installment_id', $part->id)->where('status', 'pending')->get();
                 foreach ($forecasts as $forecast) {
                     $this->movements->updateCommitmentForecast($user, $locked, $part, $forecast);
                 }
             }
+
             return $locked->refresh()->load('parcelas');
         });
     }
