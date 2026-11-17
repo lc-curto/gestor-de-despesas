@@ -404,4 +404,36 @@ class FinancialProjectionRegressionTest extends TestCase
         $this->assertSame(-75.0, $result['movements']->firstWhere('id', 'invoice-'.$invoice->id)->projection_delta);
         $this->assertSame('200.00', app(AccountBalanceService::class)->balance($bank));
     }
+
+    public function test_archived_commitment_forecasts_are_excluded_from_financial_route(): void
+    {
+        $user = User::factory()->create();
+        $this->account($user, 'bank', '100.00');
+        $commitments = app(FinancialCommitmentService::class);
+        $debt = $commitments->create($user, [
+            'name' => 'Compra arquivada',
+            'total_amount' => '60.00',
+            'start_date' => '2026-11-01',
+            'due_date' => '2026-12-10',
+            'payment_condition' => 'installments',
+            'installments_count' => 2,
+            'installment_frequency' => 'monthly',
+            'payment_method' => 'transfer',
+        ]);
+        $forecastIds = $user->movimentos()->where('debt_id', $debt->id)->pluck('id')->all();
+
+        $commitments->archive($user, $debt);
+
+        $result = $this->project($user);
+
+        foreach ($forecastIds as $forecastId) {
+            $this->assertNull($result['movements']->firstWhere('id', $forecastId));
+        }
+        foreach ($debt->parcelas as $installment) {
+            $this->assertNull($result['movements']->firstWhere('id', 'debt-'.$installment->id));
+        }
+        $this->assertSame(100.0, $result['openingBalance']);
+        $this->assertCount(0, $result['movements']);
+    }
+
 }
