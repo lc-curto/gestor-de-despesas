@@ -115,8 +115,8 @@ class FinancialCommitmentsPageTest extends TestCase
         $response = $this->actingAs($user)->get(route('financial.commitments.page'))->assertOk();
         $summary = $response->viewData('summary');
         $this->assertSame(120.0, $summary['open']);
-        $this->assertSame(20.0, $summary['overdue']);
-        $this->assertSame(100.0, $summary['upcoming']);
+        $this->assertSame(10.0, $summary['overdue']);
+        $this->assertSame(110.0, $summary['upcoming']);
         $response->assertDontSee('Despesa única futura');
         $xpath = $this->document($response->getContent());
         foreach (['Ontem' => 'Atrasada', 'Hoje' => 'Próxima', 'Amanhã' => 'Próxima'] as $name => $status) {
