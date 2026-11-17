@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="app-content commitments-page">
-    <header class="page-heading commitments-heading mb-4">
+    <header class="page-heading commitments-heading mb-4 d-flex flex-wrap justify-content-between align-items-end gap-3">
         <h1 class="h2 fw-bold mb-1">Parcelamentos</h1>
         <p class="text-secondary mb-0">Gestão de compras e prestações</p>
         <button type="button" class="btn btn-primary mt-3 mt-md-0" data-bs-toggle="modal" data-bs-target="#createCommitmentModal">Nova compra</button>
