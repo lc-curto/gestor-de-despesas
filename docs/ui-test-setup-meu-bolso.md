@@ -37,6 +37,8 @@ php artisan serve --host=0.0.0.0 --port=8000
 
 O bind em `0.0.0.0` é necessário para o port-forward; `127.0.0.1` isolado não ficou acessível ao proxy. Abrir no browser o URL HTTPS encaminhado para a porta 8000. Nesta execução foi `https://8000-ibj5jff4mrioe5vnqo9f4-668e1271.us5.manus.computer`; o host/ID é efémero e deve ser obtido novamente em cada sessão.
 
+Os problemas de runtime encontrados na preparação (PHP ausente, PHP 8.3 incompatível com o `composer.lock`, exigência efectiva de PHP >= 8.4.1, Composer/deprecation notices, `.env`/`APP_KEY` ausentes, diferença entre a base do PHPUnit e a base da UI e validação do caminho antes de `migrate:fresh`) estão detalhados em `docs/test-infrastructure-notes-2026-11-17.md`.
+
 ## Fluxos realmente verificados
 
 - Registo de utilizador fictício pelo formulário; sessão autenticada e redirecionamento ao dashboard.

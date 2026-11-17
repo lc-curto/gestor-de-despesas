@@ -16,6 +16,8 @@ Continua o desenvolvimento no repositório `https://github.com/lc-curto/gestor-d
 - Preserva CSRF. Não uses bypass de CSRF na aplicação, não uses dados reais na base descartável e não executes `migrate:fresh` sem confirmar inequivocamente que `DB_DATABASE` aponta para o SQLite descartável.
 - Não marques a Fase 3 concluída: continuam pendentes reconciliação de dados reais, testes concorrentes multi-conexão em MySQL/PostgreSQL e aceitação integral.
 
+As falhas de infraestrutura e dependências encontradas durante a preparação estão documentadas em `docs/test-infrastructure-notes-2026-11-17.md`. Lê essa nota antes de reinstalar o ambiente: PHP 8.3 não satisfaz o `composer.lock`, o lock exige PHP >= 8.4.1, o `.env` de UI deve usar SQLite descartável e o PHPUnit usa uma base diferente definida em `phpunit.xml`.
+
 ## Ponto exato da interrupção — 17/11/2026
 
 A sessão anterior parou durante a preparação do runtime para repetir o teste de aceitação. **Não parou numa falha nova do proxy HTTPS.**
