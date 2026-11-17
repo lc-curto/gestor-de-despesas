@@ -82,60 +82,47 @@
 
     function refreshPaymentFields() {
         const isExpense = movementType === 'despesa';
-        const behaviorField = document.getElementById('dashboardExpenseBehaviorField');
-        if (behaviorField) behaviorField.hidden = !isExpense;
-
-        const condition = form.querySelector('[name="payment_condition"]:checked')?.value || 'cash';
-        const isRecurring = isExpense && !editing && form.querySelector('[name="recurrence_enabled"]')?.checked;
-        const isCommitment = isExpense && condition !== 'cash';
-        if (paymentFields) paymentFields.hidden = !isExpense;
-        if (commitmentOptions) commitmentOptions.hidden = !isCommitment;
-        // A conta só é necessária quando existe uma liquidação efetiva.
+        const paidState = form.querySelector('[name="paid_now"]:checked')?.value || '0';
+        const isPaid = paidState === '1';
+        const settlementFields = document.getElementById('movementSettlementFields');
+        const accountLabel = document.getElementById('movementAccountLabel');
         const accountField = document.getElementById('movementAccount');
-        if (accountField) {
-            accountField.required = !isExpense || editing || isRecurring;
-            const accountContainer = accountField.closest('.mb-3');
-            if (accountContainer) accountContainer.hidden = isExpense && !isRecurring;
+        const methodField = document.getElementById('dashboardActualPaymentMethod');
+        const recurrence = document.getElementById('dashboardRecurrenceEnabled');
+        const recurrenceFields = document.getElementById('dashboardRecurrenceFields');
+        const installmentsToggle = document.getElementById('dashboardInstallmentsEnabled');
+        const installmentsFields = document.getElementById('dashboardInstallmentFields');
+        const dueToggle = document.getElementById('dashboardDueDateEnabled');
+        const dueField = document.getElementById('dashboardDueDateField');
+        const dueInput = document.getElementById('dashboardDueDateInput');
+        const hiddenDueDate = document.getElementById('dashboardDueDate');
+        const condition = document.getElementById('movementPaymentCondition');
+        const plannedMethod = document.getElementById('movementPlannedPaymentMethod');
+
+        if (settlementFields) settlementFields.hidden = !isPaid;
+        if (accountField) accountField.required = isPaid;
+        if (methodField) methodField.required = isPaid;
+        if (accountLabel) accountLabel.textContent = isExpense ? 'De onde saiu o dinheiro?' : 'Para onde entrou o dinheiro?';
+        if (recurrenceFields) recurrenceFields.hidden = !recurrence?.checked;
+        if (installmentsFields) installmentsFields.hidden = !installmentsToggle?.checked;
+        if (dueField) dueField.hidden = !dueToggle?.checked;
+        if (dueInput) dueInput.required = Boolean(dueToggle?.checked);
+        if (hiddenDueDate) hiddenDueDate.value = dueToggle?.checked ? (dueInput?.value || '') : '';
+        if (plannedMethod && methodField) plannedMethod.value = methodField.value || '';
+
+        if (recurrence && installmentsToggle) {
+            recurrence.disabled = Boolean(installmentsToggle.checked);
+            installmentsToggle.disabled = Boolean(recurrence.checked) || !isExpense;
+            if (!isExpense) {
+                installmentsToggle.checked = false;
+                if (installmentsFields) installmentsFields.hidden = true;
+            }
         }
-
-        const dueDateField = document.getElementById('dashboardDueDateField');
-        const installmentsField = document.getElementById('dashboardInstallmentsField');
-        const frequencyField = document.getElementById('dashboardInstallmentFrequencyField');
-        const schedule = document.getElementById('dashboardInstallmentSchedule');
-        const installments = condition === 'installments';
-        if (dueDateField) dueDateField.hidden = !isCommitment;
-        if (installmentsField) installmentsField.hidden = !installments;
-        if (frequencyField) frequencyField.hidden = !installments;
-        if (schedule) schedule.hidden = !installments;
-
-        const countInput = document.getElementById('dashboardInstallments');
-        if (countInput) countInput.required = installments;
-        const dueInput = document.getElementById('dashboardDueDate');
-        if (dueInput) dueInput.required = isCommitment;
-
-        const cards = form.querySelectorAll('.payment-mode-card');
-        cards.forEach((card) => {
-            const radio = card.querySelector('[name="payment_condition"]');
-            card.classList.toggle('is-selected', Boolean(radio?.checked));
-        });
-
-        const paymentState = form.querySelector('[name="paid_now"]:checked')?.value || '0';
-        const hasPayment = paymentState === '1' || paymentState === 'partial';
-        if (paidFields) paidFields.hidden = !isExpense;
-        if (paymentDetails) paymentDetails.hidden = !hasPayment || !isExpense;
-        const paymentAccount = document.getElementById('dashboardPaymentAccount');
-        const paymentAmount = document.getElementById('dashboardPaymentAmount');
-        const paymentDate = document.getElementById('dashboardPaymentDate');
-        const amountField = document.getElementById('dashboardPaymentAmountField');
-        if (paymentAccount) paymentAccount.required = hasPayment && isExpense;
-        if (paymentAmount) paymentAmount.required = paymentState === 'partial' && isExpense;
-        if (paymentDate) paymentDate.required = hasPayment && isExpense;
-        if (paymentAmount) {
-            if (paymentState === '1') paymentAmount.value = document.getElementById('movementAmount')?.value || '';
-            if (paymentState !== 'partial' && paymentState !== '1') paymentAmount.value = '';
+        if (recurrence?.checked && installmentsToggle?.checked) {
+            installmentsToggle.checked = false;
+            if (installmentsFields) installmentsFields.hidden = true;
         }
-        if (amountField) amountField.hidden = paymentState === '1';
-
+        if (condition) condition.value = installmentsToggle?.checked ? 'installments' : (dueToggle?.checked ? 'deferred' : 'cash');
         renderInstallmentSchedule();
     }
 
@@ -145,7 +132,7 @@
         const count = Math.min(120, Math.max(2, Number(document.getElementById('dashboardInstallments')?.value || 2)));
         const normalizedAmount = parseMoney(document.getElementById('movementAmount')?.value || '');
         const amount = normalizedAmount ? Math.round(Number(normalizedAmount) * 100) : 0;
-        const dueValue = document.getElementById('dashboardDueDate')?.value;
+        const dueValue = document.getElementById('dashboardDueDateInput')?.value || document.getElementById('movementDate')?.value;
         const frequency = document.getElementById('dashboardInstallmentFrequency')?.value || 'monthly';
         if (!dueValue || !amount) {
             list.replaceChildren();
@@ -743,12 +730,7 @@
             form.querySelectorAll('[name="paid_now"]').forEach((input) => {
                 input.checked = input.value === (settled ? '1' : '0');
             });
-            const paymentAccount = document.getElementById('dashboardPaymentAccount');
-            const paymentDate = document.getElementById('dashboardPaymentDate');
-            const paymentAmount = document.getElementById('dashboardPaymentAmount');
-            if (paymentAccount) paymentAccount.value = row.dataset.accountId || '';
-            if (paymentDate) paymentDate.value = row.dataset.date || localDate();
-            if (paymentAmount) paymentAmount.value = settled ? row.dataset.amount : '';
+            if (account) account.value = row.dataset.accountId || '';
         }
         if (type === 'despesa') {
             form.querySelectorAll('[name="expense_behavior"]').forEach((input) => {
@@ -804,7 +786,9 @@
         saveButton.textContent = 'A guardar...';
         try {
             const values = Object.fromEntries(new FormData(form).entries());
-            const condition = values.payment_condition || 'cash';
+            const condition = document.getElementById('movementPaymentCondition')?.value || 'cash';
+            values.payment_condition = condition;
+            values.due_date = document.getElementById('dashboardDueDateEnabled')?.checked ? (document.getElementById('dashboardDueDateInput')?.value || '') : '';
             const paidState = values.paid_now || '0';
             const isNewExpense = !editing && movementType === 'despesa';
             const isInstallment = isNewExpense && condition === 'installments';
@@ -821,14 +805,7 @@
                 values.payment_amount = normalizedPayment;
             }
 
-            // A estrutura atual do motor não possui registo de pagamentos parciais
-            // para despesas comuns. Não aceitar silenciosamente um pagamento total.
-            if (isNewExpense && paidState === 'partial' && !isInstallment) {
-                throw new Error('O registo de pagamentos parciais para despesas sem parcelamento ainda não está disponível. Seleciona “Ainda não paguei” ou “Já paguei tudo”.');
-            }
-            if (isInstallment && paidState !== '0') {
-                throw new Error('O registo de pagamentos iniciais de parcelamentos ainda não está integrado. Guarda primeiro o parcelamento como pendente.');
-            }
+
 
             let response;
             let payload;
@@ -887,7 +864,7 @@
                         movementData.delete('payment_account_id');
                     } else {
                         // Despesa liquidada: usa a conta efetivamente selecionada no pagamento.
-                        movementData.set('payment_account_id', values.payment_account_id || '');
+                        movementData.set('payment_account_id', values.account_id || '');
                         movementData.delete('account_id');
                     }
                 }
@@ -1270,8 +1247,11 @@
     });
 
     cancelButton?.addEventListener('click', cancelEdit);
-    form.querySelectorAll('[name="payment_condition"], [name="paid_now"]').forEach((input) => input.addEventListener('change', refreshPaymentFields));
-    ['movementAmount', 'dashboardDueDate', 'dashboardInstallments', 'dashboardInstallmentFrequency'].forEach((id) => {
+    form.querySelectorAll('[name="paid_now"]').forEach((input) => input.addEventListener('change', refreshPaymentFields));
+    ['dashboardDueDateEnabled', 'dashboardRecurrenceEnabled', 'dashboardInstallmentsEnabled'].forEach((id) => {
+        document.getElementById(id)?.addEventListener('change', refreshPaymentFields);
+    });
+    ['movementAmount', 'dashboardDueDateInput', 'dashboardInstallments', 'dashboardInstallmentFrequency', 'dashboardActualPaymentMethod'].forEach((id) => {
         document.getElementById(id)?.addEventListener('input', refreshPaymentFields);
         document.getElementById(id)?.addEventListener('change', refreshPaymentFields);
     });
@@ -1335,11 +1315,7 @@
         expenseButton?.setAttribute('aria-expanded', 'false');
         incomeButton?.setAttribute('aria-expanded', 'false');
     });
-    form.querySelectorAll('[name="payment_condition"], [name="paid_now"]').forEach((input) => input.addEventListener('change', refreshPaymentFields));
-    ['dashboardInstallments', 'dashboardInstallmentFrequency', 'dashboardDueDate', 'movementAmount'].forEach((id) => {
-        document.getElementById(id)?.addEventListener('input', refreshPaymentFields);
-        document.getElementById(id)?.addEventListener('change', refreshPaymentFields);
-    });
+
 
     const currencyFrom = document.getElementById('conversionFrom');
     const currencyTo = document.getElementById('conversionTo');
