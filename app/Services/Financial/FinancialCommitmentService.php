@@ -97,7 +97,7 @@ class FinancialCommitmentService
                 ->lockForUpdate()
                 ->get();
             $firstNumber = $pendingParts->first()?->installment_number ?? 1;
-            $newDue = Carbon::parse($data['due_date']);
+            $newDue = isset($data['due_date']) ? Carbon::parse($data['due_date']) : null;
 
             if (array_key_exists('total_amount', $data)) {
                 $newTotalCents = (int) round(((float) $data['total_amount']) * 100);
@@ -120,15 +120,16 @@ class FinancialCommitmentService
             $locked->update([
                 'name' => $data['name'],
                 'merchant' => array_key_exists('merchant', $data) ? $data['merchant'] : $locked->merchant,
-                'due_date' => $newDue->toDateString(),
+                'due_date' => $newDue?->toDateString() ?? $locked->due_date,
                 'total_amount' => $locked->total_amount,
             ]);
 
             foreach ($pendingParts as $index => $part) {
                 $offset = max(0, $part->installment_number - $firstNumber);
-                $changes = [
-                    'due_date' => $this->installmentDate($newDue->copy(), $offset, $locked->installment_frequency ?? 'monthly')->toDateString(),
-                ];
+                $changes = [];
+                if ($newDue) {
+                    $changes['due_date'] = $this->installmentDate($newDue->copy(), $offset, $locked->installment_frequency ?? 'monthly')->toDateString();
+                }
 
                 if (array_key_exists('total_amount', $data)) {
                     $paidPartCents = (int) round((float) $part->paid_amount * 100);
