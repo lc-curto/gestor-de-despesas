@@ -11,7 +11,8 @@ class Divida extends Model
 {
     use HasUuids;
     protected $table = 'dividas';
-    protected $fillable = ['user_id','name', 'merchant', 'type', 'payment_condition', 'payment_method', 'installments_count', 'installment_frequency', 'account_id', 'total_amount', 'start_date', 'due_date', 'status'];
+    protected $fillable = ['user_id','name', 'merchant', 'type', 'payment_condition', 'payment_method', 'installments_count', 'installment_frequency', 'account_id', 'total_amount', 'start_date', 'due_date', 'status', 'archived_at'];
+    protected function casts(): array { return ['total_amount' => 'decimal:2', 'installments_count' => 'integer', 'start_date' => 'date', 'due_date' => 'date', 'archived_at' => 'datetime']; }
     protected function casts(): array { return ['total_amount' => 'decimal:2', 'installments_count' => 'integer', 'start_date' => 'date', 'due_date' => 'date']; }
     public function user(): BelongsTo { return $this->belongsTo(User::class); }
     public function conta(): BelongsTo { return $this->belongsTo(ContaFinanceira::class, 'account_id'); }
