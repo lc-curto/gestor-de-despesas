@@ -83,16 +83,16 @@
         if (behaviorField) behaviorField.hidden = !isExpense;
 
         const condition = form.querySelector('[name="payment_condition"]:checked')?.value || 'cash';
+        const isRecurring = isExpense && !editing && form.querySelector('[name="recurrence_enabled"]')?.checked;
         const isCommitment = isExpense && condition !== 'cash';
         if (paymentFields) paymentFields.hidden = !isExpense;
         if (commitmentOptions) commitmentOptions.hidden = !isCommitment;
         // A conta só é necessária quando existe uma liquidação efetiva.
         const accountField = document.getElementById('movementAccount');
         if (accountField) {
-            accountField.required = !isExpense || editing;
+            accountField.required = !isExpense || editing || isRecurring;
             const accountContainer = accountField.closest('.mb-3');
-            if (accountContainer) accountContainer.hidden = isExpense;
-            accountField.required = !isExpense;
+            if (accountContainer) accountContainer.hidden = isExpense && !isRecurring;
         }
 
         const dueDateField = document.getElementById('dashboardDueDateField');
@@ -793,7 +793,8 @@
             } else {
                 const movementData = new FormData(form);
                 if (isNewExpense) {
-                    if (paidState === '0') {
+                    const isRecurring = values.recurrence_enabled === '1';
+                    if (paidState === '0' && !isRecurring) {
                         // Despesa pendente: não associa conta nem movimenta saldo.
                         movementData.delete('account_id');
                         movementData.delete('payment_account_id');
