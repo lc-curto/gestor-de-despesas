@@ -59,6 +59,7 @@
     document.getElementById('dashboardRecurrenceEnabled')?.addEventListener('change', function () {
         const fields = document.getElementById('dashboardRecurrenceFields');
         if (fields) fields.hidden = !this.checked;
+        refreshPaymentFields();
     });
 
     const pageSize = () => window.matchMedia('(max-width: 991.98px)').matches ? 6 : 10;
