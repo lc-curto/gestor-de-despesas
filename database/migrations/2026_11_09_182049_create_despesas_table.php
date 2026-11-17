@@ -47,6 +47,8 @@ return new class extends Migration
             );
         });
 
+        // SQLite não suporta ADD CONSTRAINT; a validação da aplicação continua ativa.
+        if (DB::getDriverName() !== 'sqlite') {
         // Impede valores iguais ou inferiores a zero.
         DB::statement("
             ALTER TABLE despesas
@@ -76,6 +78,7 @@ return new class extends Migration
                 'outros'
             ))
         ");
+        }
     }
 
     /**

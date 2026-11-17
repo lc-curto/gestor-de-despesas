@@ -57,7 +57,7 @@
                         <tbody>
                         @foreach ($monthDays as $date => $values)
                             @php
-                                $running += $values['income'] - $values['variable'] - $values['fixed'];
+                                $running += $values['cash_delta'];
                                 $status = $running <= 0 ? 'risk' : ($running <= $fixedTotal ? 'attention' : ($running < ($fixedTotal + $variableTotal) ? 'protected' : 'comfortable'));
                                 $dayItems = $values['items']->map(fn ($item) => [
                                     'id' => $item->id, 'type' => $item->type, 'status' => $item->status,

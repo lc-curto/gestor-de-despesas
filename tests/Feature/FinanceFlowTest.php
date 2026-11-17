@@ -307,7 +307,7 @@ class FinanceFlowTest extends TestCase
             'category' => 'compras',
             'expense_date' => '2026-11-09',
             'account_id' => $accountId,
-        ])->assertOk()->assertJsonPath('ok', true);
+        ])->assertUnprocessable();
 
         $movement = $user->movimentos()->where('legacy_type', 'despesa')->where('legacy_id', $expense->id)->firstOrFail();
 
@@ -395,8 +395,11 @@ class FinanceFlowTest extends TestCase
             $this->assertDatabaseHas('faturas', [
                 'id' => $movement->invoice_id,
                 'account_id' => $card->id,
-                'reference_month' => '2026-11-01',
             ]);
+            $referenceMonth = \Illuminate\Support\Carbon::parse(
+                \Illuminate\Support\Facades\DB::table('faturas')->where('id', $movement->invoice_id)->value('reference_month')
+            )->toDateString();
+            $this->assertSame('2026-11-01', $referenceMonth);
         } finally {
             \Illuminate\Support\Carbon::setTestNow();
         }
@@ -509,6 +512,25 @@ class FinanceFlowTest extends TestCase
             ->assertOk()
             ->assertSee('Compromissos')
             ->assertSee('Próximos pagamentos');
+    }
+
+    public function test_commitments_page_shows_deferred_commitment(): void
+    {
+        $user = User::factory()->create();
+        app(\App\Services\Financial\FinancialCommitmentService::class)->create($user, [
+            'name' => 'Fatura de eletricidade',
+            'total_amount' => '90.00',
+            'start_date' => '2026-11-01',
+            'due_date' => '2026-11-25',
+            'payment_condition' => 'deferred',
+        ]);
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureFinancialDataReviewed::class);
+
+        $this->actingAs($user)
+            ->get(route('financial.commitments.page'))
+            ->assertOk()
+            ->assertSee('Fatura de eletricidade')
+            ->assertSee('Compra a prazo');
     }
 
 

@@ -135,23 +135,36 @@ class FinancialDataReviewController extends Controller
         $evidence = json_decode($review->step_evidence ?: '{}', true) ?: [];
 
         if ($data['step'] === 'final') {
-            foreach (self::STEPS as $step) {
-                $current = $this->snapshot($user, $step);
-                if (!in_array($step, $completed, true)
-                    || !isset($evidence[$step]['reviewed_hash'])
-                    || $evidence[$step]['reviewed_hash'] !== $current['hash']) {
-                    return back()->withErrors(['review' => 'Existem etapas por rever ou dados que mudaram depois da revisão. Volta a validar essas etapas.']);
-                }
-            }
+            $finalized = DB::transaction(function () use ($user): bool {
+                DB::table('users')->where('id', $user->id)->lockForUpdate()->firstOrFail();
+                $lockedReview = DB::table('financial_data_reviews')
+                    ->where('user_id', $user->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+                $completed = json_decode($lockedReview->completed_steps ?: '[]', true) ?: [];
+                $evidence = json_decode($lockedReview->step_evidence ?: '{}', true) ?: [];
 
-            DB::transaction(function () use ($user, $review, $completed): void {
-                DB::table('financial_data_reviews')->where('id', $review->id)->update([
+                foreach (self::STEPS as $step) {
+                    $current = $this->snapshot($user, $step);
+                    if (!in_array($step, $completed, true)
+                        || !isset($evidence[$step]['reviewed_hash'])
+                        || $evidence[$step]['reviewed_hash'] !== $current['hash']) {
+                        return false;
+                    }
+                }
+
+                DB::table('financial_data_reviews')->where('id', $lockedReview->id)->update([
                     'completed_steps' => json_encode(array_values(array_unique([...$completed, 'final']))),
                     'completed_at' => now(),
                     'updated_at' => now(),
                 ]);
                 DB::table('users')->where('id', $user->id)->update(['financial_review_required' => false]);
+                return true;
             });
+
+            if (!$finalized) {
+                return back()->withErrors(['review' => 'Existem etapas por rever ou dados que mudaram depois da revisão. Volta a validar essas etapas.']);
+            }
 
             return redirect()->route('dashboard')->with('success', 'Revisão dos dados concluída. Já podes utilizar a nova versão do Meu Bolso.');
         }

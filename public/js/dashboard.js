@@ -81,14 +81,103 @@
         const isExpense = movementType === 'despesa';
         const behaviorField = document.getElementById('dashboardExpenseBehaviorField');
         if (behaviorField) behaviorField.hidden = !isExpense;
+
         const condition = form.querySelector('[name="payment_condition"]:checked')?.value || 'cash';
+        const isRecurring = isExpense && !editing && form.querySelector('[name="recurrence_enabled"]')?.checked;
+        const isCommitment = isExpense && condition !== 'cash';
         if (paymentFields) paymentFields.hidden = !isExpense;
-        if (commitmentOptions) commitmentOptions.hidden = !isExpense || condition === 'cash';
-        if (paidFields) paidFields.hidden = !isExpense || condition === 'cash';
-        const count = document.getElementById('dashboardInstallmentsField');
-        if (count) count.hidden = condition !== 'installments';
-        const paid = form.querySelector('[name="paid_now"]:checked')?.value === '1';
-        if (paymentDetails) paymentDetails.hidden = !paid || !isExpense || condition === 'cash';
+        if (commitmentOptions) commitmentOptions.hidden = !isCommitment;
+        // A conta só é necessária quando existe uma liquidação efetiva.
+        const accountField = document.getElementById('movementAccount');
+        if (accountField) {
+            accountField.required = !isExpense || editing || isRecurring;
+            const accountContainer = accountField.closest('.mb-3');
+            if (accountContainer) accountContainer.hidden = isExpense && !isRecurring;
+        }
+
+        const dueDateField = document.getElementById('dashboardDueDateField');
+        const installmentsField = document.getElementById('dashboardInstallmentsField');
+        const frequencyField = document.getElementById('dashboardInstallmentFrequencyField');
+        const schedule = document.getElementById('dashboardInstallmentSchedule');
+        const installments = condition === 'installments';
+        if (dueDateField) dueDateField.hidden = !isCommitment;
+        if (installmentsField) installmentsField.hidden = !installments;
+        if (frequencyField) frequencyField.hidden = !installments;
+        if (schedule) schedule.hidden = !installments;
+
+        const countInput = document.getElementById('dashboardInstallments');
+        if (countInput) countInput.required = installments;
+        const dueInput = document.getElementById('dashboardDueDate');
+        if (dueInput) dueInput.required = isCommitment;
+
+        const cards = form.querySelectorAll('.payment-mode-card');
+        cards.forEach((card) => {
+            const radio = card.querySelector('[name="payment_condition"]');
+            card.classList.toggle('is-selected', Boolean(radio?.checked));
+        });
+
+        const paymentState = form.querySelector('[name="paid_now"]:checked')?.value || '0';
+        const hasPayment = paymentState === '1' || paymentState === 'partial';
+        if (paidFields) paidFields.hidden = !isExpense;
+        if (paymentDetails) paymentDetails.hidden = !hasPayment || !isExpense;
+        const paymentAccount = document.getElementById('dashboardPaymentAccount');
+        const paymentAmount = document.getElementById('dashboardPaymentAmount');
+        const paymentDate = document.getElementById('dashboardPaymentDate');
+        const amountField = document.getElementById('dashboardPaymentAmountField');
+        if (paymentAccount) paymentAccount.required = hasPayment && isExpense;
+        if (paymentAmount) paymentAmount.required = paymentState === 'partial' && isExpense;
+        if (paymentDate) paymentDate.required = hasPayment && isExpense;
+        if (paymentAmount) {
+            paymentAmount.max = document.getElementById('movementAmount')?.value || '';
+            if (paymentState === '1') paymentAmount.value = document.getElementById('movementAmount')?.value || '';
+            if (paymentState !== 'partial' && paymentState !== '1') paymentAmount.value = '';
+        }
+        if (amountField) amountField.hidden = paymentState === '1';
+
+        renderInstallmentSchedule();
+    }
+
+    function renderInstallmentSchedule() {
+        const list = document.getElementById('dashboardInstallmentScheduleList');
+        if (!list) return;
+        const count = Math.min(120, Math.max(2, Number(document.getElementById('dashboardInstallments')?.value || 2)));
+        const amount = Math.round((Number(document.getElementById('movementAmount')?.value || 0) * 100));
+        const dueValue = document.getElementById('dashboardDueDate')?.value;
+        const frequency = document.getElementById('dashboardInstallmentFrequency')?.value || 'monthly';
+        if (!dueValue || !amount) {
+            list.replaceChildren();
+            return;
+        }
+
+        const base = Math.floor(amount / count);
+        const remainder = amount % count;
+        const start = new Date(dueValue + 'T12:00:00');
+        const formatter = new Intl.DateTimeFormat('pt-PT');
+        const rows = [];
+        for (let index = 0; index < count; index++) {
+            const due = new Date(start);
+            if (frequency === 'weekly') due.setDate(due.getDate() + index * 7);
+            else if (frequency === 'biweekly') due.setDate(due.getDate() + index * 14);
+            else {
+                const day = due.getDate();
+                due.setDate(1);
+                due.setMonth(due.getMonth() + index);
+                const lastDay = new Date(due.getFullYear(), due.getMonth() + 1, 0).getDate();
+                due.setDate(Math.min(day, lastDay));
+            }
+            const cents = base + (index < remainder ? 1 : 0);
+            const row = document.createElement('div');
+            row.className = 'list-group-item d-flex justify-content-between align-items-center px-0 py-2 bg-transparent';
+            const label = document.createElement('span');
+            label.className = 'small';
+            label.textContent = 'Prestação ' + (index + 1) + ' · ' + formatter.format(due);
+            const value = document.createElement('strong');
+            value.className = 'small';
+            value.textContent = formatCurrency(cents / 100, cfg.currency || 'EUR');
+            row.append(label, value);
+            rows.push(row);
+        }
+        list.replaceChildren(...rows);
     }
 
     try {
@@ -237,6 +326,8 @@
         article.dataset.accountId = item.account_id || '';
         article.dataset.expenseBehavior = item.expense_behavior || 'variable';
         article.dataset.movementStatus = item.movement_status || '';
+        article.dataset.isInvoicePayment = item.is_invoice_payment ? '1' : '0';
+        article.dataset.dueDate = item.due_date || '';
         article.dataset.recurrenceId = item.recurrence_id || '';
         article.dataset.recurrenceFrequency = item.recurrence_frequency || '';
         article.dataset.recurrenceInterval = item.recurrence_interval || '';
@@ -257,8 +348,40 @@
         name.textContent = item.description;
         const metadata = document.createElement('p');
         metadata.className = 'small text-secondary mb-0';
-        metadata.textContent = categoryName(item) + ' · ' + displayDate + (item.recurrence_id ? ' · Recorrente' : '') + (item.movement_status === 'pending' ? ' · Pendente' : '');
+        metadata.textContent = categoryName(item) + ' · ' + displayDate;
+        const badges = document.createElement('div');
+        badges.className = 'movement-badges d-flex flex-wrap align-items-center gap-1 mt-1';
+        const statusBadge = document.createElement('span');
+        statusBadge.className = 'badge rounded-pill ' + (
+            item.movement_status === 'settled' ? 'text-bg-success' :
+            (item.movement_status === 'partial' || item.movement_status === 'partially_settled') ? 'text-bg-info' :
+            'text-bg-warning'
+        );
+        statusBadge.textContent = item.movement_status === 'settled' ? 'Pago' :
+            (item.movement_status === 'partial' || item.movement_status === 'partially_settled') ? 'Parcialmente pago' : 'Pendente';
+        badges.append(statusBadge);
+        if (item.recurrence_id) {
+            const recurrenceBadge = document.createElement('span');
+            recurrenceBadge.className = 'badge rounded-pill text-bg-light border text-secondary';
+            recurrenceBadge.textContent = 'Recorrente';
+            badges.append(recurrenceBadge);
+        }
         details.append(name, metadata);
+        if (isExpense && item.due_date) {
+            const due = String(item.due_date).slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (due) {
+                const dueDate = new Date(Number(due[1]), Number(due[2]) - 1, Number(due[3]));
+                const dueLine = document.createElement('p');
+                dueLine.className = 'small text-body-tertiary mb-0';
+                const dueLabel = new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: 'short' }).format(dueDate);
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                dueDate.setHours(0, 0, 0, 0);
+                const daysLate = Math.floor((today - dueDate) / 86400000);
+                dueLine.textContent = daysLate > 0 && item.movement_status !== 'settled' ? 'Vencido há ' + daysLate + (daysLate === 1 ? ' dia' : ' dias') : 'Vence em ' + dueLabel;
+                details.append(dueLine);
+            }
+        }
+        details.append(badges);
         info.append(icon, details);
 
         const actions = document.createElement('div');
@@ -270,33 +393,36 @@
         value.textContent = (isExpense ? '−' : '+') + formatCurrency(item.amount, item.currency);
 
         actions.append(value);
-        const edit = document.createElement('button');
-        edit.type = 'button';
-        edit.className = 'btn btn-outline-secondary';
-        edit.dataset.acao = 'editar';
-        edit.setAttribute('aria-label', 'Editar ' + item.description);
-        edit.title = 'Editar';
-        edit.innerHTML = '<i data-lucide="pencil" aria-hidden="true"></i>';
-        actions.append(edit);
-        if (item.movement_status === 'pending' && item.financial_movement_id) {
-            const settle = document.createElement('button');
-            settle.type = 'button';
-            settle.className = 'btn btn-outline-success';
-            settle.dataset.movementAction = 'settle';
-            settle.title = isExpense ? 'Efetivar despesa' : 'Efetivar receita';
-            settle.setAttribute('aria-label', settle.title + ': ' + item.description);
-            settle.innerHTML = '<i data-lucide="check-circle" aria-hidden="true"></i>';
-            actions.append(settle);
+        if (!item.is_invoice_payment) {
+            const edit = document.createElement('button');
+            edit.type = 'button';
+            edit.className = 'btn btn-outline-secondary';
+            edit.dataset.acao = 'editar';
+            edit.setAttribute('aria-label', 'Editar ' + item.description);
+            edit.title = 'Editar';
+            edit.innerHTML = '<i data-lucide="pencil" aria-hidden="true"></i>';
+            actions.append(edit);
+            if (item.movement_status === 'pending' && item.financial_movement_id) {
+                const settle = document.createElement('button');
+                settle.type = 'button';
+                settle.className = 'btn btn-outline-success';
+                settle.dataset.movementAction = 'settle';
+                settle.title = isExpense ? 'Efetivar despesa' : 'Efetivar receita';
+                settle.setAttribute('aria-label', settle.title + ': ' + item.description);
+                settle.innerHTML = '<i data-lucide="check-circle" aria-hidden="true"></i>';
+                actions.append(settle);
+            }
+    
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'btn btn-outline-danger';
+            remove.dataset.movementAction = 'delete';
+            remove.title = 'Excluir';
+            remove.setAttribute('aria-label', 'Excluir ' + item.description);
+            remove.innerHTML = '<i data-lucide="trash-2" aria-hidden="true"></i>';
+            actions.append(remove);
+    
         }
-
-        const remove = document.createElement('button');
-        remove.type = 'button';
-        remove.className = 'btn btn-outline-danger';
-        remove.dataset.movementAction = 'delete';
-        remove.title = 'Excluir';
-        remove.setAttribute('aria-label', 'Excluir ' + item.description);
-        remove.innerHTML = '<i data-lucide="trash-2" aria-hidden="true"></i>';
-        actions.append(remove);
         article.append(info, actions);
         return article;
     }
@@ -334,13 +460,17 @@
                 if (day !== currentDay) {
                     currentDay = day;
                     const heading = document.createElement('div');
-                    heading.className = 'movement-day-heading';
+                    heading.className = 'movement-day-heading d-flex justify-content-between align-items-center';
                     const match = day.match(/^(\d{4})-(\d{2})-(\d{2})$/);
                     if (match) {
                         const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-                        heading.textContent = new Intl.DateTimeFormat('pt-PT', {
-                            weekday: 'long', day: '2-digit', month: 'long'
-                        }).format(date);
+                        const dateLabel = document.createElement('span');
+                        dateLabel.className = 'fw-semibold';
+                        dateLabel.textContent = new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: 'long' }).format(date);
+                        const weekdayLabel = document.createElement('span');
+                        weekdayLabel.className = 'small text-secondary fw-normal';
+                        weekdayLabel.textContent = new Intl.DateTimeFormat('pt-PT', { weekday: 'long' }).format(date);
+                        heading.append(dateLabel, weekdayLabel);
                     } else {
                         heading.textContent = 'Data não disponível';
                     }
@@ -557,6 +687,18 @@
         category.value = row.dataset.categoryId;
         if (account) account.value = row.dataset.accountId || '';
         if (type === 'despesa') {
+            const settled = row.dataset.movementStatus === 'settled';
+            form.querySelectorAll('[name="paid_now"]').forEach((input) => {
+                input.checked = input.value === (settled ? '1' : '0');
+            });
+            const paymentAccount = document.getElementById('dashboardPaymentAccount');
+            const paymentDate = document.getElementById('dashboardPaymentDate');
+            const paymentAmount = document.getElementById('dashboardPaymentAmount');
+            if (paymentAccount) paymentAccount.value = row.dataset.accountId || '';
+            if (paymentDate) paymentDate.value = row.dataset.date || localDate();
+            if (paymentAmount) paymentAmount.value = settled ? row.dataset.amount : '';
+        }
+        if (type === 'despesa') {
             form.querySelectorAll('[name="expense_behavior"]').forEach((input) => {
                 input.checked = input.value === (row.dataset.expenseBehavior || 'variable');
             });
@@ -577,6 +719,7 @@
         // permanecem editáveis, inclusive em movimentos liquidados.
         amount.readOnly = false;
         date.readOnly = false;
+        refreshPaymentFields();
         cancelButton?.classList.remove('d-none');
         openEditor();
         form.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -604,27 +747,75 @@
         saveButton.textContent = 'A guardar...';
         try {
             const values = Object.fromEntries(new FormData(form).entries());
+            const condition = values.payment_condition || 'cash';
+            const paidState = values.paid_now || '0';
+            const isNewExpense = !editing && movementType === 'despesa';
+            const isInstallment = isNewExpense && condition === 'installments';
+
+            // A estrutura atual do motor não possui registo de pagamentos parciais
+            // para despesas comuns. Não aceitar silenciosamente um pagamento total.
+            if (isNewExpense && paidState === 'partial' && !isInstallment) {
+                throw new Error('O registo de pagamentos parciais para despesas sem parcelamento ainda não está disponível. Seleciona “Ainda não paguei” ou “Já paguei tudo”.');
+            }
+            if (isInstallment && paidState !== '0') {
+                throw new Error('O registo de pagamentos iniciais de parcelamentos ainda não está integrado. Guarda primeiro o parcelamento como pendente.');
+            }
+
             let response;
             let payload;
-            const commitment = !editing && movementType === 'despesa' && values.payment_condition && values.payment_condition !== 'cash';
-            if (commitment) {
-                response = await fetch(cfg.commitmentStore, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf }, body: JSON.stringify({ name: values.description, total_amount: values.amount, start_date: values.expense_date, due_date: values.due_date, payment_condition: values.payment_condition, payment_method: values.payment_method, installments_count: values.installments_count }) });
-                payload = await response.json().catch(() => ({}));
-                if (response.ok && values.paid_now === '1') {
-                    const installment = payload.data?.parcelas?.[0];
-                    const paid = await fetch(cfg.commitmentBase + '/' + payload.data.id + '/installments/' + installment.id + '/pay', { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf }, body: JSON.stringify({ account_id: values.payment_account_id, amount: values.payment_amount || values.amount, payment_date: values.payment_date }) });
-                    if (!paid.ok) { payload = await paid.json().catch(() => ({})); response = paid; }
+
+            if (isInstallment) {
+                // Só compras parceladas criam um Compromisso.
+                const commitmentResponse = await fetch(cfg.commitmentStore, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    body: JSON.stringify({
+                        name: values.description,
+                        total_amount: values.amount,
+                        start_date: values.expense_date,
+                        due_date: values.due_date || values.expense_date,
+                        payment_condition: 'installments',
+                        payment_method: values.payment_method || null,
+                        installments_count: values.installments_count,
+                        installment_frequency: values.installment_frequency || 'monthly'
+                    })
+                });
+                const commitmentPayload = await commitmentResponse.json().catch(() => ({}));
+                if (!commitmentResponse.ok || !commitmentPayload.data?.id) {
+                    throw new Error(commitmentPayload.message || 'Não foi possível criar o parcelamento.');
                 }
-                if (response.ok) payload.ok = true;
+
+                // A obrigação e as prestações são a fonte canónica. Não criar
+                // uma despesa pendente adicional pelo valor total da compra.
+                response = commitmentResponse;
+                payload = { ok: true, data: commitmentPayload.data, message: 'Parcelamento criado.' };
             } else {
-                response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+                const movementData = new FormData(form);
+                if (isNewExpense) {
+                    const isRecurring = values.recurrence_enabled === '1';
+                    if (paidState === '0' && !isRecurring) {
+                        // Despesa pendente: não associa conta nem movimenta saldo.
+                        movementData.delete('account_id');
+                        movementData.delete('payment_account_id');
+                    } else {
+                        // Despesa liquidada: usa a conta efetivamente selecionada no pagamento.
+                        movementData.set('payment_account_id', values.payment_account_id || '');
+                        movementData.delete('account_id');
+                    }
+                }
+                response = await fetch(form.action, {
+                    method: 'POST',
+                    body: movementData,
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin'
+                });
                 payload = await response.json().catch(() => ({}));
             }
+
             if (response.status === 422) {
                 const errors = payload.errors || {};
-                const firstError = Object.values(errors).flat()[0] || payload.message || 'Não foi possível guardar as alterações.';
-                alert(firstError);
-                return;
+                throw new Error(Object.values(errors).flat()[0] || payload.message || 'Não foi possível guardar as alterações.');
             }
             if (!response.ok || !payload.ok) {
                 throw new Error(payload.message || 'Não foi possível guardar as alterações.');
@@ -671,17 +862,35 @@
     function openDeleteModal(row) {
         actionMovement = row;
         const recurring = Boolean(row.dataset.recurrenceId);
+        const settled = row.dataset.movementStatus === 'settled';
+        const onlyOption = document.getElementById('deleteScopeOnly');
+        const futureOption = document.getElementById('deleteScopeFuture');
+        const allOption = document.getElementById('deleteScopeAll');
+        const note = document.getElementById('deleteMovementNote');
+
         document.getElementById('deleteMovementDescription').textContent = row.dataset.description || '';
         document.getElementById('deleteRecurringOptions').hidden = !recurring;
         document.getElementById('deleteSingleOption').hidden = recurring;
-        document.getElementById('deleteMovementTitle').textContent = recurring ? 'Excluir movimento recorrente' : 'Excluir movimento';
-        const settled = row.dataset.movementStatus === 'settled';
-        const note = document.getElementById('deleteMovementNote');
+        document.getElementById('deleteMovementTitle').textContent = recurring ? 'Excluir recorrência' : 'Excluir movimento';
+
+        // Reinicia sempre a seleção: o estado anterior do modal não pode influenciar esta exclusão.
+        [onlyOption, futureOption, allOption, document.getElementById('deleteScopeOnlySingle')].forEach((input) => {
+            if (input) input.checked = false;
+        });
+
+        if (recurring) {
+            // Ocorrências já pagas são preservadas; nesse caso só se pode interromper esta e/ou as seguintes.
+            onlyOption.closest('label').hidden = settled;
+            onlyOption.disabled = settled;
+            futureOption.checked = settled;
+            onlyOption.checked = !settled;
+            allOption.checked = false;
+        } else {
+            document.getElementById('deleteScopeOnlySingle').checked = true;
+        }
+
         note.hidden = !(recurring && settled);
-        note.textContent = 'Esta ocorrência já foi efetivada e será preservada no histórico financeiro. Podes interromper as previsões futuras.';
-        document.getElementById('deleteScopeOnly').disabled = recurring && settled;
-        document.getElementById('deleteScopeOnly').checked = recurring && !settled;
-        document.getElementById('deleteScopeOnlySingle').checked = !recurring;
+        note.textContent = 'Este movimento já foi pago e fica no histórico.';
         deleteModal?.show();
     }
 
@@ -721,7 +930,14 @@
 
     async function submitDeleteMovement(event) {
         event.preventDefault();
-        if (!actionMovement || !navigator.onLine) return;
+        if (!actionMovement) {
+            alert('Seleciona um movimento para excluir.');
+            return;
+        }
+        if (!navigator.onLine) {
+            alert('Sem ligação à internet. Liga-te à internet e tenta novamente.');
+            return;
+        }
         const submit = document.getElementById('deleteMovementSubmit');
         const original = submit.textContent;
         submit.disabled = true;
@@ -750,10 +966,25 @@
                     body: new URLSearchParams({ _method: 'DELETE', _token: csrf || '' })
                 });
             }
-            const result = await response.json().catch(() => ({}));
-            if (!response.ok || result.ok === false) throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'Não foi possível excluir o movimento.');
-            deleteModal?.hide();
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                throw new Error(response.redirected
+                    ? 'A sessão pode ter expirado. Atualiza a página e tenta novamente.'
+                    : 'O servidor devolveu uma resposta inesperada. A exclusão não foi confirmada.');
+            }
+            const result = await response.json();
+            if (!response.ok || result.ok !== true) {
+                throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'O servidor não confirmou a exclusão.');
+            }
+
             await refreshDashboard();
+            const stillVisible = loadedMovements.some((item) =>
+                String(item.financial_movement_id || '') === String(actionMovement.dataset.financialMovementId || '')
+            );
+            if (stillVisible) {
+                throw new Error('O servidor confirmou a operação, mas o movimento continua na lista. Atualiza a página; se persistir, verifica a recorrência na base de dados.');
+            }
+            deleteModal?.hide();
         } catch (error) {
             alert(error.message);
         } finally {
@@ -894,6 +1125,11 @@
     });
 
     cancelButton?.addEventListener('click', cancelEdit);
+    form.querySelectorAll('[name="payment_condition"], [name="paid_now"]').forEach((input) => input.addEventListener('change', refreshPaymentFields));
+    ['movementAmount', 'dashboardDueDate', 'dashboardInstallments', 'dashboardInstallmentFrequency'].forEach((id) => {
+        document.getElementById(id)?.addEventListener('input', refreshPaymentFields);
+        document.getElementById(id)?.addEventListener('change', refreshPaymentFields);
+    });
     form.addEventListener('submit', submitMovement);
     settleForm?.addEventListener('submit', submitSettleMovement);
     deleteForm?.addEventListener('submit', submitDeleteMovement);
@@ -948,6 +1184,10 @@
         incomeButton?.setAttribute('aria-expanded', 'false');
     });
     form.querySelectorAll('[name="payment_condition"], [name="paid_now"]').forEach((input) => input.addEventListener('change', refreshPaymentFields));
+    ['dashboardInstallments', 'dashboardInstallmentFrequency', 'dashboardDueDate', 'movementAmount'].forEach((id) => {
+        document.getElementById(id)?.addEventListener('input', refreshPaymentFields);
+        document.getElementById(id)?.addEventListener('change', refreshPaymentFields);
+    });
 
     const currencyFrom = document.getElementById('conversionFrom');
     const currencyTo = document.getElementById('conversionTo');

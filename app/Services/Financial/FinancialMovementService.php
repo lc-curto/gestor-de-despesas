@@ -41,6 +41,7 @@ class FinancialMovementService
                 'destination_account_id' => $destination?->id,
                 'category_id' => $data['category_id'] ?? null,
                 'invoice_id' => $data['invoice_id'] ?? null,
+                'opening_debt_card_id' => $data['opening_debt_card_id'] ?? null,
                 'adjustment_direction' => $data['adjustment_direction'] ?? null,
                 'is_historical' => $isHistorical,
                 'legacy_type' => $data['legacy_type'] ?? null,
@@ -200,21 +201,14 @@ class FinancialMovementService
     {
         return DB::transaction(function () use ($user, $movement, $data) {
             $locked = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
-            $before = $locked->getAttributes();
-
-            if ($locked->status === 'settled') {
-                $allowed = ['description', 'notes', 'amount', 'movement_date', 'category_id', 'expense_behavior'];
-                $action = 'updated';
-            } elseif ($locked->status === 'pending') {
-                $allowed = ['description', 'notes', 'amount', 'movement_date', 'category_id', 'expense_behavior'];
-                $action = 'updated';
-            } else {
-                throw ValidationException::withMessages(['movement' => 'Movimentos anulados não podem ser editados.']);
+            if ($locked->status !== 'pending') {
+                throw ValidationException::withMessages(['movement' => 'Só movimentos pendentes podem ser editados. Para corrigir um movimento liquidado, usa o estorno e regista o movimento correto.']);
             }
-
+            $before = $locked->getAttributes();
+            $allowed = ['description', 'notes', 'amount', 'movement_date', 'category_id', 'expense_behavior'];
             $locked->fill(array_intersect_key($data, array_flip($allowed)));
             $locked->save();
-            $this->audit($user, $locked, $action, $before, $locked->getAttributes());
+            $this->audit($user, $locked, 'updated', $before, $locked->getAttributes());
             return $locked->refresh();
         });
     }
@@ -234,6 +228,9 @@ class FinancialMovementService
 
             if ($locked->status === 'void') {
                 throw ValidationException::withMessages(['movement' => 'Este movimento já foi removido ou estornado.']);
+            }
+            if ($locked->reversal_of_id || Movimento::query()->where('reversal_of_id', $locked->id)->exists()) {
+                throw ValidationException::withMessages(['movement' => 'Este movimento faz parte de um estorno. Mantém o par original e a reversão para preservar o histórico e os saldos.']);
             }
 
             // Uma compra de cartão ligada a uma fatura parcialmente paga ou paga
@@ -277,6 +274,15 @@ class FinancialMovementService
             if ($original->reversal_of_id || Movimento::query()->where('reversal_of_id', $original->id)->exists()) {
                 throw ValidationException::withMessages(['movement' => 'Este movimento já foi estornado.']);
             }
+            $openingDebtCard = $this->openingDebtCardForReversal($user, $original);
+            if ($openingDebtCard) {
+                $openingDebtCard = ContaFinanceira::query()->where('user_id', $user->id)->whereKey($openingDebtCard->id)->lockForUpdate()->firstOrFail();
+                $paidCents = $this->balances->toCents((string) ($openingDebtCard->opening_debt_paid ?? '0.00'));
+                $reversedCents = $this->balances->toCents((string) $original->amount);
+                if ($reversedCents > $paidCents) {
+                    throw ValidationException::withMessages(['movement' => 'O pagamento não pode ser estornado porque o saldo de dívida inicial já foi alterado. Revê a dívida do cartão antes de continuar.']);
+                }
+            }
             $payload = match ($original->type) {
                 'expense' => ['type' => 'income', 'source_account_id' => null, 'destination_account_id' => $original->source_account_id],
                 'income' => ['type' => 'expense', 'source_account_id' => $original->destination_account_id, 'destination_account_id' => null],
@@ -294,7 +300,16 @@ class FinancialMovementService
                 'is_historical' => (bool) $original->is_historical,
             ]));
             $before = $original->getAttributes();
-            $original->update(['status' => 'void']);
+            if ($openingDebtCard) {
+                $paidCents -= $this->balances->toCents((string) $original->amount);
+                $openingDebtCard->update(['opening_debt_paid' => number_format($paidCents / 100, 2, '.', '')]);
+                if (!$original->opening_debt_card_id) {
+                    $original->opening_debt_card_id = $openingDebtCard->id;
+                    $original->save();
+                }
+            }
+            // Ambos os lançamentos ficam liquidados: os seus efeitos opostos cancelam-se
+            // no saldo e a origem mantém-se auditável. O vínculo único impede novo estorno.
             $this->audit($user, $original->refresh(), 'reversed', $before, $original->getAttributes(), $reason);
             return $reversal->refresh();
         });
@@ -311,6 +326,27 @@ class FinancialMovementService
             throw ValidationException::withMessages(['account' => 'A moeda da conta não corresponde à moeda do utilizador.']);
         }
         return $account;
+    }
+
+    private function openingDebtCardForReversal(User $user, Movimento $movement): ?ContaFinanceira
+    {
+        if ($movement->opening_debt_card_id) {
+            return ContaFinanceira::query()->where('user_id', $user->id)->where('type', 'credit_card')->whereKey($movement->opening_debt_card_id)->first();
+        }
+
+        // Compatibilidade com pagamentos existentes anteriores à coluna tipada.
+        // Só inferir quando a descrição gerada e a conta de destino coincidirem exatamente.
+        if ($movement->type !== 'transfer' || $movement->invoice_id || !$movement->destination_account_id
+            || !str_starts_with((string) $movement->description, 'Pagamento de dívida inicial · ')) {
+            return null;
+        }
+
+        $card = ContaFinanceira::query()->where('user_id', $user->id)->whereKey($movement->destination_account_id)->where('type', 'credit_card')->first();
+        if (!$card || $movement->description !== 'Pagamento de dívida inicial · '.$card->name) {
+            return null;
+        }
+
+        return $card;
     }
 
     private function assertShape(string $type, ?ContaFinanceira $source, ?ContaFinanceira $destination, ?string $direction): void

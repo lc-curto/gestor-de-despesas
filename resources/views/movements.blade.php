@@ -19,11 +19,11 @@
     <div class="movements-period-summary-values">
         <div class="movements-period-metric">
             <span>Receitas</span>
-            <strong id="totalIncome" class="text-success">{{ number_format($totalReceitas, 2, ',', '.') }} {{ $moeda }}</strong>
+            <strong id="totalIncome" data-total="{{ $totalReceitas }}" class="text-success">{{ number_format($totalReceitas, 2, ',', '.') }} {{ $moeda }}</strong>
         </div>
         <div class="movements-period-metric">
             <span>Despesas</span>
-            <strong id="totalAmount" class="text-danger">{{ number_format($totalDespesas, 2, ',', '.') }} {{ $moeda }}</strong>
+            <strong id="totalAmount" data-total="{{ $totalDespesas }}" class="text-danger">{{ number_format($totalDespesas, 2, ',', '.') }} {{ $moeda }}</strong>
         </div>
         <div class="movements-period-metric movements-period-result">
             <span>Resultado</span>
@@ -119,21 +119,74 @@
                             <div class="form-text">Fixa é uma despesa estrutural ou regular, mesmo que o valor varie.</div>
                         </div>
                         <div id="dashboardPaymentFields" class="border-top pt-3 mb-3">
-                            <label class="form-label d-block">Condições de pagamento</label>
-                            <div class="d-flex flex-wrap gap-3 mb-3">
-                                <label class="form-check"><input class="form-check-input" type="radio" name="payment_condition" value="cash" checked> <span class="form-check-label">A pronto</span></label>
-                                <label class="form-check"><input class="form-check-input" type="radio" name="payment_condition" value="deferred"> <span class="form-check-label">A prazo</span></label>
-                                <label class="form-check"><input class="form-check-input" type="radio" name="payment_condition" value="installments"> <span class="form-check-label">Parcelado</span></label>
+                            <label class="form-label d-block fw-semibold mb-2">Modalidade de pagamento</label>
+                            <div class="payment-mode-grid mb-3" role="radiogroup" aria-label="Modalidade de pagamento">
+                                <label class="payment-mode-card">
+                                    <input class="visually-hidden" type="radio" name="payment_condition" value="cash" checked>
+                                    <span class="payment-mode-card-title">Pagamento único</span>
+                                    <span class="payment-mode-card-description">Pago numa única vez.</span>
+                                    <span class="payment-mode-card-selected" aria-hidden="true">Selecionado</span>
+                                </label>
+                                <label class="payment-mode-card">
+                                    <input class="visually-hidden" type="radio" name="payment_condition" value="deferred">
+                                    <span class="payment-mode-card-title">Pagamento com vencimento</span>
+                                    <span class="payment-mode-card-description">Tem uma data de vencimento.</span>
+                                    <span class="payment-mode-card-selected" aria-hidden="true">Selecionado</span>
+                                </label>
+                                <label class="payment-mode-card">
+                                    <input class="visually-hidden" type="radio" name="payment_condition" value="installments">
+                                    <span class="payment-mode-card-title">Pagamento parcelado</span>
+                                    <span class="payment-mode-card-description">Dividido em prestações.</span>
+                                    <span class="payment-mode-card-selected" aria-hidden="true">Selecionado</span>
+                                </label>
                             </div>
                             <div id="dashboardCommitmentOptions" class="row g-2" hidden>
-                                <div class="col-6"><label for="dashboardPaymentMethod" class="form-label">Método</label><select id="dashboardPaymentMethod" name="payment_method" class="form-select"><option value="">Selecionar</option><option value="cash">Dinheiro</option><option value="card">Cartão</option><option value="transfer">Transferência</option><option value="mbway">MB WAY</option><option value="other">Outro</option></select></div>
-                                <div class="col-6" id="dashboardInstallmentsField" hidden><label for="dashboardInstallments" class="form-label">Parcelas</label><input id="dashboardInstallments" name="installments_count" type="number" min="2" max="120" value="2" class="form-control"></div>
-                                <div class="col-6"><label for="dashboardDueDate" class="form-label">Primeiro vencimento</label><input id="dashboardDueDate" name="due_date" type="date" class="form-control" value="{{ now()->toDateString() }}"></div>
+                                <div class="col-12">
+                                    <label for="dashboardPaymentMethod" class="form-label">Método de pagamento previsto</label>
+                                    <select id="dashboardPaymentMethod" name="payment_method" class="form-select">
+                                        <option value="">Selecionar método</option>
+                                        <option value="cash">Dinheiro</option><option value="debit">Cartão de débito</option>
+                                        <option value="credit">Cartão de crédito</option><option value="transfer">Transferência bancária</option>
+                                        <option value="mbway">MB WAY</option><option value="direct_debit">Débito direto</option>
+                                    </select>
+                                </div>
+                                <div class="col-12" id="dashboardDueDateField">
+                                    <label for="dashboardDueDate" class="form-label">Data de vencimento</label>
+                                    <input id="dashboardDueDate" name="due_date" type="date" class="form-control" value="{{ now()->toDateString() }}">
+                                </div>
+                                <div class="col-6" id="dashboardInstallmentsField" hidden>
+                                    <label for="dashboardInstallments" class="form-label">Número de prestações</label>
+                                    <input id="dashboardInstallments" name="installments_count" type="number" min="2" max="120" value="2" class="form-control">
+                                </div>
+                                <div class="col-6" id="dashboardInstallmentFrequencyField" hidden>
+                                    <label for="dashboardInstallmentFrequency" class="form-label">Periodicidade</label>
+                                    <select id="dashboardInstallmentFrequency" name="installment_frequency" class="form-select">
+                                        <option value="weekly">Semanal</option><option value="biweekly">Quinzenal</option><option value="monthly" selected>Mensal</option>
+                                    </select>
+                                </div>
+                                <div class="col-12" id="dashboardInstallmentSchedule" hidden>
+                                    <div class="small fw-semibold mb-2">Calendário de vencimentos</div>
+                                    <div class="list-group list-group-flush" id="dashboardInstallmentScheduleList" aria-live="polite"></div>
+                                </div>
                             </div>
-                            <div id="dashboardPaidFields" class="mt-3" hidden><label class="form-label d-block">Já foi pago?</label><div class="d-flex gap-3"><label class="form-check"><input class="form-check-input" type="radio" name="paid_now" value="1"> <span class="form-check-label">Sim</span></label><label class="form-check"><input class="form-check-input" type="radio" name="paid_now" value="0" checked> <span class="form-check-label">Ainda não</span></label></div><div id="dashboardPaymentDetails" class="row g-2 mt-1" hidden><div class="col-6"><label for="dashboardPaymentAmount" class="form-label">Valor pago</label><input id="dashboardPaymentAmount" name="payment_amount" type="number" min="0.01" step="0.01" class="form-control"></div><div class="col-6"><label for="dashboardPaymentDate" class="form-label">Data</label><input id="dashboardPaymentDate" name="payment_date" type="date" class="form-control" value="{{ now()->toDateString() }}"></div><div class="col-12"><label for="dashboardPaymentAccount" class="form-label">Conta do pagamento</label><select id="dashboardPaymentAccount" name="payment_account_id" class="form-select"><option value="">Selecionar conta</option>@foreach ($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }} · {{ $account->currency }}</option>@endforeach</select></div></div></div>
+                            <div id="dashboardPaidFields" class="mt-3">
+                                <label class="form-label d-block fw-semibold">Estado do pagamento</label>
+                                <div class="payment-status-grid" role="radiogroup" aria-label="Estado do pagamento">
+                                    <label class="payment-status-option"><input class="form-check-input" type="radio" name="paid_now" value="0" checked><span>Ainda não paguei</span></label>
+                                    <label class="payment-status-option"><input class="form-check-input" type="radio" name="paid_now" value="partial"><span>Paguei uma parte</span></label>
+                                    <label class="payment-status-option"><input class="form-check-input" type="radio" name="paid_now" value="1"><span>Já paguei tudo</span></label>
+                                </div>
+                                <div id="dashboardPaymentDetails" class="row g-2 mt-2" hidden>
+                                    <div class="col-12" id="dashboardPaymentAmountField"><label for="dashboardPaymentAmount" class="form-label">Valor pago</label><input id="dashboardPaymentAmount" name="payment_amount" type="number" min="0.01" step="0.01" class="form-control"></div>
+                                    <div class="col-6"><label for="dashboardPaymentDate" class="form-label">Data do pagamento</label><input id="dashboardPaymentDate" name="payment_date" type="date" class="form-control" value="{{ now()->toDateString() }}"></div>
+                                    <div class="col-6"><label for="dashboardPaymentAccount" class="form-label">Conta utilizada</label><select id="dashboardPaymentAccount" name="payment_account_id" class="form-select"><option value="">Selecionar conta</option>@foreach ($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }} · {{ $account->currency }}</option>@endforeach</select></div>
+                                    <div class="col-12"><label for="dashboardActualPaymentMethod" class="form-label">Método utilizado</label><select id="dashboardActualPaymentMethod" name="actual_payment_method" class="form-select"><option value="">Selecionar método</option><option value="cash">Dinheiro</option><option value="debit">Cartão de débito</option><option value="credit">Cartão de crédito</option><option value="transfer">Transferência bancária</option><option value="mbway">MB WAY</option><option value="direct_debit">Débito direto</option></select></div>
+                                </div>
+                            </div>
+                            <p class="form-text mb-0 mt-2">A recorrência cria novas obrigações. O parcelamento divide o valor desta obrigação em prestações.</p>
                         </div>
                         <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-danger w-100" id="saveMovementButton" @disabled($accounts->isEmpty())>Guardar despesa</button>
+                            <button type="submit" class="btn btn-danger w-100" id="saveMovementButton" >Guardar despesa</button>
                             <button type="button" class="btn btn-outline-secondary d-none" id="cancelMovementEdit">Cancelar edição</button>
                         </div>
                     </form>
@@ -241,7 +294,17 @@
                                 </div>
                                 <div class="min-w-0">
                                     <h3 class="h6 fw-semibold mb-1 text-break">{{ $movimento->description }}</h3>
-                                    <p class="small text-secondary mb-0">{{ $categoriaLabel }} · {{ $dataMovimento->format('d/m/Y') }} @if($movimento->recurrence_id)<span class="badge text-bg-warning">Previsão</span>@endif @if($movimento->movement_status === 'pending')<span class="badge text-bg-warning">Pendente</span>@endif</p>
+                                    <div class="movement-badges d-flex flex-wrap align-items-center gap-1 mt-1">
+                                        @if($movimento->movement_status === 'settled')
+                                            <span class="badge rounded-pill text-bg-success">Pago</span>
+                                        @elseif($movimento->movement_status === 'partial' || $movimento->movement_status === 'partially_settled')
+                                            <span class="badge rounded-pill text-bg-info">Parcialmente pago</span>
+                                        @else
+                                            <span class="badge rounded-pill text-bg-warning">Pendente</span>
+                                        @endif
+                                        @if($movimento->recurrence_id)<span class="badge rounded-pill text-bg-light border text-secondary">Recorrente</span>@endif
+                                    </div>
+                                    <p class="small text-secondary mb-0">{{ $categoriaLabel }} · {{ $dataMovimento->format('d/m/Y') }}</p>
                                 </div>
                             </div>
                             <div class="expense-actions d-flex align-items-center justify-content-end gap-2">
@@ -313,9 +376,9 @@
                         </select>
                     </div>
                 </div>
-                <div class="modal-footer border-0 pt-0 d-grid gap-2">
-                    <button type="submit" class="btn btn-success w-100" id="settleMovementSubmit">Confirmar movimento</button>
-                    <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">Cancelar</button>
+                <div class="modal-footer border-0 pt-0 d-flex flex-row gap-2">
+                    <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success flex-fill" id="settleMovementSubmit">Confirmar movimento</button>
                 </div>
             </form>
         </div>
@@ -331,27 +394,27 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-secondary small mb-3" id="deleteMovementDescription"></p>
-                    <p class="alert alert-info small py-2" id="deleteMovementNote" hidden></p>
+                    <p class="text-secondary small mb-2" id="deleteMovementDescription"></p>
+                    <p class="alert alert-info small py-2 mb-2" id="deleteMovementNote" hidden></p>
                     <div id="deleteSingleOption" class="form-check border rounded-3 p-3">
                         <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeOnlySingle" value="only" checked>
-                        <label class="form-check-label fw-semibold" for="deleteScopeOnlySingle">Apenas este movimento</label>
+                        <label class="form-check-label fw-semibold" for="deleteScopeOnlySingle">Só este movimento</label>
                     </div>
-                    <div id="deleteRecurringOptions" hidden>
-                        <label class="form-check border rounded-3 p-3 mb-2" for="deleteScopeOnly">
-                            <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeOnly" value="only" checked>
-                            <span class="fw-semibold">Apenas este movimento</span>
-                            <span class="d-block small text-secondary mt-1">Os meses seguintes permanecem.</span>
+                    <div id="deleteRecurringOptions" class="d-grid gap-2" hidden>
+                        <label class="form-check border rounded-3 p-3 mb-0" for="deleteScopeOnly">
+                            <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeOnly" value="only">
+                            <span class="fw-semibold">Só este</span>
+                            <span class="d-block small text-secondary">Mantém os seguintes.</span>
                         </label>
-                        <label class="form-check border rounded-3 p-3 mb-2" for="deleteScopeFuture">
+                        <label class="form-check border rounded-3 p-3 mb-0" for="deleteScopeFuture">
                             <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeFuture" value="this_and_future">
-                            <span class="fw-semibold">Este e os próximos movimentos</span>
-                            <span class="d-block small text-secondary mt-1">Interrompe a recorrência e remove as previsões pendentes a partir desta ocorrência.</span>
+                            <span class="fw-semibold">Este e os seguintes</span>
+                            <span class="d-block small text-secondary">Para a recorrência a partir daqui.</span>
                         </label>
-                        <label class="form-check border rounded-3 p-3" for="deleteScopeAll">
+                        <label class="form-check border rounded-3 p-3 mb-0" for="deleteScopeAll">
                             <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeAll" value="all">
-                            <span class="fw-semibold">Todos os movimentos</span>
-                            <span class="d-block small text-secondary mt-1">Interrompe a recorrência e remove todas as ocorrências pendentes. Movimentos efetivados permanecem no histórico.</span>
+                            <span class="fw-semibold">Toda a recorrência</span>
+                            <span class="d-block small text-secondary">Remove previsões pendentes.</span>
                         </label>
                     </div>
                 </div>
@@ -366,6 +429,31 @@
 
 
 @endsection
+
+@push('styles')
+<style>
+    .payment-mode-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.65rem; }
+    .payment-status-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.5rem; }
+    .payment-status-option { display:flex; align-items:center; gap:.45rem; min-height:44px; padding:.65rem .7rem; border:1px solid var(--bs-border-color); border-radius:.75rem; font-size:.82rem; cursor:pointer; }
+    .payment-status-option:has(input:checked) { border-color:var(--bs-primary); background:var(--bs-primary-bg-subtle); }
+    @media(max-width:575.98px) { .payment-status-grid { grid-template-columns:1fr; } }
+    .payment-mode-card { position:relative; display:flex; min-height:112px; flex-direction:column; gap:.35rem; padding:.85rem; border:1px solid var(--bs-border-color); border-radius:.85rem; background:var(--bs-body-bg); cursor:pointer; transition:border-color .15s ease,background-color .15s ease,box-shadow .15s ease; }
+    .payment-mode-card:hover { border-color:var(--bs-primary); }
+    .payment-mode-card:focus-within { outline:2px solid var(--bs-primary); outline-offset:2px; }
+    .payment-mode-card.is-selected { border:2px solid var(--bs-primary); padding:calc(.85rem - 1px); background:var(--bs-primary-bg-subtle); }
+    .payment-mode-card-title { font-size:.9rem; font-weight:650; line-height:1.25; }
+    .payment-mode-card-description { color:var(--bs-secondary-color); font-size:.78rem; line-height:1.35; }
+    .payment-mode-card-selected { display:none; margin-top:auto; color:var(--bs-primary-text-emphasis); font-size:.7rem; font-weight:650; }
+    .payment-mode-card.is-selected .payment-mode-card-selected { display:block; }
+    @media (max-width:575.98px) {
+        .payment-mode-grid { grid-template-columns:1fr; gap:.5rem; }
+        .payment-mode-card { min-height:0; padding:.7rem .8rem; }
+        .payment-mode-card.is-selected { padding:calc(.7rem - 1px) calc(.8rem - 1px); }
+        .payment-mode-card-selected { position:absolute; right:.8rem; top:.8rem; margin:0; }
+        .payment-mode-card-description { padding-right:5.5rem; }
+    }
+</style>
+@endpush
 
 @push('scripts')
 <script>document.addEventListener('DOMContentLoaded',()=>{const c=document.getElementById('dashboardRecurrenceEnabled'),f=document.getElementById('dashboardRecurrenceFields');if(c&&f){const sync=()=>f.hidden=!c.checked;c.addEventListener('change',sync);sync();}});</script>

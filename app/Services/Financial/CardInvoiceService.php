@@ -138,6 +138,7 @@ class CardInvoiceService
                 'movement_date' => $date,
                 'source_account_id' => $source->id,
                 'destination_account_id' => $card->id,
+                'opening_debt_card_id' => $card->id,
             ]);
             $card->update(['opening_debt_paid' => number_format(($balances->toCents((string) ($card->opening_debt_paid ?? '0.00')) + $payment) / 100, 2, '.', '')]);
             return $movement;

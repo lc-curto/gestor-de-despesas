@@ -1,0 +1,133 @@
+<?php
+
+namespace App\Services\Financial;
+
+use App\Models\Fatura;
+use App\Models\Movimento;
+use App\Models\User;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+
+class FinancialProjectionService
+{
+    /**
+     * Produz o saldo inicial de caixa e os eventos que devem aparecer na rota.
+     * Cartões não entram no saldo de caixa; pagamentos de fatura saem da conta
+     * bancária e prestações futuras representam apenas o valor ainda em falta.
+     */
+    public function build(User $user, Carbon $rangeStart, Carbon $rangeEnd): array
+    {
+        $cashAccounts = $user->contasFinanceiras()
+            ->whereIn('type', ['bank', 'cash'])
+            ->where('is_operational', true)
+            ->where('status', 'active')
+            ->get(['id', 'type', 'opening_balance']);
+        $cashAccountIds = $cashAccounts->pluck('id')->all();
+        $accountTypes = $user->contasFinanceiras()
+            ->where('is_operational', true)
+            ->where('status', 'active')
+            ->pluck('type', 'id');
+
+        $openingBalance = (float) $cashAccounts->sum('opening_balance');
+        $prior = $user->movimentos()
+            ->where('status', 'settled')
+            ->where('is_historical', false)
+            ->where('movement_date', '<', $rangeStart->toDateString())
+            ->get(['type', 'amount', 'source_account_id', 'destination_account_id']);
+        $openingBalance += $prior->sum(fn (Movimento $movement) => $this->cashDelta($movement, $accountTypes));
+
+        $items = $user->movimentos()
+            ->with('categoria:id,name')
+            ->whereIn('type', ['income', 'expense', 'transfer'])
+            ->whereIn('status', ['pending', 'settled'])
+            ->whereBetween('movement_date', [$rangeStart->toDateString(), $rangeEnd->toDateString()])
+            ->orderBy('movement_date')
+            ->get(['id', 'type', 'status', 'description', 'notes', 'amount', 'movement_date', 'expense_behavior', 'category_id', 'source_account_id', 'destination_account_id', 'recurrence_id']);
+
+        $items = $items->map(function (Movimento $movement) use ($accountTypes): Movimento {
+            $movement->setAttribute('projection_delta', $this->cashDelta($movement, $accountTypes));
+            return $movement;
+        })->filter(fn (Movimento $movement) => (float) $movement->projection_delta !== 0.0)->values();
+
+        $installments = $user->parcelasDivida()
+            ->with('divida')
+            ->whereIn('status', ['pending', 'partial'])
+            ->whereBetween('due_date', [$rangeStart->toDateString(), $rangeEnd->toDateString()])
+            ->get();
+        foreach ($installments as $installment) {
+            $remaining = round((float) $installment->amount - (float) $installment->paid_amount, 2);
+            if ($remaining <= 0) continue;
+            $synthetic = $this->syntheticExpense(
+                'debt-'.$installment->id,
+                $installment->divida->name.' · Parcela '.$installment->installment_number.'/'.$installment->divida->installments_count,
+                $remaining,
+                $installment->due_date,
+                'variable'
+            );
+            $synthetic->setAttribute('projection_delta', -$remaining);
+            $items->push($synthetic);
+        }
+
+        $invoices = Fatura::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('due_date', [$rangeStart->toDateString(), $rangeEnd->toDateString()])
+            ->with(['conta', 'movimentos' => fn ($query) => $query->where('status', 'settled')])
+            ->get();
+        foreach ($invoices as $invoice) {
+            $total = (float) $invoice->movimentos->where('type', 'expense')->sum('amount');
+            $paid = (float) $invoice->movimentos->where('type', 'transfer')->sum('amount');
+            $remaining = round($total - $paid, 2);
+            if ($remaining <= 0) continue;
+            $synthetic = $this->syntheticExpense(
+                'invoice-'.$invoice->id,
+                'Pagamento de fatura · '.($invoice->conta?->name ?? 'Cartão'),
+                $remaining,
+                $invoice->due_date,
+                'fixed'
+            );
+            $synthetic->setAttribute('projection_delta', -$remaining);
+            $items->push($synthetic);
+        }
+
+        return [
+            'openingBalance' => round($openingBalance, 2),
+            'movements' => $items->sortBy('movement_date')->values(),
+        ];
+    }
+
+    private function cashDelta(Movimento $movement, Collection|array $accountTypes): float
+    {
+        $delta = 0.0;
+        $sourceType = $movement->source_account_id ? ($accountTypes[$movement->source_account_id] ?? null) : null;
+        $destinationType = $movement->destination_account_id ? ($accountTypes[$movement->destination_account_id] ?? null) : null;
+        $sourceIsCash = in_array($sourceType, ['bank', 'cash'], true);
+        $destinationIsCash = in_array($destinationType, ['bank', 'cash'], true);
+
+        if ($movement->type === 'income' && $destinationIsCash) $delta += (float) $movement->amount;
+        if ($movement->type === 'expense' && ($movement->status === 'pending' || $sourceIsCash)) $delta -= (float) $movement->amount;
+        if ($movement->type === 'transfer') {
+            if ($sourceIsCash) $delta -= (float) $movement->amount;
+            if ($destinationIsCash) $delta += (float) $movement->amount;
+        }
+
+        return round($delta, 2);
+    }
+
+    private function syntheticExpense(string $id, string $description, float $amount, Carbon|string $date, string $behavior): Movimento
+    {
+        $movement = new Movimento([
+            'id' => $id,
+            'type' => 'expense',
+            'status' => 'pending',
+            'description' => $description,
+            'amount' => number_format($amount, 2, '.', ''),
+            'movement_date' => Carbon::parse($date)->toDateString(),
+            'expense_behavior' => $behavior,
+            'source_account_id' => null,
+            'destination_account_id' => null,
+            'category_id' => null,
+            'recurrence_id' => null,
+        ]);
+        return $movement;
+    }
+}
