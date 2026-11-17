@@ -106,6 +106,35 @@
         if (accountField) accountField.required = needsAssignedAccount;
         if (methodField) methodField.required = isPaid;
         if (accountLabel) accountLabel.textContent = isExpense ? 'De onde saiu o dinheiro?' : 'Para onde entrou o dinheiro?';
+
+        // Tipos de conta e métodos permitidos têm de corresponder:
+        // banco -> débito/transferência/MB WAY/débito direto;
+        // dinheiro -> dinheiro; cartão -> cartão de crédito.
+        if (accountField) {
+            const accountOptions = [...accountField.options].filter((option) => option.value);
+            accountOptions.forEach((option) => {
+                const isCreditCard = option.dataset.accountType === 'credit_card';
+                option.hidden = !isExpense && isCreditCard;
+                option.disabled = !isExpense && isCreditCard;
+            });
+            if (accountField.selectedOptions[0]?.disabled) accountField.value = '';
+        }
+        if (methodField && accountField) {
+            const selectedType = accountField.selectedOptions[0]?.dataset.accountType || '';
+            [...methodField.options].forEach((option) => {
+                if (!option.value) {
+                    option.hidden = false;
+                    option.disabled = false;
+                    return;
+                }
+                const matchesAccount = option.dataset.accountType === selectedType;
+                option.hidden = !matchesAccount;
+                option.disabled = !matchesAccount;
+            });
+            if (methodField.selectedOptions[0]?.disabled) methodField.value = '';
+            if (selectedType === 'cash') methodField.value = 'cash';
+            if (selectedType === 'credit_card') methodField.value = 'credit';
+        }
         if (recurrenceFields) recurrenceFields.hidden = !recurrence?.checked;
         if (installmentsFields) installmentsFields.hidden = !installmentsToggle?.checked;
         if (dueField) dueField.hidden = !dueToggle?.checked;
@@ -1251,6 +1280,7 @@
 
     cancelButton?.addEventListener('click', cancelEdit);
     form.querySelectorAll('[name="paid_now"]').forEach((input) => input.addEventListener('change', refreshPaymentFields));
+    account?.addEventListener('change', refreshPaymentFields);
     ['dashboardDueDateEnabled', 'dashboardRecurrenceEnabled', 'dashboardInstallmentsEnabled'].forEach((id) => {
         document.getElementById(id)?.addEventListener('change', refreshPaymentFields);
     });
