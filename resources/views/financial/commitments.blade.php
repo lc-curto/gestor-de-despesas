@@ -163,7 +163,7 @@
                                 @php
                                     $remaining = max(0, (float) $installment->amount - (float) $installment->paid_amount);
                                     $paid = $installment->status === 'paid' || $remaining <= 0.009;
-                                    $overdue = !$paid && $installment->due_date->lt(today());
+                                    $overdue = $installment->status !== 'cancelled' && !$paid && $installment->due_date->lt(today());
                                     $label = $paid ? 'Paga' : ($installment->status === 'cancelled' ? 'Substituída' : ($overdue ? 'Atrasada' : ($installment->id === $next?->id ? 'Próxima' : 'Pendente')));
                                 @endphp
                                 <div class="commitment-installment">
