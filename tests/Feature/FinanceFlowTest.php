@@ -626,4 +626,65 @@ class FinanceFlowTest extends TestCase
             ->assertSee('Cartão encerrado')
             ->assertSee('125,00');
     }
+
+    public function test_editing_partially_settled_original_preserves_payments_and_rejects_amount_below_paid_total(): void
+    {
+        $user = User::factory()->create();
+        $accountId = $this->account($user, '10000.00');
+
+        $this->actingAs($user)->postJson(route('despesas.store'), [
+            'description' => 'Despesa original',
+            'amount' => '100.00',
+            'category' => 'casa',
+            'expense_date' => '2026-11-09',
+            'paid_now' => '0',
+        ])->assertOk();
+
+        $legacy = $user->despesas()->where('description', 'Despesa original')->firstOrFail();
+        $movement = $user->movimentos()
+            ->where('legacy_type', 'despesa')
+            ->where('legacy_id', $legacy->id)
+            ->firstOrFail();
+
+        app(\App\Services\Financial\FinancialMovementService::class)->settle($user, $movement, [
+            'source_account_id' => $accountId,
+            'amount' => '40.00',
+            'movement_date' => '2026-11-16',
+        ]);
+
+        $payment = $movement->settlements()->where('status', 'settled')->firstOrFail();
+
+        $payload = [
+            'description' => 'Despesa revista',
+            'amount' => '120.00',
+            'category' => 'casa',
+            'expense_date' => '2026-11-09',
+            'account_id' => $accountId,
+            'paid_now' => '0',
+        ];
+
+        $this->actingAs($user)->putJson(route('despesas.update', $legacy->id), $payload)->assertOk();
+
+        $updated = $movement->fresh();
+        $this->assertSame($movement->id, $updated->id);
+        $this->assertSame('120.00', $updated->amount);
+        $this->assertSame('partial', $updated->status);
+        $this->assertSame('Despesa revista', $updated->description);
+        $this->assertSame('40.00', $payment->fresh()->amount);
+        $this->assertSame(1, $updated->settlements()->where('status', 'settled')->count());
+        $this->assertSame('120.00', (string) $legacy->fresh()->amount);
+        $this->assertSame('9960.00', app(AccountBalanceService::class)->balance(
+            $user->contasFinanceiras()->whereKey($accountId)->firstOrFail()
+        ));
+
+        $this->actingAs($user)->putJson(route('despesas.update', $legacy->id), array_merge($payload, [
+            'amount' => '30.00',
+        ]))->assertUnprocessable()->assertJsonValidationErrors('amount');
+
+        $this->assertSame('120.00', $movement->fresh()->amount);
+        $this->assertSame('120.00', (string) $legacy->fresh()->amount);
+        $this->assertSame('40.00', $payment->fresh()->amount);
+        $this->assertSame(1, $movement->settlements()->where('status', 'settled')->count());
+    }
+
 }
