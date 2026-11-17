@@ -459,7 +459,7 @@ class FinancialCoreController extends Controller
     public function destroyRecurringOccurrence(Request $request, string $id, FinancialMovementService $service): JsonResponse
     {
         $data = $request->validate([
-            'scope' => ['required', Rule::in(['only', 'this_and_future', 'all'])],
+            'scope' => ['required', Rule::in(['only', 'this_and_future'])],
         ]);
 
         $user = $request->user();
@@ -490,8 +490,6 @@ class FinancialCoreController extends Controller
                                 ->whereDate('movement_date', '>=', $occurrenceDate);
                         });
                 });
-            } else {
-                $rule->update(['is_active' => false]);
             }
 
             // O estado pendente é o critério de exclusão. Um registo de auditoria
