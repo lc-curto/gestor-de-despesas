@@ -186,13 +186,11 @@ class FinancialAcceptanceTest extends TestCase
             'payment_date' => '2026-11-16',
         ]);
 
-        $this->assertDatabaseHas('movimentos', [
-            'debt_id' => $debt->id,
-            'installment_id' => $installment->id,
-            'amount' => '20.00',
-            'type' => 'expense',
-            'status' => 'settled',
-        ]);
+        $forecast = $user->movimentos()->where('installment_id', $installment->id)->firstOrFail();
+        $this->assertSame('50.00', (string) $forecast->amount);
+        $this->assertSame('partial', $forecast->fresh()->status);
+        $this->assertTrue((bool) $forecast->fresh()->is_settlement_parent);
+        $this->assertSame('20.00', number_format((float) $forecast->settlements()->where('status', 'settled')->sum('amount'), 2, '.', ''));
         $this->assertDatabaseMissing('movimentos', ['amount' => '100.00']);
     }
 
