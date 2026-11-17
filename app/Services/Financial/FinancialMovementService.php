@@ -349,6 +349,22 @@ class FinancialMovementService
         });
     }
 
+    /** Anula previsões antigas substituídas por uma renegociação, sem tocar em pagamentos liquidados. */
+    public function voidRenegotiatedCommitmentForecast(User $user, Divida $debt, Movimento $movement): Movimento
+    {
+        return DB::transaction(function () use ($user, $debt, $movement): Movimento {
+            $lockedDebt = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
+            $locked = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
+            if (in_array($lockedDebt->status, ['cancelled', 'paid'], true) || $locked->status !== 'pending' || $locked->debt_id !== $lockedDebt->id) {
+                throw ValidationException::withMessages(['movement' => 'Não é possível substituir esta previsão. Atualiza o parcelamento.']);
+            }
+            $before = $locked->getAttributes();
+            $locked->update(['status' => 'void']);
+            $this->audit($user, $locked, 'voided', $before, $locked->getAttributes(), 'Previsão substituída por renegociação do parcelamento.');
+            return $locked->refresh();
+        });
+    }
+
     /** Uso interno: só anula previsões de um parcelamento cancelado na transação. */
     public function voidCancelledCommitmentForecast(User $user, Divida $debt, Movimento $movement): Movimento
     {
