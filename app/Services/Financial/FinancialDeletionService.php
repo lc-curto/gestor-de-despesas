@@ -135,7 +135,7 @@ class FinancialDeletionService
             $operationId = $this->startOperation($user, 'legacy_'.$type, $id, 'Registo legacy eliminado pelo utilizador.');
             $before = $record->getAttributes();
             $record->delete();
-            $this->recordItem($user, $operationId, ucfirst($type), $id, 'soft_deleted', $before, $record->getAttributes());
+            $this->recordItem($user, $operationId, ucfirst($type), $id, 'hard_deleted', $before, null);
             DB::table('deletion_operations')->where('id', $operationId)->update([
                 'status' => 'completed',
                 'updated_at' => now(),
@@ -318,14 +318,14 @@ class FinancialDeletionService
                     if ($legacy) {
                         $beforeLegacy = $legacy->getAttributes();
                         $legacy->delete();
-                        $this->recordItem($user, $operationId, 'Despesa', $legacy->id, 'soft_deleted', $beforeLegacy, $legacy->getAttributes());
+                        $this->recordItem($user, $operationId, 'Despesa', $legacy->id, 'hard_deleted', $beforeLegacy, null);
                     }
                 } elseif ($locked->legacy_type === 'receita') {
                     $legacy = Receita::query()->where('user_id', $user->id)->whereKey($locked->legacy_id)->first();
                     if ($legacy) {
                         $beforeLegacy = $legacy->getAttributes();
                         $legacy->delete();
-                        $this->recordItem($user, $operationId, 'Receita', $legacy->id, 'soft_deleted', $beforeLegacy, $legacy->getAttributes());
+                        $this->recordItem($user, $operationId, 'Receita', $legacy->id, 'hard_deleted', $beforeLegacy, null);
                     }
                 }
             }
