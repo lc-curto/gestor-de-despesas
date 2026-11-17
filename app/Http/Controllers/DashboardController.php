@@ -28,6 +28,7 @@ class DashboardController extends Controller
             ? $request->query('tipo') : 'todos';
 
         $categoriasDespesa = $user->categorias()->where('type', 'despesa')->orderBy('name')->pluck('name', 'id')->all();
+        $expenseCategoryBehaviors = $user->categorias()->where('type', 'despesa')->pluck('expense_behavior', 'id')->all();
         $categoriasReceita = $user->categorias()->where('type', 'receita')->orderBy('name')->pluck('name', 'id')->all();
         $categorias = $categoriasDespesa + $categoriasReceita;
         $requestedCategory = (string) $request->query('categoria', 'all');
