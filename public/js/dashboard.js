@@ -122,7 +122,7 @@
             installmentsToggle.checked = false;
             if (installmentsFields) installmentsFields.hidden = true;
         }
-        if (condition) condition.value = installmentsToggle?.checked ? 'installments' : (dueToggle?.checked ? 'deferred' : 'cash');
+        if (condition) condition.value = recurrence?.checked ? 'cash' : (installmentsToggle?.checked ? 'installments' : (dueToggle?.checked ? 'deferred' : 'cash'));
         renderInstallmentSchedule();
     }
 
@@ -559,8 +559,8 @@
         expenseButton.setAttribute('aria-pressed', String(!income));
         incomeButton.setAttribute('aria-pressed', String(income));
 
-        title.textContent = (isEditing ? 'Editar ' : 'Adicionar ') + (income ? 'receita' : 'despesa');
-        saveButton.textContent = (isEditing ? 'Atualizar ' : 'Guardar ') + (income ? 'receita' : 'despesa');
+        title.textContent = isEditing ? ('Editar ' + (income ? 'receita' : 'despesa')) : 'Novo movimento';
+        saveButton.textContent = isEditing ? ('Atualizar ' + (income ? 'receita' : 'despesa')) : 'Guardar movimento';
         saveButton.className = 'btn w-100 ' + (income ? 'btn-success' : 'btn-danger');
         date.name = income ? 'income_date' : 'expense_date';
         form.action = isEditing
