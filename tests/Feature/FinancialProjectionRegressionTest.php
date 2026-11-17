@@ -204,7 +204,9 @@ class FinancialProjectionRegressionTest extends TestCase
             'account_id' => $bank->id, 'amount' => '12.00', 'payment_date' => '2026-11-30',
         ]);
         $this->assertSame('partial', $part->fresh()->status);
-        $this->assertSame(1, $user->movimentos()->where('installment_id', $part->id)->where('status', 'settled')->count());
+        $forecast = $user->movimentos()->where('installment_id', $part->id)->firstOrFail();
+        $this->assertSame('partial', $forecast->status);
+        $this->assertSame('12.00', number_format((float) $forecast->settlements()->where('status', 'settled')->sum('amount'), 2, '.', ''));
         $this->assertSame(0, $user->movimentos()->where('installment_id', $part->id)->where('status', 'pending')->count());
 
         $result = $this->project($user);
@@ -243,8 +245,12 @@ class FinancialProjectionRegressionTest extends TestCase
         $this->assertSame(100.0, $result['openingBalance']);
         $this->assertCount(2, $result['movements']);
         $this->assertSame(-30.0, $result['movements']->sum('projection_delta'));
-        $this->assertSame(-18.0, $result['movements']->firstWhere('id', $forecast->id)->projection_delta);
-        $this->assertNull($result['movements']->firstWhere('id', 'debt-'.$part->id));
+        $effective = $result['movements']->firstWhere('settles_movement_id', $forecast->id);
+        $remaining = $result['movements']->firstWhere('id', 'debt-'.$part->id);
+        $this->assertNotNull($effective);
+        $this->assertNotNull($remaining);
+        $this->assertSame(-12.0, $effective->projection_delta);
+        $this->assertSame(-18.0, $remaining->projection_delta);
         $this->assertSame('88.00', app(AccountBalanceService::class)->balance($bank));
         $this->assertSame(88.0, $this->project($user, '2026-12-03', '2026-12-31')['openingBalance']);
     }
