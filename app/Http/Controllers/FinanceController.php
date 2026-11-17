@@ -325,7 +325,7 @@ class FinanceController extends Controller
         if ($tipo !== 'despesa') unset($data['due_date']);
         $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
 
-        DB::transaction(function () use ($request, $service, $invoices, $tipo, $data, $accountId, $legacyType, $expenseBehavior, $isPendingExpense, $notes): void {
+        DB::transaction(function () use ($request, $service, $invoices, $tipo, $data, $accountId, $legacyType, $expenseBehavior, $isPendingExpense, $notes, $actualPaymentMethod): void {
             $legacy = $this->query($request)->create($data);
             $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId, 'expense_behavior' => $expenseBehavior, 'notes' => $notes, 'actual_payment_method' => $actualPaymentMethod]), $legacyType, $legacy->id);
             if ($isPendingExpense) {
