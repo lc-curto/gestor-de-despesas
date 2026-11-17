@@ -99,7 +99,7 @@ class CardIntegrityRegressionTest extends TestCase
         $this->assertBalance($card, '-25.00');
     }
 
-    public function test_invoice_purchase_and_partial_or_full_payments_cannot_be_reversed_or_deleted_in_isolation(): void
+    public function test_invoice_purchase_cannot_be_reversed_but_linked_payments_can_be_reversed_and_repaid(): void
     {
         $user = User::factory()->create();
         $bank = $this->bank($user);
@@ -112,27 +112,32 @@ class CardIntegrityRegressionTest extends TestCase
         $this->assertSame('partial', $invoice->fresh()->status);
 
         $this->actingAs($user)->postJson('/api/financial/movements/'.$purchase->id.'/reverse')->assertUnprocessable();
-        $this->postJson('/api/financial/movements/'.$partial->id.'/reverse')->assertUnprocessable();
+        $this->postJson('/api/financial/movements/'.$partial->id.'/reverse')->assertOk();
         $this->deleteJson('/api/financial/movements/'.$purchase->id)->assertUnprocessable();
         $this->deleteJson('/api/financial/movements/'.$partial->id)->assertUnprocessable();
+
         $listed = $invoices->listInvoices($user)->items()[0];
         $this->assertEquals(100, $listed->total_amount);
-        $this->assertEquals(35.25, $listed->paid_amount);
-        $this->assertSame('64.75', $listed->remaining_amount);
-        $this->assertSame('partial', $listed->display_status);
-        $this->assertBalance($card, '-64.75');
-        $this->assertBalance($bank, '464.75');
-        $this->assertSame(3, $user->movimentos()->count());
+        $this->assertEquals(0, $listed->paid_amount);
+        $this->assertSame('100.00', $listed->remaining_amount);
+        $this->assertSame('open', $listed->display_status);
+        $this->assertBalance($card, '-100.00');
+        $this->assertBalance($bank, '500.00');
 
-        $this->assertRejected(fn () => $invoices->pay($user, $invoice, $bank->id, '2026-11-17', '64.76'), 'amount', 'pendente');
+        $this->assertRejected(fn () => $invoices->pay($user, $invoice, $bank->id, '2026-11-17', '100.01'), 'amount', 'pendente');
         $final = $invoices->pay($user, $invoice, $bank->id, '2026-11-17');
-        $this->assertSame('64.75', (string) $final->amount);
-        $this->assertSame($invoice->id, $final->invoice_id);
+        $this->assertSame('100.00', (string) $final->amount);
         $this->assertSame('paid', $invoice->fresh()->status);
-        $this->postJson('/api/financial/movements/'.$final->id.'/reverse')->assertUnprocessable();
-        $this->postJson('/api/financial/movements/'.$partial->id.'/reverse')->assertUnprocessable();
+
+        $this->postJson('/api/financial/movements/'.$final->id.'/reverse')->assertOk();
+        $this->assertSame('open', $invoice->fresh()->status);
+        $this->assertBalance($bank, '500.00');
+        $this->assertBalance($card, '-100.00');
         $this->deleteJson('/api/financial/movements/'.$final->id)->assertUnprocessable();
-        $this->assertRejected(fn () => $invoices->pay($user, $invoice, $bank->id, '2026-11-17'), 'invoice', 'totalmente paga');
+
+        $repaid = $invoices->pay($user, $invoice, $bank->id, '2026-11-17');
+        $this->assertSame('100.00', (string) $repaid->amount);
+        $this->assertSame('paid', $invoice->fresh()->status);
         $listed = $invoices->listInvoices($user)->items()[0];
         $this->assertEquals(100, $listed->total_amount);
         $this->assertEquals(100, $listed->paid_amount);
@@ -140,8 +145,8 @@ class CardIntegrityRegressionTest extends TestCase
         $this->assertSame('paid', $listed->display_status);
         $this->assertBalance($bank, '400.00');
         $this->assertBalance($card, '0.00');
-        $this->assertSame(4, $user->movimentos()->count());
-        $this->assertSame(0, $user->movimentos()->whereNotNull('reversal_of_id')->count());
+        $this->assertSame(7, $user->movimentos()->count());
+        $this->assertSame(2, $user->movimentos()->whereNotNull('reversal_of_id')->count());
     }
 
     public function test_generic_transfers_to_and_from_cards_are_rejected_even_with_forged_payment_metadata(): void
