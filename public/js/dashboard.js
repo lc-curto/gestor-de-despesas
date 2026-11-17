@@ -154,8 +154,7 @@
         const remainder = amount % count;
         const start = new Date(dueValue + 'T12:00:00');
         const formatter = new Intl.DateTimeFormat('pt-PT');
-        const rows = [];
-        for (let index = 0; index < count; index++) {
+        const dueDateAt = (index) => {
             const due = new Date(start);
             if (frequency === 'weekly') due.setDate(due.getDate() + index * 7);
             else if (frequency === 'biweekly') due.setDate(due.getDate() + index * 14);
@@ -166,19 +165,19 @@
                 const lastDay = new Date(due.getFullYear(), due.getMonth() + 1, 0).getDate();
                 due.setDate(Math.min(day, lastDay));
             }
-            const cents = base + (index < remainder ? 1 : 0);
-            const row = document.createElement('div');
-            row.className = 'list-group-item d-flex justify-content-between align-items-center px-0 py-2 bg-transparent';
-            const label = document.createElement('span');
-            label.className = 'small';
-            label.textContent = 'Prestação ' + (index + 1) + ' · ' + formatter.format(due);
-            const value = document.createElement('strong');
-            value.className = 'small';
-            value.textContent = formatCurrency(cents / 100, cfg.currency || 'EUR');
-            row.append(label, value);
-            rows.push(row);
-        }
-        list.replaceChildren(...rows);
+            return due;
+        };
+        const firstDate = dueDateAt(0);
+        const lastDate = dueDateAt(count - 1);
+        const firstCents = base + (remainder > 0 ? 1 : 0);
+        const lastCents = base + (count - 1 < remainder ? 1 : 0);
+        const summary = document.createElement('div');
+        summary.className = 'small text-secondary';
+        summary.innerHTML = '<strong>' + count + ' prestações</strong> · ' + formatter.format(firstDate) + ' a ' + formatter.format(lastDate)
+            + '<br>Valor: ' + formatCurrency(firstCents / 100, cfg.currency || 'EUR')
+            + (lastCents !== firstCents ? ' (última: ' + formatCurrency(lastCents / 100, cfg.currency || 'EUR') + ')' : '')
+            + ' · Total: ' + formatCurrency(amount / 100, cfg.currency || 'EUR');
+        list.replaceChildren(summary);
     }
 
     try {
