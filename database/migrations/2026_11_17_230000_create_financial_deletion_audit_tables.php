@@ -37,7 +37,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign(['user_id', 'deletion_operation_id'], 'deletion_items_user_operation_fk')
-                ->references(['user_id', 'id'])->on('deletion_operations')->restrictOnDelete();
+                ->references(['user_id', 'id'])->on('deletion_operations')->cascadeOnDelete();
             $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
             $table->index(['user_id', 'entity_type', 'entity_id'], 'deletion_items_entity_index');
         });
