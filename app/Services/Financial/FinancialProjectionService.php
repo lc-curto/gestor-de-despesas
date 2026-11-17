@@ -43,6 +43,20 @@ class FinancialProjectionService
             ->whereIn('status', ['pending', 'partial', 'settled'])
             ->where('is_historical', false)
             ->where('is_settlement_parent', false)
+            // Previsões associadas a compromissos arquivados ou encerrados
+            // não entram na Rota Financeira. Liquidações efetivas permanecem
+            // visíveis porque são eventos independentes, sem debt_id.
+            ->where(function ($query) {
+                $query->whereNull('debt_id')
+                    ->orWhereExists(function ($subquery) {
+                        $subquery->selectRaw('1')
+                            ->from('dividas')
+                            ->whereColumn('dividas.id', 'movimentos.debt_id')
+                            ->whereColumn('dividas.user_id', 'movimentos.user_id')
+                            ->whereNull('dividas.archived_at')
+                            ->whereNotIn('dividas.status', ['cancelled', 'paid']);
+                    });
+            })
             ->where('movement_date', '>=', $rangeStart->toDateString())
             ->where('movement_date', '<', $rangeEndExclusive)
             ->orderBy('movement_date')
