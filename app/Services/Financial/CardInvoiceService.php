@@ -367,8 +367,8 @@ class CardInvoiceService
         });
     }
 
-    public function pay(User $user, Fatura $invoice, string $sourceAccountId, string $date, ?string $requestedAmount = null): Movimento
+    public function pay(User $user, Fatura $invoice, string $sourceAccountId, string $date, ?string $requestedAmount = null, ?array $allocation = null): Movimento
     {
-        return $this->movements->payCardInvoice($user, $invoice, $sourceAccountId, $date, $requestedAmount);
+        return $this->movements->payCardInvoice($user, $invoice, $sourceAccountId, $date, $requestedAmount, $allocation);
     }
 }
