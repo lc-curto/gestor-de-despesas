@@ -40,26 +40,25 @@ class FinancialCommitmentsPageController extends Controller
         $invoicePage = $invoices->listInvoices($user);
         $commitments = $user->dividas()
             ->whereIn('payment_condition', ['deferred', 'installments'])
+            ->where(fn ($query) => $query->whereNull('payment_method')->orWhere('payment_method', '!=', 'credit'))
             ->where('status', '!=', 'cancelled')
             ->with(['parcelas' => fn ($query) => $query->orderBy('due_date')])
             ->orderBy('due_date')
             ->paginate(20, ['*'], 'commitments');
 
-        $invoiceOpen = (float) $invoicePage->getCollection()->sum('remaining_amount');
         $commitmentOpen = (float) $user->parcelasDivida()
             ->whereHas('divida', fn ($query) => $query
                 ->whereIn('payment_condition', ['deferred', 'installments'])
+                ->where(fn ($query) => $query->whereNull('payment_method')->orWhere('payment_method', '!=', 'credit'))
                 ->where('status', '!=', 'cancelled'))
             ->where('status', '!=', 'paid')
             ->selectRaw('COALESCE(SUM(amount - paid_amount), 0) as remaining')
             ->value('remaining');
 
-        $invoiceOverdue = (float) $invoicePage->getCollection()
-            ->filter(fn ($invoice) => $invoice->display_status === 'overdue')
-            ->sum('remaining_amount');
         $commitmentOverdue = (float) $user->parcelasDivida()
             ->whereHas('divida', fn ($query) => $query
                 ->whereIn('payment_condition', ['deferred', 'installments'])
+                ->where(fn ($query) => $query->whereNull('payment_method')->orWhere('payment_method', '!=', 'credit'))
                 ->where('status', '!=', 'cancelled'))
             ->where('status', '!=', 'paid')
             ->whereDate('due_date', '<', today())
@@ -67,9 +66,9 @@ class FinancialCommitmentsPageController extends Controller
             ->value('remaining');
 
         $summary = [
-            'open' => $invoiceOpen + $commitmentOpen,
-            'overdue' => $invoiceOverdue + $commitmentOverdue,
-            'upcoming' => max(0, $invoiceOpen + $commitmentOpen - $invoiceOverdue - $commitmentOverdue),
+            'open' => $commitmentOpen,
+            'overdue' => $commitmentOverdue,
+            'upcoming' => max(0, $commitmentOpen - $commitmentOverdue),
         ];
 
         return view('financial.commitments', compact(

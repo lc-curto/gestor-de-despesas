@@ -116,6 +116,7 @@ class FinancialMovementService
                 'source_account_id' => $source?->id,
                 'destination_account_id' => $destination?->id,
                 'invoice_id' => $accounts['invoice_id'] ?? $locked->invoice_id,
+                'movement_date' => $accounts['movement_date'] ?? $locked->movement_date,
                 'requires_account_assignment' => false,
                 'status' => 'settled',
                 'settled_at' => now(),

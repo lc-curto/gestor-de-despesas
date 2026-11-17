@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
-@section('title', 'Compromissos')
+@section('title', 'Parcelamentos')
 
 @section('content')
 <div class="app-content commitments-page">
     <header class="page-heading commitments-heading mb-4 d-flex flex-wrap justify-content-between align-items-end gap-3">
         <div>
-            <h1 class="h2 fw-bold mb-1">Compromissos</h1>
-            <p class="text-secondary mb-0">Acompanha faturas, compras a prazo e parcelamentos.</p>
+            <h1 class="h2 fw-bold mb-1">Parcelamentos</h1>
+            <p class="text-secondary mb-0">Acompanha compras parceladas não relacionadas com cartões.</p>
         </div>
     </header>
 
@@ -30,11 +30,6 @@
 
     @php
         $paymentItems = collect();
-        foreach ($invoicePage as $invoice) {
-            if ((float) $invoice->remaining_amount > 0) {
-                $paymentItems->push((object) ['kind' => 'invoice', 'due_date' => $invoice->due_date, 'record' => $invoice]);
-            }
-        }
         foreach ($commitments as $commitment) {
             foreach ($commitment->parcelas as $installment) {
                 $remaining = max(0, (float) $installment->amount - (float) $installment->paid_amount);
@@ -49,7 +44,6 @@
         if ($filter === 'upcoming') $paymentItems = $paymentItems->filter(fn ($item) => !\Illuminate\Support\Carbon::parse($item->due_date)->lt(today()))->values();
         if ($filter === 'paid') $paymentItems = collect();
         $historyItems = collect();
-        foreach ($invoicePage as $invoice) if ((float) ($invoice->paid_amount ?? 0) > 0) $historyItems->push((object) ['name' => ($invoice->conta->name ?? 'Cartão').' · '.$invoice->reference_month->format('m/Y'), 'date' => $invoice->updated_at, 'amount' => (float) $invoice->paid_amount, 'detail' => 'Pagamento de fatura']);
         foreach ($commitments as $commitment) foreach ($commitment->parcelas as $part) if ((float) $part->paid_amount > 0) $historyItems->push((object) ['name' => $commitment->name.' · Parcela '.$part->installment_number, 'date' => $part->updated_at, 'amount' => (float) $part->paid_amount, 'detail' => 'Pagamento de prestação']);
         $historyItems = $historyItems->sortByDesc('date')->values();
         $statusLabels = ['open' => 'Aberta', 'closed' => 'Fechada', 'partial' => 'Parcialmente paga', 'paid' => 'Paga', 'overdue' => 'Em atraso'];
@@ -59,8 +53,8 @@
     <section class="commitment-section commitment-payments-section mb-4 commitment-compact-list" aria-labelledby="paymentsSectionTitle">
         <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
             <div>
-                <h2 class="h5 fw-bold mb-1" id="paymentsSectionTitle">Próximos pagamentos</h2>
-                <p class="small text-secondary mb-0">Faturas e prestações ordenadas por vencimento.</p>
+                <h2 class="h5 fw-bold mb-1" id="paymentsSectionTitle">Próximas prestações</h2>
+                <p class="small text-secondary mb-0">Prestações pendentes ordenadas por vencimento.</p>
             </div>
             <span class="badge text-bg-secondary">{{ $paymentItems->count() }}</span>
         </div>
@@ -136,7 +130,6 @@
             </div>
         @endforelse
         <div class="d-flex flex-wrap gap-3 mt-2 small">
-            {{ $invoicePage->links() }}
             {{ $commitments->links() }}
         </div>
     </section>
@@ -149,7 +142,7 @@
     </section>
 
     <section class="commitment-section mb-4" aria-labelledby="manageSectionTitle">
-        <h2 class="h5 fw-bold mb-1" id="manageSectionTitle">Gerir compromissos</h2><p class="small text-secondary">Editar descrição e próximo vencimento ou encerrar, mantendo os pagamentos registados.</p>
+        <h2 class="h5 fw-bold mb-1" id="manageSectionTitle">Gerir parcelamentos</h2><p class="small text-secondary">Editar a descrição e a próxima prestação ou encerrar o parcelamento.</p>
         @foreach($commitments as $commitment)
             @if(!in_array($commitment->status,['paid','cancelled'],true))
                 <article class="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom py-3"><div><strong>{{ $commitment->name }}</strong><div class="small text-secondary">{{ $commitment->payment_condition === 'installments' ? $commitment->installments_count.' prestações' : 'Pagamento único' }} · {{ number_format((float)$commitment->total_amount,2,',','.') }} {{ auth()->user()->currency }}</div></div>

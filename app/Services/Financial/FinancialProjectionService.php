@@ -51,7 +51,14 @@ class FinancialProjectionService
 
         $installments = $user->parcelasDivida()
             ->with('divida')
+            ->whereHas('divida', fn ($query) => $query
+                ->where('status', '!=', 'cancelled')
+                ->where(fn ($query) => $query->whereNull('payment_method')->orWhere('payment_method', '!=', 'credit')))
             ->whereIn('status', ['pending', 'partial'])
+            ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('movimentos as linked_movements')
+                ->whereColumn('linked_movements.installment_id', 'parcelas_divida.id')
+                ->where('linked_movements.user_id', $user->id)
+                ->whereIn('linked_movements.status', ['pending', 'settled']))
             ->whereBetween('due_date', [$rangeStart->toDateString(), $rangeEnd->toDateString()])
             ->get();
         foreach ($installments as $installment) {

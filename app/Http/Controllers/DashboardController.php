@@ -69,12 +69,19 @@ class DashboardController extends Controller
         $invoicePage = $invoices->listInvoices($user);
         $openInvoiceTotal = (float) $invoicePage->getCollection()->sum('remaining_amount');
         $openInstallmentTotal = (float) $user->parcelasDivida()
-            ->where('status', '!=', 'paid')
+            ->whereIn('status', ['pending', 'partial'])
+            ->whereHas('divida', fn ($query) => $query
+                ->where('status', '!=', 'cancelled')
+                ->where(fn ($query) => $query->whereNull('payment_method')->orWhere('payment_method', '!=', 'credit')))
             ->selectRaw('COALESCE(SUM(amount - paid_amount), 0) as remaining')
             ->value('remaining');
         $pendingPaymentTotal = $openInvoiceTotal + $openInstallmentTotal;
         $pendingPaymentCount = $invoicePage->getCollection()->filter(fn ($invoice) => (float) $invoice->remaining_amount > 0)->count()
-            + $user->parcelasDivida()->where('status', '!=', 'paid')->count();
+            + $user->parcelasDivida()->whereIn('status', ['pending', 'partial'])
+                ->whereHas('divida', fn ($query) => $query
+                    ->where('status', '!=', 'cancelled')
+                    ->where(fn ($query) => $query->whereNull('payment_method')->orWhere('payment_method', '!=', 'credit')))
+                ->count();
 
         // A primeira página carrega os dois tipos de movimento. O filtro de tipo é
         // aplicado no cliente sem uma segunda requisição ao abrir o Dashboard.

@@ -82,7 +82,7 @@
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label for="movementAccount" class="form-label">Conta</label>
+                            <label for="movementAccount" class="form-label">Conta de saída</label>
                             <select class="form-select" id="movementAccount" name="account_id" required>
                                 <option value="">Selecionar conta</option>
                                 @foreach ($accounts as $account)
@@ -146,7 +146,7 @@
                                     <select id="dashboardPaymentMethod" name="payment_method" class="form-select">
                                         <option value="">Selecionar método</option>
                                         <option value="cash">Dinheiro</option><option value="debit">Cartão de débito</option>
-                                        <option value="credit">Cartão de crédito</option><option value="transfer">Transferência bancária</option>
+                                        <option value="credit">Cartão de crédito (regista em Cartões)</option><option value="transfer">Transferência bancária</option>
                                         <option value="mbway">MB WAY</option><option value="direct_debit">Débito direto</option>
                                     </select>
                                 </div>

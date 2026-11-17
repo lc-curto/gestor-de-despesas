@@ -3,6 +3,7 @@
 namespace App\Services\Financial;
 
 use App\Models\Divida;
+use App\Models\Movimento;
 use App\Models\ParcelaDivida;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -40,6 +41,19 @@ class FinancialCommitmentService
                     'principal_amount' => number_format($amountCents / 100, 2, '.', ''),
                     'interest_amount' => '0.00', 'paid_amount' => '0.00', 'status' => 'pending',
                 ]);
+                if (($data['payment_method'] ?? null) !== 'credit') {
+                    $installment = ParcelaDivida::query()->where('user_id', $user->id)->where('debt_id', $debt->id)->where('installment_number', $i)->firstOrFail();
+                    $this->movements->createPending($user, [
+                        'type' => 'expense',
+                        'description' => $debt->name.' · Parcela '.$i.'/'.$count,
+                        'amount' => number_format($amountCents / 100, 2, '.', ''),
+                        'movement_date' => $installment->due_date,
+                        'source_account_id' => $data['account_id'] ?? null,
+                        'category_id' => $data['category_id'] ?? null,
+                        'debt_id' => $debt->id,
+                        'installment_id' => $installment->id,
+                    ]);
+                }
             }
             return $debt->load('parcelas');
         });
@@ -78,6 +92,8 @@ class FinancialCommitmentService
             $locked = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
             if (in_array($locked->status, ['cancelled', 'paid'], true)) throw ValidationException::withMessages(['commitment' => 'Este compromisso já está encerrado.']);
             $locked->parcelas()->whereIn('status', ['pending', 'partial'])->update(['status' => 'cancelled']);
+            Movimento::query()->where('user_id', $user->id)->where('debt_id', $locked->id)->where('status', 'pending')->get()
+                ->each(fn (Movimento $movement) => $this->movements->voidPending($user, $movement, 'Previsão anulada ao encerrar o parcelamento.'));
             $locked->update(['status' => 'cancelled']);
             return $locked->refresh();
         });
@@ -101,17 +117,21 @@ class FinancialCommitmentService
             $remaining = round((float) $locked->amount - (float) $locked->paid_amount, 2);
             $amount = round((float) ($data['amount'] ?? $remaining), 2);
             if ($remaining <= 0 || $amount <= 0 || $amount > $remaining) throw ValidationException::withMessages(['amount' => 'O valor do pagamento excede o saldo da parcela.']);
-            $movementData = [
-                'description' => 'Pagamento: ' . $lockedDebt->name,
-                'amount' => number_format($amount, 2, '.', ''),
-                'movement_date' => $data['payment_date'] ?? now()->toDateString(),
-            ];
-            $this->movements->create($user, $movementData + [
-                'type' => 'expense',
-                'source_account_id' => $paymentAccount->id,
-                'debt_id' => $debt->id,
-                'installment_id' => $locked->id,
-            ]);
+            $forecast = Movimento::query()->where('user_id', $user->id)->where('installment_id', $locked->id)->where('status', 'pending')->first();
+            if ($forecast && $amount >= $remaining) {
+                $this->movements->settle($user, $forecast, [
+                    'source_account_id' => $paymentAccount->id,
+                    'movement_date' => $data['payment_date'] ?? now()->toDateString(),
+                ]);
+            } else {
+                if ($forecast) $forecast->update(['amount' => number_format($remaining - $amount, 2, '.', '')]);
+                $this->movements->create($user, [
+                    'type' => 'expense', 'description' => 'Pagamento: '.$lockedDebt->name,
+                    'amount' => number_format($amount, 2, '.', ''),
+                    'movement_date' => $data['payment_date'] ?? now()->toDateString(),
+                    'source_account_id' => $paymentAccount->id, 'debt_id' => $debt->id, 'installment_id' => $locked->id,
+                ]);
+            }
             $paid = round((float) $locked->paid_amount + $amount, 2);
             $locked->update(['paid_amount' => number_format($paid, 2, '.', ''), 'status' => $paid >= (float) $locked->amount ? 'paid' : 'partial']);
             if (!$lockedDebt->parcelas()->where('status', '!=', 'paid')->exists()) $lockedDebt->update(['status' => 'paid']);
