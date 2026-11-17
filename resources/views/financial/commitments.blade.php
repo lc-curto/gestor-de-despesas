@@ -4,145 +4,299 @@
 
 @section('content')
 <div class="app-content commitments-page">
-    <header class="page-heading commitments-heading mb-4 d-flex flex-wrap justify-content-between align-items-end gap-3">
-        <div>
-            <h1 class="h2 fw-bold mb-1">Parcelamentos</h1>
-            <p class="text-secondary mb-0">Acompanha compras parceladas não relacionadas com cartões.</p>
-        </div>
+    <header class="page-heading commitments-heading mb-4">
+        <h1 class="h2 fw-bold mb-1">Parcelamentos</h1>
+        <p class="text-secondary mb-0">Gestão de compras e prestações</p>
     </header>
 
     <div id="commitmentFeedback" class="alert d-none" role="status" aria-live="polite"></div>
 
-    <section class="row g-3 mb-3 commitment-summary" aria-label="Resumo financeiro">
-        <div class="col-md-4"><article class="card border-0 rounded-4 h-100 commitment-summary-card"><div class="card-body p-3 p-md-4">
-            <p class="text-secondary small mb-1">Em aberto</p>
-            <p class="h3 fw-bold mb-0">{{ number_format($summary['open'], 2, ',', '.') }} {{ auth()->user()->currency }}</p>
-        </div></article></div>
-        <div class="col-md-4"><article class="card border-0 rounded-4 h-100 commitment-summary-card"><div class="card-body p-3 p-md-4">
-            <p class="text-secondary small mb-1">A vencer</p>
-            <p class="h3 fw-bold mb-0">{{ number_format($summary['upcoming'], 2, ',', '.') }} {{ auth()->user()->currency }}</p>
-        </div></article></div>
-        <div class="col-md-4"><article class="card border-0 rounded-4 h-100 commitment-summary-card"><div class="card-body p-3 p-md-4">
-            <p class="text-secondary small mb-1">Em atraso</p>
-            <p class="h3 fw-bold mb-0 {{ $summary['overdue'] > 0 ? 'text-danger' : '' }}">{{ number_format($summary['overdue'], 2, ',', '.') }} {{ auth()->user()->currency }}</p>
-        </div></article></div>
+    <section class="commitment-summary mb-4" aria-label="Resumo financeiro">
+        <article class="commitment-metric commitment-metric-primary">
+            <span>Total em aberto</span>
+            <strong>{{ auth()->user()->currency }} {{ number_format($summary['open'], 2, ',', '.') }}</strong>
+            <small>{{ $summary['active_count'] }} compras ativas</small>
+        </article>
+        <article class="commitment-metric">
+            <span>Próxima prestação</span>
+            @if ($summary['next_installment'])
+                <strong>{{ auth()->user()->currency }} {{ number_format(max(0, (float) $summary['next_installment']->amount - (float) $summary['next_installment']->paid_amount), 2, ',', '.') }}</strong>
+                <small>{{ $summary['next_installment']->divida?->name }} · {{ $summary['next_installment']->due_date->lt(today()) ? 'vencida' : $summary['next_installment']->due_date->format('d/m/Y') }}</small>
+            @else
+                <strong>—</strong><small>Sem prestações pendentes</small>
+            @endif
+        </article>
+        <article class="commitment-metric">
+            <span>Prestações em atraso</span>
+            <strong class="{{ $summary['overdue'] > 0 ? 'text-danger' : '' }}">{{ auth()->user()->currency }} {{ number_format($summary['overdue'], 2, ',', '.') }}</strong>
+            <small>{{ $summary['overdue_commitments'] }} compras com prestações vencidas</small>
+        </article>
     </section>
 
-    @php
-        $paymentItems = collect();
-        foreach ($commitments as $commitment) {
-            foreach ($commitment->parcelas as $installment) {
-                $remaining = max(0, (float) $installment->amount - (float) $installment->paid_amount);
-                if ($remaining > 0) {
-                    $paymentItems->push((object) ['kind' => 'installment', 'due_date' => $installment->due_date, 'record' => $installment, 'commitment' => $commitment, 'remaining' => $remaining]);
-                }
-            }
-        }
-        $paymentItems = $paymentItems->sortBy('due_date')->values();
-        $filter = request('filter', 'all');
-        if ($filter === 'overdue') $paymentItems = $paymentItems->filter(fn ($item) => \Illuminate\Support\Carbon::parse($item->due_date)->lt(today()))->values();
-        if ($filter === 'upcoming') $paymentItems = $paymentItems->filter(fn ($item) => !\Illuminate\Support\Carbon::parse($item->due_date)->lt(today()))->values();
-        if ($filter === 'paid') $paymentItems = collect();
-        $paymentGroups = $paymentItems->groupBy(fn ($item) => $item->commitment->id);
-        $historyItems = collect();
-        foreach ($commitments as $commitment) foreach ($commitment->parcelas as $part) if ((float) $part->paid_amount > 0) $historyItems->push((object) ['name' => $commitment->name.' · Parcela '.$part->installment_number, 'date' => $part->updated_at, 'amount' => (float) $part->paid_amount, 'detail' => 'Pagamento de prestação']);
-        $historyItems = $historyItems->sortByDesc('date')->values();
-        $statusLabels = ['open' => 'Aberta', 'closed' => 'Fechada', 'partial' => 'Parcialmente paga', 'paid' => 'Paga', 'overdue' => 'Em atraso'];
-        $statusClasses = ['open' => 'text-bg-info', 'closed' => 'text-bg-secondary', 'partial' => 'text-bg-warning', 'paid' => 'text-bg-success', 'overdue' => 'text-bg-danger'];
-    @endphp
+    <section class="commitment-list-panel" aria-labelledby="commitmentsTitle">
+        <nav class="commitment-tabs" aria-label="Estado das compras">
+            @foreach (['active' => ['Ativos', $summary['active_count']], 'completed' => ['Concluídos', $summary['completed_count']], 'all' => ['Todos', $summary['total_count']]] as $key => [$label, $count])
+                <a href="{{ route('financial.commitments.page', array_merge(request()->except('purchases'), ['status' => $key])) }}"
+                   class="btn btn-sm {{ $status === $key ? 'btn-primary' : 'btn-outline-secondary' }}"
+                   @if ($status === $key) aria-current="page" @endif>{{ $label }} ({{ $count }})</a>
+            @endforeach
+        </nav>
 
-    <section class="commitment-section commitment-payments-section mb-4 commitment-mobile-list" aria-labelledby="paymentsSectionTitle">
-        <div class="commitment-mobile-header">
-            <div><h2 class="h5 fw-bold mb-0" id="paymentsSectionTitle">Parcelamentos<span class="visually-hidden"> · Próximas prestações</span></h2><span class="small text-secondary">{{ $paymentItems->count() }} em aberto</span></div>
-            <nav class="commitment-filters" aria-label="Filtrar parcelamentos">
-                @foreach (['all'=>'Todos','upcoming'=>'Próximos','overdue'=>'Atrasados','paid'=>'Pagos'] as $key=>$label)
-                    <a class="btn btn-sm {{ $filter === $key ? 'btn-primary' : 'btn-outline-secondary' }}" href="{{ route('financial.commitments.page',['filter'=>$key]) }}">{{ $label }}</a>
-                @endforeach
-            </nav>
+        <form class="commitment-search" method="GET" action="{{ route('financial.commitments.page') }}" role="search">
+            <input type="hidden" name="status" value="{{ $status }}">
+            <input type="hidden" name="per_page" value="{{ $perPage }}">
+            <label class="visually-hidden" for="commitmentSearch">Pesquisar compra ou comerciante</label>
+            <span aria-hidden="true">⌕</span>
+            <input id="commitmentSearch" type="search" name="q" value="{{ $search }}" placeholder="Pesquisar compra ou comerciante..." autocomplete="off">
+            @if ($search !== '')<a href="{{ route('financial.commitments.page', ['status' => $status, 'per_page' => $perPage]) }}" class="commitment-clear-search" aria-label="Limpar pesquisa">×</a>@endif
+        </form>
+
+        <div class="commitment-list-heading">
+            <h2 class="h5 fw-bold mb-0" id="commitmentsTitle">
+                {{ $status === 'active' ? 'Compras ativas' : ($status === 'completed' ? 'Compras concluídas' : 'Todas as compras') }}
+            </h2>
+            <span class="small text-secondary">{{ $commitments->total() }} resultados</span>
         </div>
-        @forelse ($paymentGroups as $group)
-            @php
-                $groupFirst = $group->first();
-                $groupCommitment = $groupFirst->commitment;
-                $totalParts = $groupCommitment->parcelas->count();
-                $paidParts = $groupCommitment->parcelas->filter(fn($part) => (float)$part->paid_amount >= (float)$part->amount)->count();
-                $progress = $totalParts ? min(100, round(($paidParts / $totalParts) * 100)) : 0;
-                $next = $groupFirst->record;
-            @endphp
-            <article class="commitment-card">
-                <div class="commitment-card-main">
-                    <div class="commitment-card-title"><strong>{{ $groupCommitment->name }}</strong><span class="commitment-card-progress">{{ $paidParts }}/{{ $totalParts }}</span></div>
-                    <div class="commitment-card-meta"><span>Próxima {{ $next->due_date->format('d M') }}<span class="visually-hidden"> · Compra a prazo</span></span><strong>{{ number_format($groupFirst->remaining, 2, ',', '.') }} {{ auth()->user()->currency }}</strong></div>
-                    <div class="progress commitment-progress" role="progressbar" aria-label="{{ $paidParts }} de {{ $totalParts }} parcelas pagas" aria-valuenow="{{ $progress }}" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar" style="width:{{ $progress }}%"></div></div>
-                    <div class="commitment-card-footer"><span class="small text-secondary">{{ number_format($group->sum('remaining'), 2, ',', '.') }} {{ auth()->user()->currency }} restante</span><details class="commitment-card-details"><summary>Detalhes</summary><div class="commitment-installments">
-                        @foreach ($group as $item)
-                            @php $installment=$item->record; $remaining=$item->remaining; $isOverdue=$installment->due_date->lt(today()); @endphp
-                            <div class="commitment-installment-row"><div><strong>{{ $installment->installment_number }}/{{ $totalParts }}</strong><span>{{ $installment->due_date->format('d/m/Y') }}</span></div><div class="text-end"><strong>{{ number_format($remaining,2,',','.') }} {{ auth()->user()->currency }}</strong><span class="badge {{ $isOverdue ? 'text-bg-danger' : 'text-bg-warning' }}">{{ $isOverdue ? 'Atrasada' : 'Próxima' }}</span></div></div>
-                            @if ($remaining > 0 && $paymentAccounts->isNotEmpty())
-                                <details class="commitment-pay-drawer commitment-payment-disclosure"><summary class="btn btn-primary btn-sm">{{ $loop->first ? 'Pagar próxima' : 'Pagar' }}</summary><form class="js-api-form commitment-pay-form" aria-label="Pagamento da prestação {{ $installment->installment_number }} de {{ $totalParts }} de {{ $groupCommitment->name }}" data-endpoint="{{ route('financial.commitments.installments.pay', [$groupCommitment->id, $installment->id]) }}" data-success="Pagamento registado."><label for="installment-amount-{{ $installment->id }}">Valor</label><input id="installment-amount-{{ $installment->id }}" type="text" inputmode="decimal" name="amount" data-payment-amount data-max-amount="{{ number_format($remaining, 2, '.', '') }}" value="{{ number_format($remaining, 2, ',', '.') }}" required><label for="installment-account-{{ $installment->id }}">Conta</label><select id="installment-account-{{ $installment->id }}" name="account_id" required><option value="">Selecionar</option>@foreach ($paymentAccounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select><label for="installment-date-{{ $installment->id }}">Data</label><input id="installment-date-{{ $installment->id }}" type="date" name="payment_date" value="{{ now()->toDateString() }}" required><button class="btn btn-primary" type="submit" disabled>Confirmar</button><div class="small text-danger" data-payment-error role="alert"></div></form></details>
-                            @endif
-                        @endforeach
-                    </div></details></div>
-                </div>
-            </article>
-        @empty
-            <div class="commitment-empty-state"><strong>Sem parcelamentos pendentes</strong></div>
-        @endforelse
-    </section>
 
+        <div class="commitment-cards">
+            @forelse ($commitments as $commitment)
+                @php
+                    $history = $commitment->installmentsPage;
+                    $partsTotal = (int) $commitment->installments_count;
+                    $partsPaid = (int) $commitment->paid_installments_count;
+                    $isCompleted = $commitment->remaining_amount <= 0.009;
+                    $next = $commitment->next_installment;
+                    $nextRemaining = $next ? max(0, (float) $next->amount - (float) $next->paid_amount) : 0;
+                @endphp
+                <article class="commitment-card" data-commitment-card data-commitment-id="{{ $commitment->id }}">
+                    <button class="commitment-card-toggle" type="button" aria-expanded="false" aria-controls="commitment-details-{{ $commitment->id }}">
+                        <span class="commitment-card-heading">
+                            <span class="commitment-card-name">{{ $commitment->name }}</span>
+                            <span class="badge {{ $isCompleted ? 'text-bg-success' : 'text-bg-success' }}">{{ $isCompleted ? 'Concluído' : 'Em dia' }}</span>
+                        </span>
+                        <span class="commitment-card-balances">
+                            <span><small>Saldo em aberto</small><strong>{{ auth()->user()->currency }} {{ number_format($commitment->remaining_amount, 2, ',', '.') }}</strong></span>
+                            <span><small>Prestações pagas</small><strong>{{ $partsPaid }}/{{ $partsTotal }}</strong></span>
+                        </span>
+                        <span class="progress commitment-progress" role="progressbar" aria-label="Valor pago" aria-valuenow="{{ $commitment->progress_percent }}" aria-valuemin="0" aria-valuemax="100">
+                            <span class="progress-bar" style="width: {{ $commitment->progress_percent }}%"></span>
+                        </span>
+                        <span class="commitment-card-foot">
+                            <small>{{ number_format($commitment->progress_percent, 1, ',', '.') }}% pago</small>
+                            <small>{{ $next ? 'Próxima: '.$next->due_date->format('d/m/Y') : 'Concluído' }}</small>
+                        </span>
+                        <span class="commitment-card-details-label">Ver detalhes <span aria-hidden="true">⌄</span></span>
+                    </button>
+
+                    <div class="commitment-details" id="commitment-details-{{ $commitment->id }}" hidden>
+                        <div class="commitment-detail-summary">
+                            <div><small>Valor total</small><strong>{{ auth()->user()->currency }} {{ number_format((float) $commitment->total_amount, 2, ',', '.') }}</strong></div>
+                            <div><small>Valor pago</small><strong>{{ auth()->user()->currency }} {{ number_format((float) $commitment->paid_amount_total, 2, ',', '.') }}</strong></div>
+                            <div><small>Em aberto</small><strong>{{ auth()->user()->currency }} {{ number_format($commitment->remaining_amount, 2, ',', '.') }}</strong></div>
+                            <div><small>Prestações</small><strong>{{ $partsPaid }} de {{ $partsTotal }}</strong></div>
+                        </div>
+
+                        @if ($next)
+                            <div class="commitment-next-payment">
+                                <div><strong>Próxima prestação</strong><small>{{ $next->installment_number }}/{{ $partsTotal }} · {{ $next->due_date->format('d/m/Y') }}</small></div>
+                                <strong>{{ auth()->user()->currency }} {{ number_format($nextRemaining, 2, ',', '.') }}</strong>
+                                @if ($paymentAccounts->isNotEmpty())
+                                    <button type="button" class="btn btn-primary commitment-pay-next"
+                                        data-pay-url="{{ route('financial.commitments.installments.pay', [$commitment->id, $next->id]) }}"
+                                        data-debt-name="{{ $commitment->name }}"
+                                        data-installment-label="{{ $next->installment_number }}/{{ $partsTotal }}"
+                                        data-remaining="{{ number_format($nextRemaining, 2, '.', '') }}">Pagar próxima prestação</button>
+                                @else
+                                    <p class="small text-secondary mb-0">Para pagar, adiciona primeiro uma conta bancária ou de dinheiro ativa em <a href="{{ route('financial.accounts.page') }}">Contas</a>.</p>
+                                @endif
+                            </div>
+                        @endif
+
+                        <div class="commitment-history">
+                            <div class="commitment-history-heading">
+                                <strong>Histórico de prestações</strong>
+                                <small>{{ $history->total() }} prestações</small>
+                            </div>
+                            @foreach ($history as $installment)
+                                @php
+                                    $remaining = max(0, (float) $installment->amount - (float) $installment->paid_amount);
+                                    $paid = $installment->status === 'paid' || $remaining <= 0.009;
+                                    $overdue = !$paid && $installment->due_date->lt(today());
+                                    $label = $paid ? 'Paga' : ($overdue ? 'Atrasada' : ($installment->id === $next?->id ? 'Próxima' : 'Pendente'));
+                                @endphp
+                                <div class="commitment-installment">
+                                    <div><strong>{{ $installment->installment_number }}/{{ $partsTotal }}</strong><small>{{ $installment->due_date->format('d/m/Y') }}</small></div>
+                                    <div class="commitment-installment-value">
+                                        <strong>{{ auth()->user()->currency }} {{ number_format($remaining > 0 ? $remaining : (float) $installment->amount, 2, ',', '.') }}</strong>
+                                        <span class="badge {{ $paid ? 'text-bg-success' : ($overdue ? 'text-bg-danger' : ($label === 'Próxima' ? 'text-bg-warning' : 'text-bg-secondary')) }}">{{ $label }}</span>
+                                    </div>
+                                </div>
+                            @endforeach
+                            @if ($history->hasPages())
+                                <nav class="commitment-history-pagination" aria-label="Paginação do histórico de {{ $commitment->name }}">
+                                    <span>Página {{ $history->currentPage() }} de {{ $history->lastPage() }}</span>
+                                    <div>{{ $history->onEachSide(0)->links('pagination::bootstrap-5') }}</div>
+                                </nav>
+                            @endif
+                        </div>
+
+                        <div class="commitment-card-actions">
+                            <button type="button" class="btn btn-outline-secondary btn-sm js-edit-commitment"
+                                data-url="{{ route('financial.commitments.update', $commitment->id) }}"
+                                data-name="{{ $commitment->name }}"
+                                data-due="{{ $next?->due_date?->format('Y-m-d') ?? $commitment->due_date?->format('Y-m-d') }}">Editar compra</button>
+                            <button type="button" class="btn btn-outline-danger btn-sm js-cancel-commitment"
+                                data-url="{{ route('financial.commitments.cancel', $commitment->id) }}"
+                                data-name="{{ $commitment->name }}">Cancelar compra</button>
+                        </div>
+                    </div>
+                </article>
+            @empty
+                <div class="commitment-empty-state">
+                    <strong>Nenhuma compra encontrada.</strong>
+                    <span class="text-secondary small">Altera a pesquisa ou seleciona outro separador.</span>
+                </div>
+            @endforelse
+        </div>
+
+        @if ($commitments->hasPages())
+            <div class="commitment-purchase-pagination">
+                <div class="commitment-pagination-meta">
+                    <span>A mostrar {{ $commitments->firstItem() }}–{{ $commitments->lastItem() }} de {{ $commitments->total() }}</span>
+                    <span>{{ $perPage }} compras por página</span>
+                </div>
+                {{ $commitments->onEachSide(1)->links('pagination::bootstrap-5') }}
+            </div>
+        @else
+            <div class="commitment-pagination-meta"><span>A mostrar {{ $commitments->total() }} de {{ $commitments->total() }}</span><span>{{ $perPage }} compras por página</span></div>
+        @endif
+    </section>
 </div>
 
-<div class="modal fade" id="editCommitmentModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content rounded-4 border-0"><form id="editCommitmentForm">
-    <div class="modal-header border-0"><h2 class="modal-title h5 fw-bold">Editar compromisso</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
-    <div class="modal-body"><label class="form-label" for="editCommitmentName">Descrição</label><input class="form-control mb-3" id="editCommitmentName" name="name" required maxlength="160"><label class="form-label" for="editCommitmentDue">Próximo vencimento</label><input class="form-control" id="editCommitmentDue" name="due_date" type="date" required><div id="editCommitmentError" class="small text-danger mt-2"></div></div>
-    <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
-</form></div></div></div>
+<div class="modal fade" id="commitmentPaymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable commitment-payment-dialog">
+        <div class="modal-content rounded-4 border-0">
+            <form id="commitmentPaymentForm" method="POST">
+                @csrf
+                <div class="modal-header border-0">
+                    <div><h2 class="modal-title h5 fw-bold mb-1">Pagar prestação</h2><small class="text-secondary" id="paymentCommitmentName"></small></div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-secondary" id="paymentInstallmentLabel"></p>
+                    <label class="form-label" for="commitmentPaymentAmount">Valor a pagar</label>
+                    <input class="form-control mb-3" id="commitmentPaymentAmount" name="amount" type="text" inputmode="decimal" required>
+                    <label class="form-label" for="commitmentPaymentAccount">Conta de origem</label>
+                    <select class="form-select mb-3" id="commitmentPaymentAccount" name="account_id" required>
+                        <option value="">Selecionar conta</option>
+                        @foreach ($paymentAccounts as $account)
+                            <option value="{{ $account->id }}">{{ $account->name }}</option>
+                        @endforeach
+                    </select>
+                    <label class="form-label" for="commitmentPaymentDate">Data do pagamento</label>
+                    <input class="form-control" id="commitmentPaymentDate" name="payment_date" type="date" value="{{ now()->toDateString() }}" required>
+                    <div class="small text-danger mt-2" id="commitmentPaymentError" role="alert"></div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Confirmar pagamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editCommitmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content rounded-4 border-0"><form id="editCommitmentForm">
+        <div class="modal-header border-0"><h2 class="modal-title h5 fw-bold">Editar compra</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+        <div class="modal-body">
+            <label class="form-label" for="editCommitmentName">Nome da compra</label><input class="form-control mb-3" id="editCommitmentName" name="name" required maxlength="160">
+            <label class="form-label" for="editCommitmentDue">Próximo vencimento</label><input class="form-control" id="editCommitmentDue" name="due_date" type="date" required>
+            <div id="editCommitmentError" class="small text-danger mt-2"></div>
+        </div>
+        <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
+    </form></div></div>
+</div>
+@endsection
 
 @push('styles')
 <style>
-.commitments-page .commitment-summary{display:none}
-.commitments-page .commitment-mobile-header{display:flex;flex-direction:column;gap:.65rem;margin-bottom:1rem}
-.commitments-page .commitment-mobile-header h2{font-size:1.1rem}
-.commitments-page .commitment-filters{display:flex;gap:.4rem;overflow-x:auto;padding-bottom:.15rem}
-.commitments-page .commitment-filters .btn{white-space:nowrap;border-radius:999px;padding:.35rem .7rem;font-size:.78rem}
-.commitments-page .commitment-card{background:var(--bs-body-bg);border:1px solid var(--bs-border-color);border-radius:1rem;margin-bottom:.65rem;box-shadow:0 2px 8px rgba(0,0,0,.04)}
-.commitments-page .commitment-card-main{padding:1rem}
-.commitments-page .commitment-card-title,.commitments-page .commitment-card-meta,.commitments-page .commitment-card-footer{display:flex;justify-content:space-between;align-items:center;gap:.65rem}
-.commitments-page .commitment-card-title strong{font-size:1rem;overflow-wrap:anywhere}
-.commitments-page .commitment-card-progress{font-weight:700;color:var(--bs-primary);white-space:nowrap}
-.commitments-page .commitment-card-meta{margin-top:.45rem;font-size:.82rem}
-.commitments-page .commitment-card-meta strong{font-size:1rem}
-.commitments-page .commitment-progress{height:.4rem;margin:.7rem 0;border-radius:99px;background:var(--bs-tertiary-bg)}
-.commitments-page .commitment-progress .progress-bar{border-radius:99px;background:var(--bs-primary)}
-.commitments-page .commitment-card-footer{align-items:flex-start}
-.commitments-page .commitment-secondary-section{border-top:1px solid var(--bs-border-color);padding:.8rem 0}
-.commitments-page .commitment-secondary-section>summary{display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-size:.85rem;font-weight:600;list-style:none}
-.commitments-page .commitment-secondary-section>summary::-webkit-details-marker{display:none}
-.commitments-page .commitment-secondary-section>summary:after{content:'＋';color:var(--bs-primary);font-size:1.1rem}
-.commitments-page .commitment-secondary-section[open]>summary:after{content:'−'}
-.commitments-page .commitment-secondary-section .commitment-section{padding-top:.75rem}
-.commitments-page .commitment-card-details{flex:0 0 auto}
-.commitments-page .commitment-card-details>summary{color:var(--bs-primary);font-size:.8rem;font-weight:600;cursor:pointer;list-style:none}
-.commitments-page .commitment-card-details>summary::-webkit-details-marker{display:none}
-.commitments-page .commitment-card-details>summary:after{content:' ▾'}
-.commitments-page .commitment-card-details[open]>summary:after{content:' ▴'}
-.commitments-page .commitment-installments{margin-top:.8rem;border-top:1px solid var(--bs-border-color);padding-top:.25rem}
-.commitments-page .commitment-installment-row{display:flex;justify-content:space-between;align-items:center;padding:.65rem 0;border-bottom:1px solid var(--bs-border-color);font-size:.8rem;gap:.5rem}
-.commitments-page .commitment-installment-row div:first-child{display:flex;gap:.5rem;align-items:center}.commitments-page .commitment-installment-row span:not(.badge){color:var(--bs-secondary-color)}
-.commitments-page .commitment-installment-row .badge{display:block;margin-top:.2rem;font-size:.65rem}
-.commitments-page .commitment-pay-drawer{margin:.7rem 0}.commitments-page .commitment-pay-drawer>summary{display:block;text-align:center;cursor:pointer}
-.commitments-page .commitment-pay-form{display:grid;grid-template-columns:1fr 1fr;gap:.45rem;margin-top:.65rem;padding:.7rem;background:var(--bs-tertiary-bg);border-radius:.75rem}
-.commitments-page .commitment-pay-form label{font-size:.72rem;font-weight:600;align-self:end}.commitments-page .commitment-pay-form input,.commitments-page .commitment-pay-form select{width:100%;min-width:0;min-height:38px;border:1px solid var(--bs-border-color);border-radius:.5rem;padding:.4rem;background:var(--bs-body-bg)}
-.commitments-page .commitment-pay-form button,.commitments-page .commitment-pay-form [data-payment-error]{grid-column:1/-1}
-.commitments-page .commitment-history,.commitments-page #manageSectionTitle{margin-top:1.5rem}
-.commitments-page .commitment-history>summary{cursor:pointer;color:var(--bs-primary);font-size:.85rem;font-weight:600}
-.commitments-page [aria-labelledby="manageSectionTitle"]>p{display:none}
-.commitments-page [aria-labelledby="manageSectionTitle"]>article{padding:.75rem 0!important}
-.commitments-page .commitment-empty-state{padding:1rem;border:1px dashed var(--bs-border-color);border-radius:.8rem}
-@media (min-width:768px){.commitments-page .commitment-mobile-header{flex-direction:row;align-items:center;justify-content:space-between}.commitments-page .commitment-card{max-width:720px}.commitments-page .commitment-card-main{padding:1.15rem}}
+.commitments-page{max-width:1500px;margin-inline:auto}
+.commitment-summary{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:1rem}
+.commitment-metric{min-width:0;padding:1.1rem 1.25rem;background:var(--bs-body-bg);border:1px solid var(--bs-border-color);border-radius:1rem;display:flex;flex-direction:column;gap:.3rem}
+.commitment-metric span,.commitment-metric small{font-size:.8rem;color:var(--bs-secondary-color)}
+.commitment-metric strong{font-size:1.45rem;line-height:1.3;font-weight:750;overflow-wrap:anywhere}
+.commitment-list-panel{background:var(--bs-body-bg);border:1px solid var(--bs-border-color);border-radius:1.15rem;padding:1.25rem}
+.commitment-tabs{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem}
+.commitment-tabs .btn{border-radius:999px;padding:.45rem .85rem}
+.commitment-search{display:flex;align-items:center;gap:.6rem;min-height:44px;padding:0 .8rem;border:1px solid var(--bs-border-color);border-radius:.75rem;margin-bottom:1.25rem}
+.commitment-search>span{font-size:1.3rem;color:var(--bs-secondary-color)}
+.commitment-search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--bs-body-color);padding:.6rem 0}
+.commitment-clear-search{font-size:1.3rem;text-decoration:none;color:var(--bs-secondary-color)}
+.commitment-list-heading,.commitment-history-heading{display:flex;justify-content:space-between;align-items:center;gap:.75rem;margin-bottom:.85rem}
+.commitment-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.85rem}
+.commitment-card{min-width:0;border:1px solid var(--bs-border-color);border-radius:1rem;background:var(--bs-body-bg);box-shadow:0 2px 8px rgba(0,0,0,.035);overflow:hidden}
+.commitment-card-toggle{display:flex;width:100%;flex-direction:column;gap:.7rem;padding:1rem 1.1rem;text-align:left;border:0;background:transparent;color:inherit}
+.commitment-card-toggle:hover{background:var(--bs-tertiary-bg)}
+.commitment-card-heading,.commitment-card-balances,.commitment-card-foot{display:flex;justify-content:space-between;align-items:center;gap:.75rem;width:100%}
+.commitment-card-name{font-weight:700;font-size:1rem;overflow-wrap:anywhere}
+.commitment-card-balances>span{display:flex;flex-direction:column;gap:.2rem}
+.commitment-card-balances>span:last-child{text-align:right}
+.commitment-card-balances small,.commitment-detail-summary small{font-size:.75rem;color:var(--bs-secondary-color)}
+.commitment-card-balances strong{font-size:1rem}
+.commitment-progress{height:7px;width:100%;background:var(--bs-tertiary-bg);border-radius:99px}
+.commitment-progress .progress-bar{background:var(--bs-primary);border-radius:99px}
+.commitment-card-foot{font-size:.75rem;color:var(--bs-secondary-color)}
+.commitment-card-details-label{align-self:flex-end;font-size:.85rem;color:var(--bs-primary);font-weight:600}
+.commitment-card-details-label span{display:inline-block;transition:transform .15s}
+.commitment-card-toggle[aria-expanded=true] .commitment-card-details-label span{transform:rotate(180deg)}
+.commitment-details{border-top:1px solid var(--bs-border-color);padding:1rem 1.1rem}
+.commitment-detail-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.85rem;margin-bottom:1rem}
+.commitment-detail-summary>div{display:flex;flex-direction:column;gap:.2rem}
+.commitment-next-payment{display:grid;grid-template-columns:1fr auto;align-items:center;gap:.45rem .75rem;padding:1rem;background:var(--bs-tertiary-bg);border-radius:.85rem;margin-bottom:1.1rem}
+.commitment-next-payment>div{display:flex;flex-direction:column;gap:.2rem}
+.commitment-next-payment small{color:var(--bs-secondary-color);font-size:.78rem}
+.commitment-next-payment>.btn,.commitment-next-payment>p{grid-column:1/-1}
+.commitment-next-payment>.btn{width:100%;min-height:42px}
+.commitment-history-heading{margin-bottom:.4rem}
+.commitment-history-heading small{color:var(--bs-secondary-color)}
+.commitment-installment{display:flex;justify-content:space-between;align-items:center;gap:.6rem;padding:.7rem 0;border-bottom:1px solid var(--bs-border-color)}
+.commitment-installment>div{display:flex;align-items:center;gap:.65rem;min-width:0}
+.commitment-installment small{font-size:.78rem;color:var(--bs-secondary-color)}
+.commitment-installment-value{flex-direction:column;align-items:flex-end!important;gap:.25rem!important}
+.commitment-installment-value strong{font-size:.88rem}
+.commitment-installment-value .badge{font-size:.68rem}
+.commitment-history-pagination,.commitment-pagination-meta{display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-top:.75rem;font-size:.75rem;color:var(--bs-secondary-color)}
+.commitment-history-pagination>div{min-width:0}
+.commitment-history-pagination .pagination{margin:0;gap:.15rem}
+.commitment-history-pagination .page-link{padding:.25rem .5rem;font-size:.75rem}
+.commitment-card-actions{display:flex;justify-content:space-between;gap:.5rem;padding-top:.85rem;margin-top:.85rem;border-top:1px solid var(--bs-border-color)}
+.commitment-empty-state{display:flex;flex-direction:column;align-items:center;gap:.35rem;padding:2rem 1rem;border:1px dashed var(--bs-border-color);border-radius:.85rem}
+.commitment-purchase-pagination{margin-top:1rem}
+.commitment-purchase-pagination .pagination{justify-content:center;margin:.5rem 0 0}
+.commitment-purchase-pagination .page-link{border-radius:.5rem;margin:0 .1rem}
+@media(max-width:767.98px){
+ .commitment-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
+ .commitment-metric{padding:.8rem;border-radius:.85rem}
+ .commitment-metric-primary{grid-column:1/-1}
+ .commitment-metric strong{font-size:1.2rem}
+ .commitment-metric-primary strong{font-size:1.55rem}
+ .commitment-list-panel{padding:.85rem;border-radius:1rem}
+ .commitment-tabs{gap:.35rem;margin-bottom:.85rem}
+ .commitment-tabs .btn{flex:1 1 auto;padding:.45rem .55rem;font-size:.78rem}
+ .commitment-cards{grid-template-columns:minmax(0,1fr);gap:.65rem}
+ .commitment-card-toggle{padding:.9rem}
+ .commitment-details{padding:.9rem}
+ .commitment-detail-summary{gap:.75rem}
+ .commitment-payment-dialog{margin:.5rem;align-items:flex-end;min-height:calc(100% - 1rem)}
+ .commitment-payment-dialog .modal-content{border-radius:1.1rem 1.1rem .6rem .6rem}
+ .commitment-payment-dialog .modal-body{padding-top:.5rem}
+ .commitment-history-pagination{align-items:flex-start;flex-direction:column}
+ .commitment-pagination-meta{align-items:flex-start;flex-direction:column}
+}
+@media(min-width:768px) and (max-width:1100px){.commitment-cards{grid-template-columns:minmax(0,1fr)}}
 </style>
 @endpush
-@endsection
 
 @push('scripts')
 <script src="{{ asset('js/commitments-payment.js') }}?v={{ filemtime(public_path('js/commitments-payment.js')) }}"></script>
@@ -150,32 +304,104 @@
 (() => {
     const token = document.querySelector('meta[name="csrf-token"]')?.content;
     const feedback = document.getElementById('commitmentFeedback');
-    const modal = (id) => bootstrap.Modal.getOrCreateInstance(document.getElementById(id));
-    const showError = (element, message) => { element.className = 'alert alert-danger'; element.textContent = message; };
+    const showError = (message) => { feedback.className = 'alert alert-danger'; feedback.textContent = message; feedback.scrollIntoView({behavior:'smooth',block:'center'}); };
 
-    document.querySelectorAll('.js-edit-commitment').forEach((button) => button.addEventListener('click', () => {
-        const form=document.getElementById('editCommitmentForm'); form.dataset.url=button.dataset.url; form.elements.name.value=button.dataset.name; form.elements.due_date.value=button.dataset.due||'';
-        document.getElementById('editCommitmentError').textContent=''; bootstrap.Modal.getOrCreateInstance(document.getElementById('editCommitmentModal')).show();
-    }));
-    document.getElementById('editCommitmentForm')?.addEventListener('submit',async(event)=>{
-        event.preventDefault();const form=event.currentTarget,button=form.querySelector('[type="submit"]');button.disabled=true;
-        try{const response=await fetch(form.dataset.url,{method:'PUT',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({name:form.elements.name.value,due_date:form.elements.due_date.value})});const result=await response.json().catch(()=>({}));
-            if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível atualizar.');window.location.reload();
-        }catch(error){document.getElementById('editCommitmentError').textContent=error.message;button.disabled=false;}
+    // The backend paginates purchases; this client hint selects the approved page size by viewport.
+    const syncPageSize = () => {
+        const expected = window.matchMedia('(max-width: 767.98px)').matches ? '6' : '10';
+        const url = new URL(window.location.href);
+        if (url.searchParams.get('per_page') !== expected) {
+            url.searchParams.set('per_page', expected);
+            url.searchParams.delete('purchases');
+            window.location.replace(url.toString());
+        }
+    };
+    syncPageSize();
+
+    const cards = [...document.querySelectorAll('[data-commitment-card]')];
+    cards.forEach(card => {
+        const toggle = card.querySelector('.commitment-card-toggle');
+        const details = card.querySelector('.commitment-details');
+        toggle.addEventListener('click', () => {
+            const opening = toggle.getAttribute('aria-expanded') !== 'true';
+            if (window.matchMedia('(max-width: 767.98px)').matches && opening) {
+                cards.forEach(other => {
+                    if (other !== card) {
+                        other.querySelector('.commitment-card-toggle').setAttribute('aria-expanded','false');
+                        other.querySelector('.commitment-details').hidden = true;
+                    }
+                });
+            }
+            toggle.setAttribute('aria-expanded', String(opening));
+            details.hidden = !opening;
+        });
     });
-    document.querySelectorAll('.js-cancel-commitment').forEach(button=>button.addEventListener('click',async()=>{
-        if(!window.confirm('Encerrar "'+button.dataset.name+'"? Os pagamentos já realizados serão preservados.'))return;button.disabled=true;
-        try{const response=await fetch(button.dataset.url,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({})});const result=await response.json().catch(()=>({}));
-            if(!response.ok)throw new Error(result.message||'Não foi possível encerrar.');window.location.reload();
-        }catch(error){showError(feedback,error.message);button.disabled=false;}
-    }));
 
-    document.querySelectorAll('.js-api-form').forEach((form) => {
-        if (!window.CommitmentPayment || !window.CommitmentPayment.bind(form, token, feedback, showError)) {
-            showError(feedback, 'Não foi possível carregar a validação de valores. Atualiza a página antes de pagar.');
+    document.querySelectorAll('.js-edit-commitment').forEach(button => button.addEventListener('click', () => {
+        const form = document.getElementById('editCommitmentForm');
+        form.dataset.url = button.dataset.url;
+        form.elements.name.value = button.dataset.name;
+        form.elements.due_date.value = button.dataset.due || '';
+        document.getElementById('editCommitmentError').textContent = '';
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('editCommitmentModal')).show();
+    }));
+    document.getElementById('editCommitmentForm')?.addEventListener('submit', async event => {
+        event.preventDefault();
+        const form = event.currentTarget, button = form.querySelector('[type="submit"]');
+        button.disabled = true;
+        try {
+            const response = await fetch(form.dataset.url,{method:'PUT',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({name:form.elements.name.value,due_date:form.elements.due_date.value})});
+            const result = await response.json().catch(()=>({}));
+            if (!response.ok) throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível atualizar.');
+            window.location.reload();
+        } catch(error) {
+            document.getElementById('editCommitmentError').textContent=error.message;
+            button.disabled=false;
         }
     });
 
+    document.querySelectorAll('.js-cancel-commitment').forEach(button=>button.addEventListener('click',async()=>{
+        if(!window.confirm('Cancelar "'+button.dataset.name+'"? Os pagamentos já realizados serão preservados.')) return;
+        button.disabled=true;
+        try {
+            const response=await fetch(button.dataset.url,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({})});
+            const result=await response.json().catch(()=>({}));
+            if(!response.ok) throw new Error(result.message||'Não foi possível cancelar.');
+            window.location.reload();
+        } catch(error) { showError(error.message);button.disabled=false; }
+    }));
+
+    const paymentModalElement=document.getElementById('commitmentPaymentModal');
+    const paymentModal=bootstrap.Modal.getOrCreateInstance(paymentModalElement);
+    const paymentForm=document.getElementById('commitmentPaymentForm');
+    document.querySelectorAll('.commitment-pay-next').forEach(button=>button.addEventListener('click',()=>{
+        paymentForm.dataset.endpoint=button.dataset.payUrl;
+        document.getElementById('paymentCommitmentName').textContent=button.dataset.debtName;
+        document.getElementById('paymentInstallmentLabel').textContent='Prestação '+button.dataset.installmentLabel;
+        document.getElementById('commitmentPaymentAmount').value=button.dataset.remaining.replace('.',',');
+        document.getElementById('commitmentPaymentAmount').dataset.maxAmount=button.dataset.remaining;
+        document.getElementById('commitmentPaymentDate').value=new Date().toISOString().slice(0,10);
+        document.getElementById('commitmentPaymentError').textContent='';
+        paymentModal.show();
+    }));
+    paymentForm?.addEventListener('submit',async event=>{
+        event.preventDefault();
+        const button=paymentForm.querySelector('[type="submit"]');
+        if(button.disabled)return;
+        const amount=document.getElementById('commitmentPaymentAmount');
+        const validation=window.CommitmentPayment?.validate(amount.value,amount.dataset.maxAmount);
+        if(!validation?.ok){document.getElementById('commitmentPaymentError').textContent=validation?.error||'Não foi possível validar o valor.';return;}
+        button.disabled=true;
+        try{
+            const values=Object.fromEntries(new FormData(paymentForm).entries());values.amount=validation.value;
+            const response=await fetch(paymentForm.dataset.endpoint,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify(values)});
+            const result=await response.json().catch(()=>({}));
+            if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível registar o pagamento.');
+            window.location.reload();
+        }catch(error){document.getElementById('commitmentPaymentError').textContent=error.message;button.disabled=false;}
+    });
+
+    window.addEventListener('resize',()=>{});
 })();
 </script>
 @endpush
