@@ -326,18 +326,11 @@ class FinancialCommitmentService
 
     public function cancel(User $user, Divida $debt): Divida
     {
-        return DB::transaction(function () use ($user, $debt): Divida {
-            $locked = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
-            if (in_array($locked->status, ['cancelled', 'paid'], true)) {
-                throw ValidationException::withMessages(['commitment' => 'Este compromisso já está encerrado.']);
-            }
-            $locked->parcelas()->whereIn('status', ['pending', 'partial'])->update(['status' => 'cancelled']);
-            $locked->update(['status' => 'cancelled']);
-            Movimento::query()->where('user_id', $user->id)->where('debt_id', $locked->id)->where('status', 'pending')->get()
-                ->each(fn (Movimento $movement) => $this->movements->voidCancelledCommitmentForecast($user, $locked, $movement));
-
-            return $locked->refresh();
-        });
+        return app(FinancialDeletionService::class)->cancelCommitment(
+            $user,
+            $debt,
+            'Parcelamento cancelado pelo utilizador.'
+        );
     }
 
     public function payInstallment(User $user, Divida $debt, ParcelaDivida $installment, array $data): ParcelaDivida

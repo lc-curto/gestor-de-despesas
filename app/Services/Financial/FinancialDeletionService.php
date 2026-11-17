@@ -370,6 +370,224 @@ class FinancialDeletionService
         });
     }
 
+
+    /**
+     * Cancela o compromisso sem apagar os pagamentos efetivamente realizados.
+     * Previsões pendentes/parciais são anuladas; eventos liquidados ficam autónomos.
+     */
+    public function cancelCommitment(User $user, Divida $debt, ?string $reason = null): Divida
+    {
+        return DB::transaction(function () use ($user, $debt, $reason): Divida {
+            $lockedDebt = Divida::query()
+                ->where('user_id', $user->id)
+                ->whereKey($debt->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (in_array($lockedDebt->status, ['cancelled', 'paid'], true)) {
+                throw ValidationException::withMessages([
+                    'commitment' => 'Este compromisso já está encerrado.',
+                ]);
+            }
+
+            $installments = ParcelaDivida::query()
+                ->where('user_id', $user->id)
+                ->where('debt_id', $lockedDebt->id)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+            $installmentIds = $installments->pluck('id');
+
+            $related = Movimento::query()
+                ->where('user_id', $user->id)
+                ->where(function ($query) use ($lockedDebt, $installmentIds): void {
+                    $query->where('debt_id', $lockedDebt->id);
+                    if ($installmentIds->isNotEmpty()) {
+                        $query->orWhereIn('installment_id', $installmentIds);
+                    }
+                })
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            $ambiguousPartial = $related->first(
+                fn (Movimento $item): bool => $item->status === 'partial' && ! $item->is_settlement_parent
+            );
+            if ($ambiguousPartial) {
+                throw ValidationException::withMessages([
+                    'commitment' => 'Existe uma parcela parcialmente paga sem eventos de liquidação identificáveis. Reconcilia os dados antes de cancelar o parcelamento.',
+                ]);
+            }
+
+            $parentIds = $related->pluck('id');
+            $paymentEvents = $parentIds->isNotEmpty()
+                ? Movimento::query()
+                    ->where('user_id', $user->id)
+                    ->whereIn('settles_movement_id', $parentIds)
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get()
+                : collect();
+
+            $settledParentIds = $related
+                ->where('is_settlement_parent', true)
+                ->whereIn('status', ['partial', 'settled'])
+                ->pluck('id');
+            $parentsWithSettledEvents = $paymentEvents
+                ->where('status', 'settled')
+                ->pluck('settles_movement_id')
+                ->unique();
+            if ($settledParentIds->diff($parentsWithSettledEvents)->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    'commitment' => 'Existe uma parcela parcialmente ou totalmente liquidada sem eventos de pagamento verificáveis. Reconcilia os dados antes de cancelar o parcelamento.',
+                ]);
+            }
+
+            $operationId = $this->startOperation(
+                $user,
+                'commitment_cancel',
+                $lockedDebt->id,
+                $reason ?? 'Parcelamento cancelado pelo utilizador.',
+                [
+                    'installments_count' => $installments->count(),
+                    'payment_events_count' => $paymentEvents->where('status', 'settled')->count(),
+                ]
+            );
+
+            $beforeDebt = $lockedDebt->getAttributes();
+            $lockedDebt->update(['status' => 'cancelled']);
+            $this->recordItem(
+                $user,
+                $operationId,
+                'Divida',
+                $lockedDebt->id,
+                'cancelled',
+                $beforeDebt,
+                $lockedDebt->fresh()->getAttributes()
+            );
+
+            foreach ($installments as $installment) {
+                if (! in_array($installment->status, ['pending', 'partial'], true)) {
+                    continue;
+                }
+                $before = $installment->getAttributes();
+                $installment->update(['status' => 'cancelled']);
+                $this->recordItem(
+                    $user,
+                    $operationId,
+                    'ParcelaDivida',
+                    $installment->id,
+                    'cancelled',
+                    $before,
+                    $installment->fresh()->getAttributes()
+                );
+            }
+
+            foreach ($related as $movementItem) {
+                $before = $movementItem->getAttributes();
+                $isForecastOrParent = $movementItem->is_settlement_parent
+                    || in_array($movementItem->status, ['pending', 'partial'], true);
+
+                if ($isForecastOrParent) {
+                    $legacyType = $movementItem->legacy_type;
+                    $legacyId = $movementItem->legacy_id;
+                    $movementItem->update([
+                        'status' => 'void',
+                        'debt_id' => null,
+                        'installment_id' => null,
+                        'legacy_type' => null,
+                        'legacy_id' => null,
+                        'is_settlement_parent' => false,
+                        'settled_at' => null,
+                    ]);
+                    $this->recordMovementHistory(
+                        $user,
+                        $movementItem,
+                        'deleted',
+                        $before,
+                        $movementItem->fresh()->getAttributes(),
+                        'Previsão anulada com o cancelamento do parcelamento.'
+                    );
+                    $this->recordItem(
+                        $user,
+                        $operationId,
+                        'Movimento',
+                        $movementItem->id,
+                        'voided',
+                        $before,
+                        $movementItem->fresh()->getAttributes()
+                    );
+                    $this->deleteLegacyForMovement($user, $operationId, $legacyType, $legacyId);
+                } else {
+                    $movementItem->update(['debt_id' => null, 'installment_id' => null]);
+                    $this->recordMovementHistory(
+                        $user,
+                        $movementItem,
+                        'detached',
+                        $before,
+                        $movementItem->fresh()->getAttributes(),
+                        'Pagamento preservado como movimento independente após cancelamento do parcelamento.'
+                    );
+                    $this->recordItem(
+                        $user,
+                        $operationId,
+                        'Movimento',
+                        $movementItem->id,
+                        'detached',
+                        $before,
+                        $movementItem->fresh()->getAttributes()
+                    );
+                }
+            }
+
+            foreach ($paymentEvents as $event) {
+                $before = $event->getAttributes();
+                if ($event->status !== 'settled') {
+                    $legacyType = $event->legacy_type;
+                    $legacyId = $event->legacy_id;
+                    $event->update([
+                        'status' => 'void',
+                        'settles_movement_id' => null,
+                        'legacy_type' => null,
+                        'legacy_id' => null,
+                    ]);
+                    $action = 'voided';
+                    $historyAction = 'deleted';
+                    $this->deleteLegacyForMovement($user, $operationId, $legacyType, $legacyId);
+                } else {
+                    $event->update(['settles_movement_id' => null]);
+                    $action = 'detached';
+                    $historyAction = 'detached';
+                }
+
+                $this->recordMovementHistory(
+                    $user,
+                    $event,
+                    $historyAction,
+                    $before,
+                    $event->fresh()->getAttributes(),
+                    'Evento de pagamento resolvido durante o cancelamento do parcelamento.'
+                );
+                $this->recordItem(
+                    $user,
+                    $operationId,
+                    'Movimento',
+                    $event->id,
+                    $action,
+                    $before,
+                    $event->fresh()->getAttributes()
+                );
+            }
+
+            DB::table('deletion_operations')->where('id', $operationId)->update([
+                'status' => 'completed',
+                'updated_at' => now(),
+            ]);
+
+            return $lockedDebt->refresh();
+        });
+    }
+
     /**
      * Elimina a obrigação, mas preserva pagamentos reais como movimentos autónomos.
      * As previsões e associações exclusivas são anuladas na mesma transação.

@@ -126,6 +126,50 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
         $this->assertDatabaseHas('historico_movimentos', ['movement_id' => $forecast->id, 'action' => 'voided']);
     }
 
+
+    public function test_cancelling_partially_paid_commitment_voids_partial_forecast_and_preserves_payment_as_independent_movement(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->bank($user);
+        $debt = $this->debt($user, $bank);
+        $part = $debt->parcelas->sortBy('installment_number')->first();
+        $forecast = $user->movimentos()->where('installment_id', $part->id)->firstOrFail();
+
+        $this->actingAs($user)->postJson(route('financial.commitments.installments.pay', [$debt->id, $part->id]), [
+            'account_id' => $bank->id, 'amount' => '10.00', 'payment_date' => '2026-11-17',
+        ])->assertOk();
+        $payment = $forecast->settlements()->where('status', 'settled')->firstOrFail();
+
+        $this->postJson(route('financial.commitments.cancel', $debt->id))
+            ->assertOk()
+            ->assertJsonPath('data.status', 'cancelled');
+
+        $this->assertSame('cancelled', $part->fresh()->status);
+        $this->assertSame('10.00', $part->fresh()->paid_amount);
+        $this->assertSame('void', $forecast->fresh()->status);
+        $this->assertNull($forecast->fresh()->debt_id);
+        $this->assertNull($forecast->fresh()->installment_id);
+        $this->assertFalse((bool) $forecast->fresh()->is_settlement_parent);
+        $this->assertSame('settled', $payment->fresh()->status);
+        $this->assertNull($payment->fresh()->settles_movement_id);
+        $this->assertNull($payment->fresh()->debt_id);
+        $this->assertNull($payment->fresh()->installment_id);
+        $this->assertSame('190.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+        $this->assertSame(0, $user->movimentos()->where('debt_id', $debt->id)->whereIn('status', ['pending', 'partial'])->count());
+        $this->assertDatabaseHas('deletion_operations', [
+            'user_id' => $user->id,
+            'root_entity_type' => 'commitment_cancel',
+            'root_entity_id' => $debt->id,
+            'status' => 'completed',
+        ]);
+        $this->assertDatabaseHas('deletion_operation_items', [
+            'user_id' => $user->id,
+            'entity_type' => 'Movimento',
+            'entity_id' => $payment->id,
+            'action' => 'detached',
+        ]);
+    }
+
     public function test_deleting_partially_paid_commitment_preserves_payment_and_detaches_it_from_deleted_aggregate(): void
     {
         $user = User::factory()->create();
