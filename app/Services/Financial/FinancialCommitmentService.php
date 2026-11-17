@@ -197,6 +197,13 @@ class FinancialCommitmentService
                     'installment_frequency' => $locked->installment_frequency,
                     'due_date' => $locked->due_date?->toDateString(),
                     'remaining_amount' => number_format($oldRemainingCents / 100, 2, '.', ''),
+                    'installments' => $parts->whereIn('status', ['pending', 'partial'])->map(fn ($part) => [
+                        'installment_number' => $part->installment_number,
+                        'due_date' => $part->due_date?->toDateString(),
+                        'amount' => $part->amount,
+                        'paid_amount' => $part->paid_amount,
+                        'status' => $part->status,
+                    ])->values()->all(),
                 ], JSON_THROW_ON_ERROR),
                 'new_terms' => json_encode([
                     'remaining_amount' => number_format($remainingCents / 100, 2, '.', ''),
@@ -208,11 +215,15 @@ class FinancialCommitmentService
                 'updated_at' => now(),
             ]);
 
+            $replaceableParts = $parts->where('status', 'pending')->values();
             foreach ($parts->whereIn('status', ['pending', 'partial']) as $part) {
-                $part->update(['status' => 'cancelled']);
                 Movimento::query()->where('user_id', $user->id)->where('debt_id', $locked->id)
                     ->where('installment_id', $part->id)->where('status', 'pending')->get()
                     ->each(fn (Movimento $forecast) => $this->movements->voidRenegotiatedCommitmentForecast($user, $locked, $forecast));
+                if ($part->status === 'partial') {
+                    // A prestação parcialmente paga permanece como registo histórico.
+                    $part->update(['status' => 'cancelled']);
+                }
             }
 
             $base = intdiv($remainingCents, $count);
@@ -231,9 +242,7 @@ class FinancialCommitmentService
                 $amountCents = $base + ($i < $remainder ? 1 : 0);
                 $number = $firstNumber + $i;
                 $dueDate = $this->installmentDate($firstDue->copy(), $i, $frequency);
-                $part = ParcelaDivida::query()->create([
-                    'user_id' => $user->id,
-                    'debt_id' => $locked->id,
+                $partData = [
                     'installment_number' => $number,
                     'due_date' => $dueDate->toDateString(),
                     'amount' => number_format($amountCents / 100, 2, '.', ''),
@@ -241,7 +250,20 @@ class FinancialCommitmentService
                     'interest_amount' => '0.00',
                     'paid_amount' => '0.00',
                     'status' => 'pending',
-                ]);
+                ];
+                $existingPart = $replaceableParts->get($i);
+                if ($existingPart) {
+                    // Reutiliza a linha da prestação futura para respeitar a chave única.
+                    // A versão anterior do calendário fica preservada em dividas_renegociacoes.
+                    $existingPart->update($partData);
+                    $part = $existingPart->refresh();
+                } else {
+                    $part = ParcelaDivida::query()->create([
+                        'user_id' => $user->id,
+                        'debt_id' => $locked->id,
+                        ...$partData,
+                    ]);
+                }
                 $this->movements->createPending($user, [
                     'type' => 'expense',
                     'description' => $locked->name.' · Parcela '.$number.'/'.$locked->installments_count,
