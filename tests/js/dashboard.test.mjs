@@ -232,8 +232,8 @@ test('previsão usa o montante com vírgula e conserva o arredondamento por pres
     ui.element('movementAmount').value = '90,50';
     ui.element('movementAmount').dispatchEvent(new ui.window.Event('input'));
     const preview = ui.element('dashboardInstallmentScheduleList').textContent;
-    assert.match(preview, /30,17/);
     assert.match(preview, /30,16/);
+    assert.match(preview, /30,18/);
     assert.match(preview, /90,50/);
     ui.dom.window.close();
 });

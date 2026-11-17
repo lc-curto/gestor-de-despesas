@@ -141,7 +141,7 @@
                 const count = Math.max(2, Number(document.getElementById('dashboardInstallments')?.value || 2));
                 if (condition === 'installments' && total) {
                     const cents = Math.round(Number(total) * 100);
-                    paymentAmount.value = (Math.ceil(cents / count) / 100).toFixed(2);
+                    paymentAmount.value = (Math.floor(cents / count) / 100).toFixed(2);
                 } else {
                     paymentAmount.value = total || '';
                 }
@@ -185,8 +185,8 @@
         };
         const firstDate = dueDateAt(0);
         const lastDate = dueDateAt(count - 1);
-        const firstCents = base + (remainder > 0 ? 1 : 0);
-        const lastCents = base + (count - 1 < remainder ? 1 : 0);
+        const firstCents = base;
+        const lastCents = base + remainder;
         const summary = document.createElement('div');
         summary.className = 'small text-secondary';
         summary.innerHTML = '<strong>' + count + ' prestações</strong> · ' + formatter.format(firstDate) + ' a ' + formatter.format(lastDate)

@@ -57,6 +57,19 @@ class InstallmentMovementRegressionTest extends TestCase
         }
     }
 
+    public function test_installment_rounding_reconciles_remainder_on_last_installment(): void
+    {
+        $user = User::factory()->create();
+        $data = $this->payload($user);
+        $data['total_amount'] = '90.50';
+        $response = $this->actingAs($user)->postJson(route('financial.commitments.store'), $data)
+            ->assertCreated()->assertJsonCount(3, 'data.parcelas');
+        $debt = $user->dividas()->with('parcelas')->findOrFail($response->json('data.id'));
+
+        $this->assertSame(['30.16', '30.16', '30.18'], $debt->parcelas->sortBy('installment_number')->pluck('amount')->values()->all());
+        $this->assertSame(9050, (int) round($debt->parcelas->sum(fn ($part) => (float) $part->amount) * 100));
+    }
+
     public function test_movement_pagination_counts_canonical_installment_forecasts(): void
     {
         $user = User::factory()->create();

@@ -39,7 +39,8 @@ class FinancialCommitmentService
                 'due_date' => $data['due_date'] ?? $start->toDateString(), 'status' => 'open',
             ]);
             for ($i = 1; $i <= $count; $i++) {
-                $amountCents = $base + ($i <= $remainder ? 1 : 0);
+                // Keep the base amount on every installment and reconcile rounding on the last one.
+                $amountCents = $base + ($i === $count ? $remainder : 0);
                 ParcelaDivida::query()->create([
                     'user_id' => $user->id, 'debt_id' => $debt->id, 'installment_number' => $i,
                     'due_date' => $this->installmentDate(Carbon::parse($data['due_date'] ?? $start), $i - 1, $data['installment_frequency'] ?? 'monthly')->toDateString(),
