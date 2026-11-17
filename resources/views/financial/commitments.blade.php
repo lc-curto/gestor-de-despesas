@@ -90,27 +90,6 @@
         @endforelse
     </section>
 
-    <section class="commitment-section mb-4" aria-labelledby="historySectionTitle">
-        <div class="d-flex justify-content-between align-items-center mb-2"><div><h2 class="h5 fw-bold mb-1" id="historySectionTitle">Histórico de pagamentos</h2><p class="small text-secondary mb-0">Pagamentos já registados.</p></div><span class="badge text-bg-secondary">{{ $historyItems->count() }}</span></div>
-        @if($historyItems->isNotEmpty()) <details class="commitment-history"><summary>Ver histórico de pagamentos ({{ $historyItems->count() }})</summary> @endif
-        @forelse($historyItems as $history)
-            @if($loop->index === 10) <details class="commitment-more-items"><summary>Ver mais {{ $historyItems->count() - 10 }} pagamentos</summary><div> @endif
-            <article class="d-flex justify-content-between align-items-center gap-3 border-bottom py-3"><div><strong class="d-block">{{ $history->name }}</strong><span class="small text-secondary">{{ $history->detail }} · {{ \Illuminate\Support\Carbon::parse($history->date)->format('d/m/Y') }}</span></div><strong class="text-success text-nowrap">{{ number_format($history->amount,2,',','.') }} {{ auth()->user()->currency }}</strong></article>
-        @empty <p class="small text-secondary">Ainda não existem pagamentos no histórico.</p> @endforelse
-        @if($historyItems->count() > 10)</div></details>@endif
-        @if($historyItems->isNotEmpty()) </details> @endif
-    </section>
-
-    <section class="commitment-section mb-4" aria-labelledby="manageSectionTitle">
-        <h2 class="h5 fw-bold mb-1" id="manageSectionTitle">Gerir parcelamentos</h2><p class="small text-secondary">Editar a descrição e a próxima prestação ou encerrar o parcelamento.</p>
-        @foreach($commitments as $commitment)
-            @if(!in_array($commitment->status,['paid','cancelled'],true))
-                <article class="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom py-3"><div><strong>{{ $commitment->name }}</strong><div class="small text-secondary">{{ $commitment->payment_condition === 'installments' ? $commitment->installments_count.' prestações' : 'Pagamento único' }} · {{ number_format((float)$commitment->total_amount,2,',','.') }} {{ auth()->user()->currency }}</div></div>
-                    <div class="d-flex gap-2"><button class="btn btn-sm btn-outline-secondary js-edit-commitment" data-url="{{ route('financial.commitments.update',$commitment->id) }}" data-name="{{ $commitment->name }}" data-due="{{ optional($commitment->due_date)->format('Y-m-d') }}">Editar</button><button class="btn btn-sm btn-outline-danger js-cancel-commitment" data-url="{{ route('financial.commitments.cancel',$commitment->id) }}" data-name="{{ $commitment->name }}">Encerrar</button></div>
-                </article>
-            @endif
-        @endforeach
-    </section>
 </div>
 
 <div class="modal fade" id="editCommitmentModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content rounded-4 border-0"><form id="editCommitmentForm">
@@ -136,6 +115,12 @@
 .commitments-page .commitment-progress{height:.4rem;margin:.7rem 0;border-radius:99px;background:var(--bs-tertiary-bg)}
 .commitments-page .commitment-progress .progress-bar{border-radius:99px;background:var(--bs-primary)}
 .commitments-page .commitment-card-footer{align-items:flex-start}
+.commitments-page .commitment-secondary-section{border-top:1px solid var(--bs-border-color);padding:.8rem 0}
+.commitments-page .commitment-secondary-section>summary{display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-size:.85rem;font-weight:600;list-style:none}
+.commitments-page .commitment-secondary-section>summary::-webkit-details-marker{display:none}
+.commitments-page .commitment-secondary-section>summary:after{content:'＋';color:var(--bs-primary);font-size:1.1rem}
+.commitments-page .commitment-secondary-section[open]>summary:after{content:'−'}
+.commitments-page .commitment-secondary-section .commitment-section{padding-top:.75rem}
 .commitments-page .commitment-card-details{flex:0 0 auto}
 .commitments-page .commitment-card-details>summary{color:var(--bs-primary);font-size:.8rem;font-weight:600;cursor:pointer;list-style:none}
 .commitments-page .commitment-card-details>summary::-webkit-details-marker{display:none}
