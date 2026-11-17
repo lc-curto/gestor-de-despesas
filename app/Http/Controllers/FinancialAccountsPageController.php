@@ -31,6 +31,7 @@ class FinancialAccountsPageController extends Controller
                 $account->current_balance = $balances->balance($account);
             }
         });
+
         return view('financial.accounts', compact('accounts', 'transferTargets'));
     }
 
@@ -83,6 +84,7 @@ class FinancialAccountsPageController extends Controller
     {
         $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
         $service->reverse($request->user(), $movement, $request->input('reason'));
+
         return back()->with('success', 'Movimento estornado. O saldo foi recalculado.');
     }
 }

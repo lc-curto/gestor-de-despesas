@@ -49,22 +49,22 @@ return new class extends Migration
 
         // SQLite não suporta ADD CONSTRAINT; a validação da aplicação continua ativa.
         if (DB::getDriverName() !== 'sqlite') {
-        // Impede valores iguais ou inferiores a zero.
-        DB::statement("
+            // Impede valores iguais ou inferiores a zero.
+            DB::statement('
             ALTER TABLE despesas
             ADD CONSTRAINT despesas_amount_positive
             CHECK (amount > 0)
-        ");
+        ');
 
-        // Restringe as moedas permitidas.
-        DB::statement("
+            // Restringe as moedas permitidas.
+            DB::statement("
             ALTER TABLE despesas
             ADD CONSTRAINT despesas_currency_valid
             CHECK (currency IN ('EUR', 'USD', 'GBP', 'BRL'))
         ");
 
-        // Restringe as categorias permitidas.
-        DB::statement("
+            // Restringe as categorias permitidas.
+            DB::statement("
             ALTER TABLE despesas
             ADD CONSTRAINT despesas_category_valid
             CHECK (category IN (

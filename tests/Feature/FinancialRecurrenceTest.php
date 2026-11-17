@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\Financial\AccountBalanceService;
 use App\Services\Financial\FinancialAccountService;
 use App\Services\Financial\RecurrenceService;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,7 @@ class FinancialRecurrenceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class);
+        $this->withoutMiddleware(PreventRequestForgery::class);
         Carbon::setTestNow('2026-11-15 12:00:00');
     }
 
@@ -198,7 +199,6 @@ class FinancialRecurrenceTest extends TestCase
         ]);
     }
 
-
     public function test_settling_pending_expense_preserves_original_and_records_effective_payment_separately(): void
     {
         $user = User::factory()->create();
@@ -305,6 +305,4 @@ class FinancialRecurrenceTest extends TestCase
         $this->assertTrue($rule->fresh()->is_active);
         $this->assertSame(3, $user->movimentos()->where('recurrence_id', $rule->id)->where('status', 'pending')->count());
     }
-
-
 }

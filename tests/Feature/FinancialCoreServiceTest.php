@@ -3,13 +3,17 @@
 namespace Tests\Feature;
 
 use App\Models\ContaFinanceira;
+use App\Models\FaturaSaldoTransportado;
 use App\Models\User;
 use App\Services\Financial\AccountBalanceService;
 use App\Services\Financial\CardInvoiceService;
 use App\Services\Financial\FinancialAccountService;
+use App\Services\Financial\FinancialCommitmentService;
 use App\Services\Financial\FinancialMovementService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Services\Financial\FinancialProjectionService;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -200,7 +204,7 @@ class FinancialCoreServiceTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $debt = app(\App\Services\Financial\FinancialCommitmentService::class)->create($user, [
+        $debt = app(FinancialCommitmentService::class)->create($user, [
             'name' => 'Fatura de eletricidade',
             'total_amount' => '90.00',
             'start_date' => '2026-11-01',
@@ -332,6 +336,7 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('5.00', (string) $movement->fresh()->amount);
         $this->assertSame('95.00', app(AccountBalanceService::class)->balance($account));
     }
+
     public function test_pending_movement_can_be_descriptively_edited_with_audit(): void
     {
         $user = User::factory()->create();
@@ -441,7 +446,6 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('85.00', app(AccountBalanceService::class)->balance($account));
     }
 
-
     public function test_expense_supports_multiple_partial_settlements_across_accounts_without_mutating_original(): void
     {
         $user = User::factory()->create();
@@ -526,8 +530,6 @@ class FinancialCoreServiceTest extends TestCase
         ]);
     }
 
-
-
     public function test_financial_projection_counts_effective_payment_and_only_remaining_obligation(): void
     {
         $user = User::factory()->create();
@@ -541,10 +543,10 @@ class FinancialCoreServiceTest extends TestCase
             'source_account_id' => $account->id, 'amount' => '40.00', 'movement_date' => '2026-11-18',
         ]);
 
-        $projection = app(\App\Services\Financial\FinancialProjectionService::class)->build(
+        $projection = app(FinancialProjectionService::class)->build(
             $user,
-            \Illuminate\Support\Carbon::parse('2026-11-18'),
-            \Illuminate\Support\Carbon::parse('2026-11-30')
+            Carbon::parse('2026-11-18'),
+            Carbon::parse('2026-11-30')
         );
         $events = $projection['movements'];
         $effective = $events->firstWhere('settles_movement_id', $original->id);
@@ -557,13 +559,11 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame(-100.0, (float) $events->sum('projection_delta'));
     }
 
-
-
     public function test_reversing_installment_settlement_restores_installment_and_forecast(): void
     {
         $user = User::factory()->create();
         $account = $this->account($user, 'Conta principal', '100.00');
-        $commitments = app(\App\Services\Financial\FinancialCommitmentService::class);
+        $commitments = app(FinancialCommitmentService::class);
         $debt = $commitments->create($user, [
             'name' => 'Eletrodoméstico',
             'total_amount' => '60.00',
@@ -594,7 +594,7 @@ class FinancialCoreServiceTest extends TestCase
     {
         $user = User::factory()->create();
         $account = $this->account($user, 'Conta principal', '100.00');
-        $commitments = app(\App\Services\Financial\FinancialCommitmentService::class);
+        $commitments = app(FinancialCommitmentService::class);
         $debt = $commitments->create($user, [
             'name' => 'Eletrodoméstico',
             'total_amount' => '60.00',
@@ -610,10 +610,10 @@ class FinancialCoreServiceTest extends TestCase
             'payment_date' => '2026-11-18',
         ]);
 
-        $projection = app(\App\Services\Financial\FinancialProjectionService::class)->build(
+        $projection = app(FinancialProjectionService::class)->build(
             $user,
-            \Illuminate\Support\Carbon::parse('2026-11-18'),
-            \Illuminate\Support\Carbon::parse('2026-11-30')
+            Carbon::parse('2026-11-18'),
+            Carbon::parse('2026-11-30')
         );
         $items = $projection['movements'];
         $effective = $items->filter(fn ($item) => $item->settles_movement_id !== null);
@@ -625,7 +625,6 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame(-40.0, (float) $remaining->projection_delta);
         $this->assertSame(-60.0, (float) $items->sum('projection_delta'));
     }
-
 
     public function test_invoice_payment_reversal_restores_the_due_balance_and_can_be_paid_again(): void
     {
@@ -694,7 +693,6 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('-45.00', app(AccountBalanceService::class)->balance($card->fresh()));
     }
 
-
     public function test_overdue_invoice_balance_moves_to_next_cycle_without_new_expense_or_cash_event(): void
     {
         $user = User::factory()->create();
@@ -710,7 +708,7 @@ class FinancialCoreServiceTest extends TestCase
             'movement_date' => '2026-11-12',
         ]);
         $sourceInvoice = $user->faturas()->firstOrFail();
-        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-12-06 12:00:00'));
+        $this->travelTo(Carbon::parse('2026-12-06 12:00:00'));
 
         $invoices->purchase($user, [
             'account_id' => $card->id, 'description' => 'Compra dezembro', 'amount' => '50.00',
@@ -731,7 +729,7 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('interest', $charge->invoice_charge_type);
         $this->assertSame($sourceInvoice->id, $charge->origin_invoice_id);
 
-        $carry = \App\Models\FaturaSaldoTransportado::query()
+        $carry = FaturaSaldoTransportado::query()
             ->where('source_invoice_id', $sourceInvoice->id)
             ->where('target_invoice_id', $targetInvoice->id)->firstOrFail();
         $this->assertSame('100.00', (string) $carry->amount);
@@ -745,16 +743,15 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('-155.00', app(AccountBalanceService::class)->balance($card->fresh()));
         $this->assertSame(3, $user->movimentos()->where('type', 'expense')->where('is_settlement_parent', false)->count());
 
-        $projection = app(\App\Services\Financial\FinancialProjectionService::class)->build(
+        $projection = app(FinancialProjectionService::class)->build(
             $user,
-            \Illuminate\Support\Carbon::parse('2027-01-01'),
-            \Illuminate\Support\Carbon::parse('2027-01-31')
+            Carbon::parse('2027-01-01'),
+            Carbon::parse('2027-01-31')
         );
         $invoiceProjection = $projection['movements']->filter(fn ($item) => str_starts_with((string) $item->id, 'invoice-'));
         $this->assertCount(1, $invoiceProjection);
         $this->assertSame(-155.0, (float) $invoiceProjection->first()->projection_delta);
     }
-
 
     public function test_invoice_credit_is_linked_to_purchase_reduces_card_balance_and_nets_expenses(): void
     {
@@ -824,7 +821,7 @@ class FinancialCoreServiceTest extends TestCase
             'movement_date' => '2026-11-12',
         ]);
         $invoice = $user->faturas()->firstOrFail();
-        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-26 12:00:00'));
+        $this->travelTo(Carbon::parse('2026-11-26 12:00:00'));
 
         $this->postJson('/api/financial/invoices/'.$invoice->id.'/close', [
             'statement_amount' => '81.00',
@@ -850,5 +847,4 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('0.00', app(AccountBalanceService::class)->balance($card->fresh()));
         $this->assertSame('420.00', app(AccountBalanceService::class)->balance($bank->fresh()));
     }
-
 }

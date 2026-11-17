@@ -50,6 +50,7 @@ class FinancialProjectionService
 
         $items = $items->map(function (Movimento $movement) use ($accountTypes): Movimento {
             $movement->setAttribute('projection_delta', $this->cashDelta($movement, $accountTypes));
+
             return $movement;
         })->filter(fn (Movimento $movement) => (float) $movement->projection_delta !== 0.0)->values();
 
@@ -70,7 +71,9 @@ class FinancialProjectionService
                 ->get(['amount', 'reversal_of_id'])
                 ->sum(fn (Movimento $event) => ($event->reversal_of_id ? -1 : 1) * (float) $event->amount);
             $remaining = round((float) $original->amount - $netSettled, 2);
-            if ($remaining <= 0) continue;
+            if ($remaining <= 0) {
+                continue;
+            }
             $synthetic = $this->syntheticExpense(
                 'settlement-'.$original->id,
                 $original->description.' · Saldo pendente',
@@ -100,12 +103,14 @@ class FinancialProjectionService
             ->get()
             ->filter(fn ($installment) => $installment->divida
                 && $installment->divida->archived_at === null
-                && !in_array($installment->divida->status, ['cancelled', 'paid'], true)
-                && !in_array($installment->divida->payment_method, ['credit', 'card'], true))
+                && ! in_array($installment->divida->status, ['cancelled', 'paid'], true)
+                && ! in_array($installment->divida->payment_method, ['credit', 'card'], true))
             ->values();
         foreach ($installments as $installment) {
             $remaining = round((float) $installment->amount - (float) $installment->paid_amount, 2);
-            if ($remaining <= 0) continue;
+            if ($remaining <= 0) {
+                continue;
+            }
             $synthetic = $this->syntheticExpense(
                 'debt-'.$installment->id,
                 $installment->divida->name.' · Parcela '.$installment->installment_number.'/'.$installment->divida->installments_count,
@@ -137,7 +142,9 @@ class FinancialProjectionService
             $paid = (float) $invoice->movimentos->where('type', 'transfer')
                 ->sum(fn (Movimento $movement) => $movement->reversal_of_id ? -(float) $movement->amount : (float) $movement->amount);
             $remaining = round($total - $paid, 2);
-            if ($remaining <= 0) continue;
+            if ($remaining <= 0) {
+                continue;
+            }
             $synthetic = $this->syntheticExpense(
                 'invoice-'.$invoice->id,
                 'Pagamento de fatura · '.($invoice->conta?->name ?? 'Cartão'),
@@ -163,16 +170,28 @@ class FinancialProjectionService
         $sourceIsCash = in_array($sourceType, ['bank', 'cash'], true);
         $destinationIsCash = in_array($destinationType, ['bank', 'cash'], true);
 
-        if ($movement->type === 'income' && $destinationIsCash) $delta += (float) $movement->amount;
-        if ($movement->type === 'expense' && ($movement->status === 'pending' || $sourceIsCash)) $delta -= (float) $movement->amount;
+        if ($movement->type === 'income' && $destinationIsCash) {
+            $delta += (float) $movement->amount;
+        }
+        if ($movement->type === 'expense' && ($movement->status === 'pending' || $sourceIsCash)) {
+            $delta -= (float) $movement->amount;
+        }
         if ($movement->type === 'transfer') {
-            if ($sourceIsCash) $delta -= (float) $movement->amount;
-            if ($destinationIsCash) $delta += (float) $movement->amount;
+            if ($sourceIsCash) {
+                $delta -= (float) $movement->amount;
+            }
+            if ($destinationIsCash) {
+                $delta += (float) $movement->amount;
+            }
         }
         // Ajustes representam correções já liquidadas, não novas receitas ou despesas.
         if ($movement->type === 'adjustment' && $movement->status === 'settled') {
-            if ($movement->adjustment_direction === 'increase' && $destinationIsCash) $delta += (float) $movement->amount;
-            if ($movement->adjustment_direction === 'decrease' && $sourceIsCash) $delta -= (float) $movement->amount;
+            if ($movement->adjustment_direction === 'increase' && $destinationIsCash) {
+                $delta += (float) $movement->amount;
+            }
+            if ($movement->adjustment_direction === 'decrease' && $sourceIsCash) {
+                $delta -= (float) $movement->amount;
+            }
         }
 
         return round($delta, 2);
@@ -194,6 +213,7 @@ class FinancialProjectionService
         ]);
         // O id não é preenchível em massa no modelo, mas identifica eventos virtuais na rota.
         $movement->setAttribute('id', $id);
+
         return $movement;
     }
 }

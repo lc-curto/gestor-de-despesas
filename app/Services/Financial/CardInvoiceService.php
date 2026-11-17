@@ -18,10 +18,10 @@ class CardInvoiceService
     {
         return DB::transaction(function () use ($user, $data): Movimento {
             $card = $user->contasFinanceiras()->whereKey($data['account_id'])->lockForUpdate()->firstOrFail();
-            if ($card->type !== 'credit_card' || !$card->is_operational || $card->status !== 'active') {
+            if ($card->type !== 'credit_card' || ! $card->is_operational || $card->status !== 'active') {
                 throw ValidationException::withMessages(['account_id' => 'Seleciona um cartão de crédito ativo.']);
             }
-            if (!$card->closing_day || !$card->due_day) {
+            if (! $card->closing_day || ! $card->due_day) {
                 throw ValidationException::withMessages(['account_id' => 'Configura primeiro os dias de fecho e vencimento do cartão.']);
             }
             if ($card->credit_limit !== null) {
@@ -46,9 +46,9 @@ class CardInvoiceService
             // SQLite pode guardar a data com hora; procura a fatura pelo dia.
             $invoice = Fatura::query()->where('user_id', $user->id)->where('account_id', $card->id)
                 ->whereDate('reference_month', $reference->toDateString())->first() ?? Fatura::query()->firstOrCreate(
-                ['user_id' => $user->id, 'account_id' => $card->id, 'reference_month' => $reference->toDateString()],
-                ['closing_date' => $closing->toDateString(), 'due_date' => $due->toDateString(), 'status' => 'open']
-            );
+                    ['user_id' => $user->id, 'account_id' => $card->id, 'reference_month' => $reference->toDateString()],
+                    ['closing_date' => $closing->toDateString(), 'due_date' => $due->toDateString(), 'status' => 'open']
+                );
             $invoice = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
             $this->movements->assertInvoiceReconciled($user, $invoice);
             $this->carryOverdueInvoices($user, $invoice);
@@ -73,6 +73,7 @@ class CardInvoiceService
                 'is_historical' => (bool) ($data['is_historical'] ?? false),
             ]);
             $this->movements->syncInvoiceSettlementParent($user, $invoice);
+
             return $purchase;
         });
     }
@@ -86,7 +87,7 @@ class CardInvoiceService
             }
 
             $card = $user->contasFinanceiras()->whereKey($cardId)->lockForUpdate()->firstOrFail();
-            if ($card->type !== 'credit_card' || !$card->is_operational || $card->status !== 'active' || !$card->closing_day || !$card->due_day) {
+            if ($card->type !== 'credit_card' || ! $card->is_operational || $card->status !== 'active' || ! $card->closing_day || ! $card->due_day) {
                 throw ValidationException::withMessages(['account_id' => 'Seleciona um cartão ativo e configurado.']);
             }
             $date = Carbon::parse($locked->movement_date)->startOfDay();
@@ -110,9 +111,9 @@ class CardInvoiceService
             // SQLite pode guardar a data com hora; procura a fatura pelo dia.
             $invoice = Fatura::query()->where('user_id', $user->id)->where('account_id', $card->id)
                 ->whereDate('reference_month', $reference->toDateString())->first() ?? Fatura::query()->firstOrCreate(
-                ['user_id' => $user->id, 'account_id' => $card->id, 'reference_month' => $reference->toDateString()],
-                ['closing_date' => $closing->toDateString(), 'due_date' => $due->toDateString(), 'status' => 'open']
-            );
+                    ['user_id' => $user->id, 'account_id' => $card->id, 'reference_month' => $reference->toDateString()],
+                    ['closing_date' => $closing->toDateString(), 'due_date' => $due->toDateString(), 'status' => 'open']
+                );
             $invoice = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
             $this->movements->assertInvoiceReconciled($user, $invoice);
             $this->carryOverdueInvoices($user, $invoice);
@@ -125,6 +126,7 @@ class CardInvoiceService
                 'invoice_id' => $invoice->id,
             ]);
             $this->movements->syncInvoiceSettlementParent($user, $invoice);
+
             return $settled;
         });
     }
@@ -137,7 +139,9 @@ class CardInvoiceService
     public function listInvoices(User $user)
     {
         return Fatura::query()->where('user_id', $user->id)
-            ->where(function ($query) { $query->whereHas('movimentos', fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false))->orWhereHas('saldosTransportados'); })
+            ->where(function ($query) {
+                $query->whereHas('movimentos', fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false))->orWhereHas('saldosTransportados');
+            })
             ->with('conta:id,name,type,currency,credit_limit')
             ->with([
                 'movimentos' => fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false)
@@ -156,7 +160,9 @@ class CardInvoiceService
                 $paidCents = 0;
                 foreach ($invoice->movimentos as $movement) {
                     $cents = (int) round((float) $movement->amount * 100);
-                    if ($movement->type === 'expense' && !$movement->is_settlement_parent) $totalCents += $cents;
+                    if ($movement->type === 'expense' && ! $movement->is_settlement_parent) {
+                        $totalCents += $cents;
+                    }
                 }
                 $carriedCents = 0;
                 foreach ($invoice->saldosTransportados as $carried) {
@@ -182,6 +188,7 @@ class CardInvoiceService
                         : ($invoice->due_date->lt(today()) ? 'overdue'
                             : ($paid > 0 ? 'partial'
                                 : ($invoice->closed_at || $invoice->status === 'closed' ? 'closed' : 'open')))));
+
                 return $invoice;
             });
     }
@@ -196,15 +203,15 @@ class CardInvoiceService
             $this->carryOverdueInvoices($user, $locked);
             $this->movements->assertInvoiceReconciled($user, $locked);
             $card = $user->contasFinanceiras()->whereKey($locked->account_id)->lockForUpdate()->firstOrFail();
-            if ($card->type !== 'credit_card' || !$card->is_operational || $card->status !== 'active') {
+            if ($card->type !== 'credit_card' || ! $card->is_operational || $card->status !== 'active') {
                 throw ValidationException::withMessages(['invoice' => 'O cartão associado a esta fatura não está ativo.']);
             }
             $originInvoice = null;
-            if (!empty($data['origin_invoice_id'])) {
+            if (! empty($data['origin_invoice_id'])) {
                 $originInvoice = Fatura::query()->where('user_id', $user->id)
                     ->whereKey($data['origin_invoice_id'])->lockForUpdate()->firstOrFail();
                 if ($originInvoice->account_id !== $locked->account_id
-                    || !$originInvoice->reference_month->lt($locked->reference_month)) {
+                    || ! $originInvoice->reference_month->lt($locked->reference_month)) {
                     throw ValidationException::withMessages(['origin_invoice_id' => 'A fatura de origem deve pertencer ao mesmo cartão e a um ciclo anterior.']);
                 }
             }
@@ -224,6 +231,7 @@ class CardInvoiceService
                 'invoice_id' => $locked->id,
             ]);
             $this->movements->syncInvoiceSettlementParent($user, $locked);
+
             return $charge;
         });
     }
@@ -252,6 +260,7 @@ class CardInvoiceService
             $remainingCents = $this->invoiceTotalCents($source) - $this->invoicePaidCents($source);
             if ($remainingCents <= 0) {
                 $source->update(['status' => 'paid']);
+
                 continue;
             }
 
@@ -277,6 +286,7 @@ class CardInvoiceService
         foreach ($invoice->creditos()->where('status', 'settled')->get(['amount']) as $credit) {
             $total -= (int) round((float) $credit->amount * 100);
         }
+
         return $total;
     }
 
@@ -287,6 +297,7 @@ class CardInvoiceService
             $cents = (int) round((float) $payment->amount * 100);
             $paid += $payment->reversal_of_id ? -$cents : $cents;
         }
+
         return $paid;
     }
 
@@ -319,6 +330,7 @@ class CardInvoiceService
                 'status' => 'closed',
             ]);
             $this->movements->syncInvoiceSettlementParent($user, $locked);
+
             return $locked->refresh();
         });
     }
@@ -333,7 +345,7 @@ class CardInvoiceService
             $this->carryOverdueInvoices($user, $locked);
             $this->movements->assertInvoiceReconciled($user, $locked);
             $card = $user->contasFinanceiras()->whereKey($locked->account_id)->lockForUpdate()->firstOrFail();
-            if ($card->type !== 'credit_card' || !$card->is_operational || $card->status !== 'active') {
+            if ($card->type !== 'credit_card' || ! $card->is_operational || $card->status !== 'active') {
                 throw ValidationException::withMessages(['invoice' => 'O cartão associado a esta fatura não está ativo.']);
             }
             $purchase = Movimento::query()->where('user_id', $user->id)->whereKey($data['purchase_movement_id'])
@@ -341,7 +353,7 @@ class CardInvoiceService
             $originInvoice = Fatura::query()->where('user_id', $user->id)->whereKey($purchase->invoice_id)->firstOrFail();
             if ($originInvoice->account_id !== $locked->account_id
                 || $originInvoice->reference_month->gt($locked->reference_month)
-                || (!empty($data['origin_invoice_id']) && $data['origin_invoice_id'] !== $originInvoice->id)) {
+                || (! empty($data['origin_invoice_id']) && $data['origin_invoice_id'] !== $originInvoice->id)) {
                 throw ValidationException::withMessages(['purchase_movement_id' => 'A compra deve pertencer a este cartão e a um ciclo igual ou anterior ao da fatura que recebe o crédito.']);
             }
 
@@ -366,6 +378,7 @@ class CardInvoiceService
                 'movement_date' => $data['movement_date'],
             ]);
             $this->movements->syncInvoiceSettlementParent($user, $locked);
+
             return $credit;
         });
     }

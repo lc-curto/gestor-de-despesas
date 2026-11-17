@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 class MigrateDeterministicFinancialData extends Command
 {
     protected $signature = 'financial:migrate-deterministic-data {--user= : UUID de um utilizador específico} {--apply : Aplicar os casos determinísticos; sem esta opção apenas apresenta o plano} {--json : Emitir o relatório em JSON}';
+
     protected $description = 'Apresenta ou aplica reparações financeiras determinísticas; nunca elimina dados e mantém casos ambíguos para revisão.';
 
     public function handle(FinancialDataMigrationService $migration): int
@@ -18,6 +19,7 @@ class MigrateDeterministicFinancialData extends Command
 
         if ($this->option('json')) {
             $this->line(json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
             return self::SUCCESS;
         }
 
@@ -38,6 +40,7 @@ class MigrateDeterministicFinancialData extends Command
         $this->info($this->option('apply')
             ? 'Migração não destrutiva concluída. Nenhum caso ambíguo foi alterado.'
             : 'Plano apresentado; nenhum dado foi alterado. Use --apply apenas após rever o relatório.');
+
         return self::SUCCESS;
     }
 }

@@ -8,9 +8,9 @@ use App\Services\Financial\AccountBalanceService;
 use App\Services\Financial\FinancialAccountService;
 use App\Services\Financial\FinancialCommitmentService;
 use DOMDocument;
-use DOMElement;
 use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class FinancialCommitmentsPageTest extends TestCase
@@ -97,7 +97,7 @@ class FinancialCommitmentsPageTest extends TestCase
 
     public function test_installment_due_today_is_upcoming_and_agrees_with_summary_and_filters(): void
     {
-        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-17 12:00:00'));
+        $this->travelTo(Carbon::parse('2026-11-17 12:00:00'));
         $user = User::factory()->create();
         $service = app(FinancialCommitmentService::class);
         foreach ([
@@ -170,7 +170,9 @@ class FinancialCommitmentsPageTest extends TestCase
                 'payment_condition' => 'installments', 'installments_count' => 2,
             ]);
             // Simula registos antigos, pois a criação atual já rejeita esses métodos.
-            if (in_array($method, ['card', 'credit'], true)) $debt->update(['payment_method' => $method]);
+            if (in_array($method, ['card', 'credit'], true)) {
+                $debt->update(['payment_method' => $method]);
+            }
             $debts[] = $debt;
         }
         $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
@@ -245,7 +247,7 @@ class FinancialCommitmentsPageTest extends TestCase
 
     public function test_purchase_pagination_is_server_side_and_summary_uses_all_commitments(): void
     {
-        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-17 12:00:00'));
+        $this->travelTo(Carbon::parse('2026-11-17 12:00:00'));
         $user = User::factory()->create();
         $service = app(FinancialCommitmentService::class);
 
@@ -271,7 +273,6 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->assertSame(6, $mobile->viewData('commitments')->count());
         $this->assertSame(240.0, $mobile->viewData('summary')['open']);
     }
-
 
     public function test_edit_purchase_changes_only_name_and_merchant(): void
     {
@@ -388,5 +389,4 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->actingAs($user)->get(route('financial.commitments.page'))->assertOk()
             ->assertSee('Frigorífico')->assertSee('Radio Popular');
     }
-
 }

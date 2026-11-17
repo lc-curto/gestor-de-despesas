@@ -94,13 +94,13 @@ class FinancialCommitmentsPageController extends Controller
         ];
 
         $status = $request->query('status', 'active');
-        if (!in_array($status, ['active', 'completed', 'all'], true)) {
+        if (! in_array($status, ['active', 'completed', 'all'], true)) {
             $status = 'active';
         }
 
         $search = trim((string) $request->query('q', ''));
         $perPage = (int) $request->query('per_page', 10);
-        if (!in_array($perPage, [6, 10], true)) {
+        if (! in_array($perPage, [6, 10], true)) {
             $perPage = 10;
         }
 
@@ -130,7 +130,7 @@ class FinancialCommitmentsPageController extends Controller
             ->paginate($perPage, ['*'], 'purchases')
             ->withQueryString();
 
-        $commitments->getCollection()->each(function (Divida $commitment) use ($request): void {
+        $commitments->getCollection()->each(function (Divida $commitment): void {
             $commitment->setRelation('installmentsPage', $commitment->parcelas()
                 ->orderBy('installment_number')
                 ->paginate(6, ['*'], 'installments_'.$commitment->id)

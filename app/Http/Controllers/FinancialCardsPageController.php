@@ -27,8 +27,8 @@ class FinancialCardsPageController extends Controller
             $hasRecurrence = DB::table('recorrencias')->where('user_id', $card->user_id)->where('account_id', $card->id)->exists();
             $card->can_delete = $card->movimentos_origem_count === 0
                 && $card->movimentos_destino_count === 0
-                && !$hasDebt
-                && !$hasRecurrence
+                && ! $hasDebt
+                && ! $hasRecurrence
                 && (float) ($card->opening_debt_amount ?? 0) === 0.0
                 && (float) ($card->opening_debt_paid ?? 0) === 0.0
                 && (float) ($card->opening_balance ?? 0) === 0.0;
@@ -38,7 +38,7 @@ class FinancialCardsPageController extends Controller
         });
 
         $activeCards = $cards->where('status', 'active')->where('is_operational', true);
-        $inactiveCards = $cards->filter(fn (ContaFinanceira $card) => $card->status !== 'active' || !$card->is_operational)->values();
+        $inactiveCards = $cards->filter(fn (ContaFinanceira $card) => $card->status !== 'active' || ! $card->is_operational)->values();
         $summary = [
             'used' => $activeCards->sum('used_limit'),
             'available' => $activeCards->sum('available_limit'),

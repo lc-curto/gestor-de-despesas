@@ -11,6 +11,7 @@ use App\Services\Financial\FinancialCommitmentService;
 use App\Services\Financial\FinancialProjectionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class InstallmentSettlementRegressionTest extends TestCase
@@ -28,13 +29,17 @@ class InstallmentSettlementRegressionTest extends TestCase
             'payment_condition' => 'installments', 'payment_method' => 'transfer', 'installments_count' => 3, 'installment_frequency' => 'monthly',
             'category_id' => $user->categorias()->where('slug', 'casa')->firstOrFail()->id,
         ]);
+
         return [$user, $bank, $debt];
     }
 
-    private function settle(User $user, ContaFinanceira $account, string $id, string $amount, ?string $expected): \Illuminate\Testing\TestResponse
+    private function settle(User $user, ContaFinanceira $account, string $id, string $amount, ?string $expected): TestResponse
     {
         $payload = ['amount' => $amount, 'movement_date' => '2026-11-17', 'source_account_id' => $account->id];
-        if ($expected !== null) $payload['expected_amount'] = $expected;
+        if ($expected !== null) {
+            $payload['expected_amount'] = $expected;
+        }
+
         return $this->actingAs($user)->putJson(route('financial.movements.settle', $id), $payload);
     }
 

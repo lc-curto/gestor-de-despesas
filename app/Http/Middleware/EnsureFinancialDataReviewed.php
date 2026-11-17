@@ -29,14 +29,14 @@ class EnsureFinancialDataReviewed
                 || $request->routeIs('logout')
                 || $request->routeIs(...$dataMaintenanceRoutes);
 
-            if ($user && $user->financial_review_required && !$isReviewOrMaintenanceRoute) {
+            if ($user && $user->financial_review_required && ! $isReviewOrMaintenanceRoute) {
                 return redirect()->route('financial.review.index');
             }
 
             return $next($request);
         };
 
-        if (!$user || $request->isMethodSafe()) {
+        if (! $user || $request->isMethodSafe()) {
             return $dispatch();
         }
 
@@ -45,7 +45,7 @@ class EnsureFinancialDataReviewed
         // Assim uma escrita e a conclusão da revisão não podem passar-se uma pela outra.
         return DB::transaction(function () use ($user, $dispatch): Response {
             $row = DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
-            if (!$row) {
+            if (! $row) {
                 abort(401);
             }
             $user->setAttribute('financial_review_required', (bool) $row->financial_review_required);

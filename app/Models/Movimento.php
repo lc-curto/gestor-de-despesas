@@ -34,12 +34,43 @@ class Movimento extends Model
         ];
     }
 
-    public function user(): BelongsTo { return $this->belongsTo(User::class); }
-    public function contaOrigem(): BelongsTo { return $this->belongsTo(ContaFinanceira::class, 'source_account_id'); }
-    public function contaDestino(): BelongsTo { return $this->belongsTo(ContaFinanceira::class, 'destination_account_id'); }
-    public function categoria(): BelongsTo { return $this->belongsTo(Categoria::class, 'category_id'); }
-    public function recorrencia(): BelongsTo { return $this->belongsTo(Recorrencia::class, 'recurrence_id'); }
-    public function historico(): HasMany { return $this->hasMany(HistoricoMovimento::class, 'movement_id'); }
-    public function settlementParent(): BelongsTo { return $this->belongsTo(self::class, 'settles_movement_id'); }
-    public function settlements(): HasMany { return $this->hasMany(self::class, 'settles_movement_id'); }
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function contaOrigem(): BelongsTo
+    {
+        return $this->belongsTo(ContaFinanceira::class, 'source_account_id');
+    }
+
+    public function contaDestino(): BelongsTo
+    {
+        return $this->belongsTo(ContaFinanceira::class, 'destination_account_id');
+    }
+
+    public function categoria(): BelongsTo
+    {
+        return $this->belongsTo(Categoria::class, 'category_id');
+    }
+
+    public function recorrencia(): BelongsTo
+    {
+        return $this->belongsTo(Recorrencia::class, 'recurrence_id');
+    }
+
+    public function historico(): HasMany
+    {
+        return $this->hasMany(HistoricoMovimento::class, 'movement_id');
+    }
+
+    public function settlementParent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'settles_movement_id');
+    }
+
+    public function settlements(): HasMany
+    {
+        return $this->hasMany(self::class, 'settles_movement_id');
+    }
 }

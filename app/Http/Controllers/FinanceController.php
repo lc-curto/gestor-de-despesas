@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Services\Financial\CardInvoiceService;
-use App\Services\Financial\FinancialMovementService;
 use App\Services\Financial\FinancialCommitmentService;
+use App\Services\Financial\FinancialMovementService;
 use App\Services\Financial\RecurrenceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +28,7 @@ class FinanceController extends Controller
     private function query(Request $request)
     {
         [, $relation] = $this->config($request);
+
         return $request->user()->{$relation}();
     }
 
@@ -49,6 +50,7 @@ class FinanceController extends Controller
     private function linkedMovement(Request $request, string $tipo, string $legacyId)
     {
         $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
+
         return $request->user()->movimentos()
             ->where('legacy_type', $legacyType)
             ->where('legacy_id', $legacyId)
@@ -58,7 +60,7 @@ class FinanceController extends Controller
     private function categoryOptions(Request $request, string $tipo, bool $includeInactive = false)
     {
         $query = $request->user()->categorias()->where('type', $tipo);
-        if (!$includeInactive) {
+        if (! $includeInactive) {
             $query->where('is_active', true);
         }
 
@@ -108,19 +110,19 @@ class FinanceController extends Controller
             'recurrence_enabled' => 'sometimes|boolean',
             'recurrence_frequency' => ['required_if:recurrence_enabled,1', Rule::in(['daily', 'weekly', 'monthly', 'yearly', 'custom'])],
             'recurrence_interval' => 'required_if:recurrence_enabled,1|integer|min:1|max:365',
-            'recurrence_ends_at' => 'nullable|date|after_or_equal:' . $dateField,
+            'recurrence_ends_at' => 'nullable|date|after_or_equal:'.$dateField,
         ]);
 
         $selectedAccountId = $data['payment_account_id'] ?? $data['account_id'] ?? null;
-        $isPendingExpense = !$request->boolean('recurrence_enabled')
-            && ($data['paid_now'] ?? '0') === '0' && !$selectedAccountId;
+        $isPendingExpense = ! $request->boolean('recurrence_enabled')
+            && ($data['paid_now'] ?? '0') === '0' && ! $selectedAccountId;
         $account = $selectedAccountId ? $request->user()->contasFinanceiras()
             ->whereKey($selectedAccountId)
             ->whereIn('type', $tipo === 'despesa'
                 ? ($request->boolean('card_only') ? ['credit_card'] : ['bank', 'cash', 'credit_card'])
                 : ['bank', 'cash'])
             ->where('is_operational', true)->where('status', 'active')->whereNotNull('opening_balance')->first() : null;
-        if ((!$account && !$isPendingExpense) || ($account && $account->currency !== $request->user()->currency)) {
+        if ((! $account && ! $isPendingExpense) || ($account && $account->currency !== $request->user()->currency)) {
             throw ValidationException::withMessages(['payment_account_id' => 'Seleciona uma conta ativa, configurada e na moeda da tua conta.']);
         }
 
@@ -132,20 +134,22 @@ class FinanceController extends Controller
                 'credit_card' => ['credit'],
                 default => [],
             };
-            if (!in_array($paymentMethod, $allowedMethods, true)) {
+            if (! in_array($paymentMethod, $allowedMethods, true)) {
                 throw ValidationException::withMessages([
                     'actual_payment_method' => 'O método de pagamento não corresponde ao tipo de conta selecionado.',
                 ]);
             }
         }
-        if ($account) $data['account_id'] = $account->id;
+        if ($account) {
+            $data['account_id'] = $account->id;
+        }
 
         $categoryQuery = $request->user()->categorias()->where('type', $tipo);
-        $category = !empty($data['category_id'])
+        $category = ! empty($data['category_id'])
             ? $categoryQuery->whereKey($data['category_id'])->firstOrFail()
             : $categoryQuery->where('slug', $data['category'])->firstOrFail();
 
-        if (!$category->is_active) {
+        if (! $category->is_active) {
             $current = $movementId
                 ? $this->query($request)->whereKey($movementId)->value('category_id')
                 : null;
@@ -206,6 +210,7 @@ class FinanceController extends Controller
                 'expense_behavior' => $payload['expense_behavior'] ?? 'variable',
                 'is_historical' => $payload['is_historical'] ?? false,
             ]);
+
             return;
         }
 
@@ -225,13 +230,13 @@ class FinanceController extends Controller
         $query = $this->query($request)->with('categoria')
             ->orderByDesc($dateField)->orderBy('id');
 
-        if (!empty($filters['categoria']) && $cats->has($filters['categoria'])) {
+        if (! empty($filters['categoria']) && $cats->has($filters['categoria'])) {
             $query->where('category_id', $filters['categoria']);
         }
-        if (!empty($filters['inicio'])) {
+        if (! empty($filters['inicio'])) {
             $query->whereDate($dateField, '>=', $filters['inicio']);
         }
-        if (!empty($filters['fim'])) {
+        if (! empty($filters['fim'])) {
             $query->whereDate($dateField, '<=', $filters['fim']);
         }
 
@@ -287,15 +292,16 @@ class FinanceController extends Controller
             if ($request->expectsJson()) {
                 return response()->json(['ok' => true, 'message' => 'Compromisso criado.']);
             }
+
             return redirect()->route('despesas.index')->with('success', 'Compromisso criado.');
         }
         $recurrenceEnabled = (bool) ($data['recurrence_enabled'] ?? false);
-        $isPendingExpense = !$recurrenceEnabled
+        $isPendingExpense = ! $recurrenceEnabled
             && ($data['paid_now'] ?? '0') === '0'
             && empty($data['account_id'])
             && empty($data['payment_account_id']);
         $accountId = $isPendingExpense ? null : ($data['payment_account_id'] ?? $data['account_id'] ?? null);
-        if (!$accountId && !$isPendingExpense) {
+        if (! $accountId && ! $isPendingExpense) {
             throw ValidationException::withMessages(['payment_account_id' => 'Seleciona a conta utilizada no pagamento.']);
         }
         $dateField = $tipo === 'despesa' ? 'expense_date' : 'income_date';
@@ -313,16 +319,19 @@ class FinanceController extends Controller
                 'ends_at' => $data['recurrence_ends_at'] ?? null,
             ]);
             if ($request->expectsJson()) {
-                return response()->json(['ok' => true, 'message' => ($tipo === 'despesa' ? 'Despesa' : 'Receita') . ' recorrente criada.']);
+                return response()->json(['ok' => true, 'message' => ($tipo === 'despesa' ? 'Despesa' : 'Receita').' recorrente criada.']);
             }
+
             return redirect()->route($tipo === 'despesa' ? 'despesas.index' : 'receitas.index')
-                ->with('success', ($tipo === 'despesa' ? 'Despesa' : 'Receita') . ' recorrente criada.');
+                ->with('success', ($tipo === 'despesa' ? 'Despesa' : 'Receita').' recorrente criada.');
         }
         $expenseBehavior = $data['expense_behavior'] ?? 'variable';
         $notes = $data['notes'] ?? null;
         $actualPaymentMethod = $data['actual_payment_method'] ?? null;
         unset($data['notes'], $data['actual_payment_method'], $data['expense_behavior'], $data['account_id'], $data['payment_account_id'], $data['paid_now'], $data['payment_amount'], $data['payment_date'], $data['payment_condition'], $data['payment_method'], $data['installments_count'], $data['installment_frequency'], $data['card_only'], $data['recurrence_enabled'], $data['recurrence_frequency'], $data['recurrence_interval'], $data['recurrence_ends_at']);
-        if ($tipo !== 'despesa') unset($data['due_date']);
+        if ($tipo !== 'despesa') {
+            unset($data['due_date']);
+        }
         $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
 
         DB::transaction(function () use ($request, $service, $invoices, $tipo, $data, $accountId, $legacyType, $expenseBehavior, $isPendingExpense, $notes, $actualPaymentMethod): void {
@@ -330,6 +339,7 @@ class FinanceController extends Controller
             $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId, 'expense_behavior' => $expenseBehavior, 'notes' => $notes, 'actual_payment_method' => $actualPaymentMethod]), $legacyType, $legacy->id);
             if ($isPendingExpense) {
                 $service->createPending($request->user(), array_merge($payload, ['source_account_id' => null, 'destination_account_id' => null, 'notes' => $notes]));
+
                 return;
             }
             $this->createLinkedMovement($request, $payload, $service, $invoices);
@@ -372,7 +382,7 @@ class FinanceController extends Controller
         $actualPaymentMethod = $data['actual_payment_method'] ?? null;
         unset($data['expense_behavior']);
         $isPendingExpense = $tipo === 'despesa'
-            && !$recurrenceEnabled
+            && ! $recurrenceEnabled
             && ($data['paid_now'] ?? '0') === '0'
             && empty($data['payment_account_id'])
             && empty($data['account_id']);
@@ -381,7 +391,7 @@ class FinanceController extends Controller
         $legacyType = $tipo === 'despesa' ? 'despesa' : 'receita';
         $date = $data[$dateField];
 
-        DB::transaction(function () use ($request, $service, $invoices, $tipo, $id, $data, $accountId, $legacyType, $dateField, $date, $expenseBehavior, $actualPaymentMethod, $isPendingExpense): void {
+        DB::transaction(function () use ($request, $service, $invoices, $tipo, $id, $data, $accountId, $legacyType, $date, $expenseBehavior, $actualPaymentMethod, $isPendingExpense): void {
             $legacy = $this->query($request)->whereKey($id)->lockForUpdate()->firstOrFail();
             $movement = $this->linkedMovement($request, $tipo, $legacy->id);
             if ($movement?->invoice_id) {
@@ -392,7 +402,7 @@ class FinanceController extends Controller
             }
             $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId, 'expense_behavior' => $expenseBehavior, 'actual_payment_method' => $actualPaymentMethod]), $legacyType, $legacy->id);
 
-            if (!$movement) {
+            if (! $movement) {
                 $cutoff = $request->user()->financial_cutoff_date?->toDateString();
                 $payload['is_historical'] = $cutoff !== null && $date <= $cutoff;
                 $this->createLinkedMovement($request, $payload, $service, $invoices);
@@ -423,7 +433,7 @@ class FinanceController extends Controller
                     && $movement->movement_date->toDateString() === (string) $payload['movement_date']
                     && (string) $movement->category_id === (string) $payload['category_id']
                     && ($tipo !== 'despesa' || $movement->expense_behavior === $payload['expense_behavior']);
-                if (!$sameFinancialData) {
+                if (! $sameFinancialData) {
                     throw ValidationException::withMessages([
                         'movement' => 'Um movimento liquidado não pode ser editado. Estorna-o e regista a correção como um novo movimento.',
                     ]);
@@ -529,5 +539,4 @@ class FinanceController extends Controller
 
         return route($fallbackRoute);
     }
-
 }

@@ -9,6 +9,7 @@ use App\Models\ParcelaDivida;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class FinancialCommitmentService
@@ -19,10 +20,10 @@ class FinancialCommitmentService
     {
         return DB::transaction(function () use ($user, $data): Divida {
             $condition = $data['payment_condition'];
-            $category = !empty($data['category_id'])
+            $category = ! empty($data['category_id'])
                 ? Categoria::query()->where('user_id', $user->id)->whereKey($data['category_id'])->where('type', 'despesa')->where('is_active', true)->first()
                 : null;
-            if (!empty($data['category_id']) && !$category) {
+            if (! empty($data['category_id']) && ! $category) {
                 throw ValidationException::withMessages(['category_id' => 'Seleciona uma categoria de despesa ativa.']);
             }
             $expenseBehavior = $category?->expense_behavior ?? 'variable';
@@ -30,8 +31,12 @@ class FinancialCommitmentService
                 throw ValidationException::withMessages(['payment_method' => 'O parcelamento por cartão não está disponível neste formulário. Regista a compra em Cartões.']);
             }
             $count = (int) ($data['installments_count'] ?? 1);
-            if ($condition === 'installments' && $count < 2) throw ValidationException::withMessages(['installments_count' => 'Um compromisso parcelado precisa de pelo menos 2 parcelas.']);
-            if ($condition !== 'installments') $count = 1;
+            if ($condition === 'installments' && $count < 2) {
+                throw ValidationException::withMessages(['installments_count' => 'Um compromisso parcelado precisa de pelo menos 2 parcelas.']);
+            }
+            if ($condition !== 'installments') {
+                $count = 1;
+            }
             $start = Carbon::parse($data['start_date']);
             $totalCents = (int) round(((float) $data['total_amount']) * 100);
             $base = intdiv($totalCents, $count);
@@ -55,7 +60,7 @@ class FinancialCommitmentService
                     'principal_amount' => number_format($amountCents / 100, 2, '.', ''),
                     'interest_amount' => '0.00', 'paid_amount' => '0.00', 'status' => 'pending',
                 ]);
-                if (!in_array($data['payment_method'] ?? null, ['credit', 'card'], true)) {
+                if (! in_array($data['payment_method'] ?? null, ['credit', 'card'], true)) {
                     $installment = ParcelaDivida::query()->where('user_id', $user->id)->where('debt_id', $debt->id)->where('installment_number', $i)->firstOrFail();
                     $this->movements->createPending($user, [
                         'type' => 'expense',
@@ -70,6 +75,7 @@ class FinancialCommitmentService
                     ]);
                 }
             }
+
             return $debt->load('parcelas');
         });
     }
@@ -202,7 +208,7 @@ class FinancialCommitmentService
             }
 
             DB::table('dividas_renegociacoes')->insert([
-                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'id' => (string) Str::uuid(),
                 'user_id' => $user->id,
                 'debt_id' => $locked->id,
                 'previous_terms' => json_encode([
@@ -304,6 +310,7 @@ class FinancialCommitmentService
                 throw ValidationException::withMessages(['commitment' => 'Uma compra cancelada não pode ser arquivada nesta operação.']);
             }
             $locked->update(['archived_at' => now()]);
+
             return $locked->refresh();
         });
     }
@@ -330,11 +337,14 @@ class FinancialCommitmentService
     {
         return DB::transaction(function () use ($user, $debt): Divida {
             $locked = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
-            if (in_array($locked->status, ['cancelled', 'paid'], true)) throw ValidationException::withMessages(['commitment' => 'Este compromisso já está encerrado.']);
+            if (in_array($locked->status, ['cancelled', 'paid'], true)) {
+                throw ValidationException::withMessages(['commitment' => 'Este compromisso já está encerrado.']);
+            }
             $locked->parcelas()->whereIn('status', ['pending', 'partial'])->update(['status' => 'cancelled']);
             $locked->update(['status' => 'cancelled']);
             Movimento::query()->where('user_id', $user->id)->where('debt_id', $locked->id)->where('status', 'pending')->get()
                 ->each(fn (Movimento $movement) => $this->movements->voidCancelledCommitmentForecast($user, $locked, $movement));
+
             return $locked->refresh();
         });
     }
@@ -357,12 +367,14 @@ class FinancialCommitmentService
                 throw ValidationException::withMessages(['installment' => 'Não é possível pagar uma prestação cancelada ou já liquidada.']);
             }
             $paymentAccount = $user->contasFinanceiras()->whereKey($data['account_id'])->firstOrFail();
-            if (!in_array($paymentAccount->type, ['bank', 'cash'], true) || !$paymentAccount->is_operational || $paymentAccount->status !== 'active') {
+            if (! in_array($paymentAccount->type, ['bank', 'cash'], true) || ! $paymentAccount->is_operational || $paymentAccount->status !== 'active') {
                 throw ValidationException::withMessages(['account_id' => 'Uma parcela deve ser liquidada a partir de uma conta bancária ou de dinheiro ativa.']);
             }
             $remaining = round((float) $locked->amount - (float) $locked->paid_amount, 2);
             $amount = round((float) ($data['amount'] ?? $remaining), 2);
-            if ($remaining <= 0 || $amount <= 0 || $amount > $remaining) throw ValidationException::withMessages(['amount' => 'O valor do pagamento excede o saldo da parcela.']);
+            if ($remaining <= 0 || $amount <= 0 || $amount > $remaining) {
+                throw ValidationException::withMessages(['amount' => 'O valor do pagamento excede o saldo da parcela.']);
+            }
             $forecastQuery = fn () => Movimento::query()->where('user_id', $user->id)->where('debt_id', $lockedDebt->id)
                 ->where('installment_id', $locked->id)
                 ->where(function ($query) {
@@ -374,7 +386,7 @@ class FinancialCommitmentService
 
             // Dados históricos podem ter uma prestação sem previsão associada.
             // Cria-se a previsão pelo saldo atual antes de registar a primeira liquidação.
-            if (!$forecast && !$expectedForecastId) {
+            if (! $forecast && ! $expectedForecastId) {
                 $forecast = $this->movements->createPending($user, [
                     'type' => 'expense',
                     'description' => $lockedDebt->name.' · Parcela '.$locked->installment_number.'/'.$lockedDebt->installments_count,
@@ -385,17 +397,17 @@ class FinancialCommitmentService
                     'installment_id' => $locked->id,
                 ]);
             }
-            if ($expectedForecastId && !$forecast) {
+            if ($expectedForecastId && ! $forecast) {
                 throw ValidationException::withMessages(['movement' => 'Esta previsão já foi liquidada ou deixou de estar disponível. Atualiza a página.']);
             }
-            if ($forecast && !$forecast->is_settlement_parent
+            if ($forecast && ! $forecast->is_settlement_parent
                 && (int) round((float) $forecast->amount * 100) !== (int) round($remaining * 100)) {
                 throw ValidationException::withMessages(['movement' => 'A previsão não corresponde ao saldo da prestação. Revê o parcelamento antes de pagar.']);
             }
-            if (!$forecast) {
+            if (! $forecast) {
                 throw ValidationException::withMessages(['movement' => 'Não existe uma previsão ativa para esta prestação. Revê o parcelamento antes de pagar.']);
             }
-            if ($expectedForecastId && $amount < $remaining && !isset($data['expected_amount'])) {
+            if ($expectedForecastId && $amount < $remaining && ! isset($data['expected_amount'])) {
                 throw ValidationException::withMessages(['movement' => 'Atualiza a página antes de fazer um pagamento parcial.']);
             }
             if ($expectedForecastId && isset($data['expected_amount'])

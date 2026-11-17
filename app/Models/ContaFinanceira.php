@@ -33,7 +33,18 @@ class ContaFinanceira extends Model
         ];
     }
 
-    public function user(): BelongsTo { return $this->belongsTo(User::class); }
-    public function movimentosOrigem(): HasMany { return $this->hasMany(Movimento::class, 'source_account_id'); }
-    public function movimentosDestino(): HasMany { return $this->hasMany(Movimento::class, 'destination_account_id'); }
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function movimentosOrigem(): HasMany
+    {
+        return $this->hasMany(Movimento::class, 'source_account_id');
+    }
+
+    public function movimentosDestino(): HasMany
+    {
+        return $this->hasMany(Movimento::class, 'destination_account_id');
+    }
 }

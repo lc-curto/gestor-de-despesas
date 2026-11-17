@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Financial\FinancialProjectionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use App\Services\Financial\FinancialProjectionService;
 
 class FinancialRouteController extends Controller
 {

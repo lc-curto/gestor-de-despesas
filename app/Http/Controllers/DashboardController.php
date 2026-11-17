@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Financial\AccountBalanceService;
+use App\Services\Financial\CardInvoiceService;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use App\Services\Financial\AccountBalanceService;
-use App\Services\Financial\CardInvoiceService;
 
 class DashboardController extends Controller
 {
@@ -154,7 +154,7 @@ class DashboardController extends Controller
 
         $categorias = $user->categorias()->pluck('id')->all();
         $categoria = (string) $request->query('categoria', 'all');
-        if ($categoria !== 'all' && !in_array($categoria, $categorias, true)) {
+        if ($categoria !== 'all' && ! in_array($categoria, $categorias, true)) {
             $categoria = 'all';
         }
 
@@ -197,6 +197,7 @@ class DashboardController extends Controller
             if ($item->data_movimento !== null) {
                 $item->data_movimento = Carbon::parse($item->data_movimento)->toDateString();
             }
+
             return $item;
         });
 
@@ -220,7 +221,7 @@ class DashboardController extends Controller
         try {
             $inicio = Carbon::createFromFormat('!Y-m', (string) $mes)->startOfMonth();
             if ($inicio->format('Y-m') !== $mes) {
-                throw new \InvalidArgumentException();
+                throw new \InvalidArgumentException;
             }
         } catch (\Throwable) {
             $inicio = now()->startOfMonth();

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\EnsureFinancialDataReviewed;
 use App\Models\ContaFinanceira;
 use App\Models\Divida;
 use App\Models\Movimento;
@@ -172,7 +173,7 @@ class FinancialProjectionRegressionTest extends TestCase
         $minus = $this->adjust($user, $bank, 'decrease', '2.00', '2026-12-05');
         $this->adjust($user, $bank, 'increase', '90.00', '2026-12-05', true);
 
-        $this->withoutMiddleware(\App\Http\Middleware\EnsureFinancialDataReviewed::class);
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
         $response = $this->actingAs($user)->get(route('financial.route', ['mes' => '2026-12', 'modo' => 1]));
         $response->assertOk();
         $this->assertSame(120.0, $response->viewData('openingBalance'));

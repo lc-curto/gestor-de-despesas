@@ -3,25 +3,22 @@
 namespace App\Http\Controllers;
 
 use App\Models\ContaFinanceira;
-use App\Models\Movimento;
 use App\Models\Divida;
-use App\Models\ParcelaDivida;
-use App\Models\Recorrencia;
 use App\Services\Financial\AccountBalanceService;
-use App\Services\Financial\FinancialAccountService;
-use App\Services\Financial\FinancialMovementService;
-use App\Services\Financial\FinancialCommitmentService;
 use App\Services\Financial\CardInvoiceService;
+use App\Services\Financial\FinancialAccountService;
+use App\Services\Financial\FinancialCommitmentService;
+use App\Services\Financial\FinancialMovementService;
 use App\Services\Financial\RecurrenceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 
 class FinancialCoreController extends Controller
 {
-
     public function commitments(Request $request): JsonResponse
     {
         return response()->json(['data' => $request->user()->dividas()->with('parcelas')->latest()->paginate(30)]);
@@ -36,8 +33,10 @@ class FinancialCoreController extends Controller
         ]);
         $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();
         $installment = $debt->parcelas()->whereKey($installmentId)->firstOrFail();
+
         return response()->json(['data' => $service->payInstallment($request->user(), $debt, $installment, $data)]);
     }
+
     public function storeCommitment(Request $request, FinancialCommitmentService $service): JsonResponse
     {
         $data = $request->validate([
@@ -73,8 +72,10 @@ class FinancialCoreController extends Controller
                     'payment_date' => $initialPayment['payment_date'],
                 ]);
             }
+
             return $debt->fresh()->load('parcelas');
         });
+
         return response()->json(['data' => $debt], 201);
     }
 
@@ -86,6 +87,7 @@ class FinancialCoreController extends Controller
             'due_date' => 'sometimes|required|date|after_or_equal:today',
         ]);
         $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();
+
         return response()->json(['data' => $service->update($request->user(), $debt, $data)]);
     }
 
@@ -98,12 +100,14 @@ class FinancialCoreController extends Controller
             'remaining_amount' => 'nullable|numeric|gt:0|decimal:0,2|max:9999999999.99',
         ]);
         $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();
+
         return response()->json(['data' => $service->renegotiate($request->user(), $debt, $data), 'message' => 'Parcelamento renegociado.']);
     }
 
     public function archiveCommitment(Request $request, string $id, FinancialCommitmentService $service): JsonResponse
     {
         $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();
+
         return response()->json(['data' => $service->archive($request->user(), $debt), 'message' => 'Compra arquivada.']);
     }
 
@@ -111,12 +115,14 @@ class FinancialCoreController extends Controller
     {
         $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();
         $service->deleteUnused($request->user(), $debt);
+
         return response()->json(['message' => 'Compra eliminada.']);
     }
 
     public function cancelCommitment(Request $request, string $id, FinancialCommitmentService $service): JsonResponse
     {
         $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();
+
         return response()->json(['data' => $service->cancel($request->user(), $debt)]);
     }
 
@@ -135,6 +141,7 @@ class FinancialCoreController extends Controller
             'ends_at' => 'nullable|date|after_or_equal:start_date',
         ]);
         $rule = $service->create($request->user(), $data);
+
         return response()->json(['data' => $rule, 'message' => 'Recorrência criada; previsões geradas para os próximos 90 dias.'], 201);
     }
 
@@ -143,6 +150,7 @@ class FinancialCoreController extends Controller
         $data = $request->validate(['is_active' => 'required|boolean']);
         $rule = $request->user()->recorrencias()->whereKey($id)->firstOrFail();
         $updated = $service->setActive($request->user(), $rule, (bool) $data['is_active']);
+
         return response()->json(['data' => $updated, 'message' => $updated->is_active ? 'Recorrência retomada.' : 'Recorrência pausada.']);
     }
 
@@ -156,6 +164,7 @@ class FinancialCoreController extends Controller
             'category_id' => ['nullable', 'uuid', Rule::exists('categorias', 'id')->where('user_id', $request->user()->id)],
             'expense_behavior' => ['nullable', Rule::in(['fixed', 'variable'])],
         ]);
+
         return response()->json(['data' => $service->purchase($request->user(), $data)], 201);
     }
 
@@ -178,6 +187,7 @@ class FinancialCoreController extends Controller
             'allocation.other' => 'nullable|numeric|gte:0|decimal:0,2',
         ]);
         $invoice = $request->user()->faturas()->whereKey($id)->firstOrFail();
+
         return response()->json(['data' => $service->pay(
             $request->user(),
             $invoice,
@@ -198,6 +208,7 @@ class FinancialCoreController extends Controller
             'category_id' => ['nullable', 'uuid', Rule::exists('categorias', 'id')->where('user_id', $request->user()->id)->where('type', 'despesa')],
         ]);
         $invoice = $request->user()->faturas()->whereKey($id)->firstOrFail();
+
         return response()->json([
             'data' => $service->addCharge($request->user(), $invoice, $data),
             'message' => 'Encargo registado na fatura.',
@@ -210,6 +221,7 @@ class FinancialCoreController extends Controller
             'statement_amount' => 'required|numeric|gte:0|decimal:0,2|max:9999999999.99',
         ]);
         $invoice = $request->user()->faturas()->whereKey($id)->firstOrFail();
+
         return response()->json([
             'data' => $service->closeInvoice($request->user(), $invoice, (string) $data['statement_amount']),
             'message' => 'Fatura fechada e reconciliada com o extrato.',
@@ -226,6 +238,7 @@ class FinancialCoreController extends Controller
             'movement_date' => 'required|date|before_or_equal:today',
         ]);
         $invoice = $request->user()->faturas()->whereKey($id)->firstOrFail();
+
         return response()->json([
             'data' => $service->addCredit($request->user(), $invoice, $data),
             'message' => 'Crédito associado à compra e imputado à fatura.',
@@ -259,16 +272,18 @@ class FinancialCoreController extends Controller
         if ($openingDebtChanged && isset($data['credit_limit']) && $balances->toCents((string) $data['opening_debt_amount']) > $balances->toCents((string) $data['credit_limit'])) {
             return response()->json(['message' => 'A dívida inicial não pode ultrapassar o limite total do cartão.'], 422);
         }
-        $used = $openingDebtChanged && !$hasCardMovements ? (float) $data['opening_debt_amount'] : abs((float) $balances->balance($card));
+        $used = $openingDebtChanged && ! $hasCardMovements ? (float) $data['opening_debt_amount'] : abs((float) $balances->balance($card));
         if (isset($data['credit_limit']) && (float) $data['credit_limit'] + 0.00001 < $used) {
             return response()->json(['message' => 'O limite não pode ser inferior ao valor já utilizado.'], 422);
         }
         if ($openingDebtChanged) {
-            $data['opening_balance'] = '-' . number_format((float) $data['opening_debt_amount'], 2, '.', '');
+            $data['opening_balance'] = '-'.number_format((float) $data['opening_debt_amount'], 2, '.', '');
         }
         $card->update($data);
+
         return response()->json(['data' => $card->refresh()]);
     }
+
     public function accounts(Request $request, AccountBalanceService $balances): JsonResponse
     {
         $accounts = $request->user()->contasFinanceiras()
@@ -280,6 +295,7 @@ class FinancialCoreController extends Controller
                 if ($account->is_operational && $account->opening_balance !== null) {
                     $account->current_balance = $balances->balance($account);
                 }
+
                 return $account;
             });
 
@@ -310,10 +326,11 @@ class FinancialCoreController extends Controller
         ]);
 
         if (($data['type'] ?? null) === 'credit_card' && isset($data['opening_debt_amount'], $data['credit_limit']) && (float) $data['opening_debt_amount'] > (float) $data['credit_limit']) {
-            throw \Illuminate\Validation\ValidationException::withMessages(['opening_debt_amount' => 'A utilização inicial não pode ultrapassar o limite total do cartão.']);
+            throw ValidationException::withMessages(['opening_debt_amount' => 'A utilização inicial não pode ultrapassar o limite total do cartão.']);
         }
 
         $account = $service->create($request->user(), $data);
+
         return response()->json(['data' => $account], 201);
     }
 
@@ -321,6 +338,7 @@ class FinancialCoreController extends Controller
     {
         $data = $request->validate(['name' => 'required|string|max:120']);
         $account = $request->user()->contasFinanceiras()->whereKey($id)->firstOrFail();
+
         return response()->json(['data' => $service->rename($request->user(), $account, $data['name'])]);
     }
 
@@ -341,6 +359,7 @@ class FinancialCoreController extends Controller
             'payment_date' => 'required|date|before_or_equal:today',
         ]);
         $movement = $service->payOpeningDebt($request->user(), $id, $data['account_id'], $data['payment_date'], (string) $data['amount']);
+
         return response()->json(['data' => $movement, 'message' => 'Pagamento da dívida inicial registado.']);
     }
 
@@ -369,12 +388,14 @@ class FinancialCoreController extends Controller
         $data = $request->validate(['status' => ['required', Rule::in(['active', 'suspended'])]]);
         $card = $request->user()->contasFinanceiras()->whereKey($id)->where('type', 'credit_card')->firstOrFail();
         $updated = $service->setCardStatus($request->user(), $card, $data['status']);
+
         return response()->json(['data' => $updated, 'message' => $data['status'] === 'active' ? 'Cartão reativado.' : 'Cartão suspenso.']);
     }
 
     public function reopenCard(Request $request, string $id, FinancialAccountService $service): JsonResponse
     {
         $card = $request->user()->contasFinanceiras()->whereKey($id)->where('type', 'credit_card')->firstOrFail();
+
         return response()->json(['data' => $service->reopenCard($request->user(), $card), 'message' => 'Cartão reaberto.']);
     }
 
@@ -382,6 +403,7 @@ class FinancialCoreController extends Controller
     {
         $card = $request->user()->contasFinanceiras()->whereKey($id)->where('type', 'credit_card')->firstOrFail();
         $service->deleteUnusedCard($request->user(), $card);
+
         return response()->json(['message' => 'Cartão eliminado.']);
     }
 
@@ -405,15 +427,19 @@ class FinancialCoreController extends Controller
 
         $query = $request->user()->movimentos()->with(['contaOrigem:id,name,type', 'contaDestino:id,name,type', 'categoria:id,name'])
             ->where(fn ($builder) => $builder->whereNull('invoice_id')->orWhere('is_settlement_parent', false));
-        if (!empty($data['month'])) {
+        if (! empty($data['month'])) {
             $query->whereBetween('movement_date', [
-                $data['month'] . '-01',
+                $data['month'].'-01',
                 Carbon::createFromFormat('!Y-m', $data['month'])->endOfMonth()->toDateString(),
             ]);
         }
-        if (!empty($data['status'])) $query->where('status', $data['status']);
-        if (!empty($data['type'])) $query->where('type', $data['type']);
-        if (!empty($data['account_id'])) {
+        if (! empty($data['status'])) {
+            $query->where('status', $data['status']);
+        }
+        if (! empty($data['type'])) {
+            $query->where('type', $data['type']);
+        }
+        if (! empty($data['account_id'])) {
             $query->where(fn ($q) => $q->where('source_account_id', $data['account_id'])
                 ->orWhere('destination_account_id', $data['account_id']));
         }
@@ -440,7 +466,7 @@ class FinancialCoreController extends Controller
         if (($data['status'] ?? 'settled') === 'pending') {
             $movement = $service->createPending($request->user(), $data);
         } else {
-            $account = $data['type'] === 'expense' && !empty($data['source_account_id'])
+            $account = $data['type'] === 'expense' && ! empty($data['source_account_id'])
                 ? $request->user()->contasFinanceiras()->whereKey($data['source_account_id'])->first()
                 : null;
             $movement = $account?->type === 'credit_card'
@@ -454,6 +480,7 @@ class FinancialCoreController extends Controller
                 ])
                 : $service->create($request->user(), $data);
         }
+
         return response()->json(['data' => $movement], 201);
     }
 
@@ -471,12 +498,12 @@ class FinancialCoreController extends Controller
 
         return DB::transaction(function () use ($request, $movement, $data, $service, $invoices, $commitments): JsonResponse {
             if ($movement->debt_id || $movement->installment_id) {
-                if (!$movement->debt_id || !$movement->installment_id) {
-                    throw \Illuminate\Validation\ValidationException::withMessages(['movement' => 'Esta previsão tem uma ligação incompleta ao parcelamento.']);
+                if (! $movement->debt_id || ! $movement->installment_id) {
+                    throw ValidationException::withMessages(['movement' => 'Esta previsão tem uma ligação incompleta ao parcelamento.']);
                 }
                 $accountId = $data['source_account_id'] ?? $movement->source_account_id;
-                if (!$accountId) {
-                    throw \Illuminate\Validation\ValidationException::withMessages(['source_account_id' => 'Seleciona uma conta para liquidar a prestação.']);
+                if (! $accountId) {
+                    throw ValidationException::withMessages(['source_account_id' => 'Seleciona uma conta para liquidar a prestação.']);
                 }
                 $debt = $request->user()->dividas()->whereKey($movement->debt_id)->firstOrFail();
                 $installment = $debt->parcelas()->where('user_id', $request->user()->id)->whereKey($movement->installment_id)->firstOrFail();
@@ -486,6 +513,7 @@ class FinancialCoreController extends Controller
                     'payment_date' => $data['movement_date'] ?? $movement->movement_date->toDateString(),
                     'expected_amount' => $data['expected_amount'] ?? null,
                 ], $movement->id);
+
                 return response()->json(['data' => $result['movement'], 'installment' => $result['installment']]);
             }
 
@@ -502,7 +530,6 @@ class FinancialCoreController extends Controller
         });
     }
 
-
     public function confirmMovement(Request $request, string $id, FinancialMovementService $service): JsonResponse
     {
         $data = $request->validate([
@@ -510,6 +537,7 @@ class FinancialCoreController extends Controller
             'destination_account_id' => 'nullable|uuid',
         ]);
         $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
+
         return response()->json(['data' => $service->confirmPending($request->user(), $movement, $data)]);
     }
 
@@ -517,6 +545,7 @@ class FinancialCoreController extends Controller
     {
         $data = $request->validate(['reason' => 'nullable|string|max:1000']);
         $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
+
         return response()->json(['data' => $service->voidPending($request->user(), $movement, $data['reason'] ?? null)]);
     }
 
@@ -524,6 +553,7 @@ class FinancialCoreController extends Controller
     {
         $data = $request->validate(['reason' => 'nullable|string|max:1000']);
         $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
+
         return response()->json(['data' => $service->reverse($request->user(), $movement, $data['reason'] ?? null)]);
     }
 
@@ -535,7 +565,7 @@ class FinancialCoreController extends Controller
 
         $user = $request->user();
         $movement = $user->movimentos()->whereKey($id)->firstOrFail();
-        if (!$movement->recurrence_id) {
+        if (! $movement->recurrence_id) {
             return response()->json(['message' => 'Este movimento não pertence a uma recorrência.'], 422);
         }
         if ($data['scope'] === 'only' && $movement->status !== 'pending') {
@@ -622,8 +652,10 @@ class FinancialCoreController extends Controller
                     ]);
                 }
             }
+
             return $updated;
         });
+
         return response()->json(['data' => $updated]);
     }
 }
