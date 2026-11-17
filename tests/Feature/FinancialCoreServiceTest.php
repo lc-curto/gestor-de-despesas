@@ -690,7 +690,7 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('10.00', $invoiceData['paid_amount']);
         $this->assertSame('45.00', $invoiceData['remaining_amount']);
         $this->assertSame('partial', $invoice->fresh()->status);
-        $this->assertSame('-55.00', app(AccountBalanceService::class)->balance($card->fresh()));
+        $this->assertSame('-45.00', app(AccountBalanceService::class)->balance($card->fresh()));
     }
 
 }
