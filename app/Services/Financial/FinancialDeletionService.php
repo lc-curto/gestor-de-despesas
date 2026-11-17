@@ -224,7 +224,7 @@ class FinancialDeletionService
                 $invoiceParentBefore = $invoice->movimentos()->where('is_settlement_parent', true)->first()?->getAttributes();
                 $hasPayments = $invoice->movimentos()
                     ->where('type', 'transfer')
-                    ->where('status', 'settled')
+                    ->whereIn('status', ['pending', 'partial', 'settled'])
                     ->exists();
                 $hasCarry = DB::table('fatura_saldos_transportados')
                     ->where('user_id', $user->id)
