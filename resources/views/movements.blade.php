@@ -165,7 +165,7 @@
                                     </select>
                                 </div>
                                 <div class="col-12" id="dashboardInstallmentSchedule" hidden>
-                                    <div class="small fw-semibold mb-2">Calendário de vencimentos</div>
+                                    <div class="small fw-semibold mb-2">Resumo do parcelamento</div>
                                     <div class="list-group list-group-flush" id="dashboardInstallmentScheduleList" aria-live="polite"></div>
                                 </div>
                             </div>
