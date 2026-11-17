@@ -86,7 +86,17 @@ jobs:
           python - <<'PY'
           import xml.etree.ElementTree as ET
           root = ET.parse('/tmp/phpunit-junit.xml').getroot()
+          targets = (
+              'card_purchases_are_in_card_history_not_movements_and_invoice_payment_remains_visible',
+              'acceptance_dashboard_and_movements_read_canonical_financial_movements',
+          )
           for case in root.iter('testcase'):
+              if any(target in case.attrib.get('name', '') for target in targets):
+                  print('PHPUnit detail:', case.attrib)
+                  for issue in case:
+                      print(f"  {issue.tag}: {issue.attrib}")
+                      if issue.text:
+                          print(issue.text.strip())
               for issue in case:
                   if issue.tag in ('error', 'failure', 'skipped'):
                       print(f"{case.attrib.get('classname')}::{case.attrib.get('name')} [{issue.tag}] {issue.attrib.get('type', '')}")

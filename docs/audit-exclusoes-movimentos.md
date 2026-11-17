@@ -152,15 +152,23 @@ Em `FinanceController::update`, num ramo alternativo, `$movement->historico()->d
 - [x] Políticas centrais para compromissos, cartões, categorias e recorrências.
 - [x] Remoção das rotas de produto para estorno/anulação isolada.
 - [x] Testes de regressão para pagamentos, faturas, dívida inicial, parcelamentos e recorrências.
-- [x] CI aprovado no commit `059f8fa5e285a007e19fa38df61844bca8b159a1` (196 testes aprovados, 1.578 assertions; 2 testes risky sem falhas).
+- [x] CI aprovado no commit `cf113bf5ba1ba50ec850f9a0e725075ef87d3519` (202 testes aprovados, 1.633 assertions; 2 testes classificados como risky, sem falhas).
 - [x] Cancelamento de parcelamento parcialmente pago: previsão parcial anulada, pagamentos preservados/desassociados e auditoria concluída.
 - [x] Eliminação de parcelamento totalmente pago: evento preservado, prestação mantém estado `paid` e ligações ao agregado removidas.
+- [x] Eliminação de parcelamento previamente cancelado: auditoria anterior validada e pagamentos preservados como movimentos independentes.
+- [x] Renegociação de prestação parcialmente paga: previsão antiga anulada, pagamento real desassociado e prestação histórica cancelada.
+- [x] Eliminação de cartão sem uso auditada; cartão com movimento histórico `void` continua protegido.
+- [x] Categoria referenciada apenas por movimento canónico não pode ser eliminada.
+- [x] Idempotência: repetição da exclusão não duplica operações nem itens de auditoria.
+- [x] Atomicidade: falha simulada no recálculo do agregado reverte a alteração do movimento e os registos de auditoria.
 - [x] Bloqueio de exclusão/cancelamento quando `paid_amount` diverge dos eventos de pagamento ou quando o estado da previsão não corresponde aos eventos.
 - [x] Isolamento multiutilizador: utilizador diferente recebe 404 ao tentar eliminar compromisso ou movimento alheio.
 - [x] UI de Parcelamentos mantém a ação de eliminação disponível com pagamentos e utiliza URL DELETE explícita; backend valida a segurança da propagação.
-- [ ] Completar testes de rollback, concorrência, isolamento entre utilizadores e referências órfãs.
-- [ ] Rever todos os fluxos de edição/importação e projeções das páginas.
-- [ ] Auditoria integral e critérios de aceitação finais.
+- [x] Teste de rollback transacional após falha no recálculo de um agregado.
+- [x] Testes de isolamento entre utilizadores nas rotas de eliminação de compromisso e movimento.
+- [x] Revisão dos fluxos de edição/substituição e projeções de Dashboard, Movimentos, Rota Financeira, Contas, Parcelamentos, Cartões e Faturas.
+- [ ] Stress test concorrente com duas transações MySQL simultâneas; os locks foram revistos, mas não simulados pelo workflow.
+- [ ] Investigar os dois testes `risky` remanescentes.
 - [ ] Merge/deploy apenas após aprovação explícita.
 
 ## Decisão de produto/arquitetura — exclusão propagada, sem operação de estorno
@@ -272,7 +280,7 @@ A Rota Financeira pode apresentar um pagamento de parcela como movimento autóno
 
 Esta é uma quebra de consistência de interface e de domínio. A operação deve resolver o agregado de origem, não depender apenas dos campos diretos do evento selecionado.
 
-**Decisão necessária na implementação futura:** a Rota Financeira deve encaminhar qualquer ação sobre evento com `settles_movement_id` para o orquestrador do agregado correspondente. Não deve oferecer exclusão isolada nem criar um movimento inverso visível como substituto da exclusão propagada.
+**Implementado na branch:** a Rota Financeira usa a mesma ação de exclusão central que Movimentos e Contas. Eventos de pagamento são tratados em conjunto com o movimento pai e o agregado correspondente; pagamentos preservados após cancelamento/renegociação ficam desassociados e continuam como movimentos efetivos.
 
 ## E-13 — [ALTA, baseline da main; corrigido na branch] Exclusões em páginas de conta tinham semântica diferente e um caminho de hard delete fora do serviço financeiro
 
@@ -421,7 +429,7 @@ Testes de regressão atualizados/adicionados para pagamentos parciais, pagamento
 10. [ ] Executar stress test de concorrência com duas transações MySQL simultâneas; a revisão estática confirmou locks, mas o workflow atual não simula concorrência real.
 11. [ ] Merge e deploy permanecem fora do âmbito até aprovação explícita do utilizador.
 
-A auditoria está tecnicamente implementada na branch, mas a validação final depende do CI do HEAD e dos dois itens de robustez acima. Não fazer merge nem deploy sem aprovação explícita.
+A implementação e os testes funcionais/atómicos estão concluídos na branch. Permanecem duas ressalvas de qualidade: dois testes `risky` ainda sem diagnóstico conclusivo e ausência de stress test concorrente real. Não fazer merge nem deploy sem aprovação explícita.
 
 ### Atualização adicional da implementação
 
