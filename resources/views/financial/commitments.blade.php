@@ -177,7 +177,7 @@
 <div class="modal fade" id="commitmentPaymentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable commitment-payment-dialog">
         <div class="modal-content rounded-4 border-0">
-            <form id="commitmentPaymentForm" method="POST">
+            <form id="commitmentPaymentForm" class="js-api-form" method="POST" data-endpoint="">
                 @csrf
                 <div class="modal-header border-0">
                     <div><h2 class="modal-title h5 fw-bold mb-1">Pagar prestação</h2><small class="text-secondary" id="paymentCommitmentName"></small></div>
@@ -186,7 +186,7 @@
                 <div class="modal-body">
                     <p class="small text-secondary" id="paymentInstallmentLabel"></p>
                     <label class="form-label" for="commitmentPaymentAmount">Valor a pagar</label>
-                    <input class="form-control mb-3" id="commitmentPaymentAmount" name="amount" type="text" inputmode="decimal" required>
+                    <input class="form-control mb-3" id="commitmentPaymentAmount" name="amount" type="text" inputmode="decimal" data-payment-amount data-max-amount="0.00" required>
                     <label class="form-label" for="commitmentPaymentAccount">Conta de origem</label>
                     <select class="form-select mb-3" id="commitmentPaymentAccount" name="account_id" required>
                         <option value="">Selecionar conta</option>
@@ -306,7 +306,7 @@
 (() => {
     const token = document.querySelector('meta[name="csrf-token"]')?.content;
     const feedback = document.getElementById('commitmentFeedback');
-    const showError = (message) => { feedback.className = 'alert alert-danger'; feedback.textContent = message; feedback.scrollIntoView({behavior:'smooth',block:'center'}); };
+    const showError = (element, message) => { element.className = 'alert alert-danger'; element.textContent = message; element.scrollIntoView({behavior:'smooth',block:'center'}); };
 
     // The backend paginates purchases; this client hint selects the approved page size by viewport.
     const syncPageSize = () => {
@@ -386,22 +386,9 @@
         document.getElementById('commitmentPaymentError').textContent='';
         paymentModal.show();
     }));
-    paymentForm?.addEventListener('submit',async event=>{
-        event.preventDefault();
-        const button=paymentForm.querySelector('[type="submit"]');
-        if(button.disabled)return;
-        const amount=document.getElementById('commitmentPaymentAmount');
-        const validation=window.CommitmentPayment?.validate(amount.value,amount.dataset.maxAmount);
-        if(!validation?.ok){document.getElementById('commitmentPaymentError').textContent=validation?.error||'Não foi possível validar o valor.';return;}
-        button.disabled=true;
-        try{
-            const values=Object.fromEntries(new FormData(paymentForm).entries());values.amount=validation.value;
-            const response=await fetch(paymentForm.dataset.endpoint,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify(values)});
-            const result=await response.json().catch(()=>({}));
-            if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível registar o pagamento.');
-            window.location.reload();
-        }catch(error){document.getElementById('commitmentPaymentError').textContent=error.message;button.disabled=false;}
-    });
+    if (!window.CommitmentPayment || !window.CommitmentPayment.bind(paymentForm, token, feedback, showError)) {
+        showError(feedback, 'Não foi possível carregar a validação de valores. Atualiza a página antes de pagar.');
+    }
 
     window.addEventListener('resize',()=>{});
 })();
