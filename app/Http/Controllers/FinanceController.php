@@ -266,6 +266,8 @@ class FinanceController extends Controller
     {
         [$tipo] = $this->config($request);
         $data = $this->validatedData($request);
+        $selectedCategory = $request->user()->categorias()->whereKey($data['category_id'])->where('type', $tipo)->firstOrFail();
+        $data['expense_behavior'] = $tipo === 'despesa' ? ($selectedCategory->expense_behavior ?? 'variable') : 'variable';
         if ($tipo === 'despesa' && in_array($data['payment_condition'] ?? 'cash', ['deferred', 'installments'], true)) {
             if (($data['paid_now'] ?? '0') !== '0') {
                 throw ValidationException::withMessages(['paid_now' => 'Regista primeiro a obrigação como pendente; o pagamento deve ser feito em Compromissos.']);
@@ -361,6 +363,8 @@ class FinanceController extends Controller
     {
         [$tipo, , $dateField] = $this->config($request);
         $data = $this->validatedData($request, $id);
+        $selectedCategory = $request->user()->categorias()->whereKey($data['category_id'])->where('type', $tipo)->firstOrFail();
+        $data['expense_behavior'] = $tipo === 'despesa' ? ($selectedCategory->expense_behavior ?? 'variable') : 'variable';
         $recurrenceEnabled = (bool) ($data['recurrence_enabled'] ?? false);
         $recurrenceData = ['frequency' => $data['recurrence_frequency'] ?? 'monthly', 'interval_value' => $data['recurrence_interval'] ?? 1, 'ends_at' => $data['recurrence_ends_at'] ?? null];
         unset($data['recurrence_enabled'], $data['recurrence_frequency'], $data['recurrence_interval'], $data['recurrence_ends_at']);
