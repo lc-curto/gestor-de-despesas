@@ -300,12 +300,22 @@ class FinancialDeletionService
                 if ($child->status === 'void') {
                     continue;
                 }
+                $childLegacyType = $child->legacy_type;
+                $childLegacyId = $child->legacy_id;
                 $this->voidMovement($user, $operationId, $child, $reason ?? 'Pagamento propagado pela exclusão do movimento de origem.');
+                if ($deleteLegacy) {
+                    $this->deleteLegacyForMovement($user, $operationId, $childLegacyType, $childLegacyId);
+                }
             }
 
             foreach ($legacyPair as $paired) {
                 if ($paired->status !== 'void') {
+                    $pairedLegacyType = $paired->legacy_type;
+                    $pairedLegacyId = $paired->legacy_id;
                     $this->voidMovement($user, $operationId, $paired, $reason ?? 'Registo legado relacionado removido na mesma operação.');
+                    if ($deleteLegacy) {
+                        $this->deleteLegacyForMovement($user, $operationId, $pairedLegacyType, $pairedLegacyId);
+                    }
                 }
             }
 
