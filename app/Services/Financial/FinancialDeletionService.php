@@ -203,8 +203,13 @@ class FinancialDeletionService
                     'movement' => 'O pagamento está associado a uma obrigação inexistente ou inconsistente. A exclusão foi bloqueada para evitar uma relação órfã.',
                 ]);
             }
+            $parentBefore = $parent?->getAttributes();
+            $parentInstallmentBefore = $parent?->installment_id
+                ? ParcelaDivida::query()->where('user_id', $user->id)->whereKey($parent->installment_id)->first()?->getAttributes()
+                : null;
 
             $invoice = null;
+            $invoiceParentBefore = null;
             $isInvoicePayment = $locked->type === 'transfer' && $locked->invoice_id;
             if ($locked->invoice_id) {
                 $invoice = Fatura::query()
@@ -216,6 +221,7 @@ class FinancialDeletionService
                 if (! $isInvoicePayment) {
                     $this->movements->assertInvoiceReconciled($user, $invoice);
                 }
+                $invoiceParentBefore = $invoice->movimentos()->where('is_settlement_parent', true)->first()?->getAttributes();
                 $hasPayments = $invoice->movimentos()
                     ->where('type', 'transfer')
                     ->where('status', 'settled')
@@ -334,6 +340,26 @@ class FinancialDeletionService
             }
             if ($invoice) {
                 $this->movements->syncInvoiceSettlementParent($user, $invoice);
+            }
+
+            if ($parent && $parentBefore) {
+                $parentAfter = $parent->fresh()->getAttributes();
+                $this->recordItem($user, $operationId, 'Movimento', $parent->id, 'recalculated', $parentBefore, $parentAfter);
+                if ($parentInstallmentBefore) {
+                    $installmentAfter = ParcelaDivida::query()->where('user_id', $user->id)->whereKey($parent->installment_id)->first()?->getAttributes();
+                    $this->recordItem($user, $operationId, 'ParcelaDivida', $parent->installment_id, 'recalculated', $parentInstallmentBefore, $installmentAfter);
+                }
+            }
+
+            if ($invoice) {
+                $invoiceAfter = Fatura::withTrashed()->where('user_id', $user->id)->whereKey($invoice->id)->first()?->getAttributes();
+                $invoiceAction = $invoiceAfter && ! empty($invoiceAfter['deleted_at']) ? 'soft_deleted' : 'recalculated';
+                $this->recordItem($user, $operationId, 'Fatura', $invoice->id, $invoiceAction, $invoice->getOriginal(), $invoiceAfter);
+
+                $invoiceParentAfter = $invoice->movimentos()->where('is_settlement_parent', true)->first();
+                if ($invoiceParentBefore && $invoiceParentAfter && $invoiceParentAfter->id !== ($parent?->id)) {
+                    $this->recordItem($user, $operationId, 'Movimento', $invoiceParentAfter->id, 'recalculated', $invoiceParentBefore, $invoiceParentAfter->getAttributes());
+                }
             }
 
             DB::table('deletion_operations')->where('id', $operationId)->update([
