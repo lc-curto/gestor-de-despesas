@@ -65,7 +65,7 @@ class CategoriaController extends Controller
     public function destroy(Request $request, string $id)
     {
         $category = $request->user()->categorias()->whereKey($id)->firstOrFail();
-        app(\\App\\Services\\Financial\\FinancialDeletionService::class)
+        app(\App\Services\Financial\FinancialDeletionService::class)
             ->deleteCategory($request->user(), $category);
 
         return redirect()->route('categorias.index')->with('success', 'Categoria eliminada.');
