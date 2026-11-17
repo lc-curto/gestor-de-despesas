@@ -605,7 +605,7 @@ class FinancialCoreController extends Controller
                     $target,
                     'Ocorrência removida pelo utilizador na gestão de movimentos.',
                     true,
-                    true
+                    false
                 );
             }
         });
