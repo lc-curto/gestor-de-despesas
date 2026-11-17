@@ -65,11 +65,15 @@ class CategoriaController extends Controller
     public function destroy(Request $request, string $id)
     {
         $categoria = $request->user()->categorias()->findOrFail($id);
-        $count = $categoria->type === 'despesa'
+        $legacyCount = $categoria->type === 'despesa'
             ? $categoria->despesas()->count()
             : $categoria->receitas()->count();
+        $canonicalCount = $request->user()->movimentos()
+            ->where('category_id', $categoria->id)
+            ->whereIn('status', ['pending', 'partial', 'settled', 'void'])
+            ->count();
 
-        if ($count > 0) {
+        if ($legacyCount + $canonicalCount > 0) {
             return back()->withErrors(['categoria' => 'Esta categoria tem movimentos associados. Desative-a para preservar o histórico.']);
         }
 
