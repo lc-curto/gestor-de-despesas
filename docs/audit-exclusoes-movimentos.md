@@ -352,7 +352,7 @@ Decisão funcional aprovada:
 
 ## 9. Implementação iniciada na branch
 
-Foi criado `App\\Services\\Financial\\FinancialDeletionService` como orquestrador de exclusões e a migration `2026_11_17_230000_create_financial_deletion_audit_tables.php`, com:
+Foi criado `App\Services\Financial\FinancialDeletionService` como orquestrador de exclusões e a migration `2026_11_17_230000_create_financial_deletion_audit_tables.php`, com:
 
 - `deletion_operations`: raiz, utilizador, motivo, estado e metadados da operação.
 - `deletion_operation_items`: entidades abrangidas, ação aplicada e snapshots antes/depois.
@@ -377,7 +377,7 @@ Testes de regressão atualizados/adicionados para pagamentos parciais, pagamento
 ## 10. Pendências antes de declarar a auditoria/implementação concluída
 
 1. Executar a suíte Laravel completa e corrigir regressões observadas em CI.
-2. Rever a persistência de faturas vazias: a listagem pode ocultar uma fatura sem movimentos, mas a linha ainda pode permanecer na tabela. A regra aprovada é que uma fatura sem movimentos/componentes financeiros não exista como fatura ativa; avaliar soft delete e restauração segura por período.
+2. Validar em testes a exclusão lógica de faturas vazias e a restauração da mesma fatura quando surge uma nova compra no mesmo ciclo. A implementação foi adicionada com migration e helper de recuperação por cartão/período.
 3. Rever todos os fluxos de edição/substituição e importação para garantir que nenhum outro caminho apaga movimentos ou histórico diretamente.
 4. Remover métodos internos de compatibilidade de estorno quando não houver consumidores restantes; preservar os dados legados.
 5. Completar testes de rollback, concorrência, isolamento entre utilizadores, relações de saldo transportado, recorrências e categorias.
@@ -385,3 +385,12 @@ Testes de regressão atualizados/adicionados para pagamentos parciais, pagamento
 7. Não fazer merge nem deploy antes da validação e aprovação.
 
 A implementação permanece em andamento. Esta documentação não declara a auditoria concluída.
+
+### Atualização adicional da implementação
+
+- Faturas vazias sem movimentos ativos nem saldos transportados recebem soft delete; a listagem deixa de as apresentar.
+- Ao surgir uma nova compra no mesmo ciclo, a fatura soft-deleted é restaurada e reutilizada, respeitando a unicidade cartão/período.
+- Exclusões de cartões sem histórico, categorias sem referências e registos legacy isolados também passam pelo orquestrador e deixam snapshots na auditoria.
+- A página de detalhe da conta filtra movimentos `void`, evitando que registos eliminados continuem visíveis na lista operacional.
+- Removidos os endpoints de produto para estorno e para anulação isolada de movimentos; as páginas utilizam a exclusão central.
+- Os fluxos de recorrência deixam de apagar fisicamente movimentos e histórico. Ao pausar/editar uma regra, previsões futuras são anuladas com registo da operação e libertação da chave de ocorrência para eventual regeneração.
