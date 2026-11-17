@@ -136,8 +136,12 @@ class CardInvoiceService
         return Fatura::query()->where('user_id', $user->id)
             ->whereHas('movimentos', fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false))
             ->with('conta:id,name,type,currency,credit_limit')
-            ->with(['movimentos' => fn ($q) => $q->whereIn('type', ['expense', 'transfer'])->where('status', 'settled')->where('is_settlement_parent', false)
-                ->select('id', 'invoice_id', 'description', 'amount', 'movement_date', 'type', 'is_settlement_parent', 'reversal_of_id', 'settles_movement_id')])
+            ->with([
+                'movimentos' => fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false)
+                    ->select('id', 'invoice_id', 'description', 'amount', 'movement_date', 'type', 'is_settlement_parent'),
+                'pagamentos' => fn ($q) => $q->where('status', 'settled')
+                    ->select('id', 'invoice_id', 'amount', 'reversal_of_id', 'type'),
+            ])
             ->withCount(['movimentos' => fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false)])
             ->orderByDesc('reference_month')->paginate(30)
             ->through(function (Fatura $invoice): Fatura {
@@ -146,7 +150,10 @@ class CardInvoiceService
                 foreach ($invoice->movimentos as $movement) {
                     $cents = (int) round((float) $movement->amount * 100);
                     if ($movement->type === 'expense' && !$movement->is_settlement_parent) $totalCents += $cents;
-                    if ($movement->type === 'transfer') $paidCents += $movement->reversal_of_id ? -$cents : $cents;
+                }
+                foreach ($invoice->pagamentos as $payment) {
+                    $cents = (int) round((float) $payment->amount * 100);
+                    $paidCents += $payment->reversal_of_id ? -$cents : $cents;
                 }
                 $total = $totalCents / 100;
                 $paid = $paidCents / 100;
