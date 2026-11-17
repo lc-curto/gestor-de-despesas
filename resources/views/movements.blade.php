@@ -19,11 +19,11 @@
     <div class="movements-period-summary-values">
         <div class="movements-period-metric">
             <span>Receitas</span>
-            <strong id="totalIncome" class="text-success">{{ number_format($totalReceitas, 2, ',', '.') }} {{ $moeda }}</strong>
+            <strong id="totalIncome" data-total="{{ $totalReceitas }}" class="text-success">{{ number_format($totalReceitas, 2, ',', '.') }} {{ $moeda }}</strong>
         </div>
         <div class="movements-period-metric">
             <span>Despesas</span>
-            <strong id="totalAmount" class="text-danger">{{ number_format($totalDespesas, 2, ',', '.') }} {{ $moeda }}</strong>
+            <strong id="totalAmount" data-total="{{ $totalDespesas }}" class="text-danger">{{ number_format($totalDespesas, 2, ',', '.') }} {{ $moeda }}</strong>
         </div>
         <div class="movements-period-metric movements-period-result">
             <span>Resultado</span>

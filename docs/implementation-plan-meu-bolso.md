@@ -1,6 +1,6 @@
 # Plano de implementação — Meu Bolso
 
-Branch de trabalho: `feature/payment-modal-and-financial-workflow-work`
+Branch de trabalho: `feature/payment-modal-and-financial-workflow`
 
 Branch de referência: `feature/payment-modal-and-financial-workflow`
 
@@ -115,3 +115,13 @@ Validação atual: `php artisan test --filter='FinancialAcceptanceTest'` — **P
 ## Decisão sobre dados existentes
 
 Não executar migração destrutiva nesta primeira fase. Primeiro impedir novos registos inconsistentes, diagnosticar os dados existentes e corrigir automaticamente apenas os casos determinísticos.
+
+## Evidência adicional — 17/11/2026
+
+- A correção do proxy HTTPS está em `config/trustedproxy.php`, alimentada por `TRUSTED_PROXIES`; `.env.example` documenta a variável. O Laravel inclui `TrustProxies` na pilha global e o middleware lê `trustedproxy.proxies`. Na sandbox, `.env` usa `REMOTE_ADDR`; a configuração local e os endereços do encaminhador não devem ser copiados cegamente para produção. O servidor UI tem de escutar em `0.0.0.0:8000` e o browser acede ao URL HTTPS encaminhado. CSRF ficou ativo.
+- UI: registo e dashboard; conta bancária; despesa paga, receita e despesa pendente; obrigação diferida de 90 € e pagamentos 25 € + 65 € na página Compromissos, com saldo em falta reduzido de 90 € a 65 € e depois liquidado.
+- Bug encontrado no reload de Movimentos: o JavaScript substituía o resumo renderizado pelo servidor por zeros por falta de `data-total`; a view agora fornece os valores numéricos e o acceptance valida esses atributos. Após reload, o resumo exibiu 250,00 € de receitas, 43,25 € de despesas e 206,75 € de resultado.
+- Lacuna observada: a opção parcial no formulário de despesa única é rejeitada explicitamente; só pagamento parcial de obrigação/prestação é suportado no fluxo Compromissos. Login após logout, logout final, UI de recorrência/parcelamento/cartão e fatura ainda não foram concluídos.
+- `php artisan test --filter='FinancialAcceptanceTest'`: **19 testes, 100 assertions, sem falhas; 1 teste risky**. A suíte completa de referência anterior (109 passed, 5 skipped, 495 assertions) não foi repetida após estas últimas alterações. Os cinco skipped estão ligados a constraints CHECK via `ALTER TABLE` não suportadas no SQLite local.
+
+A Fase 3 permanece aberta. Continuam pendentes reconciliação de dados reais, validação concorrente multi-conexão em MySQL/PostgreSQL, repetição da suíte completa e revisão do teste risky. Os cenários de UI ainda não percorridos estão descritos em `docs/prompt-proxima-sessao-meu-bolso.md` e `docs/ui-test-setup-meu-bolso.md`.

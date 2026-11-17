@@ -23,6 +23,25 @@ class FinancialAcceptanceTest extends TestCase
         $this->withoutMiddleware(PreventRequestForgery::class);
     }
 
+    public function test_acceptance_trusted_https_proxy_generates_secure_auth_actions_and_assets(): void
+    {
+        config(['trustedproxy.proxies' => '127.0.0.1']);
+
+        $response = $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])
+            ->withHeaders([
+                'X-Forwarded-Host' => 'meu-bolso.example.test',
+                'X-Forwarded-Proto' => 'https',
+                'X-Forwarded-Port' => '443',
+            ])
+            ->get('/login');
+
+        $response->assertOk()
+            ->assertSee('action="https://meu-bolso.example.test/login"', false)
+            ->assertSee('meu-bolso.example.test', false)
+            ->assertSee('registo', false)
+            ->assertSee('href="https://meu-bolso.example.test/css/styles.css"', false);
+    }
+
     private function bank(User $user, string $name = 'Conta principal', string $balance = '1000.00'): ContaFinanceira
     {
         return app(FinancialAccountService::class)->create($user, [
@@ -293,6 +312,11 @@ class FinancialAcceptanceTest extends TestCase
         $dashboard->assertOk()->assertSee('Salário canónico')->assertSee('Despesa canónica');
         $this->assertSame(50.0, $dashboard->viewData('totalDespesas'));
         $this->assertSame(200.0, $dashboard->viewData('totalReceitas'));
+
+        $movementsPage = $this->actingAs($user)->get(route('dashboard.movimentos', ['mes' => '2026-11']));
+        $movementsPage->assertOk()
+            ->assertSee('data-total="200"', false)
+            ->assertSee('data-total="50"', false);
 
         $movements = $this->actingAs($user)->getJson(route('dashboard.movimentos.data', ['mes' => '2026-11', 'limit' => 10]));
         $movements->assertOk()->assertJsonPath('total_despesas', 50)->assertJsonPath('total_receitas', 200);
