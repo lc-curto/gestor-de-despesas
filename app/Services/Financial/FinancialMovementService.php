@@ -338,8 +338,10 @@ class FinancialMovementService
                 throw ValidationException::withMessages(['movement' => 'Não é possível sincronizar esta previsão. Revê o parcelamento em Parcelamentos.']);
             }
             $before = $locked->getAttributes();
+            $remaining = max(0, round((float) $lockedPart->amount - (float) $lockedPart->paid_amount, 2));
             $locked->update([
                 'description' => $lockedDebt->name.' · Parcela '.$lockedPart->installment_number.'/'.$lockedDebt->installments_count,
+                'amount' => number_format($remaining, 2, '.', ''),
                 'movement_date' => $lockedPart->due_date->toDateString(),
             ]);
             $this->audit($user, $locked, 'updated', $before, $locked->getAttributes());
