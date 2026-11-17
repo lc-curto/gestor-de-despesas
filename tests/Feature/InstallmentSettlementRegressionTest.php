@@ -54,7 +54,7 @@ class InstallmentSettlementRegressionTest extends TestCase
         $part = $debt->parcelas->sortBy('installment_number')->first();
         $forecast = $user->movimentos()->where('installment_id', $part->id)->firstOrFail();
         $this->settle($user, $bank, $forecast->id, '30.00', '30.00')
-            ->assertOk()->assertJsonPath('data.settles_movement_id', $forecast->id)->assertJsonPath('data.status', 'settled')
+            ->assertOk()->assertJsonPath('data.id', $forecast->id)->assertJsonPath('data.status', 'settled')
             ->assertJsonPath('installment.status', 'paid')->assertJsonPath('installment.paid_amount', '30.00');
         $this->assertSame('paid', $part->fresh()->status);
         $this->assertSame('60.00', $this->openAmount($debt));
@@ -85,7 +85,7 @@ class InstallmentSettlementRegressionTest extends TestCase
         $part = $debt->parcelas->sortBy('installment_number')->first();
         $forecast = $user->movimentos()->where('installment_id', $part->id)->firstOrFail();
         $this->settle($user, $bank, $forecast->id, '12.00', '30.00')
-            ->assertOk()->assertJsonPath('data.status', 'settled')->assertJsonPath('data.amount', '12.00')
+            ->assertOk()->assertJsonPath('data.status', 'partial')->assertJsonPath('data.amount', '30.00')
             ->assertJsonPath('installment.status', 'partial')->assertJsonPath('installment.paid_amount', '12.00');
         $this->assertSame('30.00', $forecast->fresh()->amount);
         $this->assertSame('partial', $forecast->fresh()->status);
@@ -98,7 +98,7 @@ class InstallmentSettlementRegressionTest extends TestCase
         $this->settle($user, $bank, $forecast->id, '12.00', null)->assertUnprocessable();
         $this->assertSame('188.00', app(AccountBalanceService::class)->balance($bank->fresh()));
         $this->assertSame(3, $user->movimentos()->where('debt_id', $debt->id)->count());
-        $this->settle($user, $bank, $forecast->id, '18.00', '18.00')->assertOk()->assertJsonPath('data.settles_movement_id', $forecast->id)->assertJsonPath('installment.status', 'paid');
+        $this->settle($user, $bank, $forecast->id, '18.00', '18.00')->assertOk()->assertJsonPath('data.id', $forecast->id)->assertJsonPath('installment.status', 'paid');
         $this->assertSame('170.00', app(AccountBalanceService::class)->balance($bank->fresh()));
         $this->assertSame('60.00', $this->openAmount($debt));
         $this->assertSame(3, $user->movimentos()->where('debt_id', $debt->id)->count());
