@@ -238,29 +238,6 @@ class FinancialMovementService
             }
 
 
-            // Mantém o comportamento histórico de liquidação de previsões de prestações.
-            if ($locked->installment_id || $locked->debt_id) {
-                if ($locked->status !== 'pending') {
-                    throw ValidationException::withMessages(['movement' => 'Só é possível liquidar previsões pendentes de prestações.']);
-                }
-                $source = $this->account($user, $accounts['source_account_id'] ?? $locked->source_account_id);
-                $destination = $this->account($user, $accounts['destination_account_id'] ?? $locked->destination_account_id);
-                $this->assertShape($locked->type, $source, $destination, $locked->adjustment_direction);
-                $this->assertNoGenericCardMovement($locked->type, $source, $destination);
-                if ($source) $this->balances->assertCanDebit($source, (string) $locked->amount);
-                $before = $locked->getAttributes();
-                $locked->update([
-                    'source_account_id' => $source?->id,
-                    'destination_account_id' => $destination?->id,
-                    'movement_date' => $accounts['movement_date'] ?? $locked->movement_date,
-                    'requires_account_assignment' => false,
-                    'status' => 'settled',
-                    'settled_at' => now(),
-                ]);
-                $this->audit($user, $locked, 'settled', $before, $locked->getAttributes());
-                return $locked->refresh();
-            }
-
             if ($locked->is_settlement_parent) {
                 if ($locked->status !== 'partial') {
                     throw ValidationException::withMessages(['movement' => 'Esta obrigação já está totalmente liquidada ou encerrada.']);
@@ -329,6 +306,8 @@ class FinancialMovementService
                 'Liquidação '.$event->id.' registada por '.number_format($paymentCents / 100, 2, '.', '').'.'
             );
 
+            $this->syncInstallmentFromSettlementParent($user, $locked);
+
             $result = $locked->refresh();
             $result->setAttribute('last_settlement', $event);
             return $result;
@@ -366,6 +345,65 @@ class FinancialMovementService
             'settled_at' => $net >= $total ? now() : null,
         ]);
         $this->audit($user, $parent, 'settlement_recalculated', null, $parent->getAttributes(), 'Estado recalculado após estorno de liquidação.');
+        $this->syncInstallmentFromSettlementParent($user, $parent);
+    }
+
+    /**
+     * Mantém o agregado da prestação sincronizado com as liquidações comuns.
+     * Pagamentos antigos sem settles_movement_id continuam a contar como histórico.
+     */
+    private function syncInstallmentFromSettlementParent(User $user, Movimento $parent): void
+    {
+        if (!$parent->installment_id) return;
+
+        $installment = ParcelaDivida::query()
+            ->where('user_id', $user->id)
+            ->whereKey($parent->installment_id)
+            ->lockForUpdate()
+            ->first();
+        if (!$installment) return;
+
+        $legacyPaidCents = Movimento::query()
+            ->where('user_id', $user->id)
+            ->where('installment_id', $installment->id)
+            ->whereNull('settles_movement_id')
+            ->whereNull('reversal_of_id')
+            ->where('status', 'settled')
+            ->get(['amount'])
+            ->sum(fn (Movimento $item) => $this->balances->toCents((string) $item->amount));
+
+        $parentIds = Movimento::query()
+            ->where('user_id', $user->id)
+            ->where('installment_id', $installment->id)
+            ->where('is_settlement_parent', true)
+            ->pluck('id');
+
+        $eventCents = Movimento::query()
+            ->where('user_id', $user->id)
+            ->whereIn('settles_movement_id', $parentIds)
+            ->where('status', 'settled')
+            ->get(['amount', 'reversal_of_id'])
+            ->sum(fn (Movimento $item) => ($item->reversal_of_id ? -1 : 1) * $this->balances->toCents((string) $item->amount));
+
+        $paidCents = max(0, min(
+            $this->balances->toCents((string) $installment->amount),
+            (int) $legacyPaidCents + (int) $eventCents
+        ));
+        $totalCents = $this->balances->toCents((string) $installment->amount);
+        $newStatus = $installment->status === 'cancelled'
+            ? 'cancelled'
+            : ($paidCents <= 0 ? 'pending' : ($paidCents >= $totalCents ? 'paid' : 'partial'));
+
+        $installment->update([
+            'paid_amount' => number_format($paidCents / 100, 2, '.', ''),
+            'status' => $newStatus,
+        ]);
+
+        $debt = Divida::query()->where('user_id', $user->id)->whereKey($installment->debt_id)->lockForUpdate()->first();
+        if ($debt && $debt->status !== 'cancelled') {
+            $allPaid = !$debt->parcelas()->where('status', '!=', 'paid')->exists();
+            $debt->update(['status' => $allPaid ? 'paid' : 'open']);
+        }
     }
 
     public function confirmPending(User $user, Movimento $movement, array $accounts): Movimento
