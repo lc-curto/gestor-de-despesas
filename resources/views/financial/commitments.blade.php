@@ -144,6 +144,7 @@
                             <button type="button" class="btn btn-outline-secondary btn-sm js-edit-commitment"
                                 data-url="{{ route('financial.commitments.update', $commitment->id) }}"
                                 data-name="{{ $commitment->name }}"
+                                data-total="{{ number_format((float) $commitment->total_amount, 2, '.', '') }}"
                                 data-due="{{ $next?->due_date?->format('Y-m-d') ?? $commitment->due_date?->format('Y-m-d') }}">Editar compra</button>
                             <button type="button" class="btn btn-outline-danger btn-sm js-cancel-commitment"
                                 data-url="{{ route('financial.commitments.cancel', $commitment->id) }}"
@@ -211,6 +212,7 @@
         <div class="modal-header border-0"><h2 class="modal-title h5 fw-bold">Editar compra</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
         <div class="modal-body">
             <label class="form-label" for="editCommitmentName">Nome da compra</label><input class="form-control mb-3" id="editCommitmentName" name="name" required maxlength="160">
+            <label class="form-label" for="editCommitmentTotal">Valor total (€)</label><input class="form-control mb-3" id="editCommitmentTotal" name="total_amount" type="number" min="0.01" step="0.01" required>
             <label class="form-label" for="editCommitmentDue">Próximo vencimento</label><input class="form-control" id="editCommitmentDue" name="due_date" type="date" required>
             <div id="editCommitmentError" class="small text-danger mt-2"></div>
         </div>
@@ -341,6 +343,7 @@
         const form = document.getElementById('editCommitmentForm');
         form.dataset.url = button.dataset.url;
         form.elements.name.value = button.dataset.name;
+        form.elements.total_amount.value = button.dataset.total;
         form.elements.due_date.value = button.dataset.due || '';
         document.getElementById('editCommitmentError').textContent = '';
         bootstrap.Modal.getOrCreateInstance(document.getElementById('editCommitmentModal')).show();
@@ -350,7 +353,7 @@
         const form = event.currentTarget, button = form.querySelector('[type="submit"]');
         button.disabled = true;
         try {
-            const response = await fetch(form.dataset.url,{method:'PUT',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({name:form.elements.name.value,due_date:form.elements.due_date.value})});
+            const response = await fetch(form.dataset.url,{method:'PUT',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({name:form.elements.name.value,total_amount:form.elements.total_amount.value,due_date:form.elements.due_date.value})});
             const result = await response.json().catch(()=>({}));
             if (!response.ok) throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível atualizar.');
             window.location.reload();
