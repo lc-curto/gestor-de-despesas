@@ -80,6 +80,30 @@ class FinancialAcceptanceTest extends TestCase
         $this->assertSame('50.00', app(AccountBalanceService::class)->balance($account->fresh()));
     }
 
+    public function test_expense_behavior_is_derived_from_the_selected_category_not_the_request(): void
+    {
+        $user = User::factory()->create();
+        $category = $user->categorias()->where('type', 'despesa')->firstOrFail();
+        $category->update(['expense_behavior' => 'fixed']);
+
+        $this->actingAs($user)->postJson(route('despesas.store'), [
+            'description' => 'Renda mensal',
+            'amount' => '850.00',
+            'category_id' => $category->id,
+            'expense_date' => '2026-11-17',
+            'paid_now' => '0',
+            'expense_behavior' => 'variable',
+        ])->assertOk()->assertJsonPath('ok', true);
+
+        $this->assertDatabaseHas('movimentos', [
+            'user_id' => $user->id,
+            'type' => 'expense',
+            'category_id' => $category->id,
+            'expense_behavior' => 'fixed',
+            'status' => 'pending',
+        ]);
+    }
+
     public function test_acceptance_deferred_purchase_creates_one_unpaid_installment_without_changing_cash(): void
     {
         $user = User::factory()->create();
