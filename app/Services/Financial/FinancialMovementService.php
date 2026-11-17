@@ -242,7 +242,25 @@ class FinancialMovementService
                     $parent->update(['status' => 'void', 'is_settlement_parent' => true, 'settled_at' => null]);
                     $this->audit($user, $parent, 'invoice_obligation_cancelled_by_credit', $before, $parent->getAttributes());
                 }
-                $lockedInvoice->update(['status' => 'paid']);
+
+                $hasActiveComponents = $lockedInvoice->movimentos()
+                    ->where('is_settlement_parent', false)
+                    ->whereIn('status', ['pending', 'partial', 'settled'])
+                    ->exists();
+                $hasCarry = DB::table('fatura_saldos_transportados')
+                    ->where('user_id', $user->id)
+                    ->where(function ($query) use ($lockedInvoice): void {
+                        $query->where('source_invoice_id', $lockedInvoice->id)
+                            ->orWhere('target_invoice_id', $lockedInvoice->id);
+                    })->exists();
+
+                if (! $hasActiveComponents && ! $hasCarry) {
+                    // A fatura é uma agregação derivada: sem movimentos de origem,
+                    // deixa de existir como fatura ativa, mantendo o tombstone.
+                    $lockedInvoice->delete();
+                } else {
+                    $lockedInvoice->update(['status' => 'paid']);
+                }
 
                 return null;
             }
