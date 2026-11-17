@@ -572,8 +572,6 @@
         form.dataset.url = button.dataset.url;
         form.elements.name.value = button.dataset.name;
         form.elements.merchant.value = button.dataset.merchant || '';
-        form.elements.total_amount.value = button.dataset.total;
-        form.elements.due_date.value = button.dataset.due || '';
         document.getElementById('editCommitmentError').textContent = '';
         bootstrap.Modal.getOrCreateInstance(document.getElementById('editCommitmentModal')).show();
     }));
@@ -582,13 +580,94 @@
         const form = event.currentTarget, button = form.querySelector('[type="submit"]');
         button.disabled = true;
         try {
-            const response = await fetch(form.dataset.url,{method:'PUT',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({name:form.elements.name.value,merchant:form.elements.merchant.value,total_amount:form.elements.total_amount.value,due_date:form.elements.due_date.value})});
+            const response = await fetch(form.dataset.url,{method:'PUT',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({name:form.elements.name.value,merchant:form.elements.merchant.value})});
             const result = await response.json().catch(()=>({}));
             if (!response.ok) throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível atualizar.');
             window.location.reload();
         } catch(error) {
             document.getElementById('editCommitmentError').textContent=error.message;
             button.disabled=false;
+        }
+    });
+
+    const renegotiateModalElement = document.getElementById('renegotiateCommitmentModal');
+    const renegotiateModal = bootstrap.Modal.getOrCreateInstance(renegotiateModalElement);
+    const renegotiateForm = document.getElementById('renegotiateCommitmentForm');
+    const updateRenegotiationPreview = () => {
+        const amount = Number(renegotiateForm.elements.remaining_amount.value || 0);
+        const count = Number(renegotiateForm.elements.installments_count.value || 0);
+        const preview = document.getElementById('renegotiatePreview');
+        preview.textContent = count > 0 && amount > 0
+            ? new Intl.NumberFormat('pt-PT', {style:'currency',currency:@json(auth()->user()->currency)}).format(amount / count)
+            : '—';
+    };
+    document.querySelectorAll('.js-renegotiate-commitment').forEach(button => button.addEventListener('click', () => {
+        renegotiateForm.dataset.url = button.dataset.url;
+        renegotiateForm.elements.remaining_amount.value = button.dataset.remaining;
+        renegotiateForm.elements.installments_count.value = button.dataset.count;
+        renegotiateForm.elements.installment_frequency.value = button.dataset.frequency;
+        renegotiateForm.elements.due_date.value = button.dataset.due;
+        document.getElementById('renegotiateCommitmentName').textContent = button.dataset.name;
+        document.getElementById('renegotiateCommitmentError').textContent = '';
+        updateRenegotiationPreview();
+        renegotiateModal.show();
+    }));
+    renegotiateForm.elements.remaining_amount.addEventListener('input', updateRenegotiationPreview);
+    renegotiateForm.elements.installments_count.addEventListener('input', updateRenegotiationPreview);
+    renegotiateForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const button = renegotiateForm.querySelector('[type="submit"]');
+        button.disabled = true;
+        const payload = Object.fromEntries(new FormData(renegotiateForm).entries());
+        payload.installments_count = Number(payload.installments_count);
+        try {
+            const response = await fetch(renegotiateForm.dataset.url, {method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify(payload)});
+            const result = await response.json().catch(()=>({}));
+            if (!response.ok) throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível renegociar.');
+            window.location.reload();
+        } catch (error) {
+            document.getElementById('renegotiateCommitmentError').textContent = error.message;
+            button.disabled = false;
+        }
+    });
+
+    const archiveModalElement = document.getElementById('archiveCommitmentModal');
+    const archiveModal = bootstrap.Modal.getOrCreateInstance(archiveModalElement);
+    const archiveButton = document.getElementById('confirmArchiveCommitment');
+    const deleteButton = document.getElementById('deleteUnusedCommitment');
+    let archiveActionUrl = null;
+    document.querySelectorAll('.js-archive-commitment').forEach(button => button.addEventListener('click', () => {
+        archiveActionUrl = button.dataset.url;
+        document.getElementById('archiveCommitmentMessage').textContent = 'Pretendes arquivar "' + button.dataset.name + '"?';
+        document.getElementById('archiveCommitmentError').textContent = '';
+        deleteButton.classList.toggle('d-none', button.dataset.hasPayments !== '0');
+        archiveModal.show();
+    }));
+    archiveButton.addEventListener('click', async () => {
+        if (!archiveActionUrl) return;
+        archiveButton.disabled = true;
+        try {
+            const response = await fetch(archiveActionUrl,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({})});
+            const result = await response.json().catch(()=>({}));
+            if (!response.ok) throw new Error(result.message||'Não foi possível arquivar.');
+            window.location.reload();
+        } catch(error) {
+            document.getElementById('archiveCommitmentError').textContent=error.message;
+            archiveButton.disabled=false;
+        }
+    });
+    deleteButton.addEventListener('click', async () => {
+        if (!archiveActionUrl || !window.confirm('Eliminar definitivamente esta compra? Esta ação não pode ser desfeita.')) return;
+        const deleteUrl = archiveActionUrl.replace(/\\/archive$/, '');
+        deleteButton.disabled = true;
+        try {
+            const response = await fetch(deleteUrl,{method:'DELETE',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({})});
+            const result = await response.json().catch(()=>({}));
+            if (!response.ok) throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível eliminar.');
+            window.location.reload();
+        } catch(error) {
+            document.getElementById('archiveCommitmentError').textContent=error.message;
+            deleteButton.disabled=false;
         }
     });
 
