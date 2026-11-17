@@ -19,11 +19,13 @@ class FinancialCommitmentService
     {
         return DB::transaction(function () use ($user, $data): Divida {
             $condition = $data['payment_condition'];
-            $category = Categoria::query()->where('user_id', $user->id)->whereKey($data['category_id'] ?? null)->where('type', 'despesa')->where('is_active', true)->first();
-            if (!$category) {
+            $category = !empty($data['category_id'])
+                ? Categoria::query()->where('user_id', $user->id)->whereKey($data['category_id'])->where('type', 'despesa')->where('is_active', true)->first()
+                : null;
+            if (!empty($data['category_id']) && !$category) {
                 throw ValidationException::withMessages(['category_id' => 'Seleciona uma categoria de despesa ativa.']);
             }
-            $expenseBehavior = $category->expense_behavior ?? 'variable';
+            $expenseBehavior = $category?->expense_behavior ?? 'variable';
             if (in_array($data['payment_method'] ?? null, ['credit', 'card'], true)) {
                 throw ValidationException::withMessages(['payment_method' => 'O parcelamento por cartão não está disponível neste formulário. Regista a compra em Cartões.']);
             }
