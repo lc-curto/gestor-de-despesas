@@ -59,11 +59,19 @@ class FinancialCoreServiceTest extends TestCase
         $invoiceResponse = $this->getJson('/api/financial/invoices')->assertOk();
         $this->assertEquals(47.25, (float) $invoiceResponse->json('data.data.0.total_amount'));
 
-        $this->postJson('/api/financial/invoices/'.$invoice->id.'/pay', [
+        $paymentResponse = $this->postJson('/api/financial/invoices/'.$invoice->id.'/pay', [
             'account_id' => $bank->id, 'payment_date' => '2026-12-01',
         ])->assertOk()->assertJsonPath('data.type', 'transfer');
 
+        $invoiceParent = $invoice->movimentos()->where('is_settlement_parent', true)->firstOrFail();
+        $this->assertSame($invoiceParent->id, $paymentResponse->json('data.settles_movement_id'));
+        $this->assertSame('47.25', (string) $invoiceParent->amount);
+        $this->assertSame('settled', $invoiceParent->fresh()->status);
         $this->assertSame('paid', $invoice->fresh()->status);
+        $invoiceParent = $invoice->movimentos()->where('is_settlement_parent', true)->firstOrFail();
+        $this->assertSame('settled', $invoiceParent->status);
+        $this->assertSame(2, $invoiceParent->settlements()->where('type', 'transfer')->where('status', 'settled')->count());
+        $this->assertSame('60.00', number_format((float) $invoiceParent->settlements()->sum('amount'), 2, '.', ''));
         $this->assertSame('0.00', app(AccountBalanceService::class)->balance($card));
         $this->assertSame('52.75', app(AccountBalanceService::class)->balance($bank));
         $this->assertDatabaseCount('despesas', 0);
@@ -612,6 +620,73 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertNotNull($remaining);
         $this->assertSame(-40.0, (float) $remaining->projection_delta);
         $this->assertSame(-60.0, (float) $items->sum('projection_delta'));
+    }
+
+
+    public function test_invoice_payment_reversal_restores_the_due_balance_and_can_be_paid_again(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->account($user, 'Conta principal', '100.00');
+        $card = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Visa', 'type' => 'credit_card', 'opening_balance' => '0.00',
+            'opening_balance_date' => '2026-11-01', 'closing_day' => 25, 'due_day' => 5,
+            'credit_limit' => '500.00',
+        ]);
+        $this->actingAs($user)->postJson('/api/financial/cards/purchases', [
+            'account_id' => $card->id, 'description' => 'Compra', 'amount' => '60.00',
+            'movement_date' => '2026-11-12',
+        ])->assertCreated();
+        $invoice = $user->faturas()->firstOrFail();
+        $response = $this->postJson('/api/financial/invoices/'.$invoice->id.'/pay', [
+            'account_id' => $bank->id, 'amount' => '20.00', 'payment_date' => '2026-12-01',
+        ])->assertOk();
+        $payment = $user->movimentos()->whereKey($response->json('data.id'))->firstOrFail();
+        $this->postJson('/api/financial/movements/'.$payment->id.'/reverse')->assertOk();
+
+        $parent = $invoice->movimentos()->where('is_settlement_parent', true)->firstOrFail();
+        $this->assertSame('pending', $parent->fresh()->status);
+        $this->assertSame('open', $invoice->fresh()->status);
+        $this->assertSame('60.00', $this->getJson('/api/financial/invoices')->assertOk()->json('data.data.0.remaining_amount'));
+        $this->assertSame('100.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+        $this->assertSame('-60.00', app(AccountBalanceService::class)->balance($card->fresh()));
+
+        $this->postJson('/api/financial/invoices/'.$invoice->id.'/pay', [
+            'account_id' => $bank->id, 'amount' => '60.00', 'payment_date' => '2026-12-02',
+        ])->assertOk();
+        $this->assertSame('paid', $invoice->fresh()->status);
+        $this->assertSame('0.00', app(AccountBalanceService::class)->balance($card->fresh()));
+    }
+
+    public function test_actual_invoice_interest_is_recognized_as_expense_and_increases_invoice_balance(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->account($user, 'Conta principal', '100.00');
+        $card = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Visa', 'type' => 'credit_card', 'opening_balance' => '0.00',
+            'opening_balance_date' => '2026-11-01', 'closing_day' => 25, 'due_day' => 5,
+            'credit_limit' => '500.00',
+        ]);
+        $this->actingAs($user)->postJson('/api/financial/cards/purchases', [
+            'account_id' => $card->id, 'description' => 'Compra', 'amount' => '50.00',
+            'movement_date' => '2026-11-12',
+        ])->assertCreated();
+        $invoice = $user->faturas()->firstOrFail();
+
+        $this->postJson('/api/financial/invoices/'.$invoice->id.'/pay', [
+            'account_id' => $bank->id, 'amount' => '10.00', 'payment_date' => '2026-12-01',
+        ])->assertOk();
+
+        $this->postJson('/api/financial/invoices/'.$invoice->id.'/charges', [
+            'charge_type' => 'interest', 'description' => 'Juros por atraso',
+            'amount' => '5.00', 'movement_date' => '2026-12-02',
+        ])->assertCreated()->assertJsonPath('data.type', 'expense')->assertJsonPath('data.invoice_id', $invoice->id);
+
+        $invoiceData = $this->getJson('/api/financial/invoices')->assertOk()->json('data.data.0');
+        $this->assertSame('55.00', $invoiceData['total_amount']);
+        $this->assertSame('10.00', $invoiceData['paid_amount']);
+        $this->assertSame('45.00', $invoiceData['remaining_amount']);
+        $this->assertSame('partial', $invoice->fresh()->status);
+        $this->assertSame('-55.00', app(AccountBalanceService::class)->balance($card->fresh()));
     }
 
 }
