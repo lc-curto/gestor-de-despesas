@@ -62,29 +62,27 @@ class FinancialAccountsPageController extends Controller
         return view('financial.account-show', compact('account', 'movements', 'paymentAccounts', 'openingDebtRemaining'));
     }
 
-    public function destroyMovement(Request $request, string $id)
+    public function destroyMovement(Request $request, string $id, FinancialMovementService $service)
     {
         $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
-        DB::transaction(function () use ($movement): void {
-            $movement = $movement->newQuery()->where('user_id', $movement->user_id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
-            if ($movement->installment_id || ($movement->status === 'pending' && $movement->debt_id)) {
-                throw ValidationException::withMessages(['movement' => 'Este movimento está ligado a uma prestação. Gere ou cancela o compromisso em Parcelamentos; não o elimines isoladamente.']);
-            }
-            if ($movement->status === 'settled') {
-                throw ValidationException::withMessages(['movement' => 'Movimentos liquidados devem ser estornados, não eliminados.']);
-            }
-            $movement->historico()->delete();
-            $movement->delete();
-        });
+        $service->deleteAsCorrection(
+            $request->user(),
+            $movement,
+            'Movimento eliminado a partir do detalhe da conta.'
+        );
 
-        return back()->with('success', 'Transferência eliminada. Os saldos foram recalculados.');
+        return back()->with('success', 'Movimento eliminado. Os saldos foram atualizados.');
     }
 
     public function reverseMovement(Request $request, string $id, FinancialMovementService $service)
     {
         $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
-        $service->reverse($request->user(), $movement, $request->input('reason'));
+        $service->deleteAsCorrection(
+            $request->user(),
+            $movement,
+            $request->input('reason') ?: 'Movimento eliminado a partir do detalhe da conta.'
+        );
 
-        return back()->with('success', 'Movimento estornado. O saldo foi recalculado.');
+        return back()->with('success', 'Movimento eliminado. Os saldos foram atualizados.');
     }
 }
