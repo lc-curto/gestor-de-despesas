@@ -72,7 +72,7 @@
                     <button class="commitment-card-toggle" type="button" aria-expanded="false" aria-controls="commitment-details-{{ $commitment->id }}">
                         <span class="commitment-card-heading">
                             <span class="commitment-card-name">{{ $commitment->name }}</span>
-                            <span class="badge {{ $isCompleted ? 'text-bg-success' : 'text-bg-success' }}">{{ $isCompleted ? 'Concluído' : 'Em dia' }}</span>
+                            <span class="badge {{ $isCompleted ? 'text-bg-success' : ($commitment->has_overdue_installment ? 'text-bg-danger' : 'text-bg-success') }}">{{ $isCompleted ? 'Concluído' : ($commitment->has_overdue_installment ? 'Em atraso' : 'Em dia') }}</span>
                         </span>
                         <span class="commitment-card-balances">
                             <span><small>Saldo em aberto</small><strong>{{ auth()->user()->currency }} {{ number_format($commitment->remaining_amount, 2, ',', '.') }}</strong></span>
@@ -380,7 +380,6 @@
         document.getElementById('paymentInstallmentLabel').textContent='Prestação '+button.dataset.installmentLabel;
         document.getElementById('commitmentPaymentAmount').value=button.dataset.remaining.replace('.',',');
         document.getElementById('commitmentPaymentAmount').dataset.maxAmount=button.dataset.remaining;
-        document.getElementById('commitmentPaymentDate').value=new Date().toISOString().slice(0,10);
         document.getElementById('commitmentPaymentError').textContent='';
         paymentModal.show();
     }));
