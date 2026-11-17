@@ -38,6 +38,7 @@ class FinancialCommitmentsPageController extends Controller
             ->get();
 
         $eligibleDebts = fn () => $user->dividas()
+            ->whereNull('archived_at')
             ->where('payment_condition', 'installments')
             ->where(fn ($query) => $query->whereNull('payment_method')->orWhereNotIn('payment_method', ['credit', 'card']))
             ->where('status', '!=', 'cancelled');
