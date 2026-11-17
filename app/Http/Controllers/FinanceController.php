@@ -259,6 +259,8 @@ class FinanceController extends Controller
                 'due_date' => $data['due_date'] ?? $data['expense_date'],
                 'payment_condition' => $data['payment_condition'],
                 'payment_method' => $data['payment_method'] ?? null,
+                'account_id' => $data['account_id'] ?? null,
+                'category_id' => $data['category_id'],
                 'installments_count' => $data['installments_count'] ?? null,
                 'installment_frequency' => $data['installment_frequency'] ?? 'monthly',
             ]);

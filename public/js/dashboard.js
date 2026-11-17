@@ -777,6 +777,8 @@
                         due_date: values.due_date || values.expense_date,
                         payment_condition: 'installments',
                         payment_method: values.payment_method || null,
+                        account_id: values.account_id || null,
+                        category_id: values.category_id || null,
                         installments_count: values.installments_count,
                         installment_frequency: values.installment_frequency || 'monthly'
                     })

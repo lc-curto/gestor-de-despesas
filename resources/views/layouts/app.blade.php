@@ -140,7 +140,7 @@
                 </a>
                 <a class="mobile-more-item {{ request()->routeIs('financial.commitments.*') ? 'active' : '' }}" href="{{ route('financial.commitments.page') }}">
                     <i data-lucide="calendar-clock" aria-hidden="true"></i>
-                    <span><strong>Compromissos</strong><small>Gerir faturas e pagamentos</small></span>
+                    <span><strong>Parcelamentos</strong><small>Gerir prestações ativas</small></span>
                     <i data-lucide="chevron-right" class="mobile-more-chevron" aria-hidden="true"></i>
                 </a>
                 <a class="mobile-more-item" href="{{ route('categorias.index') }}">

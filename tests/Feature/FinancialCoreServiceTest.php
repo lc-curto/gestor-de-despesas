@@ -120,6 +120,7 @@ class FinancialCoreServiceTest extends TestCase
         $debtId = $response->json('data.id');
         $installments = $response->json('data.parcelas');
         $this->assertSame(['33.34', '33.33', '33.33'], array_column($installments, 'amount'));
+        $this->assertSame(3, $user->movimentos()->where('debt_id', $debtId)->where('status', 'pending')->count());
 
         $this->postJson('/api/financial/commitments/'.$debtId.'/installments/'.$installments[0]['id'].'/pay', [
             'account_id' => $bank->id, 'amount' => '10.00', 'payment_date' => '2026-11-10',
@@ -128,6 +129,8 @@ class FinancialCoreServiceTest extends TestCase
             'account_id' => $bank->id, 'payment_date' => '2026-11-11',
         ])->assertOk()->assertJsonPath('data.status', 'paid');
         $this->assertSame('66.66', app(AccountBalanceService::class)->balance($bank));
+        $this->assertSame(0, $user->movimentos()->where('installment_id', $installments[0]['id'])->where('status', 'pending')->count());
+        $this->assertSame('33.34', number_format((float) $user->movimentos()->where('installment_id', $installments[0]['id'])->where('status', 'settled')->sum('amount'), 2, '.', ''));
     }
 
     public function test_commitment_supports_weekly_and_biweekly_installment_schedules(): void

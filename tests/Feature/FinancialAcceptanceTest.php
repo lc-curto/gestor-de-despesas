@@ -95,7 +95,7 @@ class FinancialAcceptanceTest extends TestCase
 
         $this->assertCount(1, $debt->parcelas);
         $this->assertSame('pending', $debt->parcelas->first()->status);
-        $this->assertDatabaseCount('movimentos', 0);
+        $this->assertDatabaseCount('movimentos', 1);
         $this->assertSame('200.00', app(AccountBalanceService::class)->balance($account));
     }
 
@@ -124,7 +124,7 @@ class FinancialAcceptanceTest extends TestCase
         $this->assertSame('160.00', app(AccountBalanceService::class)->balance($account->fresh()));
     }
 
-    public function test_acceptance_installment_purchase_has_no_pending_movement_for_the_total(): void
+    public function test_acceptance_installment_purchase_creates_pending_movements_per_installment_without_total_duplicate(): void
     {
         $user = User::factory()->create();
         $debt = app(FinancialCommitmentService::class)->create($user, [
@@ -139,6 +139,7 @@ class FinancialAcceptanceTest extends TestCase
         $this->assertCount(119, $debt->parcelas);
         $this->assertSame('14000.00', number_format((float) $debt->parcelas->sum('amount'), 2, '.', ''));
         $this->assertDatabaseMissing('movimentos', ['amount' => '14000.00', 'status' => 'pending']);
+        $this->assertSame(119, $user->movimentos()->where('debt_id', $debt->id)->where('status', 'pending')->count());
     }
 
     public function test_acceptance_installment_payment_creates_only_the_amount_paid_and_links_the_installment(): void

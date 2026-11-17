@@ -31,9 +31,9 @@
             <i data-lucide="credit-card" aria-hidden="true"></i><span>Cartões</span>
         </a>
         <a class="app-navigation-link {{ request()->routeIs('financial.commitments.*') ? 'active' : '' }}"
-            href="{{ route('financial.commitments.page') }}" title="Compromissos" aria-label="Compromissos"
+            href="{{ route('financial.commitments.page') }}" title="Parcelamentos" aria-label="Parcelamentos"
             @if(request()->routeIs('financial.commitments.*')) aria-current="page" @endif>
-            <i data-lucide="calendar-clock" aria-hidden="true"></i><span>Compromissos</span>
+            <i data-lucide="calendar-clock" aria-hidden="true"></i><span>Parcelamentos</span>
         </a>
     </div>
 
