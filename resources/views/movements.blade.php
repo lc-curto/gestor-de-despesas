@@ -470,11 +470,6 @@
                             <span class="fw-semibold">Este e os seguintes</span>
                             <span class="d-block small text-secondary">Para a recorrência a partir daqui.</span>
                         </label>
-                        <label class="form-check border rounded-3 p-3 mb-0" for="deleteScopeAll">
-                            <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeAll" value="all">
-                            <span class="fw-semibold">Toda a recorrência</span>
-                            <span class="d-block small text-secondary">Remove previsões pendentes.</span>
-                        </label>
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0 d-grid gap-2">
