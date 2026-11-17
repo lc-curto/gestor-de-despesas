@@ -375,7 +375,7 @@ class FinancialMovementService
         $parentIds = Movimento::query()
             ->where('user_id', $user->id)
             ->where('installment_id', $installment->id)
-            ->where('is_settlement_parent', true)
+            ->whereNull('settles_movement_id')
             ->pluck('id');
 
         $eventCents = Movimento::query()
