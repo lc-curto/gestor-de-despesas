@@ -50,8 +50,26 @@ class FinancialCoreController extends Controller
             'installments_count' => [Rule::requiredIf($request->input('payment_condition') === 'installments'), 'nullable', 'integer', 'min:2', 'max:120'],
             'installment_frequency' => ['nullable', Rule::in(['weekly', 'biweekly', 'monthly'])],
             'account_id' => ['nullable', 'uuid', Rule::exists('contas_financeiras', 'id')->where('user_id', $request->user()->id)],
+            'initial_payment' => ['sometimes', 'array'],
+            'initial_payment.account_id' => ['required_with:initial_payment', 'uuid', Rule::exists('contas_financeiras', 'id')->where('user_id', $request->user()->id)->whereIn('type', ['bank', 'cash'])->where('status', 'active')->where('is_operational', true)],
+            'initial_payment.amount' => 'required_with:initial_payment|numeric|gt:0|decimal:0,2|max:9999999999.99',
+            'initial_payment.payment_date' => 'required_with:initial_payment|date|before_or_equal:today',
         ]);
-        return response()->json(['data' => $service->create($request->user(), $data)], 201);
+        $initialPayment = $data['initial_payment'] ?? null;
+        unset($data['initial_payment']);
+        $debt = DB::transaction(function () use ($request, $service, $data, $initialPayment): Divida {
+            $debt = $service->create($request->user(), $data);
+            if ($initialPayment) {
+                $firstInstallment = $debt->parcelas->sortBy('installment_number')->firstOrFail();
+                $service->payInstallment($request->user(), $debt, $firstInstallment, [
+                    'account_id' => $initialPayment['account_id'],
+                    'amount' => $initialPayment['amount'],
+                    'payment_date' => $initialPayment['payment_date'],
+                ]);
+            }
+            return $debt->fresh()->load('parcelas');
+        });
+        return response()->json(['data' => $debt], 201);
     }
 
     public function updateCommitment(Request $request, string $id, FinancialCommitmentService $service): JsonResponse

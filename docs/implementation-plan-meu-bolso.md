@@ -86,8 +86,8 @@ Critério de saída: os critérios de aceitação da Fase 0 passam e uma compra 
 - [x] Parar de criar novos registos inconsistentes.
 - [x] Criar diagnóstico de duplicações e obrigações incompletas.
 - [x] Produzir relatório por utilizador antes de corrigir dados antigos.
-- [ ] Migrar apenas casos determinísticos.
-- [ ] Encaminhar casos ambíguos para revisão do utilizador.
+- [x] Migrar apenas casos determinísticos.
+- [x] Encaminhar casos ambíguos para revisão do utilizador.
 - [ ] Remover leituras legadas apenas depois da reconciliação.
 - [x] Adicionar e executar testes de diagnóstico e compatibilidade.
 
@@ -95,7 +95,9 @@ Critério de saída: os critérios de aceitação da Fase 0 passam e uma compra 
 
 O formulário legado agora encaminha condições `deferred` e `installments` para `FinancialCommitmentService`, recusando pagamento imediato nessa rota em vez de criar uma despesa legada sem obrigação. Foi criado o comando não destrutivo `php artisan financial:diagnose-data`, com opção `--user` e `--json`, que reporta órfãos legados, ligações partidas, candidatos ambíguos, dívidas incompletas e parcelas inconsistentes.
 
-`tests/Feature/FinancialAcceptanceTest.php` passou com **12 testes e 49 asserções**. A Fase 3 permanece aberta: ainda não há migração automática nem reconciliação destrutiva; casos ambíguos continuam apenas reportados para revisão.
+Foi acrescentado `php artisan financial:migrate-deterministic-data`, que por omissão apenas apresenta um plano (`--user`, `--json`) e só escreve com a opção explícita `--apply`. Recupera movimentos legados sem ligação apenas quando a conta histórica é única e a data de corte está definida; reconstrói uma prestação apenas quando a obrigação ativa declara exatamente uma prestação, tem vencimento e não tem movimentos. A criação do movimento legado grava também evidência em `historico_movimentos`. Reexecuções são idempotentes. Casos sem prova suficiente são apresentados individualmente com motivo e nunca alterados.
+
+Em 17/11/2026, `php artisan test --filter='FinancialAcceptanceTest'` passou com **14 testes e 66 asserções**. A cobertura inclui planeamento sem escrita, aplicação explícita, auditoria, idempotência, reconstrução da prestação única e preservação de uma obrigação ambígua com várias prestações. A Fase 3 permanece aberta: não foi feita reconciliação de dados reais nem removidas leituras legadas; a revisão dos casos ambíguos e a validação de reconciliação continuam pendentes.
 
 ## Fase 4 — limpeza posterior
 

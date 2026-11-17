@@ -385,13 +385,26 @@ class FinanceController extends Controller
                         ($tipo === 'despesa' ? 'source_account_id' : 'destination_account_id') => $accountId,
                     ]);
                 }
-            } elseif ($movement->status === 'settled'
-                && $movement->type === ($tipo === 'despesa' ? 'expense' : 'income')
-                && (string) $movement->description === (string) $payload['description']
-                && (string) $movement->amount === (string) $payload['amount']
-                && $movement->movement_date->toDateString() === (string) $payload['movement_date']
-                && (string) $movement->category_id === (string) $payload['category_id']
-                && ($tipo !== 'despesa' || $movement->expense_behavior === $payload['expense_behavior'])) {
+            } elseif ($movement->status === 'settled') {
+                $sameFinancialData = $movement->type === ($tipo === 'despesa' ? 'expense' : 'income')
+                    && (string) $movement->description === (string) $payload['description']
+                    && (string) $movement->amount === (string) $payload['amount']
+                    && $movement->movement_date->toDateString() === (string) $payload['movement_date']
+                    && (string) $movement->category_id === (string) $payload['category_id']
+                    && ($tipo !== 'despesa' || $movement->expense_behavior === $payload['expense_behavior']);
+                if (!$sameFinancialData) {
+                    throw ValidationException::withMessages([
+                        'movement' => 'Um movimento liquidado não pode ser editado. Estorna-o e regista a correção como um novo movimento.',
+                    ]);
+                }
+                $currentAccountId = $tipo === 'despesa'
+                    ? $movement->source_account_id
+                    : $movement->destination_account_id;
+                if ($movement->invoice_id && (string) $currentAccountId !== (string) $accountId) {
+                    throw ValidationException::withMessages([
+                        'movement' => 'Não é possível reatribuir a conta de uma compra ligada a uma fatura; corrige primeiro a fatura.',
+                    ]);
+                }
                 $service->assignLegacyAccount($request->user(), $movement, $accountId);
             } else {
                 // Preserva a regra e a data original da ocorrência ao substituir o movimento.

@@ -18,6 +18,9 @@
 @if ($errors->any())
     <div class="alert alert-danger" role="alert"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
 @endif
+@if ($lockedFinancial)
+    <div class="alert alert-info" role="status">Este movimento já está liquidado. Os dados financeiros não podem ser alterados aqui; para corrigir um valor ou uma data, usa o estorno e regista o movimento correto.</div>
+@endif
 <form method="POST" action="{{ $registo ? route($tipo === 'despesa' ? 'despesas.update' : 'receitas.update', $registo->id) : route($tipo === 'despesa' ? 'despesas.store' : 'receitas.store') }}" class="card border-0 p-3 p-lg-4">
     @csrf
     @if ($registo) @method('PUT') @endif
@@ -100,7 +103,7 @@
         <div id="effectivePaymentFields" class="mt-4" hidden>
             <label class="form-label d-block">Já foi pago?</label>
             <div class="d-flex gap-3 mb-3"><label class="form-check"><input class="form-check-input" type="radio" name="paid_now" value="1"> <span class="form-check-label">Sim</span></label><label class="form-check"><input class="form-check-input" type="radio" name="paid_now" value="0" checked> <span class="form-check-label">Ainda não</span></label></div>
-            <div id="effectivePaymentInputs" class="row g-3" hidden><div class="col-md-6"><label for="payment_amount" class="form-label">Valor pago</label><input id="payment_amount" name="payment_amount" type="number" min="0.01" step="0.01" class="form-control"></div><div class="col-md-6"><label for="payment_date" class="form-label">Data do pagamento</label><input id="payment_date" name="payment_date" type="date" class="form-control" value="{{ now()->toDateString() }}"></div><div class="col-md-6"><label for="payment_account_id" class="form-label">Conta do pagamento</label><select id="payment_account_id" name="payment_account_id" class="form-select"><option value="">Selecionar conta</option>@foreach ($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }} · {{ $account->currency }}</option>@endforeach</select></div></div>
+            <div id="effectivePaymentInputs" class="row g-3" hidden><div class="col-md-6"><label for="payment_amount" class="form-label">Valor pago</label><input id="payment_amount" name="payment_amount" type="number" min="0.01" step="0.01" class="form-control"><div class="form-text">O pagamento inicial será aplicado à primeira prestação e não pode exceder o valor dessa prestação.</div></div><div class="col-md-6"><label for="payment_date" class="form-label">Data do pagamento</label><input id="payment_date" name="payment_date" type="date" class="form-control" value="{{ now()->toDateString() }}"></div><div class="col-md-6"><label for="payment_account_id" class="form-label">Conta do pagamento</label><select id="payment_account_id" name="payment_account_id" class="form-select"><option value="">Selecionar conta</option>@foreach ($accounts->whereIn('type', ['bank', 'cash'])->where('is_operational', true)->where('status', 'active') as $account)<option value="{{ $account->id }}">{{ $account->name }} · {{ $account->currency }}</option>@endforeach</select>@if ($accounts->whereIn('type', ['bank', 'cash'])->where('is_operational', true)->where('status', 'active')->isEmpty())<div class="form-text text-warning">Não tens uma conta bancária ou de dinheiro ativa para registar este pagamento.</div>@endif</div></div>
         </div>
     </section>
     @endif
@@ -131,7 +134,110 @@
 @if ($tipo === 'despesa' && !$registo && !request()->boolean('card_only'))
 @push('scripts')
 <script>
-(() => { const form=document.querySelector('form[action="{{ route('despesas.store') }}"]'); if(!form)return; const get=()=>form.querySelector('[name="payment_condition"]:checked')?.value||'cash', commitments=document.getElementById('commitmentFields'), effective=document.getElementById('effectivePaymentFields'), inputs=document.getElementById('effectivePaymentInputs'), account=document.getElementById('account_id'); const refresh=()=>{const cash=get()==='cash'; commitments.hidden=cash; effective.hidden=cash; document.getElementById('installmentCountField').hidden=get()!=='installments'; account.required=cash||!inputs.hidden;}; form.querySelectorAll('[name="payment_condition"]').forEach(x=>x.addEventListener('change',refresh)); form.querySelectorAll('[name="paid_now"]').forEach(x=>x.addEventListener('change',()=>{inputs.hidden=x.value!=='1'||!x.checked;refresh()})); refresh(); form.addEventListener('submit',async e=>{if(get()==='cash')return;e.preventDefault();const d=Object.fromEntries(new FormData(form).entries()),t=document.querySelector('meta[name="csrf-token"]').content,r=await fetch('{{ route('financial.commitments.store') }}',{method:'POST',credentials:'same-origin',headers:{'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':t},body:JSON.stringify({name:d.description,total_amount:d.amount,start_date:d.expense_date,due_date:d.due_date,payment_condition:d.payment_condition,payment_method:d.payment_method,installments_count:d.installments_count})}),j=await r.json();if(!r.ok){alert(j.message||'Não foi possível criar o compromisso.');return;}if(d.paid_now==='1'){const i=j.data.parcelas[0];await fetch('{{ url('/api/financial/commitments') }}/'+j.data.id+'/installments/'+i.id+'/pay',{method:'POST',credentials:'same-origin',headers:{'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':t},body:JSON.stringify({account_id:d.payment_account_id,amount:d.payment_amount||d.amount,payment_date:d.payment_date})});}if(form.dataset.modal==='1'){window.location.reload();return;}window.location.href='{{ route('despesas.index') }}';});})();
+(() => {
+    const form = document.querySelector('form[action="{{ route('despesas.store') }}"]');
+    if (!form) return;
+
+    const condition = () => form.querySelector('[name="payment_condition"]:checked')?.value || 'cash';
+    const commitmentFields = document.getElementById('commitmentFields');
+    const effectiveFields = document.getElementById('effectivePaymentFields');
+    const paymentInputs = document.getElementById('effectivePaymentInputs');
+    const paymentAmount = document.getElementById('payment_amount');
+    const paymentAccount = document.getElementById('payment_account_id');
+    const account = document.getElementById('account_id');
+    const installmentCount = document.getElementById('installments_count');
+    const submitButton = form.querySelector('button[type="submit"], button:not([type])');
+    let submitting = false;
+
+    const refresh = () => {
+        const cash = condition() === 'cash';
+        const paid = form.querySelector('[name="paid_now"]:checked')?.value === '1';
+        commitmentFields.hidden = cash;
+        effectiveFields.hidden = cash;
+        paymentInputs.hidden = cash || !paid;
+        document.getElementById('installmentCountField').hidden = condition() !== 'installments';
+        account.required = cash;
+        paymentAmount.required = !cash && paid;
+        paymentAccount.required = !cash && paid;
+        if (installmentCount && condition() === 'installments') {
+            const total = Number(form.querySelector('[name="amount"]').value || 0);
+            const count = Number(installmentCount.value || 1);
+            if (total > 0 && count > 0) {
+                paymentAmount.max = (Math.ceil((total * 100) / count) / 100).toFixed(2);
+            }
+        } else {
+            paymentAmount.removeAttribute('max');
+        }
+    };
+
+    form.querySelectorAll('[name="payment_condition"], [name="paid_now"]').forEach(input => input.addEventListener('change', refresh));
+    form.querySelector('[name="amount"]').addEventListener('input', refresh);
+    installmentCount?.addEventListener('input', refresh);
+    refresh();
+
+    form.addEventListener('submit', async event => {
+        if (condition() === 'cash') return;
+        event.preventDefault();
+        if (submitting) return;
+        submitting = true;
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.dataset.originalText = submitButton.textContent;
+            submitButton.textContent = 'A guardar…';
+        }
+
+        try {
+            const data = Object.fromEntries(new FormData(form).entries());
+            const body = {
+                name: data.description,
+                total_amount: data.amount,
+                start_date: data.expense_date,
+                due_date: data.due_date,
+                payment_condition: data.payment_condition,
+                payment_method: data.payment_method,
+                installments_count: data.installments_count,
+            };
+            if (data.paid_now === '1') {
+                body.initial_payment = {
+                    account_id: data.payment_account_id,
+                    amount: data.payment_amount,
+                    payment_date: data.payment_date,
+                };
+            }
+
+            const response = await fetch('{{ route('financial.commitments.store') }}', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify(body),
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const messages = result.errors ? Object.values(result.errors).flat().join('\n') : result.message;
+                alert(messages || 'Não foi possível guardar a obrigação e o pagamento. Verifica os dados e tenta novamente.');
+                return;
+            }
+
+            if (form.dataset.modal === '1') {
+                window.location.reload();
+            } else {
+                window.location.href = '{{ route('despesas.index') }}';
+            }
+        } catch (error) {
+            alert('Não foi possível confirmar a gravação. Verifica a ligação e o estado dos dados antes de voltares a tentar.');
+        } finally {
+            submitting = false;
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = submitButton.dataset.originalText || 'Guardar';
+            }
+        }
+    });
+})();
 </script>
 @endpush
 @endif

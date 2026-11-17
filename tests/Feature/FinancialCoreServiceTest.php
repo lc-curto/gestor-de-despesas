@@ -8,12 +8,19 @@ use App\Services\Financial\AccountBalanceService;
 use App\Services\Financial\FinancialAccountService;
 use App\Services\Financial\FinancialMovementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class FinancialCoreServiceTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutMiddleware(PreventRequestForgery::class);
+    }
 
     private function account(User $user, string $name, string $balance = '100.00', bool $allowNegative = false): ContaFinanceira
     {
@@ -83,8 +90,8 @@ class FinancialCoreServiceTest extends TestCase
         ])->assertOk()->assertJsonPath('data.type', 'transfer');
 
         $invoiceData = $this->getJson('/api/financial/invoices')->assertOk()->json('data.data.0');
-        $this->assertSame('25.00', $invoiceData['paid_amount']);
-        $this->assertSame('35.00', $invoiceData['remaining_amount']);
+        $this->assertSame(25.0, (float) $invoiceData['paid_amount']);
+        $this->assertSame(35.0, (float) $invoiceData['remaining_amount']);
         $this->assertSame('partial', $invoiceData['display_status']);
 
         $this->postJson('/api/financial/invoices/'.$invoice->id.'/pay', [
@@ -274,7 +281,7 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertDatabaseHas('historico_movimentos', ['movement_id' => $movement->id, 'action' => 'settled']);
     }
 
-    public function test_settled_movements_can_be_financially_edited(): void
+    public function test_settled_movements_cannot_be_financially_edited(): void
     {
         $user = User::factory()->create();
         $account = $this->account($user, 'Conta');
@@ -283,16 +290,21 @@ class FinancialCoreServiceTest extends TestCase
             'movement_date' => '2026-11-12', 'source_account_id' => $account->id,
         ]);
 
-        $updated = app(FinancialMovementService::class)->updatePending($user, $movement, ['amount' => '9.00']);
+        try {
+            app(FinancialMovementService::class)->updatePending($user, $movement, ['amount' => '9.00']);
+            $this->fail('Um movimento liquidado não pode ser editado pela rota de movimentos pendentes.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('movement', $exception->errors());
+        }
 
-        $this->assertSame('9.00', (string) $updated->amount);
-        $this->assertSame('91.00', app(AccountBalanceService::class)->balance($account));
+        $this->assertSame('5.00', (string) $movement->fresh()->amount);
+        $this->assertSame('95.00', app(AccountBalanceService::class)->balance($account));
     }
-    public function test_settled_movement_allows_descriptive_correction_with_audit(): void
+    public function test_pending_movement_can_be_descriptively_edited_with_audit(): void
     {
         $user = User::factory()->create();
         $account = $this->account($user, 'Conta');
-        $movement = app(FinancialMovementService::class)->create($user, [
+        $movement = app(FinancialMovementService::class)->createPending($user, [
             'type' => 'expense', 'description' => 'Descrição inicial', 'amount' => '5.00',
             'movement_date' => '2026-11-12', 'source_account_id' => $account->id,
         ]);
@@ -306,7 +318,26 @@ class FinancialCoreServiceTest extends TestCase
             'movement_id' => $movement->id,
             'action' => 'updated',
         ]);
-        $this->assertSame('95.00', app(AccountBalanceService::class)->balance($account));
+        $this->assertSame('100.00', app(AccountBalanceService::class)->balance($account));
+    }
+
+    public function test_settled_movement_update_endpoint_returns_422_and_preserves_financial_data(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->account($user, 'Conta API');
+        $movement = app(FinancialMovementService::class)->create($user, [
+            'type' => 'expense', 'description' => 'Compra confirmada', 'amount' => '12.50',
+            'movement_date' => '2026-11-12', 'source_account_id' => $account->id,
+        ]);
+
+        $this->actingAs($user)->putJson('/api/financial/movements/'.$movement->id, [
+            'amount' => '99.00', 'description' => 'Compra alterada',
+        ])->assertUnprocessable();
+
+        $this->assertDatabaseHas('movimentos', [
+            'id' => $movement->id, 'status' => 'settled', 'description' => 'Compra confirmada', 'amount' => '12.50',
+        ]);
+        $this->assertSame('87.50', app(AccountBalanceService::class)->balance($account->fresh()));
     }
 
     public function test_authenticated_api_can_create_account_and_record_a_settled_expense(): void
