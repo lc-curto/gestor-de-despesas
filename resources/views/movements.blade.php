@@ -244,7 +244,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="d-flex flex-column flex-sm-row gap-2">
+                                    <div class="d-flex flex-column-reverse flex-sm-row gap-2 movement-form-actions">
                                         <button type="button" class="btn btn-outline-secondary flex-fill" id="cancelMovementEdit">Cancelar</button>
                                         <button type="submit" class="btn btn-danger flex-fill" id="saveMovementButton">Guardar movimento</button>
                                     </div>
@@ -512,6 +512,9 @@
 @push('styles')
 
 <style>
+/* Botões do modal de exclusão ocupam toda a largura e ficam empilhados. */
+#deleteMovementModal .modal-footer{display:flex;flex-direction:column;align-items:stretch;gap:.75rem}
+#deleteMovementModal .modal-footer>.btn{display:block;width:100%;margin:0}
 .movement-entry-dialog{max-width:560px}
 .movement-editor-card .card-body{padding:24px!important}
 .movement-editor-card .form-label{font-size:.875rem;font-weight:600}
