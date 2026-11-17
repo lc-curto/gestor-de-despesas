@@ -149,7 +149,7 @@ class InstallmentSettlementRegressionTest extends TestCase
             'name' => 'Compra editada', 'due_date' => '2027-03-10',
         ])->assertOk();
         $this->assertSame('Compra · Parcela 1/3', $first->fresh()->description);
-        $this->assertSame('2026-11-17', $first->fresh()->movement_date->toDateString());
+        $this->assertSame('2026-12-17', $first->fresh()->movement_date->toDateString());
         $this->assertSame('Liquidação: Compra · Parcela 2/3', $paidPartial->fresh()->description);
         $this->assertSame('2026-11-17', $paidPartial->fresh()->movement_date->toDateString());
         $this->assertSame('Compra editada · Parcela 2/3', $second->fresh()->description);
