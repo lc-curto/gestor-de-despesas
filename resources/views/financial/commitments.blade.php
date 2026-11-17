@@ -7,6 +7,7 @@
     <header class="page-heading commitments-heading mb-4">
         <h1 class="h2 fw-bold mb-1">Parcelamentos</h1>
         <p class="text-secondary mb-0">Gestão de compras e prestações</p>
+        <button type="button" class="btn btn-primary mt-3 mt-md-0" data-bs-toggle="modal" data-bs-target="#createCommitmentModal">Nova compra</button>
     </header>
 
     <div id="commitmentFeedback" class="alert d-none" role="status" aria-live="polite"></div>
@@ -174,6 +175,27 @@
     </section>
 </div>
 
+<div class="modal fade" id="createCommitmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable commitment-payment-dialog">
+        <div class="modal-content rounded-4 border-0">
+            <form id="createCommitmentForm">
+                <div class="modal-header border-0"><h2 class="modal-title h5 fw-bold">Nova compra parcelada</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+                <div class="modal-body">
+                    <label class="form-label" for="newCommitmentName">Nome da compra</label><input class="form-control mb-3" id="newCommitmentName" name="name" maxlength="160" required>
+                    <label class="form-label" for="newCommitmentTotal">Valor total (€)</label><input class="form-control mb-3" id="newCommitmentTotal" name="total_amount" type="number" min="0.01" step="0.01" required>
+                    <label class="form-label" for="newCommitmentCount">Número de prestações</label><input class="form-control mb-3" id="newCommitmentCount" name="installments_count" type="number" min="2" max="120" value="3" required>
+                    <label class="form-label" for="newCommitmentFrequency">Frequência</label><select class="form-select mb-3" id="newCommitmentFrequency" name="installment_frequency"><option value="monthly">Mensal</option><option value="weekly">Semanal</option><option value="biweekly">Quinzenal</option></select>
+                    <label class="form-label" for="newCommitmentStart">Data da compra</label><input class="form-control mb-3" id="newCommitmentStart" name="start_date" type="date" value="{{ now()->toDateString() }}" required>
+                    <label class="form-label" for="newCommitmentDue">Vencimento da primeira prestação</label><input class="form-control mb-3" id="newCommitmentDue" name="due_date" type="date" value="{{ now()->addMonth()->toDateString() }}" required>
+                    <label class="form-label" for="newCommitmentAccount">Conta associada (opcional)</label><select class="form-select" id="newCommitmentAccount" name="account_id"><option value="">Sem conta associada</option>@foreach ($paymentAccounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select>
+                    <div class="small text-danger mt-2" id="createCommitmentError" role="alert"></div>
+                </div>
+                <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Criar compra</button></div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="commitmentPaymentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable commitment-payment-dialog">
         <div class="modal-content rounded-4 border-0">
@@ -337,6 +359,23 @@
             toggle.setAttribute('aria-expanded', String(opening));
             details.hidden = !opening;
         });
+    });
+
+    document.getElementById('createCommitmentForm')?.addEventListener('submit', async event => {
+        event.preventDefault();
+        const form=event.currentTarget,button=form.querySelector('[type="submit"]');
+        button.disabled=true;
+        const values=Object.fromEntries(new FormData(form).entries());
+        values.payment_condition='installments';
+        values.paid_now='0';
+        values.installments_count=Number(values.installments_count);
+        if(!values.account_id)delete values.account_id;
+        try{
+            const response=await fetch(@json(route('financial.commitments.store')),{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify(values)});
+            const result=await response.json().catch(()=>({}));
+            if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível criar a compra.');
+            window.location.href='{{ route('financial.commitments.page') }}';
+        }catch(error){document.getElementById('createCommitmentError').textContent=error.message;button.disabled=false;}
     });
 
     document.querySelectorAll('.js-edit-commitment').forEach(button => button.addEventListener('click', () => {
