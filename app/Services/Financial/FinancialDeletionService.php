@@ -411,7 +411,7 @@ class FinancialDeletionService
                 ]);
             }
 
-            $parentIds = $related->where('is_settlement_parent', true)->pluck('id');
+            $parentIds = $related->pluck('id');
             $paymentEvents = $parentIds->isNotEmpty()
                 ? Movimento::query()->where('user_id', $user->id)->whereIn('settles_movement_id', $parentIds)->orderBy('id')->lockForUpdate()->get()
                 : collect();
