@@ -269,13 +269,25 @@
 
 @push('styles')
 <style>
-.commitments-page{max-width:1500px;margin-inline:auto}
+.commitments-page{max-width:1500px;margin-inline:auto;container-type:inline-size}
 .commitment-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
 .commitment-metric{min-width:0;padding:1.1rem 1.25rem;background:var(--bs-body-bg);border:1px solid var(--bs-border-color);border-radius:1rem;display:flex;flex-direction:column;justify-content:center;gap:.35rem}
 .commitment-metric span,.commitment-metric small{font-size:.8rem;color:var(--bs-secondary-color)}
-.commitment-metric strong{font-size:1.35rem;line-height:1.3;font-weight:750;overflow-wrap:anywhere}
+.commitment-metric strong{font-size:1.35rem;line-height:1.3;font-weight:750;overflow-wrap:normal;word-break:normal}
 .commitment-metric-primary{grid-column:auto}
 .commitment-metric small{line-height:1.4}
+@container (max-width: 620px){
+ .commitment-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
+ .commitment-metric{padding:.8rem .9rem;border-radius:.85rem}
+ .commitment-metric-primary{grid-column:1/-1}
+ .commitment-metric strong{font-size:1.15rem}
+ .commitment-metric-primary strong{font-size:1.55rem}
+ .commitment-metric small{font-size:.76rem}
+}
+@container (max-width: 360px){
+ .commitment-summary{grid-template-columns:minmax(0,1fr)}
+ .commitment-metric-primary{grid-column:auto}
+}
 .commitment-history-pagination{flex-wrap:wrap}
 .commitment-history-pagination .pagination{display:flex;flex-wrap:wrap;gap:.25rem}
 .commitment-history-pagination .page-item{margin:0}
@@ -331,12 +343,6 @@
 .commitment-purchase-pagination .pagination{justify-content:center;margin:.5rem 0 0}
 .commitment-purchase-pagination .page-link{border-radius:.5rem;margin:0 .1rem}
 @media(max-width:767.98px){
- .commitment-summary{grid-template-columns:minmax(0,1fr);gap:.55rem}
- .commitment-metric{padding:.75rem .9rem;border-radius:.85rem}
- .commitment-metric-primary{grid-column:auto}
- .commitment-metric strong{font-size:1.15rem}
- .commitment-metric-primary strong{font-size:1.45rem}
- .commitment-metric small{font-size:.76rem}
  .commitment-history-pagination{flex-direction:row;align-items:center;justify-content:space-between}
  .commitment-history-pagination .pagination{max-width:100%}
  .commitment-history-pagination .page-link{padding:.3rem .55rem}
