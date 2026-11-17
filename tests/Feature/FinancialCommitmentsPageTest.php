@@ -271,34 +271,84 @@ class FinancialCommitmentsPageTest extends TestCase
     }
 
 
-    public function test_editing_total_preserves_paid_amount_and_redistributes_only_pending_installments(): void
+    public function test_edit_purchase_changes_only_name_and_merchant(): void
+    {
+        $user = User::factory()->create();
+        $debt = app(FinancialCommitmentService::class)->create($user, [
+            'name' => 'Móvel', 'merchant' => 'Loja antiga', 'total_amount' => '60.00',
+            'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
+            'payment_condition' => 'installments', 'installments_count' => 3,
+        ]);
+        $originalParts = $debt->parcelas()->get()->map(fn ($part) => [$part->amount, $part->due_date->toDateString()])->all();
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+
+        $this->actingAs($user)->putJson(route('financial.commitments.update', $debt->id), [
+            'name' => 'Móvel atualizado', 'merchant' => 'Nova loja',
+        ])->assertOk();
+
+        $this->assertSame('Móvel atualizado', $debt->fresh()->name);
+        $this->assertSame('Nova loja', $debt->fresh()->merchant);
+        $this->assertSame('60.00', $debt->fresh()->total_amount);
+        $this->assertSame($originalParts, $debt->fresh()->parcelas()->get()->map(fn ($part) => [$part->amount, $part->due_date->toDateString()])->all());
+    }
+
+    public function test_renegotiation_preserves_paid_parts_and_replaces_only_future_installments(): void
     {
         $user = User::factory()->create();
         $account = app(FinancialAccountService::class)->create($user, ['name' => 'Conta', 'type' => 'bank', 'opening_balance' => '200.00']);
         $debt = app(FinancialCommitmentService::class)->create($user, [
-            'name' => 'Móvel', 'total_amount' => '60.00',
-            'start_date' => '2026-11-17', 'due_date' => '2026-12-17',
-            'payment_condition' => 'installments', 'installments_count' => 3,
+            'name' => 'Computador', 'total_amount' => '120.00',
+            'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
+            'payment_condition' => 'installments', 'installments_count' => 12,
         ]);
-        $first = $debt->parcelas->sortBy('installment_number')->first();
+        $first = $debt->parcelas()->where('installment_number', 1)->firstOrFail();
         $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
         $this->actingAs($user)->postJson(route('financial.commitments.installments.pay', [$debt->id, $first->id]), [
-            'account_id' => $account->id, 'amount' => '5.00', 'payment_date' => '2026-11-17',
+            'account_id' => $account->id, 'amount' => '10.00', 'payment_date' => now()->toDateString(),
         ])->assertOk();
 
-        $this->putJson(route('financial.commitments.update', $debt->id), [
-            'name' => 'Móvel atualizado', 'total_amount' => '90.00', 'due_date' => '2026-12-20',
+        $this->postJson(route('financial.commitments.renegotiate', $debt->id), [
+            'remaining_amount' => '110.00',
+            'installments_count' => 11,
+            'installment_frequency' => 'monthly',
+            'due_date' => now()->addMonths(2)->toDateString(),
         ])->assertOk();
 
-        $this->assertSame('90.00', $debt->fresh()->total_amount);
-        $this->assertSame('5.00', $first->fresh()->paid_amount);
-        $this->assertSame('33.34', $first->fresh()->amount);
-        $this->assertSame('28.33', $debt->fresh()->parcelas()->where('installment_number', 2)->value('amount'));
-        $this->assertSame('28.33', $debt->fresh()->parcelas()->where('installment_number', 3)->value('amount'));
-        $this->assertSame('28.34', $user->movimentos()->where('installment_id', $first->id)->where('status', 'pending')->value('amount'));
-        $this->assertSame('5.00', $user->movimentos()->where('installment_id', $first->id)->where('status', 'settled')->value('amount'));
+        $this->assertSame('paid', $first->fresh()->status);
+        $this->assertSame('10.00', $first->fresh()->paid_amount);
+        $this->assertSame('120.00', $debt->fresh()->total_amount);
+        $this->assertSame(12, (int) $debt->fresh()->installments_count);
+        $this->assertSame(11, $debt->fresh()->parcelas()->where('status', 'pending')->count());
+        $this->assertSame(11, $debt->fresh()->parcelas()->where('status', 'cancelled')->count());
+        $this->assertSame('10.00', $debt->fresh()->parcelas()->where('status', 'pending')->sum('amount'));
+        $this->assertSame(11, $user->movimentos()->where('debt_id', $debt->id)->where('status', 'pending')->count());
+        $this->assertDatabaseHas('dividas_renegociacoes', ['debt_id' => $debt->id, 'user_id' => $user->id]);
+        $this->assertSame('190.00', app(AccountBalanceService::class)->balance($account->fresh()));
     }
 
+    public function test_archive_hides_purchase_and_delete_soft_deletes_only_without_payments(): void
+    {
+        $user = User::factory()->create();
+        $service = app(FinancialCommitmentService::class);
+        $archived = $service->create($user, [
+            'name' => 'Compra arquivada', 'total_amount' => '60.00',
+            'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
+            'payment_condition' => 'installments', 'installments_count' => 3,
+        ]);
+        $deleted = $service->create($user, [
+            'name' => 'Compra eliminável', 'total_amount' => '30.00',
+            'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
+            'payment_condition' => 'installments', 'installments_count' => 3,
+        ]);
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+        $this->actingAs($user)->postJson(route('financial.commitments.archive', $archived->id))->assertOk();
+        $this->get(route('financial.commitments.page'))->assertOk()->assertDontSee('Compra arquivada');
+
+        $this->deleteJson(route('financial.commitments.destroy', $deleted->id))->assertOk();
+        $this->assertSoftDeleted('dividas', ['id' => $deleted->id]);
+        $this->assertSame(3, $deleted->parcelas()->count());
+        $this->assertSame(0, $user->movimentos()->where('debt_id', $deleted->id)->where('status', 'pending')->count());
+    }
 
     public function test_commitment_merchant_is_saved_and_displayed_on_purchase_card(): void
     {
