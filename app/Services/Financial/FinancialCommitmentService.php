@@ -151,15 +151,15 @@ class FinancialCommitmentService
                         ->orWhere(fn ($partial) => $partial->where('status', 'partial')->where('is_settlement_parent', true)))
                     ->get();
                 foreach ($forecasts as $forecast) {
-                    $expectedForecastCents = $this->balances->toCents((string) $previousRemaining);
+                    $expectedForecastCents = (int) round($previousRemaining * 100);
                     if ($forecast->is_settlement_parent) {
                         $legacyPaidCents = Movimento::query()->where('user_id', $user->id)
                             ->where('installment_id', $part->id)->whereNull('settles_movement_id')
                             ->whereNull('reversal_of_id')->where('status', 'settled')->get(['amount'])
-                            ->sum(fn (Movimento $item) => $this->balances->toCents((string) $item->amount));
-                        $expectedForecastCents = $this->balances->toCents(number_format($previousAmount, 2, '.', '')) - (int) $legacyPaidCents;
+                            ->sum(fn (Movimento $item) => (int) round((float) $item->amount * 100));
+                        $expectedForecastCents = (int) round($previousAmount * 100) - (int) $legacyPaidCents;
                     }
-                    if ($this->balances->toCents((string) $forecast->amount) !== $expectedForecastCents) {
+                    if ((int) round((float) $forecast->amount * 100) !== $expectedForecastCents) {
                         throw ValidationException::withMessages(['movement' => 'A previsão financeira não corresponde ao saldo da prestação. Revê os dados antes de editar.']);
                     }
                     $this->movements->updateCommitmentForecast($user, $locked, $part, $forecast);
