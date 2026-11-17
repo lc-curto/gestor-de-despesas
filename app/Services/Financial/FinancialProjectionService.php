@@ -123,8 +123,10 @@ class FinancialProjectionService
             ->with(['conta', 'movimentos' => fn ($query) => $query->where('status', 'settled')])
             ->get();
         foreach ($invoices as $invoice) {
-            $total = (float) $invoice->movimentos->where('type', 'expense')->sum('amount');
-            $paid = (float) $invoice->movimentos->where('type', 'transfer')->sum('amount');
+            $total = (float) $invoice->movimentos
+                ->where('type', 'expense')->where('is_settlement_parent', false)->sum('amount');
+            $paid = (float) $invoice->movimentos->where('type', 'transfer')
+                ->sum(fn (Movimento $movement) => $movement->reversal_of_id ? -(float) $movement->amount : (float) $movement->amount);
             $remaining = round($total - $paid, 2);
             if ($remaining <= 0) continue;
             $synthetic = $this->syntheticExpense(
