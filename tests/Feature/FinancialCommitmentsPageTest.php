@@ -225,9 +225,18 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->assertCount(6, $xpath->query('//div[contains(concat(" ", normalize-space(@class), " "), " commitment-installment ")]'));
         $this->assertSame(120, $debt->fresh()->parcelas()->count());
 
-        $secondHistoryPage = $this->get(route('financial.commitments.page', ['installments_'.$debt->id => 2]))->assertOk();
+        $firstXPath = $this->document($this->get(route('financial.commitments.page'))->assertOk()->getContent());
+        $nextHistoryLink = $firstXPath->query('//article[@data-commitment-id="'.$debt->id.'"]//nav[contains(@class,"commitment-history-pagination")]//a[contains(., "Seguinte")]')->item(0);
+        $this->assertNotNull($nextHistoryLink);
+        $this->assertStringContainsString('installments_'.$debt->id.'=2', $nextHistoryLink->getAttribute('href'));
+        $this->assertStringContainsString('expanded='.$debt->id, $nextHistoryLink->getAttribute('href'));
+        $this->assertStringContainsString('#commitment-'.$debt->id, $nextHistoryLink->getAttribute('href'));
+
+        $secondHistoryPage = $this->get(route('financial.commitments.page', ['installments_'.$debt->id => 2, 'expanded' => $debt->id]))->assertOk();
         $secondXPath = $this->document($secondHistoryPage->getContent());
         $this->assertCount(6, $secondXPath->query('//div[contains(concat(" ", normalize-space(@class), " "), " commitment-installment ")]'));
+        $this->assertSame('2', (string) $secondHistoryPage->viewData('commitments')->first()->installmentsPage->currentPage());
+        $this->assertSame('7', trim($secondXPath->query('//div[contains(@class,"commitment-installment")]/div/strong')->item(0)->textContent));
     }
 
     public function test_purchase_pagination_is_server_side_and_summary_uses_all_commitments(): void
