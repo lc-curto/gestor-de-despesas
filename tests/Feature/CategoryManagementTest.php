@@ -42,6 +42,26 @@ class CategoryManagementTest extends TestCase
         ]);
     }
 
+    public function test_user_can_configure_fixed_or_variable_behavior_for_expense_categories(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post(route('categorias.store'), [
+            'name' => 'Renda',
+            'type' => 'despesa',
+            'expense_behavior' => 'fixed',
+            'icon' => 'house',
+            'color' => '#2563EB',
+        ])->assertRedirect(route('categorias.index'));
+
+        $this->assertDatabaseHas('categorias', [
+            'user_id' => $user->id,
+            'name' => 'Renda',
+            'type' => 'despesa',
+            'expense_behavior' => 'fixed',
+        ]);
+    }
+
     public function test_user_cannot_access_another_users_category(): void
     {
         $owner = User::factory()->create();
