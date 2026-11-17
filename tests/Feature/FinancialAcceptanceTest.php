@@ -220,7 +220,7 @@ class FinancialAcceptanceTest extends TestCase
 
         $this->assertSame('0.00', app(AccountBalanceService::class)->balance($card->fresh()));
         $this->assertSame('0.00', app(AccountBalanceService::class)->balance($bank->fresh()));
-        $this->assertSame(1, $user->movimentos()->where('type', 'expense')->count());
+        $this->assertSame(1, $user->movimentos()->where('type', 'expense')->where('is_settlement_parent', false)->count());
         $this->assertSame(1, $user->movimentos()->where('type', 'transfer')->count());
     }
 
