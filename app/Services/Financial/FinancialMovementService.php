@@ -673,6 +673,89 @@ class FinancialMovementService
         });
     }
 
+    /**
+     * Atualiza os termos do movimento original sem alterar os eventos de liquidação.
+     * O novo valor nunca pode ficar abaixo do total líquido já pago/recebido.
+     */
+    public function updateSettlementParent(User $user, Movimento $movement, array $data): Movimento
+    {
+        return DB::transaction(function () use ($user, $movement, $data): Movimento {
+            $locked = Movimento::query()
+                ->where('user_id', $user->id)
+                ->whereKey($movement->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! $locked->is_settlement_parent
+                || ! in_array($locked->status, ['partial', 'settled'], true)
+                || $locked->installment_id
+                || $locked->debt_id
+                || $locked->invoice_id
+                || ! in_array($locked->type, ['expense', 'income'], true)) {
+                throw ValidationException::withMessages([
+                    'movement' => 'Este movimento não pode ser ajustado por esta operação. Revê a origem da obrigação.',
+                ]);
+            }
+
+            $paidCents = $this->netSettledCents($user, $locked);
+            $newAmountCents = array_key_exists('amount', $data)
+                ? $this->balances->toCents((string) $data['amount'])
+                : $this->balances->toCents((string) $locked->amount);
+
+            if ($newAmountCents < $paidCents) {
+                throw ValidationException::withMessages([
+                    'amount' => 'O novo valor não pode ser inferior ao total já liquidado. Regista primeiro um ajuste explícito para tratar o excedente.',
+                ]);
+            }
+
+            $changes = array_intersect_key($data, array_flip([
+                'description',
+                'notes',
+                'amount',
+                'movement_date',
+                'category_id',
+                'expense_behavior',
+                'payment_method',
+            ]));
+
+            $accountKey = $locked->type === 'expense' ? 'source_account_id' : 'destination_account_id';
+            if (! empty($data[$accountKey]) && $data[$accountKey] !== $locked->{$accountKey}) {
+                $account = $this->account($user, $data[$accountKey]);
+                $this->assertNoGenericCardMovement(
+                    $locked->type,
+                    $locked->type === 'expense' ? $account : null,
+                    $locked->type === 'income' ? $account : null
+                );
+                if (! in_array($account?->type, ['bank', 'cash'], true)
+                    || ! $account->is_operational
+                    || $account->status !== 'active') {
+                    throw ValidationException::withMessages([
+                        'account_id' => 'Seleciona uma conta bancária ou de dinheiro ativa.',
+                    ]);
+                }
+                $changes[$accountKey] = $account->id;
+            }
+
+            $status = $newAmountCents === $paidCents ? 'settled' : 'partial';
+            $changes['status'] = $status;
+            $changes['is_settlement_parent'] = true;
+            $changes['settled_at'] = $status === 'settled' ? ($locked->settled_at ?? now()) : null;
+
+            $before = $locked->getAttributes();
+            $locked->update($changes);
+            $this->audit(
+                $user,
+                $locked,
+                'original_updated_after_settlement',
+                $before,
+                $locked->getAttributes(),
+                'Termos do movimento original ajustados sem alterar o histórico de liquidações.'
+            );
+
+            return $locked->refresh();
+        });
+    }
+
     /** Uso interno pelo parcelamento: sincroniza apenas o nome e o vencimento. */
     public function updateCommitmentForecast(User $user, Divida $debt, ParcelaDivida $part, Movimento $movement): Movimento
     {
