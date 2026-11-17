@@ -759,6 +759,7 @@ class FinancialCoreServiceTest extends TestCase
     public function test_invoice_credit_is_linked_to_purchase_reduces_card_balance_and_nets_expenses(): void
     {
         $user = User::factory()->create();
+        $this->actingAs($user);
         $bank = $this->account($user, 'Conta principal', '500.00');
         $card = app(FinancialAccountService::class)->create($user, [
             'name' => 'Visa', 'type' => 'credit_card', 'opening_balance' => '0.00',
@@ -799,6 +800,7 @@ class FinancialCoreServiceTest extends TestCase
     public function test_closed_invoice_reconciles_to_statement_and_accepts_payments_without_changing_closed_state(): void
     {
         $user = User::factory()->create();
+        $this->actingAs($user);
         $bank = $this->account($user, 'Conta principal', '500.00');
         $card = app(FinancialAccountService::class)->create($user, [
             'name' => 'Visa', 'type' => 'credit_card', 'opening_balance' => '0.00',
