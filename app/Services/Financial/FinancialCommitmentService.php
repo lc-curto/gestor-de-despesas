@@ -140,10 +140,14 @@ class FinancialCommitmentService
                     $changes['principal_amount'] = number_format(($partAmountCents - $interestCents) / 100, 2, '.', '');
                 }
 
+                $previousRemaining = max(0, round((float) $part->amount - (float) $part->paid_amount, 2));
                 $part->update($changes);
                 $forecasts = Movimento::query()->where('user_id', $user->id)->where('debt_id', $locked->id)
                     ->where('installment_id', $part->id)->where('status', 'pending')->get();
                 foreach ($forecasts as $forecast) {
+                    if ((int) round((float) $forecast->amount * 100) !== (int) round($previousRemaining * 100)) {
+                        throw ValidationException::withMessages(['movement' => 'A previsão financeira não corresponde ao saldo da prestação. Revê os dados antes de editar.']);
+                    }
                     $this->movements->updateCommitmentForecast($user, $locked, $part, $forecast);
                 }
             }
