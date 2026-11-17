@@ -533,9 +533,11 @@ class FinanceController extends Controller
                 );
             }
 
-            // O movimento canónico é mantido como void para auditoria.
-            // A representação legada deixa de aparecer nas páginas antigas.
-            $legacy->delete();
+            // Se não havia movimento canónico, a representação legacy ainda precisa
+            // de ser removida. Quando o orquestrador já a removeu, não repetir a operação.
+            if ($this->query($request)->whereKey($id)->exists()) {
+                $legacy->delete();
+            }
         });
 
         if ($request->expectsJson()) {
