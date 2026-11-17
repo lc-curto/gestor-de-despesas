@@ -71,21 +71,30 @@
                         <input type="hidden" name="_method" id="movementMethod" value="POST">
                         <div id="movementFormError" class="alert alert-danger d-none" role="alert" tabindex="-1"></div>
                         <div class="mb-3">
+                            <label for="movementAmount" class="form-label">Valor</label>
+                            <div class="input-group input-group-lg">
+                                <input type="text" inputmode="decimal" class="form-control fw-semibold" id="movementAmount" name="amount" placeholder="0,00" aria-describedby="movementAmountHelp" value="{{ old('amount') }}" required>
+                                <span class="input-group-text" id="amountCurrencySymbol">{{ $simbolos[$moeda] ?? $moeda }}</span>
+                            </div>
+                            <div id="movementAmountHelp" class="form-text">Usa vírgula ou ponto para os cêntimos.</div>
+                        </div>
+                        <div class="mb-3">
                             <label for="movementDescription" class="form-label" id="descriptionLabel">Descrição</label>
                             <input type="text" class="form-control" id="movementDescription" name="description" placeholder="Ex.: Supermercado" value="{{ old('description') }}" maxlength="255" required>
                         </div>
                         <div class="row g-2 mb-3">
                             <div class="col-6">
-                                <label for="movementAmount" class="form-label">Valor</label>
-                                <div class="input-group">
-                                    <input type="text" inputmode="decimal" class="form-control" id="movementAmount" name="amount" placeholder="0,00" aria-describedby="movementAmountHelp" value="{{ old('amount') }}" required>
-                                    <span class="input-group-text" id="amountCurrencySymbol">{{ $simbolos[$moeda] ?? $moeda }}</span>
-                                </div>
-                                <div id="movementAmountHelp" class="form-text">Usa vírgula ou ponto para os cêntimos.</div>
-                            </div>
-                            <div class="col-6">
                                 <label for="movementDate" class="form-label">Data</label>
                                 <input type="date" class="form-control" id="movementDate" name="expense_date" value="{{ old('expense_date', old('income_date', now()->toDateString())) }}" required>
+                            </div>
+                            <div class="col-6">
+                                <label for="movementCategory" class="form-label">Categoria</label>
+                                <select class="form-select" id="movementCategory" name="category_id" required>
+                                    <option value="" selected disabled>Seleciona uma categoria</option>
+                                    @foreach ($categoriasDespesa as $id => $label)
+                                        <option value="{{ $id }}" @selected((string) old('category_id') === (string) $id)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
                             </div>
                         </div>
                         <div class="mb-3">
@@ -100,22 +109,20 @@
                                 <div class="form-text text-warning">Cria uma conta e configura o saldo inicial em <a href="{{ route('financial.accounts.page') }}">Contas</a> antes de registar.</div>
                             @endif
                         </div>
+                        <div class="accordion mb-3" id="dashboardAdditionalDetails">
+                            <div class="accordion-item border rounded-3">
+                                <h3 class="accordion-header" id="dashboardAdditionalDetailsHeading">
+                                    <button class="accordion-button collapsed py-3" type="button" data-bs-toggle="collapse" data-bs-target="#dashboardAdditionalDetailsPanel" aria-expanded="false" aria-controls="dashboardAdditionalDetailsPanel">Adicionar detalhes</button>
+                                </h3>
+                                <div id="dashboardAdditionalDetailsPanel" class="accordion-collapse collapse" aria-labelledby="dashboardAdditionalDetailsHeading" data-bs-parent="#dashboardAdditionalDetails">
+                                    <div class="accordion-body px-3">
                         <div class="border-top pt-3 mb-3">
                             <label class="form-check mb-2"><input class="form-check-input" type="checkbox" name="recurrence_enabled" value="1" id="dashboardRecurrenceEnabled"> <span class="form-check-label">Repetir esta despesa/receita</span></label>
                             <div id="dashboardRecurrenceFields" class="row g-2" hidden>
                                 <div class="col-4"><label for="dashboardRecurrenceInterval" class="form-label">A cada</label><input id="dashboardRecurrenceInterval" name="recurrence_interval" type="number" min="1" max="365" value="1" class="form-control"></div>
-                                <div class="col-4"><label for="dashboardRecurrenceFrequency" class="form-label">Frequência</label><select id="dashboardRecurrenceFrequency" name="recurrence_frequency" class="form-select"><option value="daily">Dia(s)</option><option value="weekly">Semana(s)</option><option value="monthly" selected>Mensal</option><option value="quarterly">Trimestral</option><option value="yearly">Anual</option><option value="custom">Dias</option></select></div>
+                                <div class="col-4"><label for="dashboardRecurrenceFrequency" class="form-label">Frequência</label><select id="dashboardRecurrenceFrequency" name="recurrence_frequency" class="form-select"><option value="weekly">Semanal</option><option value="monthly" selected>Mensal</option><option value="quarterly">Trimestral</option><option value="yearly">Anual</option></select></div>
                                 <div class="col-4"><label for="dashboardRecurrenceEnds" class="form-label">Termina em</label><input id="dashboardRecurrenceEnds" name="recurrence_ends_at" type="date" class="form-control"></div>
                             </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="movementCategory" class="form-label">Categoria</label>
-                            <select class="form-select" id="movementCategory" name="category_id" required>
-                                <option value="" selected disabled>Seleciona uma categoria</option>
-                                @foreach ($categoriasDespesa as $id => $label)
-                                    <option value="{{ $id }}" @selected((string) old('category_id') === (string) $id)>{{ $label }}</option>
-                                @endforeach
-                            </select>
                         </div>
                         <div id="dashboardExpenseBehaviorField" class="mb-3">
                             <label class="form-label d-block">Comportamento da despesa</label>
@@ -168,7 +175,7 @@
                                 <div class="col-6" id="dashboardInstallmentFrequencyField" hidden>
                                     <label for="dashboardInstallmentFrequency" class="form-label">Periodicidade</label>
                                     <select id="dashboardInstallmentFrequency" name="installment_frequency" class="form-select">
-                                        <option value="weekly">Semanal</option><option value="biweekly">Quinzenal</option><option value="monthly" selected>Mensal</option>
+                                        <option value="weekly">Semanal</option><option value="monthly" selected>Mensal</option>
                                     </select>
                                 </div>
                                 <div class="col-12" id="dashboardInstallmentSchedule" hidden>
@@ -176,6 +183,14 @@
                                     <div class="list-group list-group-flush" id="dashboardInstallmentScheduleList" aria-live="polite"></div>
                                 </div>
                             </div>
+                                        <div class="mb-3">
+                                            <label for="movementNotes" class="form-label">Notas (opcional)</label>
+                                            <textarea id="movementNotes" name="notes" rows="2" class="form-control" placeholder="Observações adicionais">{{ old('notes') }}</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                             <div id="dashboardPaidFields" class="mt-3">
                                 <label class="form-label d-block fw-semibold">Estado do pagamento</label>
                                 <div class="payment-status-grid" role="radiogroup" aria-label="Estado do pagamento">

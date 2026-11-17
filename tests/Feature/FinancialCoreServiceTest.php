@@ -119,7 +119,7 @@ class FinancialCoreServiceTest extends TestCase
         ])->assertCreated();
         $debtId = $response->json('data.id');
         $installments = $response->json('data.parcelas');
-        $this->assertSame(['33.34', '33.33', '33.33'], array_column($installments, 'amount'));
+        $this->assertSame(['33.33', '33.33', '33.34'], array_column($installments, 'amount'));
         $this->assertSame(3, $user->movimentos()->where('debt_id', $debtId)->where('status', 'pending')->count());
 
         $this->postJson('/api/financial/commitments/'.$debtId.'/installments/'.$installments[0]['id'].'/pay', [
