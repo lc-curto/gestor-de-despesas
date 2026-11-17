@@ -177,7 +177,7 @@ class FinancialDeletionService
             }
 
             $invoice = null;
-            $isInvoicePayment = $locked->type === 'transfer' && $locked->settles_movement_id && $locked->invoice_id;
+            $isInvoicePayment = $locked->type === 'transfer' && $locked->invoice_id;
             if ($locked->invoice_id) {
                 $invoice = Fatura::query()
                     ->where('user_id', $user->id)
@@ -298,7 +298,8 @@ class FinancialDeletionService
 
             if ($parent) {
                 $this->movements->refreshSettlementParentAfterDeletion($user, $parent->id);
-            } elseif ($invoice) {
+            }
+            if ($invoice) {
                 $this->movements->syncInvoiceSettlementParent($user, $invoice);
             }
 
