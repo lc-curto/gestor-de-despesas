@@ -511,7 +511,7 @@ class FinanceFlowTest extends TestCase
             ->get(route('financial.commitments.page'))
             ->assertOk()
             ->assertSee('Parcelamentos')
-            ->assertSee('Próximas prestações');
+            ->assertSee('Próxima prestação');
     }
 
     public function test_commitments_page_excludes_single_deferred_expenses_and_shows_installment_plans(): void
