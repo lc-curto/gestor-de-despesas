@@ -2,6 +2,7 @@
 
 namespace App\\Services\\Financial;
 
+use App\\Models\\Categoria;
 use App\\Models\\ContaFinanceira;
 use App\\Models\\Despesa;
 use App\\Models\\Divida;
@@ -27,6 +28,96 @@ class FinancialDeletionService
         private readonly FinancialMovementService $movements,
         private readonly AccountBalanceService $balances,
     ) {}
+
+    public function deleteUnusedCard(User $user, ContaFinanceira $account): void
+    {
+        DB::transaction(function () use ($user, $account): void {
+            $locked = ContaFinanceira::query()
+                ->where('user_id', $user->id)
+                ->whereKey($account->id)
+                ->where('type', 'credit_card')
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $hasMovements = $user->movimentos()->where(function ($query) use ($locked): void {
+                $query->where('source_account_id', $locked->id)
+                    ->orWhere('destination_account_id', $locked->id);
+            })->exists();
+            $hasDebt = Divida::withTrashed()->where('user_id', $user->id)->where('account_id', $locked->id)->exists();
+            $hasRecurrence = $user->recorrencias()->where('account_id', $locked->id)->exists();
+            $invoices = Fatura::query()->where('user_id', $user->id)->where('account_id', $locked->id)
+                ->orderBy('id')->lockForUpdate()->get();
+            $invoiceIds = $invoices->pluck('id');
+            $hasInvoiceMovements = $invoiceIds->isNotEmpty()
+                && Movimento::query()->where('user_id', $user->id)->whereIn('invoice_id', $invoiceIds)->exists();
+            $hasCarry = $invoiceIds->isNotEmpty() && DB::table('fatura_saldos_transportados')
+                ->where('user_id', $user->id)
+                ->where(function ($query) use ($invoiceIds): void {
+                    $query->whereIn('source_invoice_id', $invoiceIds)
+                        ->orWhereIn('target_invoice_id', $invoiceIds);
+                })->exists();
+
+            $balanceCents = 0;
+            if ($locked->is_operational && $locked->opening_balance !== null && $locked->opening_balance_date) {
+                $balanceCents = $this->balances->toCents($this->balances->balance($locked));
+            } elseif ($locked->opening_balance !== null) {
+                $balanceCents = $this->balances->toCents((string) $locked->opening_balance);
+            }
+
+            if ($hasMovements || $hasDebt || $hasRecurrence || $hasInvoiceMovements || $hasCarry
+                || (float) $locked->opening_debt_amount > 0
+                || (float) $locked->opening_debt_paid > 0
+                || $balanceCents !== 0) {
+                throw ValidationException::withMessages([
+                    'card' => 'Este cartão tem movimentos, dívida ou registos associados. Encerra-o para preservar o histórico.',
+                ]);
+            }
+
+            $operationId = $this->startOperation($user, 'card', $locked->id, 'Cartão sem utilização eliminado.');
+            foreach ($invoices as $invoice) {
+                $before = $invoice->getAttributes();
+                $this->recordItem($user, $operationId, 'Fatura', $invoice->id, 'hard_deleted', $before, null);
+            }
+            DB::table('faturas')->where('user_id', $user->id)->where('account_id', $locked->id)->delete();
+
+            $beforeCard = $locked->getAttributes();
+            $locked->delete();
+            $this->recordItem($user, $operationId, 'ContaFinanceira', $locked->id, 'hard_deleted', $beforeCard, null);
+            DB::table('deletion_operations')->where('id', $operationId)->update([
+                'status' => 'completed',
+                'updated_at' => now(),
+            ]);
+        });
+    }
+
+    public function deleteCategory(User $user, Categoria $category): void
+    {
+        DB::transaction(function () use ($user, $category): void {
+            $locked = Categoria::query()->where('user_id', $user->id)->whereKey($category->id)->lockForUpdate()->firstOrFail();
+            $legacyCount = $locked->type === 'despesa'
+                ? $locked->despesas()->count()
+                : $locked->receitas()->count();
+            $canonicalCount = Movimento::query()
+                ->where('user_id', $user->id)
+                ->where('category_id', $locked->id)
+                ->exists();
+
+            if ($legacyCount > 0 || $canonicalCount) {
+                throw ValidationException::withMessages([
+                    'categoria' => 'Esta categoria tem movimentos associados, incluindo histórico. Desativa-a para preservar as classificações existentes.',
+                ]);
+            }
+
+            $operationId = $this->startOperation($user, 'category', $locked->id, 'Categoria sem movimentos eliminada.');
+            $before = $locked->getAttributes();
+            $locked->delete();
+            $this->recordItem($user, $operationId, 'Categoria', $locked->id, 'hard_deleted', $before, null);
+            DB::table('deletion_operations')->where('id', $operationId)->update([
+                'status' => 'completed',
+                'updated_at' => now(),
+            ]);
+        });
+    }
 
     public function deleteMovement(
         User $user,
