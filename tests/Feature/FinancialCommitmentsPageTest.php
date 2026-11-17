@@ -25,7 +25,7 @@ class FinancialCommitmentsPageTest extends TestCase
         return new DOMXPath($document);
     }
 
-    public function test_six_installment_payment_forms_are_independently_closed_and_accessible(): void
+    public function test_purchase_card_has_one_primary_payment_action_and_six_history_rows(): void
     {
         $user = User::factory()->create(['currency' => 'EUR']);
         $account = app(FinancialAccountService::class)->create($user, ['name' => 'Conta principal', 'type' => 'bank', 'opening_balance' => '200.00']);
@@ -34,8 +34,9 @@ class FinancialCommitmentsPageTest extends TestCase
         $xpath = $this->document($this->actingAs($user)->get(route('financial.commitments.page'))->assertOk()->getContent());
         $this->assertCount(1, $xpath->query('//article[contains(@class,"commitment-card")]'));
         $this->assertStringContainsString('0/6', $xpath->query('//article[contains(@class,"commitment-card")]')->item(0)->textContent);
-        $this->assertCount(6, $xpath->query('//details[contains(@class,"commitment-payment-disclosure")]'));
-        $this->assertCount(6, $xpath->query('//form[contains(@class,"js-api-form")]'));
+        $this->assertCount(1, $xpath->query('//button[contains(@class,"commitment-pay-next")]'));
+        $this->assertCount(0, $xpath->query('//form[contains(@class,"js-api-form")]'));
+        $this->assertCount(6, $xpath->query('//div[contains(@class,"commitment-installment")]'));
         $this->assertSame('0.00', $debt->fresh()->parcelas->first()->paid_amount);
     }
 
@@ -49,12 +50,13 @@ class FinancialCommitmentsPageTest extends TestCase
         $endpoint = route('financial.commitments.installments.pay', [$debt->id, $first->id]);
         $this->actingAs($user)->postJson($endpoint, ['amount' => '5.00', 'account_id' => $account->id, 'payment_date' => now()->toDateString()])->assertOk();
         $xpath = $this->document($this->get(route('financial.commitments.page'))->assertOk()->getContent());
-        $form = $xpath->query('//form[@data-endpoint="'.$endpoint.'"]')->item(0);
-        $this->assertNotNull($form);
-        $this->assertSame('15,00', $xpath->query('.//input[@name="amount"]', $form)->item(0)->getAttribute('value'));
-        $this->assertCount(3, $xpath->query('//form[contains(@class,"js-api-form")]'));
+        $paymentButton = $xpath->query('//button[contains(@class,"commitment-pay-next")]')->item(0);
+        $this->assertNotNull($paymentButton);
+        $this->assertSame('15.00', $paymentButton->getAttribute('data-remaining'));
         $this->postJson($endpoint, ['amount' => '15.00', 'account_id' => $account->id, 'payment_date' => now()->toDateString()])->assertOk();
-        $this->assertCount(2, $this->document($this->get(route('financial.commitments.page'))->getContent())->query('//form[contains(@class,"js-api-form")]'));
+        $updatedButton = $this->document($this->get(route('financial.commitments.page'))->getContent())->query('//button[contains(@class,"commitment-pay-next")]')->item(0);
+        $this->assertNotNull($updatedButton);
+        $this->assertSame('0.00', $updatedButton->getAttribute('data-remaining'));
     }
 
     public function test_canonical_payment_changes_only_the_requested_amount_and_rejects_excess(): void
@@ -125,13 +127,10 @@ class FinancialCommitmentsPageTest extends TestCase
             $this->assertSame($status, trim($badges->item(0)->textContent), $name);
         }
 
-        foreach (['upcoming' => ['Hoje', 'Amanhã'], 'overdue' => ['Ontem']] as $filter => $expected) {
-            $filtered = $this->get(route('financial.commitments.page', ['filter' => $filter]))->assertOk();
-            $xpath = $this->document($filtered->getContent());
-            $headings = $xpath->query('//section[@aria-labelledby="paymentsSectionTitle"]//article[contains(@class,"commitment-card")]//strong[normalize-space(.)="'.implode('" or normalize-space(.)="',$expected).'"]');
-            $this->assertCount(count($expected), $headings);
-            $this->assertSame($expected, array_map(fn ($heading) => trim($heading->textContent), iterator_to_array($headings)));
-        }
+        $activeView = $this->get(route('financial.commitments.page', ['status' => 'active']))->assertOk();
+        $this->assertSame(3, $activeView->viewData('commitments')->total());
+        $this->assertSame(120.0, $activeView->viewData('summary')['open']);
+        $this->assertSame(0, $this->get(route('financial.commitments.page', ['status' => 'completed']))->viewData('commitments')->total());
     }
 
     public function test_missing_payment_account_keeps_guidance_and_accounts_link_visible(): void
@@ -222,7 +221,12 @@ class FinancialCommitmentsPageTest extends TestCase
         $cards = $xpath->query('//article[contains(@class,"commitment-card")]');
         $this->assertCount(1, $cards);
         $this->assertStringContainsString('0/120', $cards->item(0)->textContent);
-        $this->assertCount(120, $xpath->query('//form[contains(@class,"js-api-form")]'));
+        $this->assertCount(1, $xpath->query('//button[contains(@class,"commitment-pay-next")]'));
+        $this->assertCount(6, $xpath->query('//div[contains(@class,"commitment-installment")]'));
         $this->assertSame(120, $debt->fresh()->parcelas()->count());
+
+        $secondHistoryPage = $this->get(route('financial.commitments.page', ['installments_'.$debt->id => 2]))->assertOk();
+        $secondXPath = $this->document($secondHistoryPage->getContent());
+        $this->assertCount(6, $secondXPath->query('//div[contains(@class,"commitment-installment")]'));
     }
 }
