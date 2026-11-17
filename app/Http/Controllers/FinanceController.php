@@ -111,7 +111,7 @@ class FinanceController extends Controller
         ]);
 
         $selectedAccountId = $data['payment_account_id'] ?? $data['account_id'] ?? null;
-        $isPendingExpense = $tipo === 'despesa' && !$request->boolean('recurrence_enabled')
+        $isPendingExpense = !$request->boolean('recurrence_enabled')
             && ($data['paid_now'] ?? '0') === '0' && !$selectedAccountId;
         $account = $selectedAccountId ? $request->user()->contasFinanceiras()
             ->whereKey($selectedAccountId)
@@ -270,8 +270,7 @@ class FinanceController extends Controller
             return redirect()->route('despesas.index')->with('success', 'Compromisso criado.');
         }
         $recurrenceEnabled = (bool) ($data['recurrence_enabled'] ?? false);
-        $isPendingExpense = $tipo === 'despesa'
-            && !$recurrenceEnabled
+        $isPendingExpense = !$recurrenceEnabled
             && ($data['paid_now'] ?? '0') === '0'
             && empty($data['account_id'])
             && empty($data['payment_account_id']);
