@@ -11,18 +11,19 @@ Auditar e uniformizar os fluxos de exclusão do sistema sem quebrar a matriz fin
 
 ## Regras de domínio que condicionam qualquer exclusão
 
-1. **Movimento pendente comum:** pode ser anulado como correção; deve permanecer auditável como `void`, deixando de afetar os saldos.
-2. **Movimento liquidado comum:** não pode ser apagado nem convertido diretamente em `void`. Deve ser estornado por contra-lançamento, preservando o original e o vínculo da reversão.
-3. **Movimento parcialmente liquidado / obrigação com eventos de liquidação:** não pode ser tratado como movimento simples. A alteração ou correção tem de respeitar pagamentos já registados e o agregado/obrigação correspondente.
-4. **Previsão de prestação/compromisso:** não pode ser eliminada isoladamente; gerir pelo fluxo de Parcelamentos. Obrigações canceladas/pagas e prestações canceladas/pagas não podem receber pagamentos.
-5. **Recorrências:** a remoção de ocorrência aplica-se apenas a previsões pendentes. “Apenas esta” conserva outras ocorrências; “esta e futuras” interrompe a regra e anula só ocorrências pendentes a partir da data indicada. Ocorrências liquidadas permanecem no histórico.
-6. **Cartão/fatura:** compra/encargo associado a fatura com pagamentos registados não pode ser removido isoladamente. Deve usar crédito/correção da fatura ou fluxo próprio que preserve pagamentos, alocações, saldo transportado e reconciliação.
-7. **Dívida inicial de cartão:** pagamentos não são elimináveis como correção simples. Estorno deve repor atomicamente o contador `opening_debt_paid` e o saldo entre contas. Movimentos legados ambíguos devem ser bloqueados e encaminhados para reconciliação.
-8. **Compromisso sem pagamentos:** pode ser eliminado segundo o serviço específico, mas preservar parcelas/histórico por soft delete e anular previsões pendentes relacionadas na mesma transação. Com pagamentos: não eliminar.
-9. **Cartão/conta:** eliminação só é permitida sem movimentos, dívidas, recorrências, faturas/itens associados, saldo ou dívida inicial. Caso contrário, encerrar/arquivar; nunca cascatar histórico financeiro.
-10. **Categoria:** se possuir movimentos associados, não eliminar; desativar preservando referências. A validação deve considerar também movimentos canónicos, não apenas tabelas legadas.
-11. **Atomicidade e isolamento:** confirmar propriedade do utilizador, bloquear entidades relacionadas em ordem consistente, validar dependências e persistir mudança + auditoria na mesma transação.
-12. **UI/API:** cada botão deve representar a operação real (anular, estornar, cancelar, arquivar, eliminar). Confirmar escopo e consequência; mostrar erros HTTP ao utilizador e impedir reenvios duplicados.
+1. **Movimento pendente:** pode ser eliminado logicamente, mantendo o registo canónico como `void`, o histórico e a auditoria.
+2. **Movimento liquidado:** pode ser eliminado apenas quando o serviço propaga a remoção aos efeitos e dependências, recalcula os saldos e preserva a auditoria. Se a propagação não for segura, bloquear. Não criar movimentos inversos.
+3. **Pagamento parcial:** eliminar o evento de pagamento recalcula a obrigação, a prestação, a previsão e os saldos afetados na mesma transação.
+4. **Parcelamento:** previsões não podem ser eliminadas isoladamente. Eliminar/cancelar o agregado anula previsões pendentes/parciais e preserva pagamentos liquidados como movimentos autónomos, desassociados da obrigação.
+5. **Recorrências:** ao pausar/alterar a regra, anular apenas previsões futuras não confirmadas, mantendo ocorrências realizadas e histórico. Respeitar o escopo da operação.
+6. **Cartões/faturas:** compra/encargo com pagamentos ativos ou saldo transportado não pode ser eliminado isoladamente. Recalcular faturas quando a matriz permite; bloquear dependências não propagáveis. Faturas vazias usam soft delete e podem ser restauradas no mesmo ciclo.
+7. **Dívida inicial do cartão:** eliminar o pagamento identificado atualiza atomicamente `opening_debt_paid` e os saldos das contas. Pagamentos legados ambíguos exigem reconciliação.
+8. **Contas/cartões:** com histórico ou dependências, encerrar/desativar. Eliminação física só é permitida sem movimentos, dívidas, recorrências, faturas, saldos ou referências.
+9. **Categorias:** com movimentos históricos, desativar; eliminar apenas sem referências legacy ou canónicas.
+10. **Auditoria:** manter `historico_movimentos` e snapshots em `deletion_operations` / `deletion_operation_items`. Não apagar histórico para contornar FKs.
+11. **Atomicidade e isolamento:** confirmar propriedade do utilizador, bloquear entidades relacionadas, validar dependências e gravar alteração + auditoria na mesma transação.
+12. **Idempotência e integridade:** repetir uma exclusão não pode duplicar efeitos. Validar referências órfãs e consistência dos saldos/projeções.
+13. **UI/API:** a ação apresentada é “Eliminar”, “Cancelar”, “Arquivar” ou “Desativar” conforme o domínio. Não expor operação de estorno como conceito de produto.
 
 ## Inventário de rotas identificado
 
@@ -30,14 +31,14 @@ Auditar e uniformizar os fluxos de exclusão do sistema sem quebrar a matriz fin
 |---|---|---|
 | `DELETE /api/financial/movements/{id}` | `FinancialCoreController::destroyMovement` | Anulação/correção por `deleteAsCorrection` |
 | `DELETE /api/financial/movements/{id}/recurrence-scope` | `destroyRecurringOccurrence` | Anulação de ocorrência(s) pendentes e possível desativação da recorrência |
-| `DELETE /api/financial/commitments/{id}` | `deleteCommitment` → `FinancialCommitmentService::deleteUnused` | Exclusão restrita de compromisso sem pagamentos |
+| `DELETE /api/financial/commitments/{id}` | `deleteCommitment` → `FinancialCommitmentService::delete` → `FinancialDeletionService::deleteCommitment` | Exclusão propagada, preservando e desassociando pagamentos liquidados |
 | `DELETE /api/financial/cards/{id}` | `deleteUnusedCard` → `FinancialAccountService::deleteUnusedCard` | Exclusão restrita de cartão sem dependências |
-| `DELETE /contas/movimentos/{id}` | `FinancialAccountsPageController::destroyMovement` | Exclusão de movimento não liquidado |
+| `DELETE /contas/movimentos/{id}` | `FinancialAccountsPageController::destroyMovement` | Encaminha para `FinancialMovementService::deleteAsCorrection` e orquestrador central |
 | `DELETE /despesas/{id}` | `FinanceController::destroy` | Apaga representação legacy e corrige movimento canónico |
 | `DELETE /receitas/{id}` | `FinanceController::destroy` | Apaga representação legacy e corrige movimento canónico |
 | `DELETE /categorias/{id}` | `CategoriaController::destroy` | Exclusão de categoria sem movimentos |
-| `POST /api/financial/movements/{id}/reverse` | `FinancialCoreController::reverseMovement` | Estorno contabilístico de movimento liquidado |
-| `POST /contas/movimentos/{id}/estornar` | `FinancialAccountsPageController::reverseMovement` | Estorno contabilístico (rota HTML) |
+| Endpoint de reversão removido | — | A exclusão é tratada pela política propagada; dados legados permanecem compatíveis |
+| Endpoint HTML de reversão removido | — | A UI utiliza a exclusão central |
 | `POST /api/financial/commitments/{id}/cancel` | `cancelCommitment` → serviço | Cancelamento lógico de obrigação e previsões |
 | `POST /api/financial/commitments/{id}/archive` | `archiveCommitment` → serviço | Arquivamento, sem apagar pagamentos/histórico |
 | `PATCH /api/financial/recurrences/{id}/status` | `setRecurrenceStatus` | Pausar/retomar regra; não apagar ocorrências |
@@ -45,7 +46,9 @@ Auditar e uniformizar os fluxos de exclusão do sistema sem quebrar a matriz fin
 
 A pesquisa também identificou exclusão direta de linhas de histórico durante substituição de um movimento legacy na edição. Deve ser auditada como mutação destrutiva não exposta por rota DELETE.
 
-## Findings estáticos iniciais
+## Findings estáticos iniciais — fotografia da `main` antes das correções
+
+Os itens E-01 a E-10 registam os defeitos encontrados na versão de base. Não devem ser interpretados como descrição do comportamento atual da branch. O estado atual das correções está resumido em “Implementação iniciada na branch” e nos testes regressivos.
 
 ### E-01 — [ALTA] Dois caminhos para eliminar movimentos não usam o mesmo serviço de domínio
 
@@ -129,25 +132,32 @@ Em `FinanceController::update`, num ramo alternativo, `$movement->historico()->d
 
 ## Critérios de aceitação
 
-- Nenhuma operação de exclusão de movimento contorna o serviço de domínio ou apaga histórico financeiro/auditável.
-- Movimento liquidado nunca é eliminado/void por DELETE; usa estorno ou fluxo explícito de correção.
-- Pagamentos parciais e movimentos de liquidação nunca são removidos sem recalcular e preservar o agregado.
-- Previsões de compromisso só podem ser geridas em Parcelamentos.
-- Fatura com pagamentos não permite exclusão de compra/encargo que desequilibre o total ou as alocações.
-- Dívida inicial de cartão é revertida em conjunto com o movimento bancário.
-- Exclusão de recorrência obedece ao escopo e só altera ocorrências pendentes.
-- Conta/cartão/categoria/compromisso não pode apagar dependências ou histórico.
-- Cada UI chama a rota correta, oferece confirmação honesta e apresenta erro do servidor.
-- Testes para todas as rotas e variantes passam.
+- Nenhuma operação financeira apaga o histórico ou contorna o serviço central.
+- Exclusões liquidadas só são permitidas com propagação integral, recálculo e auditoria; casos não determinísticos são bloqueados.
+- Pagamentos parciais removidos atualizam o saldo da prestação/obrigação e da conta sem movimentos inversos.
+- Cancelar/eliminar parcelamento anula previsões pendentes e parciais, preserva pagamentos reais e desassocia-os do agregado.
+- Faturas com pagamentos ou saldos transportados não permitem exclusão isolada de compras/encargos.
+- Dívida inicial de cartão atualiza o contador e a conta de origem na mesma transação.
+- Recorrências mantêm ocorrências realizadas e anulam apenas previsões futuras elegíveis.
+- Conta/cartão/categoria com histórico não perde dependências nem auditoria.
+- Cada UI chama a rota correta, oferece confirmação honesta e apresenta erros de domínio.
+- Testes de regressão, integridade e suíte completa passam.
 
 ## Estado
 
 - [x] Branch criada a partir de `main`.
-- [x] Regras de domínio consolidadas a partir da documentação atual.
-- [x] Primeira passagem de rotas e controllers concluída.
-- [ ] Auditoria integral de serviços, modelos, migrations, UI e testes.
-- [ ] Findings confirmados com referências linha a linha e classificação final.
-- [ ] Correções e testes regressivos.
+- [x] Inventário inicial de rotas e principais caminhos destrutivos.
+- [x] Orquestrador central e tabelas de auditoria.
+- [x] Unificação dos caminhos de exclusão de movimentos.
+- [x] Políticas centrais para compromissos, cartões, categorias e recorrências.
+- [x] Remoção das rotas de produto para estorno/anulação isolada.
+- [x] Testes de regressão para pagamentos, faturas, dívida inicial, parcelamentos e recorrências.
+- [x] CI aprovado no commit `d776831516aa0250d480a25a84079a1310fdb0ae`.
+- [ ] Validar cancelamento de parcelamento parcialmente pago (implementação/teste no commit atual; CI pendente).
+- [ ] Completar testes de rollback, concorrência, isolamento entre utilizadores e referências órfãs.
+- [ ] Rever todos os fluxos de edição/importação e projeções das páginas.
+- [ ] Auditoria integral e critérios de aceitação finais.
+- [ ] Merge/deploy apenas após aprovação explícita.
 
 ## Decisão de produto/arquitetura — exclusão propagada, sem operação de estorno
 
@@ -364,7 +374,8 @@ Integrações já alteradas:
 - `FinancialMovementService::deleteAsCorrection` encaminha para o orquestrador.
 - Exclusão de eventos de pagamento atualiza a obrigação pai, a parcela e a projeção da fatura.
 - Pagamentos identificados da dívida inicial atualizam o contador do cartão.
-- `FinancialCommitmentService::deleteUnused` encaminha para exclusão propagada; pagamentos liquidados são preservados e desassociados.
+- `FinancialCommitmentService::delete` encaminha para exclusão propagada; pagamentos liquidados são preservados e desassociados.
+- `FinancialCommitmentService::cancel` encaminha para `FinancialDeletionService::cancelCommitment`; previsões pendentes/parciais são anuladas, pagamentos liquidados são preservados e desassociados, e a operação recebe auditoria própria.
 - `FinancialAccountService::deleteUnusedCard` encaminha para a política central; cartões com histórico/dependências são bloqueados.
 - `CategoriaController::destroy` encaminha para a política central e considera movimentos canónicos e legacy.
 - `RecurrenceService` deixou de apagar fisicamente previsões e respetivo histórico ao pausar/alterar recorrências.
@@ -372,7 +383,7 @@ Integrações já alteradas:
 - Substituição de movimentos legacy na edição deixa de apagar o movimento canónico e o histórico.
 - Endpoints de estorno foram removidos das rotas de produto; os dados antigos permanecem compatíveis.
 
-Testes de regressão atualizados/adicionados para pagamentos parciais, pagamentos de faturas, dívida inicial, transferência, exclusão de parcelamento parcialmente pago, idempotência e preservação de pagamentos.
+Testes de regressão atualizados/adicionados para pagamentos parciais, pagamentos de faturas, dívida inicial, transferência, exclusão de parcelamento parcialmente pago, idempotência e preservação de pagamentos. Foi acrescentado teste específico para cancelar um parcelamento parcialmente pago e confirmar que a previsão parcial é anulada enquanto o pagamento permanece autónomo.
 
 ## 10. Pendências antes de declarar a auditoria/implementação concluída
 
