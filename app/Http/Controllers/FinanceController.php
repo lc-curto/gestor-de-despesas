@@ -392,7 +392,7 @@ class FinanceController extends Controller
         $date = $data[$dateField];
 
         DB::transaction(function () use ($request, $service, $invoices, $tipo, $id, $data, $accountId, $legacyType, $date, $expenseBehavior, $actualPaymentMethod, $isPendingExpense): void {
-            $legacy = $this->query($request)->whereKey($id)->lockForUpdate()->firstOrFail();
+            $legacy = $this->query($request)->whereKey($id)->firstOrFail();
             $movement = $this->linkedMovement($request, $tipo, $legacy->id);
             if ($movement?->invoice_id) {
                 $invoice = $request->user()->faturas()->whereKey($movement->invoice_id)->firstOrFail();
@@ -496,6 +496,8 @@ class FinanceController extends Controller
                 }
             }
 
+            // O movimento é bloqueado antes do registo legacy, mantendo uma ordem de locks única.
+            $legacy = $this->query($request)->whereKey($id)->lockForUpdate()->firstOrFail();
             $legacy->update($data);
         });
 
