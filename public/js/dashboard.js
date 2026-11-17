@@ -85,8 +85,14 @@
         const behaviorField = document.getElementById('dashboardExpenseBehaviorField');
         if (behaviorField) behaviorField.hidden = !isExpense;
 
-        const condition = form.querySelector('[name="payment_condition"]:checked')?.value || 'cash';
+        let condition = form.querySelector('[name="payment_condition"]:checked')?.value || 'cash';
         const isRecurring = isExpense && !editing && form.querySelector('[name="recurrence_enabled"]')?.checked;
+        // Recorrência e parcelamento representam compromissos diferentes e não podem coexistir.
+        if (isRecurring && condition !== 'cash') {
+            const singlePayment = form.querySelector('[name="payment_condition"][value="cash"]');
+            if (singlePayment) singlePayment.checked = true;
+            condition = 'cash';
+        }
         const isCommitment = isExpense && condition !== 'cash';
         if (paymentFields) paymentFields.hidden = !isExpense;
         if (commitmentOptions) commitmentOptions.hidden = !isCommitment;
