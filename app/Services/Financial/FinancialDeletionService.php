@@ -156,9 +156,16 @@ class FinancialDeletionService
                 ->whereKey($movement->id)
                 ->firstOrFail();
 
-            // Bloquear primeiro o agregado de origem e depois o evento, sempre por ID.
-            $parentId = $snapshot->settles_movement_id;
-            $lockIds = collect([$parentId, $snapshot->id])->filter()->unique()->sort()->values();
+            // O agregado é sempre bloqueado antes do evento, na mesma ordem usada
+            // pela liquidação. Isto serializa exclusões concorrentes de pagamentos.
+            $parent = $snapshot->settles_movement_id
+                ? Movimento::query()->where('user_id', $user->id)->whereKey($snapshot->settles_movement_id)->lockForUpdate()->first()
+                : null;
+
+            $legacyPairIds = $snapshot->reversal_of_id
+                ? collect([$snapshot->reversal_of_id])
+                : Movimento::query()->where('user_id', $user->id)->where('reversal_of_id', $snapshot->id)->pluck('id');
+            $lockIds = collect([$snapshot->id])->merge($legacyPairIds)->filter()->unique()->sort()->values();
             $lockedRows = Movimento::query()
                 ->where('user_id', $user->id)
                 ->whereIn('id', $lockIds)
@@ -191,9 +198,6 @@ class FinancialDeletionService
                 ]);
             }
 
-            $parent = $locked->settles_movement_id
-                ? Movimento::query()->where('user_id', $user->id)->whereKey($locked->settles_movement_id)->lockForUpdate()->first()
-                : null;
             if ($locked->settles_movement_id && (! $parent || ! $parent->is_settlement_parent)) {
                 throw ValidationException::withMessages([
                     'movement' => 'O pagamento está associado a uma obrigação inexistente ou inconsistente. A exclusão foi bloqueada para evitar uma relação órfã.',
@@ -268,12 +272,7 @@ class FinancialDeletionService
                     ->get();
             }
 
-            $legacyPair = collect();
-            if ($locked->reversal_of_id) {
-                $legacyPair = Movimento::query()->where('user_id', $user->id)->whereKey($locked->reversal_of_id)->lockForUpdate()->get();
-            } else {
-                $legacyPair = Movimento::query()->where('user_id', $user->id)->where('reversal_of_id', $locked->id)->orderBy('id')->lockForUpdate()->get();
-            }
+            $legacyPair = $lockedRows->except($locked->id)->values();
 
             $operationId = $this->startOperation(
                 $user,
