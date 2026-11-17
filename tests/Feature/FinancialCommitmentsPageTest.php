@@ -398,7 +398,7 @@ class FinancialCommitmentsPageTest extends TestCase
         $archiveButton = $xpath->query('//button[contains(@class,"js-archive-commitment")]')->item(0);
         $this->assertNotNull($archiveButton);
         $this->assertSame(route('financial.commitments.destroy', $debt->id), $archiveButton->getAttribute('data-delete-url'));
-        $this->assertSame('1', $archiveButton->getAttribute('data-has-payments') === '' ? '0' : '1');
+        $this->assertSame('', $archiveButton->getAttribute('data-has-payments'));
     }
 
     public function test_commitment_merchant_is_saved_and_displayed_on_purchase_card(): void
