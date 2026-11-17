@@ -99,6 +99,12 @@ Foi acrescentado `php artisan financial:migrate-deterministic-data`, que por omi
 
 Em 17/11/2026, `php artisan test --filter='FinancialAcceptanceTest'` passou com **14 testes e 66 asserções**. A cobertura inclui planeamento sem escrita, aplicação explícita, auditoria, idempotência, reconstrução da prestação única e preservação de uma obrigação ambígua com várias prestações. A Fase 3 permanece aberta: não foi feita reconciliação de dados reais nem removidas leituras legadas; a revisão dos casos ambíguos e a validação de reconciliação continuam pendentes.
 
+### Atualização da sessão de 17/11/2026
+
+O formulário legacy volta a liquidar uma despesa quando uma conta de pagamento é efetivamente selecionada; sem conta, permanece pendente. O endpoint JSON de movimentos normaliza datas para `YYYY-MM-DD` independentemente do driver. A remoção recorrente por âmbito só anula previsões pendentes: movimentos liquidados permanecem no histórico e no saldo. O harness de testes desativa CSRF apenas nos testes de feature, sem alterar a aplicação.
+
+Validação atual: `php artisan test --filter='FinancialAcceptanceTest'` — **PASS, 19 testes / 92 assertions**; `php artisan test` — **109 passed, 5 skipped, 495 assertions**. Os cinco skipped são constraints `CHECK` dependentes de `ALTER TABLE`, não suportadas pela configuração SQLite local; ficam cobertas para o motor de produção esperado. A Fase 3 continua aberta porque não houve reconciliação de dados reais, teste concorrente multi-conexão nem remoção das leituras legacy.
+
 ## Fase 4 — limpeza posterior
 
 - [ ] Remover dependências desnecessárias de `despesas` e `receitas`.

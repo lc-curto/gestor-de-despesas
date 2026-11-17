@@ -227,4 +227,6 @@ As observações desta secção delimitam o que não foi verificado; não consti
 
 ## Conclusão de auditoria
 
-As oito áreas produziram cobertura estática substancial e uma lista delimitada de 16 problemas confirmados únicos. As correções de severidade alta foram implementadas e passaram nos testes direcionados descritos; a suíte completa e os testes concorrentes continuam pendentes. Os gaps acima permanecem pendências de verificação, não bugs. Este relatório regista o estado observado em 17/11/2026, não declara a Fase 3 concluída e não substitui validação integral ponta a ponta.
+As oito áreas produziram cobertura estática substancial e uma lista delimitada de 16 problemas confirmados únicos. As correções de severidade alta foram implementadas e passaram nos testes direcionados descritos. Nesta sessão, foram também corrigidos o harness CSRF dos testes, a persistência de despesas legacy com conta selecionada, a serialização de datas do endpoint de movimentos e a remoção recorrente sem anular movimentos liquidados. A suíte completa ficou em **109 testes passados, 5 skipped e 495 assertions**; os cinco skipped são constraints `CHECK` específicas de `ALTER TABLE` não suportadas pelo SQLite local. O teste de aceitação ficou em **19 testes passados e 92 assertions**.
+
+Continuam pendentes os testes concorrentes multi-conexão, a validação operacional no motor de produção e a reconciliação de dados reais. As leituras legacy não foram removidas e a Fase 3 não é declarada concluída. Os gaps acima permanecem pendências de verificação, não bugs confirmados.

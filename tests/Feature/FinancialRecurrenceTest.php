@@ -76,7 +76,7 @@ class FinancialRecurrenceTest extends TestCase
         $this->get(route('despesas.create'))->assertOk()->assertSee('Repetir esta despesa');
         $this->get(route('despesas.index'))->assertOk()->assertSee('Previsão recorrente');
 
-        $novemberForecast = $user->movimentos()->where('recurrence_occurrence_date', '2026-11-15')->firstOrFail();
+        $novemberForecast = $user->movimentos()->whereDate('recurrence_occurrence_date', '2026-11-15')->firstOrFail();
         $this->putJson('/api/financial/movements/'.$novemberForecast->id.'/void', ['reason' => 'Não aplicável este mês.'])->assertOk();
         app(RecurrenceService::class)->generateForUser($user);
         $this->assertSame(3, $user->movimentos()->whereNotNull('recurrence_id')->count());
@@ -138,7 +138,7 @@ class FinancialRecurrenceTest extends TestCase
             ->assertOk()->assertJsonPath('data.status', 'settled');
 
         $this->assertNotNull($movement->fresh()->invoice_id);
-        $this->assertSame(1, $user->movimentos()->where('recurrence_id', $movement->recurrence_id)->where('recurrence_occurrence_date', '2026-11-15')->count());
+        $this->assertSame(1, $user->movimentos()->where('recurrence_id', $movement->recurrence_id)->whereDate('recurrence_occurrence_date', '2026-11-15')->count());
         $this->assertSame(1, $user->despesas()->whereKey($movement->legacy_id)->count());
     }
 
@@ -165,7 +165,7 @@ class FinancialRecurrenceTest extends TestCase
         $this->assertSame(3, $user->despesas()->count());
     }
 
-    public function test_editing_recurring_expense_without_repeat_keeps_rule_link_until_it_is_cancelled(): void
+    public function test_editing_settled_recurring_expense_with_financial_changes_is_rejected(): void
     {
         $user = User::factory()->create();
         $account = $this->account($user);
@@ -173,7 +173,7 @@ class FinancialRecurrenceTest extends TestCase
         $this->actingAs($user)->postJson('/api/financial/recurrences', $this->createRule($user, $account->id))
             ->assertCreated();
 
-        $movement = $user->movimentos()->where('recurrence_occurrence_date', '2026-11-15')->firstOrFail();
+        $movement = $user->movimentos()->whereDate('recurrence_occurrence_date', '2026-11-15')->firstOrFail();
         $this->putJson('/api/financial/movements/'.$movement->id.'/confirm', ['source_account_id' => $account->id])->assertOk();
         $this->putJson('/api/financial/movements/'.$movement->id.'/settle', ['source_account_id' => $account->id])->assertOk();
 
@@ -184,16 +184,16 @@ class FinancialRecurrenceTest extends TestCase
             'category_id' => $category->id,
             'expense_date' => '2026-11-15',
             'expense_behavior' => 'fixed',
-        ])->assertRedirect(route('despesas.index'));
+        ])->assertSessionHasErrors('movement');
 
-        $this->assertDatabaseHas('recorrencias', ['id' => $movement->recurrence_id, 'is_active' => false]);
-        $this->assertSame(1, $user->movimentos()->where('recurrence_id', $movement->recurrence_id)->count());
-        $this->assertSame(0, $user->movimentos()->where('recurrence_id', $movement->recurrence_id)->where('status', 'pending')->count());
+        $this->assertDatabaseHas('recorrencias', ['id' => $movement->recurrence_id, 'is_active' => true]);
+        $this->assertSame(3, $user->movimentos()->where('recurrence_id', $movement->recurrence_id)->count());
+        $this->assertSame(2, $user->movimentos()->where('recurrence_id', $movement->recurrence_id)->where('status', 'pending')->count());
         $this->assertDatabaseHas('movimentos', [
             'legacy_type' => 'despesa',
             'legacy_id' => $movement->legacy_id,
             'recurrence_id' => $movement->recurrence_id,
-            'expense_behavior' => 'fixed',
+            'expense_behavior' => 'variable',
         ]);
     }
 

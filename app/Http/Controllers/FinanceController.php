@@ -268,7 +268,11 @@ class FinanceController extends Controller
             return redirect()->route('despesas.index')->with('success', 'Compromisso criado.');
         }
         $recurrenceEnabled = (bool) ($data['recurrence_enabled'] ?? false);
-        $isPendingExpense = $tipo === 'despesa' && !$recurrenceEnabled && ($data['paid_now'] ?? '0') === '0';
+        $isPendingExpense = $tipo === 'despesa'
+            && !$recurrenceEnabled
+            && ($data['paid_now'] ?? '0') === '0'
+            && empty($data['account_id'])
+            && empty($data['payment_account_id']);
         $accountId = $isPendingExpense ? null : ($data['payment_account_id'] ?? $data['account_id'] ?? null);
         if (!$accountId && !$isPendingExpense) {
             throw ValidationException::withMessages(['payment_account_id' => 'Seleciona a conta utilizada no pagamento.']);

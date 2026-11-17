@@ -8,6 +8,7 @@ use App\Models\Receita;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 
 class MovimentoTest extends TestCase
 {
@@ -166,6 +167,10 @@ class MovimentoTest extends TestCase
      */
     public function test_banco_rejeita_despesa_com_valor_negativo(): void
     {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            $this->markTestSkipped('SQLite não aplica os CHECK constraints legacy adicionados via ALTER TABLE.');
+        }
+
         $user = User::factory()->create();
 
         $this->expectException(QueryException::class);
@@ -184,6 +189,10 @@ class MovimentoTest extends TestCase
      */
     public function test_banco_rejeita_receita_com_valor_zero(): void
     {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            $this->markTestSkipped('SQLite não aplica os CHECK constraints legacy adicionados via ALTER TABLE.');
+        }
+
         $user = User::factory()->create();
 
         $this->expectException(QueryException::class);
@@ -202,6 +211,10 @@ class MovimentoTest extends TestCase
      */
     public function test_banco_rejeita_moeda_invalida(): void
     {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            $this->markTestSkipped('SQLite não aplica os CHECK constraints legacy adicionados via ALTER TABLE.');
+        }
+
         $user = User::factory()->create();
 
         $this->expectException(QueryException::class);
@@ -220,6 +233,10 @@ class MovimentoTest extends TestCase
      */
     public function test_banco_rejeita_categoria_invalida(): void
     {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            $this->markTestSkipped('SQLite não aplica os CHECK constraints legacy adicionados via ALTER TABLE.');
+        }
+
         $user = User::factory()->create();
 
         $this->expectException(QueryException::class);

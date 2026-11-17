@@ -215,6 +215,13 @@ class DashboardController extends Controller
             ->whereIn('status', ['pending', 'settled'])->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])
             ->when($categoria !== 'all', fn ($query) => $query->where('category_id', $categoria))->count();
 
+        $items = $items->map(function ($item) {
+            if ($item->data_movimento !== null) {
+                $item->data_movimento = Carbon::parse($item->data_movimento)->toDateString();
+            }
+            return $item;
+        });
+
         return response()->json([
             'data' => $items,
             'page' => $page,
