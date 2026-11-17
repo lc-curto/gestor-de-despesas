@@ -476,9 +476,15 @@ class FinanceController extends Controller
                     $request->user(),
                     $movement,
                     'Movimento substituído durante a edição do registo legado.',
-                    false
+                    false,
+                    true
                 );
-                $movement->update(['legacy_type' => null, 'legacy_id' => null]);
+                $movement->update([
+                    'legacy_type' => null,
+                    'legacy_id' => null,
+                    'recurrence_id' => null,
+                    'recurrence_occurrence_date' => null,
+                ]);
                 $this->createLinkedMovement($request, $payload, $service, $invoices);
 
                 if ($recurrenceId) {
