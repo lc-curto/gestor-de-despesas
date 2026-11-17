@@ -499,6 +499,7 @@
             toggle.setAttribute('aria-expanded', String(opening));
             details.hidden = !opening;
         });
+        card.querySelector('.commitment-card-details-label')?.addEventListener('click', () => toggle.click());
     });
 
     document.getElementById('createCommitmentForm')?.addEventListener('submit', async event => {
