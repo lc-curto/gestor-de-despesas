@@ -334,3 +334,13 @@ test('liquidação confirmada com falha de atualização mostra aviso para não 
     assert.equal(ui.element('movementSaveFeedback').classList.contains('alert-warning'), true);
     ui.dom.window.close();
 });
+
+test('parcelamento só pode ser criado com pagamento pendente e recorrência continua disponível quando pago', () => {
+    const dashboard = readFileSync(new URL('../../public/js/dashboard.js', import.meta.url), 'utf8');
+    const controller = readFileSync(new URL('../../app/Http/Controllers/FinancialCoreController.php', import.meta.url), 'utf8');
+
+    assert.match(dashboard, /installmentsToggle\.disabled = !isExpense \|\| isPaid \|\| Boolean\(recurrence\.checked\)/);
+    assert.match(dashboard, /if \(isNewExpense && paidState !== '0' && \['deferred', 'installments'\]\.includes\(condition\)\)/);
+    assert.match(dashboard, /paid_now: paidState/);
+    assert.match(controller, /'paid_now' => \['required', Rule::in\(\['0'\]\)\]/);
+});
