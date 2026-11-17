@@ -75,7 +75,7 @@
                         </span>
                         <span class="commitment-card-balances">
                             <span class="commitment-card-balance-primary"><small>Saldo em aberto</small><strong>{{ auth()->user()->currency }} {{ number_format($commitment->remaining_amount, 2, ',', '.') }}</strong></span>
-                            <span class="commitment-card-balance-secondary"><small>Prestações pagas</small><strong>{{ $partsPaid }} <small>de {{ $partsTotal }}</small></strong></span>
+                            <span class="commitment-card-balance-secondary"><small>Prestações pagas</small><strong>{{ $partsPaid }}/{{ $partsTotal }}</strong></span>
                         </span>
                         <span class="commitment-progress-block">
                             <span class="progress commitment-progress" role="progressbar" aria-label="Valor pago" aria-valuenow="{{ $commitment->progress_percent }}" aria-valuemin="0" aria-valuemax="100">
@@ -100,7 +100,7 @@
                             <div><small>Valor total</small><strong>{{ auth()->user()->currency }} {{ number_format((float) $commitment->total_amount, 2, ',', '.') }}</strong></div>
                             <div><small>Valor pago</small><strong>{{ auth()->user()->currency }} {{ number_format((float) $commitment->paid_amount_total, 2, ',', '.') }}</strong></div>
                             <div><small>Em aberto</small><strong>{{ auth()->user()->currency }} {{ number_format($commitment->remaining_amount, 2, ',', '.') }}</strong></div>
-                            <div><small>Prestações</small><strong>{{ $partsPaid }} de {{ $partsTotal }}</strong></div>
+                            <div><small>Prestações</small><strong>{{ $partsPaid }}/{{ $partsTotal }}</strong></div>
                         </div>
 
                         @if ($next)
