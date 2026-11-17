@@ -233,9 +233,9 @@ class FinancialDeletionService
                             ->orWhere('target_invoice_id', $invoice->id);
                     })->exists();
 
-                if (! $isInvoicePayment && (in_array($invoice->status, ['closed', 'paid', 'carried'], true) || $hasPayments || $hasCarry)) {
+                if (! $isInvoicePayment && ($invoice->status === 'carried' || $hasPayments || $hasCarry)) {
                     throw ValidationException::withMessages([
-                        'movement' => 'Este movimento pertence a uma fatura fechada, paga ou com pagamentos/saldos associados. A exclusão isolada foi bloqueada para preservar as alocações e os ciclos seguintes.',
+                        'movement' => 'Este movimento pertence a uma fatura com pagamentos ou saldos transportados. Resolve essas dependências antes de eliminar a compra.',
                     ]);
                 }
             }
