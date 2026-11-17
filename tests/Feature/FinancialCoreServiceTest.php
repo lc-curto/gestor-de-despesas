@@ -131,7 +131,13 @@ class FinancialCoreServiceTest extends TestCase
         ])->assertOk()->assertJsonPath('data.status', 'paid');
         $this->assertSame('66.66', app(AccountBalanceService::class)->balance($bank));
         $this->assertSame(0, $user->movimentos()->where('installment_id', $installments[0]['id'])->where('status', 'pending')->count());
-        $this->assertSame('33.34', number_format((float) $user->movimentos()->where('installment_id', $installments[0]['id'])->where('status', 'settled')->sum('amount'), 2, '.', ''));
+        $forecast = $user->movimentos()->where('installment_id', $installments[0]['id'])->firstOrFail();
+        $this->assertSame('33.34', (string) $forecast->amount);
+        $this->assertSame('settled', $forecast->fresh()->status);
+        $this->assertTrue((bool) $forecast->fresh()->is_settlement_parent);
+        $this->assertSame('33.34', number_format((float) $forecast->settlements()->where('status', 'settled')->sum('amount'), 2, '.', ''));
+        $this->assertSame('33.34', (string) $installments[0]['amount']);
+        $this->assertSame('33.34', (string) $forecast->fresh()->settlements()->where('status', 'settled')->sum('amount'));
     }
 
     public function test_commitment_supports_weekly_and_biweekly_installment_schedules(): void
