@@ -78,12 +78,14 @@ class CardIntegrityRegressionTest extends TestCase
         $this->assertSame('void', $purchase->fresh()->status);
         $this->assertDatabaseHas('historico_movimentos', ['movement_id' => $purchase->id, 'action' => 'deleted']);
         $this->assertCount(0, app(CardInvoiceService::class)->listInvoices($user)->items());
+        $this->assertSoftDeleted('faturas', ['id' => $invoice->id]);
         $this->assertBalance($card, '0.00');
 
         // A repetição é idempotente e não volta a alterar saldos.
         $this->deleteJson('/api/financial/movements/'.$purchase->id)->assertOk();
         $replacement = $this->purchase($user, $card, '25.00');
         $this->assertSame($invoice->id, $replacement->invoice_id);
+        $this->assertDatabaseHas('faturas', ['id' => $invoice->id, 'deleted_at' => null]);
         $this->assertBalance($card, '-25.00');
     }
 
