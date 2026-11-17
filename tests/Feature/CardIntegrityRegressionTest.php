@@ -338,6 +338,58 @@ class CardIntegrityRegressionTest extends TestCase
         $this->assertBalance($card, '-100.00');
     }
 
+
+    public function test_unused_card_is_deleted_with_audit_and_card_with_void_history_is_protected(): void
+    {
+        $user = User::factory()->create();
+        $unused = $this->card($user, 'Cartão sem uso');
+        $this->actingAs($user)->deleteJson(route('financial.cards.destroy', $unused->id))->assertOk();
+        $this->assertDatabaseMissing('contas_financeiras', ['id' => $unused->id]);
+        $this->assertDatabaseHas('deletion_operations', [
+            'user_id' => $user->id, 'root_entity_type' => 'card', 'root_entity_id' => $unused->id, 'status' => 'completed',
+        ]);
+        $this->assertDatabaseHas('deletion_operation_items', [
+            'user_id' => $user->id, 'entity_type' => 'ContaFinanceira', 'entity_id' => $unused->id, 'action' => 'hard_deleted',
+        ]);
+
+        $used = $this->card($user, 'Cartão com histórico');
+        $purchase = $this->purchase($user, $used, '15.00');
+        app(FinancialMovementService::class)->deleteAsCorrection($user, $purchase);
+        $this->assertSame('void', $purchase->fresh()->status);
+
+        $this->deleteJson(route('financial.cards.destroy', $used->id))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('card');
+        $this->assertDatabaseHas('contas_financeiras', ['id' => $used->id]);
+    }
+
+    public function test_deleting_the_same_movement_twice_is_idempotent_and_does_not_duplicate_audit_operations(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->bank($user);
+        $movement = app(FinancialMovementService::class)->create($user, [
+            'type' => 'expense', 'description' => 'Despesa eliminável', 'amount' => '12.00',
+            'movement_date' => '2026-11-17', 'source_account_id' => $bank->id,
+        ]);
+        $service = app(FinancialMovementService::class);
+
+        $service->deleteAsCorrection($user, $movement);
+        $operationsAfterFirstDelete = DB::table('deletion_operations')
+            ->where('user_id', $user->id)->where('root_entity_type', 'movement')->where('root_entity_id', $movement->id)->count();
+        $itemsAfterFirstDelete = DB::table('deletion_operation_items')
+            ->where('user_id', $user->id)->count();
+
+        $service->deleteAsCorrection($user, $movement->fresh());
+
+        $this->assertSame('void', $movement->fresh()->status);
+        $this->assertSame(1, $operationsAfterFirstDelete);
+        $this->assertSame($operationsAfterFirstDelete, DB::table('deletion_operations')
+            ->where('user_id', $user->id)->where('root_entity_type', 'movement')->where('root_entity_id', $movement->id)->count());
+        $this->assertSame($itemsAfterFirstDelete, DB::table('deletion_operation_items')
+            ->where('user_id', $user->id)->count());
+        $this->assertBalance($bank, '500.00');
+    }
+
     public function test_settled_transfers_and_expenses_can_be_deleted_without_inverse_movements(): void
     {
         $user = User::factory()->create();
