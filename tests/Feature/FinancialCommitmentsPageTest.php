@@ -122,7 +122,7 @@ class FinancialCommitmentsPageTest extends TestCase
         $response->assertDontSee('Despesa única futura');
         $xpath = $this->document($response->getContent());
         foreach (['Ontem' => ['16/11/2026', 'Atrasada'], 'Hoje' => ['17/11/2026', 'Próxima'], 'Amanhã' => ['18/11/2026', 'Próxima']] as $name => [$dueDate, $status]) {
-            $badges = $xpath->query('//article[contains(@class,"commitment-card") and .//span[contains(@class,"commitment-card-name") and normalize-space(.)="'.$name.'"]]//div[contains(@class,"commitment-installment") and .//small[normalize-space(.)="'.$dueDate.'"]]//span[contains(concat(" ", normalize-space(@class), " "), " badge ")]');
+            $badges = $xpath->query('//div[contains(@class,"commitment-history-modal")]//div[contains(@class,"commitment-installment") and .//small[normalize-space(.)="'.$dueDate.'"]]//span[contains(concat(" ", normalize-space(@class), " "), " badge ")]');
             $this->assertCount(1, $badges, $name);
             $this->assertSame($status, trim($badges->item(0)->textContent), $name);
         }
@@ -231,10 +231,10 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->assertCount(1, $firstXPath->query('//div[@id="commitmentHistoryModal-'.$debt->id.'"]'));
         $this->assertNotNull($nextHistoryLink);
         $this->assertStringContainsString('installments_'.$debt->id.'=2', $nextHistoryLink->getAttribute('href'));
-        $this->assertStringContainsString('expanded='.$debt->id, $nextHistoryLink->getAttribute('href'));
-        $this->assertStringContainsString('#commitment-'.$debt->id, $nextHistoryLink->getAttribute('href'));
+        $this->assertStringContainsString('history_modal='.$debt->id, $nextHistoryLink->getAttribute('href'));
+        $this->assertStringContainsString('#commitmentHistoryModal-'.$debt->id, $nextHistoryLink->getAttribute('href'));
 
-        $secondHistoryPage = $this->get(route('financial.commitments.page', ['installments_'.$debt->id => 2, 'expanded' => $debt->id]))->assertOk();
+        $secondHistoryPage = $this->get(route('financial.commitments.page', ['installments_'.$debt->id => 2, 'history_modal' => $debt->id]))->assertOk();
         $secondXPath = $this->document($secondHistoryPage->getContent());
         $this->assertCount(6, $secondXPath->query('//div[contains(concat(" ", normalize-space(@class), " "), " commitment-installment ")]'));
         $this->assertSame('2', (string) $secondHistoryPage->viewData('commitments')->first()->installmentsPage->currentPage());
