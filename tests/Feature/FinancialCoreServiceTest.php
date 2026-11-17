@@ -162,6 +162,7 @@ class FinancialCoreServiceTest extends TestCase
             'payment_condition' => 'installments',
             'installments_count' => 3,
             'installment_frequency' => 'biweekly',
+            'paid_now' => '0',
         ])->assertCreated()->json('data.parcelas');
 
         $this->assertSame(
