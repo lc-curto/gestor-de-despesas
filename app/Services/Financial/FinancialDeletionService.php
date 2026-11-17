@@ -371,6 +371,182 @@ class FinancialDeletionService
     }
 
 
+
+    /**
+     * Resolve uma prestação substituída por renegociação.
+     * A previsão antiga é anulada; pagamentos reais são preservados e desligados
+     * do agregado histórico, para que só o novo plano produza obrigação futura.
+     */
+    public function renegotiateCommitmentInstallment(User $user, Divida $debt, ParcelaDivida $installment): void
+    {
+        DB::transaction(function () use ($user, $debt, $installment): void {
+            $lockedDebt = Divida::query()
+                ->where('user_id', $user->id)
+                ->whereKey($debt->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $lockedPart = ParcelaDivida::query()
+                ->where('user_id', $user->id)
+                ->where('debt_id', $lockedDebt->id)
+                ->whereKey($installment->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! in_array($lockedPart->status, ['pending', 'partial'], true)) {
+                throw ValidationException::withMessages([
+                    'commitment' => 'Só prestações pendentes ou parcialmente pagas podem ser substituídas na renegociação.',
+                ]);
+            }
+
+            $related = Movimento::query()
+                ->where('user_id', $user->id)
+                ->where('installment_id', $lockedPart->id)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            if ($related->contains(fn (Movimento $item): bool => $item->status === 'partial' && ! $item->is_settlement_parent)) {
+                throw ValidationException::withMessages([
+                    'commitment' => 'Existe uma liquidação parcial sem eventos de pagamento identificáveis. Reconcilia a prestação antes de renegociar.',
+                ]);
+            }
+
+            $parentIds = $related->pluck('id');
+            $paymentEvents = $parentIds->isNotEmpty()
+                ? Movimento::query()
+                    ->where('user_id', $user->id)
+                    ->whereIn('settles_movement_id', $parentIds)
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get()
+                : collect();
+
+            $this->assertInstallmentPaymentsReconciled(collect([$lockedPart]), $related, $paymentEvents);
+
+            $operationId = $this->startOperation(
+                $user,
+                'commitment_renegotiation',
+                $lockedDebt->id,
+                'Prestação substituída durante a renegociação do parcelamento.',
+                ['installment_id' => $lockedPart->id]
+            );
+
+            if ($lockedPart->status === 'partial') {
+                $beforePart = $lockedPart->getAttributes();
+                $lockedPart->update(['status' => 'cancelled']);
+                $this->recordItem(
+                    $user,
+                    $operationId,
+                    'ParcelaDivida',
+                    $lockedPart->id,
+                    'cancelled',
+                    $beforePart,
+                    $lockedPart->fresh()->getAttributes()
+                );
+            }
+
+            foreach ($related as $movementItem) {
+                $before = $movementItem->getAttributes();
+                if ($movementItem->is_settlement_parent || in_array($movementItem->status, ['pending', 'partial'], true)) {
+                    $legacyType = $movementItem->legacy_type;
+                    $legacyId = $movementItem->legacy_id;
+                    $movementItem->update([
+                        'status' => 'void',
+                        'debt_id' => null,
+                        'installment_id' => null,
+                        'legacy_type' => null,
+                        'legacy_id' => null,
+                        'is_settlement_parent' => false,
+                        'settled_at' => null,
+                    ]);
+                    $this->recordMovementHistory(
+                        $user,
+                        $movementItem,
+                        'deleted',
+                        $before,
+                        $movementItem->fresh()->getAttributes(),
+                        'Previsão substituída por renegociação; a prestação anterior deixou de gerar obrigação.'
+                    );
+                    $this->recordItem(
+                        $user,
+                        $operationId,
+                        'Movimento',
+                        $movementItem->id,
+                        'voided',
+                        $before,
+                        $movementItem->fresh()->getAttributes()
+                    );
+                    $this->deleteLegacyForMovement($user, $operationId, $legacyType, $legacyId);
+                } elseif ($movementItem->status === 'settled') {
+                    $movementItem->update(['debt_id' => null, 'installment_id' => null]);
+                    $this->recordMovementHistory(
+                        $user,
+                        $movementItem,
+                        'detached',
+                        $before,
+                        $movementItem->fresh()->getAttributes(),
+                        'Pagamento preservado como movimento independente após renegociação.'
+                    );
+                    $this->recordItem(
+                        $user,
+                        $operationId,
+                        'Movimento',
+                        $movementItem->id,
+                        'detached',
+                        $before,
+                        $movementItem->fresh()->getAttributes()
+                    );
+                }
+            }
+
+            foreach ($paymentEvents as $event) {
+                $before = $event->getAttributes();
+                if ($event->status === 'settled') {
+                    $event->update(['settles_movement_id' => null, 'debt_id' => null, 'installment_id' => null]);
+                    $action = 'detached';
+                    $historyAction = 'detached';
+                } else {
+                    $legacyType = $event->legacy_type;
+                    $legacyId = $event->legacy_id;
+                    $event->update([
+                        'status' => 'void',
+                        'settles_movement_id' => null,
+                        'debt_id' => null,
+                        'installment_id' => null,
+                        'legacy_type' => null,
+                        'legacy_id' => null,
+                    ]);
+                    $action = 'voided';
+                    $historyAction = 'deleted';
+                    $this->deleteLegacyForMovement($user, $operationId, $legacyType, $legacyId);
+                }
+
+                $this->recordMovementHistory(
+                    $user,
+                    $event,
+                    $historyAction,
+                    $before,
+                    $event->fresh()->getAttributes(),
+                    'Evento de pagamento resolvido durante a renegociação do parcelamento.'
+                );
+                $this->recordItem(
+                    $user,
+                    $operationId,
+                    'Movimento',
+                    $event->id,
+                    $action,
+                    $before,
+                    $event->fresh()->getAttributes()
+                );
+            }
+
+            DB::table('deletion_operations')->where('id', $operationId)->update([
+                'status' => 'completed',
+                'updated_at' => now(),
+            ]);
+        });
+    }
+
     /**
      * Cancela o compromisso sem apagar os pagamentos efetivamente realizados.
      * Previsões pendentes/parciais são anuladas; eventos liquidados ficam autónomos.

@@ -237,13 +237,7 @@ class FinancialCommitmentService
 
             $replaceableParts = $parts->where('status', 'pending')->values();
             foreach ($parts->whereIn('status', ['pending', 'partial']) as $part) {
-                Movimento::query()->where('user_id', $user->id)->where('debt_id', $locked->id)
-                    ->where('installment_id', $part->id)->where('status', 'pending')->get()
-                    ->each(fn (Movimento $forecast) => $this->movements->voidRenegotiatedCommitmentForecast($user, $locked, $forecast));
-                if ($part->status === 'partial') {
-                    // A prestação parcialmente paga permanece como registo histórico.
-                    $part->update(['status' => 'cancelled']);
-                }
+                app(FinancialDeletionService::class)->renegotiateCommitmentInstallment($user, $locked, $part);
             }
 
             $base = intdiv($remainingCents, $count);

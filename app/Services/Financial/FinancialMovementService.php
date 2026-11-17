@@ -22,7 +22,7 @@ class FinancialMovementService
         return $this->createMovement($user, $data, false);
     }
 
-    /** Apenas pagamentos de cartão validados e estornos comprovados usam a via interna. */
+    /** A via interna permite operações de cartão já validadas pelos serviços de domínio. */
     private function createMovement(User $user, array $data, bool $allowCardTransfer): Movimento
     {
         return DB::transaction(function () use ($user, $data, $allowCardTransfer) {
@@ -318,12 +318,12 @@ class FinancialMovementService
     /** A fatura deve estar bloqueada pela transação que vai alterá-la. */
     public function assertInvoiceReconciled(User $user, Fatura $invoice): void
     {
-        // Estornos de versões anteriores não alteravam os agregados da fatura.
+        // Movimentos históricos ligados a correções antigas exigem reconciliação antes de alterar a fatura.
         if ($invoice->movimentos()->where('user_id', $user->id)->whereIn('id', DB::table('movimentos')
             ->select('reversal_of_id')->where('user_id', $user->id)->whereNotNull('reversal_of_id')
             ->whereNull('settles_movement_id'))->exists()) {
             throw ValidationException::withMessages([
-                'invoice' => 'Esta fatura tem um estorno anterior que exige reconciliação antes de novos lançamentos ou pagamentos.',
+                'invoice' => 'Esta fatura contém uma referência histórica de correção que exige reconciliação antes de novos lançamentos ou pagamentos.',
             ]);
         }
     }
@@ -471,7 +471,7 @@ class FinancialMovementService
         });
     }
 
-    /** Total líquido liquidado, descontando os eventos de estorno correspondentes. */
+    /** Total líquido liquidado, considerando também referências históricas de correção. */
     private function netSettledCents(User $user, Movimento $original): int
     {
         $events = Movimento::query()
@@ -500,7 +500,7 @@ class FinancialMovementService
         return $net;
     }
 
-    /** Recalcula a obrigação quando uma liquidação associada é estornada. */
+    /** Recalcula a obrigação depois da eliminação de um evento de liquidação associado. */
     public function refreshSettlementParentAfterDeletion(User $user, string $originalId): void
     {
         $parent = Movimento::query()->where('user_id', $user->id)->whereKey($originalId)->lockForUpdate()->first();
@@ -525,7 +525,7 @@ class FinancialMovementService
                 $invoice->update(['status' => $invoiceStatus]);
             }
         }
-        $this->audit($user, $parent, 'settlement_recalculated', null, $parent->getAttributes(), 'Estado recalculado após estorno de liquidação.');
+        $this->audit($user, $parent, 'settlement_recalculated', null, $parent->getAttributes(), 'Estado recalculado após eliminação de um evento de pagamento.');
         $this->syncInstallmentFromSettlementParent($user, $parent);
     }
 
@@ -536,7 +536,7 @@ class FinancialMovementService
         return DB::transaction(function () use ($user, $movement, $data) {
             $locked = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
             if ($locked->status !== 'pending') {
-                throw ValidationException::withMessages(['movement' => 'Só movimentos pendentes podem ser editados. Para corrigir um movimento liquidado, usa o estorno e regista o movimento correto.']);
+                throw ValidationException::withMessages(['movement' => 'Só movimentos pendentes podem ser editados. Um movimento liquidado não pode ser alterado; elimina-o pela ação de domínio, se a propagação for permitida, e regista o movimento correto.']);
             }
             $this->assertNotCommitmentForecast($locked);
             $before = $locked->getAttributes();
@@ -670,43 +670,6 @@ class FinancialMovementService
     }
 
     /** Anula previsões antigas substituídas por uma renegociação, sem tocar em pagamentos liquidados. */
-    public function voidRenegotiatedCommitmentForecast(User $user, Divida $debt, Movimento $movement): Movimento
-    {
-        return DB::transaction(function () use ($user, $debt, $movement): Movimento {
-            $lockedDebt = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
-            $locked = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
-            if (in_array($lockedDebt->status, ['cancelled', 'paid'], true) || $locked->status !== 'pending' || $locked->debt_id !== $lockedDebt->id) {
-                throw ValidationException::withMessages(['movement' => 'Não é possível substituir esta previsão. Atualiza o parcelamento.']);
-            }
-            $before = $locked->getAttributes();
-            $locked->update(['status' => 'void']);
-            $this->audit($user, $locked, 'voided', $before, $locked->getAttributes(), 'Previsão substituída por renegociação do parcelamento.');
-
-            return $locked->refresh();
-        });
-    }
-
-    /** Uso interno: só anula previsões de um parcelamento cancelado na transação. */
-    public function voidCancelledCommitmentForecast(User $user, Divida $debt, Movimento $movement): Movimento
-    {
-        return DB::transaction(function () use ($user, $debt, $movement): Movimento {
-            $lockedDebt = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
-            $locked = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
-            if ($lockedDebt->status !== 'cancelled' || $locked->status !== 'pending' || $locked->debt_id !== $lockedDebt->id) {
-                throw ValidationException::withMessages(['movement' => 'Não é possível anular esta previsão. Revê o parcelamento em Parcelamentos.']);
-            }
-            $before = $locked->getAttributes();
-            $locked->update(['status' => 'void']);
-            $this->audit($user, $locked, 'voided', $before, $locked->getAttributes(), 'Previsão anulada ao encerrar o parcelamento.');
-
-            return $locked->refresh();
-        });
-    }
-
-    /**
-     * Trata o comando "eliminar" como correção do lançamento.
-     * O movimento canónico permanece auditável, mas deixa de produzir impacto financeiro.
-     */
     public function deleteAsCorrection(
         User $user,
         Movimento $movement,
@@ -739,45 +702,6 @@ class FinancialMovementService
         }
 
         return $account;
-    }
-
-    private function openingDebtCardForReversal(User $user, Movimento $movement): ?ContaFinanceira
-    {
-        if ($movement->opening_debt_card_id) {
-            if ($movement->type !== 'transfer' || $movement->invoice_id
-                || $movement->destination_account_id !== $movement->opening_debt_card_id) {
-                return null;
-            }
-
-            return ContaFinanceira::query()->where('user_id', $user->id)->where('type', 'credit_card')->whereKey($movement->opening_debt_card_id)->first();
-        }
-
-        // Compatibilidade com pagamentos existentes anteriores à coluna tipada.
-        // Só inferir quando a descrição gerada e a conta de destino coincidirem exatamente.
-        if ($movement->type !== 'transfer' || $movement->invoice_id || ! $movement->destination_account_id
-            || ! str_starts_with((string) $movement->description, 'Pagamento de dívida inicial · ')) {
-            return null;
-        }
-
-        $card = ContaFinanceira::query()->where('user_id', $user->id)->whereKey($movement->destination_account_id)->where('type', 'credit_card')->first();
-        if (! $card || $movement->description !== 'Pagamento de dívida inicial · '.$card->name) {
-            return null;
-        }
-
-        return $card;
-    }
-
-    private function appearsToBeOpeningDebtPayment(User $user, Movimento $movement): bool
-    {
-        if ($movement->opening_debt_card_id) {
-            return true;
-        }
-
-        // Mesmo depois de renomear o cartão, um pagamento legado ambíguo não
-        // deve ser apagado ou estornado sem reconciliação do contador da dívida.
-        return $movement->type === 'transfer' && ! $movement->invoice_id && $movement->destination_account_id
-            && str_starts_with((string) $movement->description, 'Pagamento de dívida inicial · ')
-            && $user->contasFinanceiras()->whereKey($movement->destination_account_id)->where('type', 'credit_card')->exists();
     }
 
     private function assertShape(string $type, ?ContaFinanceira $source, ?ContaFinanceira $destination, ?string $direction): void
