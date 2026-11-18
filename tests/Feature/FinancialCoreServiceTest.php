@@ -574,7 +574,7 @@ class FinancialCoreServiceTest extends TestCase
     {
         $user = User::factory()->create();
         $first = $this->account($user, 'Banco A', '100.00');
-        $second = $this->account($user, 'Banco B', '50.00');
+        $second = $this->account($user, 'Banco B', '50.00', true);
         $original = app(FinancialMovementService::class)->createPending($user, [
             'type' => 'expense', 'description' => 'Fatura de eletricidade',
             'amount' => '80.00', 'movement_date' => '2026-11-30',
