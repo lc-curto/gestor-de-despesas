@@ -1182,7 +1182,8 @@ class FinancialDeletionService
                 continue;
             }
 
-            $this->balances->assertCanDebit($account, number_format($amountCents / 100, 2, '.', ''));
+            $amount = intdiv($amountCents, 100).'.'.str_pad((string) ($amountCents % 100), 2, '0', STR_PAD_LEFT);
+            $this->balances->assertCanDebit($account, $amount);
         }
     }
 
