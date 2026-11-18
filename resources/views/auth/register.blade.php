@@ -5,9 +5,7 @@
 @section('content')
     <p class="text-uppercase small fw-semibold text-primary mb-2 text-center">Meu Bolso</p>
     <h1 class="h2 fw-bold mb-2 text-center" id="authTitle">Criar conta</h1>
-    <p class="text-secondary mb-4 text-center" id="authDescription">
-        Cria a tua conta para começares a gerir as tuas finanças.
-    </p>
+    
 
     @if ($errors->any())
         <div class="alert alert-danger" role="alert">
@@ -31,7 +29,7 @@
         <div class="mb-3">
             <label for="email" class="form-label">Email</label>
             <input type="email" class="form-control form-control-lg" id="email" name="email"
-                   value="{{ old('email') }}" placeholder="Introduz o teu endereço de email"
+                   value="{{ old('email') }}" placeholder="Email"
                    autocomplete="username" required>
         </div>
 
