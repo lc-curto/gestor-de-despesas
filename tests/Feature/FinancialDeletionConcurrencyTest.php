@@ -36,9 +36,6 @@ class FinancialDeletionConcurrencyTest extends TestCase
 
         $this->assertNotSame($primary->getPdo(), $secondary->getPdo(), 'As operações devem usar sessões PDO independentes.');
 
-        $secondary->statement('SET SESSION innodb_lock_wait_timeout = 1');
-        $secondary->statement('SET SESSION lock_wait_timeout = 1');
-
         // A transação vencedora retém o lock do movimento.
         $primary->beginTransaction();
 
@@ -52,16 +49,15 @@ class FinancialDeletionConcurrencyTest extends TestCase
             $this->assertNotNull($lockedMovement, 'A primeira transação deve adquirir o lock do movimento.');
 
             // A segunda sessão inicia outra transação e tenta bloquear a mesma
-            // linha. O timeout confirma que o InnoDB está a serializar as operações.
+            // linha com NOWAIT. O erro imediato confirma a contenção do lock InnoDB.
             $secondary->beginTransaction();
             $lockFailure = null;
 
             try {
-                $secondary->table('movimentos')
-                    ->where('user_id', $user->id)
-                    ->where('id', $movement->id)
-                    ->lockForUpdate()
-                    ->first();
+                $secondary->select(
+                    'SELECT id FROM movimentos WHERE user_id = ? AND id = ? FOR UPDATE NOWAIT',
+                    [$user->id, $movement->id]
+                );
             } catch (QueryException $exception) {
                 $lockFailure = $exception;
             } finally {
@@ -70,8 +66,8 @@ class FinancialDeletionConcurrencyTest extends TestCase
                 }
             }
 
-            $this->assertNotNull($lockFailure, 'A segunda transação deve aguardar o lock mantido pela primeira.');
-            $this->assertStringContainsString('1205', $lockFailure->getMessage());
+            $this->assertNotNull($lockFailure, 'A segunda transação não deve adquirir um lock já mantido pela primeira.');
+            $this->assertStringContainsString('3572', $lockFailure->getMessage());
 
             // A exclusão real é concluída pela transação vencedora.
             app(FinancialMovementService::class)->deleteAsCorrection(
