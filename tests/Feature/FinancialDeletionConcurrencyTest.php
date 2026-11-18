@@ -63,17 +63,17 @@ class FinancialDeletionConcurrencyTest extends TestCase
 
             try {
                 $threadId = DB::connection($primaryName)->selectOne('SELECT CONNECTION_ID() AS id')->id;
-                fwrite($childSocket, 'started:'.$threadId."\\n");
+                fwrite($childSocket, 'started:'.$threadId."\n");
                 app(FinancialMovementService::class)->deleteAsCorrection(
                     $user,
                     $movement,
                     'Concorrência — processo concorrente'
                 );
-                fwrite($childSocket, "ok\\n");
+                fwrite($childSocket, "ok\n");
                 fclose($childSocket);
                 exit(0);
             } catch (\Throwable $exception) {
-                fwrite($childSocket, 'error:'.$exception::class.': '.$exception->getMessage()."\\n");
+                fwrite($childSocket, 'error:'.$exception::class.': '.$exception->getMessage()."\n");
                 fclose($childSocket);
                 exit(1);
             }
@@ -93,7 +93,8 @@ class FinancialDeletionConcurrencyTest extends TestCase
 
             do {
                 $row = $primary->selectOne(
-                    "SELECT COUNT(*) AS waiting FROM information_schema.innodb_trx WHERE trx_state = 'LOCK WAIT'"
+                    "SELECT COUNT(*) AS waiting FROM information_schema.innodb_trx WHERE trx_mysql_thread_id = ? AND trx_state = 'LOCK WAIT'",
+                    [$childThreadId]
                 );
                 $waitingTransactions = (int) ($row->waiting ?? 0);
 
@@ -135,7 +136,7 @@ class FinancialDeletionConcurrencyTest extends TestCase
 
         $this->assertTrue(pcntl_wifexited($childStatus), 'O processo concorrente deve terminar normalmente.');
         $this->assertSame(0, pcntl_wexitstatus($childStatus), $childOutput);
-        $this->assertSame(\"ok\\n\", $childOutput);
+        $this->assertSame("ok\n", $childOutput);
         $this->assertSame('void', $movement->fresh()->status);
         $this->assertDatabaseCount('deletion_operations', 1);
         $this->assertDatabaseCount('deletion_operation_items', 1);
