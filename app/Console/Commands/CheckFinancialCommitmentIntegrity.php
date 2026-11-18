@@ -4,12 +4,13 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class CheckFinancialCommitmentIntegrity extends Command
 {
-    protected $signature = 'financial:check-commitments {--user= : Limitar a verificação ao UUID de um utilizador}';
+    protected $signature = 'financial:check-commitments {--user= : Limitar a verificação ao UUID de um utilizador} {--repair-safe-links : Corrigir apenas debt_id quando uma prestação válida identifica inequivocamente o compromisso}';
 
-    protected $description = 'Audita relações entre movimentos, parcelamentos e prestações sem alterar dados.';
+    protected $description = 'Audita relações entre movimentos, parcelamentos e prestações; permite corrigir apenas ligações inequívocas.';
 
     public function handle(): int
     {
@@ -63,6 +64,77 @@ class CheckFinancialCommitmentIntegrity extends Command
                 || $row->installment_status === 'cancelled' || $row->installment_parent_status === 'cancelled'),
         ];
 
+        $repairCount = 0;
+        if ($this->option('repair-safe-links')) {
+            $repairCandidates = $rows->filter(fn ($row) => $row->installment_id !== null
+                && $row->existing_installment_id !== null
+                && $row->installment_parent_exists !== null
+                && $row->debt_id !== $row->installment_debt_id);
+
+            foreach ($repairCandidates as $candidate) {
+                $repaired = DB::transaction(function () use ($candidate): bool {
+                    $movement = DB::table('movimentos')
+                        ->where('user_id', $candidate->user_id)
+                        ->where('id', $candidate->id)
+                        ->lockForUpdate()
+                        ->first();
+                    $installment = DB::table('parcelas_divida')
+                        ->where('user_id', $candidate->user_id)
+                        ->where('id', $candidate->installment_id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (! $movement || ! $installment || $movement->status === 'void'
+                        || $movement->installment_id !== $installment->id) {
+                        return false;
+                    }
+
+                    $debt = DB::table('dividas')
+                        ->where('user_id', $candidate->user_id)
+                        ->where('id', $installment->debt_id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (! $debt || $movement->debt_id === $debt->id) {
+                        return false;
+                    }
+
+                    $before = [
+                        'debt_id' => $movement->debt_id,
+                        'installment_id' => $movement->installment_id,
+                        'status' => $movement->status,
+                    ];
+                    $after = [
+                        'debt_id' => $debt->id,
+                        'installment_id' => $movement->installment_id,
+                        'status' => $movement->status,
+                    ];
+
+                    DB::table('movimentos')
+                        ->where('user_id', $candidate->user_id)
+                        ->where('id', $candidate->id)
+                        ->update(['debt_id' => $debt->id, 'updated_at' => now()]);
+
+                    DB::table('financial_integrity_corrections')->insert([
+                        'id' => (string) Str::uuid(),
+                        'user_id' => $candidate->user_id,
+                        'entity_type' => 'Movimento',
+                        'entity_id' => $candidate->id,
+                        'correction_type' => 'installment_parent_alignment',
+                        'before_data' => json_encode($before, JSON_THROW_ON_ERROR),
+                        'after_data' => json_encode($after, JSON_THROW_ON_ERROR),
+                        'created_at' => now(),
+                    ]);
+
+                    return true;
+                });
+
+                if ($repaired) {
+                    $repairCount++;
+                }
+            }
+        }
+
         $total = 0;
         foreach ($issues as $label => $items) {
             $count = $items->count();
@@ -86,7 +158,12 @@ class CheckFinancialCommitmentIntegrity extends Command
         }
 
         $this->newLine();
-        $this->info(sprintf('Verificação concluída. %d ocorrências encontradas. Nenhum dado foi alterado.', $total));
+        $this->info(sprintf('Verificação concluída. %d ocorrências encontradas.', $total));
+        if ($this->option('repair-safe-links')) {
+            $this->info(sprintf('%d ligações inequívocas corrigidas e registadas em financial_integrity_corrections. Montantes, estados e pagamentos não foram alterados.', $repairCount));
+        } else {
+            $this->comment('Modo de leitura: nenhum dado foi alterado.');
+        }
 
         return self::SUCCESS;
     }
