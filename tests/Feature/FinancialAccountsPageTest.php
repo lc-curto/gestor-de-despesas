@@ -69,8 +69,9 @@ class FinancialAccountsPageTest extends TestCase
         $user = User::factory()->create();
         $account = app(FinancialAccountService::class)->create($user, [
             'name' => 'Conta à ordem', 'type' => 'bank', 'opening_balance' => '100.00',
-            'opening_balance_date' => '2026-11-01', 'allow_negative_balance' => false,
+            'opening_balance_date' => '2026-11-01',
         ]);
+        $this->assertFalse((bool) $account->allow_negative_balance);
 
         $this->actingAs($user)->putJson('/api/financial/accounts/'.$account->id.'/settings', [
             'allow_negative_balance' => true,
@@ -81,6 +82,27 @@ class FinancialAccountsPageTest extends TestCase
             'allow_negative_balance' => false,
         ])->assertOk();
         $this->assertDatabaseHas('contas_financeiras', ['id' => $account->id, 'allow_negative_balance' => false]);
+    }
+
+    public function test_negative_balance_permission_cannot_be_disabled_when_operational_balance_is_negative(): void
+    {
+        $user = User::factory()->create();
+        $account = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Conta em descoberto', 'type' => 'bank', 'opening_balance' => '100.00',
+            'opening_balance_date' => '2026-11-01', 'allow_negative_balance' => true,
+        ]);
+        app(\App\Services\Financial\FinancialMovementService::class)->create($user, [
+            'type' => 'expense', 'description' => 'Débito em descoberto', 'amount' => '125.00',
+            'movement_date' => '2026-11-12', 'source_account_id' => $account->id,
+        ]);
+
+        $this->actingAs($user)->putJson('/api/financial/accounts/'.$account->id.'/settings', [
+            'allow_negative_balance' => false,
+        ])->assertUnprocessable();
+
+        $this->assertDatabaseHas('contas_financeiras', [
+            'id' => $account->id, 'allow_negative_balance' => true,
+        ]);
     }
 
     public function test_negative_balance_permission_cannot_be_disabled_for_negative_opening_balance(): void
