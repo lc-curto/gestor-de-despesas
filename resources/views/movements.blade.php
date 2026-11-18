@@ -81,10 +81,10 @@
                                     <div class="mb-3">
                                         <label for="movementAmount" class="form-label fw-semibold">Valor</label>
                                         <div class="input-group input-group-lg">
-                                            <input type="text" inputmode="decimal" class="form-control fw-semibold" id="movementAmount" name="amount" placeholder="0,00" aria-describedby="movementAmountHelp" value="{{ old('amount') }}" required>
+                                            <input type="text" inputmode="decimal" class="form-control fw-semibold" id="movementAmount" name="amount" placeholder="0,00" value="{{ old('amount') }}" required>
                                             <span class="input-group-text" id="amountCurrencySymbol">{{ $simbolos[$moeda] ?? $moeda }}</span>
                                         </div>
-                                        <div id="movementAmountHelp" class="form-text">Usa vírgula ou ponto para os cêntimos.</div>
+                                        
                                     </div>
 
                                     <div class="mb-3">
