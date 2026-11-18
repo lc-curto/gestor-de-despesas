@@ -814,6 +814,21 @@ class FinancialMovementService
             return;
         }
 
+        $installmentSnapshot = ParcelaDivida::query()
+            ->where('user_id', $user->id)
+            ->whereKey($parent->installment_id)
+            ->first();
+        if (! $installmentSnapshot) {
+            return;
+        }
+
+        // A ordem do agregado é dívida -> prestação -> movimento, igual à
+        // liquidação e à gestão de parcelamentos.
+        $debt = Divida::query()
+            ->where('user_id', $user->id)
+            ->whereKey($installmentSnapshot->debt_id)
+            ->lockForUpdate()
+            ->first();
         $installment = ParcelaDivida::query()
             ->where('user_id', $user->id)
             ->whereKey($parent->installment_id)
@@ -859,7 +874,6 @@ class FinancialMovementService
             'status' => $newStatus,
         ]);
 
-        $debt = Divida::query()->where('user_id', $user->id)->whereKey($installment->debt_id)->lockForUpdate()->first();
         if ($debt && $debt->status !== 'cancelled') {
             $allPaid = ! $debt->parcelas()->where('status', '!=', 'paid')->exists();
             $debt->update(['status' => $allPaid ? 'paid' : 'open']);
