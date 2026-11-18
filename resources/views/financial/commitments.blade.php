@@ -34,7 +34,7 @@
 
     <section class="commitment-list-panel" aria-labelledby="commitmentsTitle">
         <nav class="commitment-tabs" aria-label="Estado das compras">
-            @foreach (['active' => ['Ativos', $summary['active_count']], 'completed' => ['Concluídos', $summary['completed_count']], 'all' => ['Todos', $summary['total_count']]] as $key => [$label, $count])
+            @foreach (['active' => ['Ativos', $summary['active_count']], 'completed' => ['Concluídos', $summary['completed_count']], 'archived' => ['Arquivados', $summary['archived_count']], 'all' => ['Todos', $summary['total_count']]] as $key => [$label, $count])
                 <a href="{{ route('financial.commitments.page', array_merge(request()->except('purchases'), ['status' => $key])) }}"
                    class="btn btn-sm {{ $status === $key ? 'btn-primary' : 'btn-outline-secondary' }}"
                    @if ($status === $key) aria-current="page" @endif>{{ $label }} ({{ $count }})</a>
@@ -52,7 +52,7 @@
 
         <div class="commitment-list-heading">
             <h2 class="h5 fw-bold mb-0" id="commitmentsTitle">
-                {{ $status === 'active' ? 'Compras ativas' : ($status === 'completed' ? 'Compras concluídas' : 'Todas as compras') }}
+                {{ $status === 'active' ? 'Compras ativas' : ($status === 'completed' ? 'Compras concluídas' : ($status === 'archived' ? 'Compras arquivadas' : 'Todas as compras')) }}
             </h2>
             <span class="small text-secondary">{{ $commitments->total() }} resultados</span>
         </div>
@@ -64,6 +64,9 @@
                     $partsTotal = (int) $commitment->installments_count;
                     $partsPaid = (int) $commitment->paid_installments_count;
                     $isCompleted = $commitment->remaining_amount <= 0.009;
+                    $isSoftDeleted = $commitment->trashed();
+                    $isCancelled = $commitment->status === 'cancelled';
+                    $isArchived = $commitment->archived_at !== null || $isSoftDeleted || $isCancelled;
                     $next = $commitment->next_installment;
                     $nextRemaining = $next ? max(0, (float) $next->amount - (float) $next->paid_amount) : 0;
                 @endphp
@@ -71,7 +74,7 @@
                     <button class="commitment-card-toggle" type="button" aria-expanded="false" aria-controls="commitment-details-{{ $commitment->id }}">
                         <span class="commitment-card-heading">
                             <span class="commitment-card-name">{{ $commitment->name }}@if ($commitment->merchant)<small class="commitment-merchant">{{ $commitment->merchant }}</small>@endif</span>
-                            <span class="badge {{ $isCompleted ? 'text-bg-success' : ($commitment->has_overdue_installment ? 'text-bg-danger' : 'text-bg-success') }}">{{ $isCompleted ? 'Concluído' : ($commitment->has_overdue_installment ? 'Em atraso' : 'Em dia') }}</span>
+                            <span class="badge {{ $isCancelled ? 'text-bg-secondary' : ($isCompleted ? 'text-bg-success' : ($commitment->has_overdue_installment ? 'text-bg-danger' : 'text-bg-success')) }}">{{ $isCancelled ? 'Cancelado' : ($isCompleted ? 'Concluído' : ($commitment->has_overdue_installment ? 'Em atraso' : 'Em dia')) }}</span>
                         </span>
                         <span class="commitment-card-balances">
                             <span class="commitment-card-balance-primary"><small>Saldo em aberto</small><strong>{{ auth()->user()->currency }} {{ number_format($commitment->remaining_amount, 2, ',', '.') }}</strong></span>
@@ -135,10 +138,24 @@
                                     data-count="{{ max(1, $partsTotal - $partsPaid) }}"
                                     data-frequency="{{ $commitment->installment_frequency ?? 'monthly' }}"
                                     data-due="{{ $next && $next->due_date->gte(today()) ? $next->due_date->format('Y-m-d') : now()->addMonth()->toDateString() }}">Renegociar</button>
-                                <button type="button" class="btn btn-outline-secondary js-archive-commitment"
-                                    data-url="{{ route('financial.commitments.archive', $commitment->id) }}"
-                                    data-name="{{ $commitment->name }}"
-                                    data-delete-url="{{ route('financial.commitments.destroy', $commitment->id) }}">Arquivar</button>
+                                @if ($isArchived)
+                                    @if ($isSoftDeleted)
+                                        <button type="button" class="btn btn-outline-primary js-restore-commitment"
+                                            data-url="{{ route('financial.commitments.restore', $commitment->id) }}">Recuperar para revisão</button>
+                                    @elseif (!$isCancelled)
+                                        <button type="button" class="btn btn-outline-primary js-restore-commitment"
+                                            data-url="{{ route('financial.commitments.restore', $commitment->id) }}">Restaurar</button>
+                                    @endif
+                                    <button type="button" class="btn btn-outline-danger js-archive-commitment"
+                                        data-archived="true"
+                                        data-name="{{ $commitment->name }}"
+                                        data-delete-url="{{ route('financial.commitments.destroy', $commitment->id) }}">Gerir / eliminar</button>
+                                @else
+                                    <button type="button" class="btn btn-outline-secondary js-archive-commitment"
+                                        data-url="{{ route('financial.commitments.archive', $commitment->id) }}"
+                                        data-name="{{ $commitment->name }}"
+                                        data-delete-url="{{ route('financial.commitments.destroy', $commitment->id) }}">Arquivar</button>
+                                @endif
                                 <button type="button" class="btn btn-outline-danger js-cancel-commitment" @disabled($isCompleted)
                                     data-url="{{ route('financial.commitments.cancel', $commitment->id) }}"
                                     data-name="{{ $commitment->name }}">Cancelar</button>
@@ -650,12 +667,30 @@
     let deleteActionUrl = null;
     let archiveActionName = '';
     document.querySelectorAll('.js-archive-commitment').forEach(button => button.addEventListener('click', () => {
-        archiveActionUrl = button.dataset.url;
+        const alreadyArchived = button.dataset.archived === 'true';
+        archiveActionUrl = alreadyArchived ? null : button.dataset.url;
         deleteActionUrl = button.dataset.deleteUrl;
         archiveActionName = button.dataset.name;
-        document.getElementById('archiveCommitmentMessage').textContent = 'Pretendes arquivar "' + archiveActionName + '"?';
+        archiveModalElement.querySelector('.modal-title').textContent = alreadyArchived ? 'Gerir compra arquivada' : 'Arquivar compra';
+        archiveButton.hidden = alreadyArchived;
+        document.getElementById('archiveCommitmentMessage').textContent = alreadyArchived
+            ? 'A compra "' + archiveActionName + '" está arquivada. Podes restaurá-la ou eliminá-la definitivamente.'
+            : 'Pretendes arquivar "' + archiveActionName + '"?';
         document.getElementById('archiveCommitmentError').textContent = '';
         archiveModal.show();
+    }));
+    document.querySelectorAll('.js-restore-commitment').forEach(button => button.addEventListener('click', async () => {
+        button.disabled = true;
+        try {
+            const response = await fetch(button.dataset.url, {method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({})});
+            const result = await response.json().catch(()=>({}));
+            if (!response.ok) throw new Error(result.message || 'Não foi possível restaurar a compra.');
+            const recoveredAsArchived = Boolean(result.data?.archived_at);
+            window.location.href = @json(route('financial.commitments.page')) + '?status=' + (recoveredAsArchived ? 'archived' : 'active');
+        } catch (error) {
+            button.disabled = false;
+            showError(feedback, error.message);
+        }
     }));
     archiveButton.addEventListener('click', async () => {
         if (!archiveActionUrl) return;

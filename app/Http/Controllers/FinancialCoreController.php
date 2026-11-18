@@ -111,9 +111,19 @@ class FinancialCoreController extends Controller
         return response()->json(['data' => $service->archive($request->user(), $debt), 'message' => 'Compra arquivada.']);
     }
 
+    public function restoreCommitment(Request $request, string $id, FinancialCommitmentService $service): JsonResponse
+    {
+        $debt = $request->user()->dividas()->withTrashed()->whereKey($id)->firstOrFail();
+
+        return response()->json([
+            'data' => $service->restore($request->user(), $debt),
+            'message' => 'Compra restaurada.',
+        ]);
+    }
+
     public function deleteCommitment(Request $request, string $id, FinancialCommitmentService $service): JsonResponse
     {
-        $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();
+        $debt = $request->user()->dividas()->withTrashed()->whereKey($id)->firstOrFail();
         $service->delete($request->user(), $debt);
 
         return response()->json(['message' => 'Compra eliminada.']);

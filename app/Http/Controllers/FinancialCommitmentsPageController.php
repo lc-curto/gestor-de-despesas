@@ -37,11 +37,11 @@ class FinancialCommitmentsPageController extends Controller
             ->orderBy('name')
             ->get();
 
-        $eligibleDebts = fn () => $user->dividas()
-            ->whereNull('archived_at')
+        $eligibleDebts = fn () => $user->dividas()->withTrashed()
             ->where('payment_condition', 'installments')
-            ->where(fn ($query) => $query->whereNull('payment_method')->orWhereNotIn('payment_method', ['credit', 'card']))
-            ->where('status', '!=', 'cancelled');
+            ->where(fn ($query) => $query->whereNull('payment_method')->orWhereNotIn('payment_method', ['credit', 'card']));
+
+        $visibleDebts = fn () => $eligibleDebts()->whereNull('archived_at')->whereNull('deleted_at')->where('status', '!=', 'cancelled');
 
         $openInstallments = $user->parcelasDivida()
             ->whereHas('divida', fn ($query) => $query
@@ -68,7 +68,7 @@ class FinancialCommitmentsPageController extends Controller
             ->orderBy('installment_number')
             ->first();
 
-        $eligibleQuery = $eligibleDebts();
+        $eligibleQuery = $visibleDebts();
         $activeCount = (clone $eligibleQuery)
             ->whereHas('parcelas', fn ($query) => $query
                 ->whereColumn('amount', '>', 'paid_amount')
@@ -82,6 +82,8 @@ class FinancialCommitmentsPageController extends Controller
             ->where('status', '!=', 'cancelled')
             ->count();
 
+        $archivedCount = $eligibleDebts()->where(fn ($query) => $query->whereNotNull('archived_at')->orWhereNotNull('deleted_at')->orWhere('status', 'cancelled'))->count();
+
         $summary = [
             'open' => $commitmentOpen,
             'overdue' => $commitmentOverdue,
@@ -89,12 +91,13 @@ class FinancialCommitmentsPageController extends Controller
             'upcoming' => max(0, $commitmentOpen - $commitmentOverdue),
             'active_count' => $activeCount,
             'completed_count' => $completedCount,
-            'total_count' => $activeCount + $completedCount,
+            'archived_count' => $archivedCount,
+            'total_count' => $activeCount + $completedCount + $archivedCount,
             'next_installment' => $nextInstallment,
         ];
 
         $status = $request->query('status', 'active');
-        if (! in_array($status, ['active', 'completed', 'all'], true)) {
+        if (! in_array($status, ['active', 'completed', 'archived', 'all'], true)) {
             $status = 'active';
         }
 
@@ -105,6 +108,8 @@ class FinancialCommitmentsPageController extends Controller
         }
 
         $query = $eligibleDebts()
+            ->when($status === 'active' || $status === 'completed', fn ($builder) => $builder->whereNull('archived_at')->whereNull('deleted_at')->where('status', '!=', 'cancelled'))
+            ->when($status === 'archived', fn ($builder) => $builder->where(fn ($archived) => $archived->whereNotNull('archived_at')->orWhereNotNull('deleted_at')->orWhere('status', 'cancelled')))
             ->withCount(['parcelas as paid_installments_count' => fn ($parts) => $parts->where('status', 'paid')])
             ->withSum('parcelas as paid_amount_total', 'paid_amount')
             ->withSum('parcelas as installment_amount_total', 'amount');

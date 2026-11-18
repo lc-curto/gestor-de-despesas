@@ -66,6 +66,7 @@ Route::middleware(['auth', 'financial.review'])->group(function () {
         Route::post('/commitments/{id}/cancel', [FinancialCoreController::class, 'cancelCommitment'])->name('commitments.cancel');
         Route::post('/commitments/{id}/renegotiate', [FinancialCoreController::class, 'renegotiateCommitment'])->name('commitments.renegotiate');
         Route::post('/commitments/{id}/archive', [FinancialCoreController::class, 'archiveCommitment'])->name('commitments.archive');
+        Route::post('/commitments/{id}/restore', [FinancialCoreController::class, 'restoreCommitment'])->name('commitments.restore');
         Route::delete('/commitments/{id}', [FinancialCoreController::class, 'deleteCommitment'])->name('commitments.destroy');
         Route::post('/recurrences', [FinancialCoreController::class, 'storeRecurrence'])->name('recurrences.store');
         Route::patch('/recurrences/{id}/status', [FinancialCoreController::class, 'setRecurrenceStatus'])->name('recurrences.status');
