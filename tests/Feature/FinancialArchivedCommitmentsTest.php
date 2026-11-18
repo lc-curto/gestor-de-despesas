@@ -32,7 +32,7 @@ class FinancialArchivedCommitmentsTest extends TestCase
 
         $this->artisan('financial:check-commitments', ['--user' => $user->id])
             ->expectsOutputToContain('Movimentos ligados a parcelamentos arquivados/eliminados: 1')
-            ->expectsOutputToContain('Nenhum dado foi alterado.')
+            ->expectsOutputToContain('Modo de leitura: nenhum dado foi alterado.')
             ->assertExitCode(0);
     }
 
