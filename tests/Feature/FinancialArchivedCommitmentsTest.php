@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureFinancialDataReviewed;
 use App\Models\Divida;
 use App\Models\ParcelaDivida;
 use App\Models\User;
+use App\Services\Financial\FinancialMovementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -13,6 +14,27 @@ use Tests\TestCase;
 class FinancialArchivedCommitmentsTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_integrity_command_reports_movements_still_linked_to_archived_commitments(): void
+    {
+        $user = User::factory()->create();
+        $debt = $this->createCommitment($user, now());
+        $installment = $debt->parcelas()->firstOrFail();
+
+        app(FinancialMovementService::class)->createPending($user, [
+            'type' => 'expense',
+            'description' => 'Previsão ligada a compra arquivada',
+            'amount' => '30.00',
+            'movement_date' => today()->toDateString(),
+            'debt_id' => $debt->id,
+            'installment_id' => $installment->id,
+        ]);
+
+        $this->artisan('financial:check-commitments', ['--user' => $user->id])
+            ->expectsOutputToContain('Movimentos ligados a parcelamentos arquivados/eliminados: 1')
+            ->expectsOutputToContain('Nenhum dado foi alterado.')
+            ->assertExitCode(0);
+    }
 
     public function test_archived_commitments_are_recoverable_from_archived_and_all_tabs(): void
     {
