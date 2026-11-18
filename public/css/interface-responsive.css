@@ -370,3 +370,33 @@
     width: 1.1rem;
     height: 1.1rem;
 }
+
+/* Ações do histórico: grupo independente das regras genéricas de .btn-group. */
+.history-list .expense-actions .movement-icon-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    width: max-content !important;
+    min-width: max-content !important;
+    gap: .4rem !important;
+}
+.history-list .expense-actions .movement-icon-actions > .btn {
+    display: inline-flex !important;
+    flex: 0 0 2.5rem !important;
+    width: 2.5rem !important;
+    min-width: 2.5rem !important;
+    max-width: 2.5rem !important;
+    height: 2.5rem !important;
+    min-height: 2.5rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    padding: .35rem !important;
+    border-radius: .65rem !important;
+}
+.history-list .expense-actions .movement-icon-actions > .btn svg {
+    width: 1.1rem !important;
+    height: 1.1rem !important;
+}
