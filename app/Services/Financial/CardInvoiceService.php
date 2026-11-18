@@ -184,13 +184,18 @@ class CardInvoiceService
     public function addCharge(User $user, Fatura $invoice, array $data): Movimento
     {
         return DB::transaction(function () use ($user, $invoice, $data): Movimento {
+            // A ordem global é cartão -> fatura, igual à compra normal.
+            $invoiceSnapshot = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->firstOrFail();
+            $card = $user->contasFinanceiras()->whereKey($invoiceSnapshot->account_id)->lockForUpdate()->firstOrFail();
             $locked = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+            if ($locked->account_id !== $card->id) {
+                throw ValidationException::withMessages(['invoice' => 'O cartão associado à fatura foi alterado. Atualiza a página e tenta novamente.']);
+            }
             if (in_array($locked->status, ['paid', 'carried', 'closed'], true)) {
                 throw ValidationException::withMessages(['invoice' => 'A fatura está fechada, paga ou já foi transportada. Regista o encargo no ciclo seguinte.']);
             }
             $this->carryOverdueInvoices($user, $locked);
             $this->movements->assertInvoiceReconciled($user, $locked);
-            $card = $user->contasFinanceiras()->whereKey($locked->account_id)->lockForUpdate()->firstOrFail();
             if ($card->type !== 'credit_card' || ! $card->is_operational || $card->status !== 'active') {
                 throw ValidationException::withMessages(['invoice' => 'O cartão associado a esta fatura não está ativo.']);
             }
@@ -204,7 +209,7 @@ class CardInvoiceService
                 }
             }
 
-            $charge = $this->movements->create($user, [
+            $charge = $this->movements->createCardPurchase($user, [
                 'type' => 'expense',
                 'expense_behavior' => 'fixed',
                 'description' => $data['description'],
