@@ -65,10 +65,11 @@ class FinancialAccountService
             ]);
             $locked->refresh();
             $currentBalanceIsNegative = $this->balances->toCents($this->balances->balance($locked)) < 0;
+            $openingBalanceIsNegative = $this->balances->toCents($amount) < 0;
             $locked->update([
                 'allow_negative_balance' => $locked->type === 'credit_card'
                     || (in_array($locked->type, ['bank', 'cash'], true)
-                        && ($allowNegative || $currentBalanceIsNegative)),
+                        && ($allowNegative || $openingBalanceIsNegative || $currentBalanceIsNegative)),
             ]);
 
             return $locked->refresh();
@@ -97,8 +98,12 @@ class FinancialAccountService
                 throw ValidationException::withMessages(['account' => 'Esta configuração só se aplica a contas bancárias e de dinheiro ativas.']);
             }
             $currentBalanceIsNegative = $this->balances->toCents($this->balances->balance($locked)) < 0;
-            if (! $allowed && $currentBalanceIsNegative) {
-                throw ValidationException::withMessages(['allow_negative_balance' => 'Não é possível desativar esta opção enquanto o saldo operacional da conta for negativo.']);
+            $openingBalanceIsNegative = $locked->opening_balance !== null
+                && $this->balances->toCents((string) $locked->opening_balance) < 0;
+            if (! $allowed && ($openingBalanceIsNegative || $currentBalanceIsNegative)) {
+                throw ValidationException::withMessages([
+                    'allow_negative_balance' => 'Não é possível desativar esta opção enquanto o saldo inicial ou o saldo operacional da conta for negativo.',
+                ]);
             }
             $locked->update(['allow_negative_balance' => $allowed]);
 
