@@ -168,7 +168,7 @@ Em `FinanceController::update`, num ramo alternativo, `$movement->historico()->d
 - [x] Teste de rollback transacional após falha no recálculo de um agregado.
 - [x] Testes de isolamento entre utilizadores nas rotas de eliminação de compromisso e movimento.
 - [x] Revisão dos fluxos de edição/substituição e projeções de Dashboard, Movimentos, Rota Financeira, Contas, Parcelamentos, Cartões e Faturas.
-- [x] Teste concorrente MySQL adicionado em `FinancialDeletionConcurrencyTest`: duas sessões PDO independentes mantêm transações sobrepostas e disputam a eliminação do mesmo movimento; a segunda sessão aguarda o lock InnoDB, recebe timeout controlado e, após o commit vencedor, repete a operação de forma idempotente; aguarda execução no CI.
+- [x] Teste concorrente MySQL adicionado em `FinancialDeletionConcurrencyTest`: duas sessões PDO independentes mantêm transações sobrepostas e disputam a eliminação do mesmo movimento; a segunda sessão usa `FOR UPDATE NOWAIT` para confirmar a contenção do lock InnoDB e, após o commit vencedor, repete a operação de forma idempotente; aguarda execução no CI.
 - [x] Avisos `risky` eliminados: corrigida diretiva `@push('scripts')` duplicada em `resources/views/movements.blade.php`; adicionadas verificações de integridade dos buffers de saída nos testes de renderização.
 - [ ] Merge/deploy apenas após aprovação explícita.
 
@@ -429,7 +429,7 @@ Testes de regressão atualizados/adicionados para pagamentos parciais, pagamento
 7. [x] CI aprovado no commit `fe4ecbb84f09e295fe8569f3169b658450f64222`: 204 testes aprovados, 1.655 assertions e zero testes `risky`.
 8. [ ] CI do HEAD atualizado, incluindo o teste de concorrência MySQL.
 9. [x] Avisos `risky` eliminados: corrigida a diretiva Blade duplicada e adicionadas verificações de integridade dos buffers nos testes de renderização.
-10. [x] Adicionado `FinancialDeletionConcurrencyTest`: duas sessões MySQL independentes executam transações sobrepostas; a segunda sessão fica bloqueada pelo lock da primeira, recebe timeout controlado e, após o commit vencedor, a repetição não duplica a auditoria. A execução no CI ainda precisa de confirmação.
+10. [x] Adicionado `FinancialDeletionConcurrencyTest`: duas sessões MySQL independentes executam transações sobrepostas; a segunda sessão confirma que o lock da primeira impede a aquisição imediata (`NOWAIT`) e, após o commit vencedor, a repetição não duplica a auditoria. A execução no CI ainda precisa de confirmação.
 11. [ ] Merge e deploy permanecem fora do âmbito até aprovação explícita do utilizador.
 
 A implementação e os testes funcionais/atómicos estão concluídos na branch. O teste de concorrência entre sessões MySQL independentes foi adicionado ao workflow, mas a aprovação depende da sua execução em MySQL no CI. Não fazer merge nem deploy sem aprovação explícita.
