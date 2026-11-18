@@ -82,12 +82,13 @@ class FinancialDeletionConcurrencyTest extends TestCase
         }
 
         fclose($childSocket);
-        $started = fgets($parentSocket);
-        $this->assertIsString($started);
-        $this->assertStringStartsWith('started:', $started);
-        $childThreadId = (int) trim(substr($started, strlen('started:')));
 
         try {
+            $started = fgets($parentSocket);
+            $this->assertIsString($started);
+            $this->assertStringStartsWith('started:', $started);
+            $childThreadId = (int) trim(substr($started, strlen('started:')));
+
             // Aguarda a confirmação do InnoDB de que este filho está realmente
             // em LOCK WAIT; isto evita depender de sleeps ou de timing arbitrário.
             $deadline = microtime(true) + 5;
