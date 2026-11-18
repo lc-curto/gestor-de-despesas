@@ -39,6 +39,7 @@ class FinancialAccountsPageTest extends TestCase
             ->get('/contas')
             ->assertOk()
             ->assertSee('Conta da Ana')
+            ->assertSee('Permitir saldo negativo nesta conta')
             ->assertDontSee('Conta privada de outro utilizador');
     }
 
