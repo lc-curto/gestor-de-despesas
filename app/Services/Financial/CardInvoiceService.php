@@ -50,7 +50,7 @@ class CardInvoiceService
                 throw ValidationException::withMessages(['invoice' => 'A fatura deste ciclo já foi fechada. A compra deve entrar no ciclo seguinte.']);
             }
 
-            $purchase = $this->movements->create($user, [
+            $purchase = $this->movements->createCardPurchase($user, [
                 'type' => 'expense',
                 'expense_behavior' => $data['expense_behavior'] ?? 'variable',
                 'description' => $data['description'],
