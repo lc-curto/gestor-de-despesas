@@ -91,7 +91,7 @@
             currencyInput.required = registerMode;
             if (!registerMode) nameInput.value = '';
             title.textContent = registerMode ? 'Criar conta' : 'Bem-vindo';
-            description.textContent = '';
+            if (description) description.textContent = '';
             submit.textContent = registerMode ? 'Criar conta' : 'Entrar';
             toggleText.textContent = '';
             toggleButton.textContent = registerMode ? 'Iniciar sessão' : 'Criar conta';
