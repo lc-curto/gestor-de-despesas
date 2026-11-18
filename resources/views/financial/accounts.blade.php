@@ -161,7 +161,7 @@
                     <input type="hidden" name="description" value="Transferência entre contas">
                     <div class="mb-3">
                         <label for="transferAmount" class="form-label">Valor</label>
-                        <input id="transferAmount" name="amount" type="text" inputmode="decimal" class="form-control" min="0.01" max="9999999999.99" data-money="positive" required placeholder="0,00" aria-describedby="transferAmountHelp">
+                        <input id="transferAmount" name="amount" type="text" inputmode="decimal" class="form-control" min="0.01" max="9999999999.99" data-money="positive" required placeholder="0,00">
                         
                     </div>
                     <div class="row g-3 mb-3">
