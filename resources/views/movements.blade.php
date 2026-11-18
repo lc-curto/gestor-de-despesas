@@ -10,7 +10,7 @@
 <header class="dashboard-intro movements-intro">
     <div class="dashboard-intro-copy">
         <h1 class="h2 fw-bold">Movimentos</h1>
-        <p class="text-secondary mb-0">Consulta e gere as tuas despesas e receitas.</p>
+        
     </div>
 </header>
 
@@ -149,7 +149,7 @@
                                             @endif
                                         </select>
                                         @if ($accounts->isEmpty())
-                                            <div class="form-text text-warning mb-3">Cria uma conta e configura o saldo inicial em <a href="{{ route('financial.accounts.page') }}">Contas</a> antes de registar.</div>
+                                            <div class="form-text text-warning mb-3"><a href="{{ route('financial.accounts.page') }}">Criar conta</a></div>
                                         @endif
                                         <div id="movementPaymentMethodField">
                                             <label for="dashboardActualPaymentMethod" class="form-label fw-semibold">Método de pagamento</label>
@@ -169,7 +169,7 @@
                                         <div class="accordion-item border rounded-3">
                                             <h3 class="accordion-header" id="dashboardAdditionalDetailsHeading">
                                                 <button class="accordion-button collapsed py-3" type="button" data-bs-toggle="collapse" data-bs-target="#dashboardAdditionalDetailsPanel" aria-expanded="false" aria-controls="dashboardAdditionalDetailsPanel">
-                                                    <span><strong>Adicionar detalhes</strong><small class="d-block text-secondary fw-normal">Vencimento, repetição, prestações e notas</small></span>
+                                                    <span><strong>Adicionar detalhes</strong></span>
                                                 </button>
                                             </h3>
                                             <div id="dashboardAdditionalDetailsPanel" class="accordion-collapse collapse" aria-labelledby="dashboardAdditionalDetailsHeading" data-bs-parent="#dashboardAdditionalDetails">
@@ -383,10 +383,10 @@
                             <div class="empty-icon mb-3" aria-hidden="true">◎</div>
                             @if ($totalVisivel > 0)
                                 <h3 class="h6">Mais movimentos por carregar</h3>
-                                <p class="small text-secondary mb-0">Não há movimentos deste tipo nesta primeira página. Carrega mais para continuar.</p>
+                                <p class="small text-secondary mb-0">Sem movimentos nesta página.</p>
                             @else
                                 <h3 class="h6">Ainda não existem movimentos</h3>
-                                <p class="small text-secondary mb-0">Adiciona uma despesa ou receita para começar.</p>
+                                
                             @endif
                         </div>
                     @endforelse
