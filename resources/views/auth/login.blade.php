@@ -21,7 +21,7 @@
         <div class="mb-3 d-none" id="signupNameGroup">
             <label for="signupName" class="form-label">Nome completo</label>
             <input type="text" class="form-control form-control-lg" id="signupName" name="name"
-                   value="{{ old('name') }}" placeholder="Ex.: Maria Silva" autocomplete="name"
+                   value="{{ old('name') }}" placeholder="Nome completo" autocomplete="name"
                    maxlength="80">
         </div>
 
@@ -38,14 +38,14 @@
         <div class="mb-4">
             <label for="loginEmail" class="form-label">Email</label>
             <input type="email" class="form-control form-control-lg" id="loginEmail" name="email"
-                   value="{{ old('email') }}" placeholder="Introduz o teu endereço de email"
+                   value="{{ old('email') }}" placeholder="Email"
                    autocomplete="username" required>
         </div>
 
         <div class="mb-4">
             <label for="loginPassword" class="form-label">Senha</label>
             <input type="password" class="form-control form-control-lg" id="loginPassword" name="password"
-                   placeholder="Introduz a tua palavra-passe" autocomplete="current-password"
+                   placeholder="Palavra-passe" autocomplete="current-password"
                    minlength="6" required>
         </div>
 
