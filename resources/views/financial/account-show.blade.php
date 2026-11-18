@@ -209,6 +209,10 @@ document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', as
         text-align:right;
     }
 
+    .account-movement-item > :last-child:not(:has(> a)) > form {
+        grid-column:2;
+    }
+
     .account-movement-item > :last-child > .btn,
     .account-movement-item > :last-child > form {
         display:flex;
