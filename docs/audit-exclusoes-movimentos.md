@@ -398,7 +398,7 @@ Foi criado `App\Services\Financial\FinancialDeletionService` como orquestrador d
 - `deletion_operation_items`: entidades abrangidas, ação aplicada e snapshots antes/depois.
 - Movimentos mantidos como registos canónicos com estado `void`; não são removidos fisicamente.
 - Histórico `historico_movimentos` preservado e complementado com a auditoria da operação.
-- Corrigida a lacuna de esquema detetada no CI MySQL: a migration existente `2026_11_13_150000_add_credit_card_billing_settings.php` já cria `closing_day`, `due_day` e `credit_limit`; a nova migration `2026_11_12_190150_add_credit_card_fields_to_contas_financeiras.php` acrescenta apenas `opening_debt_amount` e `opening_debt_paid`, que faltavam no esquema.
+- O teste de concorrência usa `RefreshDatabase` em vez de `DatabaseMigrations`: a segunda trait fazia rollback de todas as migrations no teardown da classe, contaminando os testes seguintes e provocando falsos erros de colunas ausentes no MySQL. Os fixtures são commitados para ficarem visíveis à segunda sessão e removidos explicitamente no `finally`.
 
 Integrações já alteradas:
 
