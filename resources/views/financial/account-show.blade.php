@@ -180,8 +180,51 @@ document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', as
 .movement-transfer-route.is-incoming .movement-transfer-direction { background:rgba(25,135,84,.1); color:var(--bs-success); }
 @media (max-width:640px) {
     .account-history-balance { text-align:left; }
-    .account-movement-item { align-items:flex-start !important; flex-wrap:wrap; }
-    .account-movement-item > :last-child { width:100%; justify-content:flex-end; }
+
+    .account-movement-item {
+        display:grid !important;
+        grid-template-columns:minmax(0,1fr) auto;
+        align-items:center !important;
+        gap:.5rem !important;
+        flex-wrap:nowrap !important;
+    }
+
+    .account-movement-item > :first-child {
+        min-width:0 !important;
+        gap:.55rem !important;
+    }
+
+    .account-movement-item > :last-child {
+        display:grid !important;
+        grid-template-columns:repeat(2,2.5rem);
+        align-items:center;
+        justify-items:end;
+        gap:.35rem !important;
+        width:auto !important;
+        min-width:max-content;
+    }
+
+    .account-movement-item > :last-child > :first-child {
+        grid-column:1 / -1;
+        text-align:right;
+    }
+
+    .account-movement-item > :last-child > .btn,
+    .account-movement-item > :last-child > form {
+        display:flex;
+        width:2.5rem !important;
+        margin:0 !important;
+    }
+
+    .account-movement-item > :last-child .btn {
+        display:inline-flex;
+        width:2.5rem;
+        min-width:2.5rem;
+        height:2.5rem;
+        min-height:2.5rem;
+        align-items:center;
+        justify-content:center;
+    }
 }
 </style>
 @endpush
