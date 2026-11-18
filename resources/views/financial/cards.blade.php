@@ -176,21 +176,21 @@
         }catch(error){feedback.className='alert alert-danger';feedback.textContent=error.message;button.disabled=false;}
     }));
     document.querySelectorAll('.js-reopen-card').forEach(button=>button.addEventListener('click',async()=>{
-        if(!window.confirm('Reabrir o cartão '+button.dataset.name+'? O limite, a dívida e o histórico serão preservados.'))return;
+        if(!window.confirm('Reabrir cartão? Limite, dívida e histórico preservados.'))return;
         button.disabled=true;
         try{const response=await fetch(button.dataset.url,{method:'POST',credentials:'same-origin',headers,body:JSON.stringify({})});const result=await response.json().catch(()=>({}));
             if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível reabrir o cartão.');window.location.reload();
         }catch(error){feedback.className='alert alert-danger';feedback.textContent=error.message;button.disabled=false;}
     }));
     document.querySelectorAll('.js-delete-card').forEach(button=>button.addEventListener('click',async()=>{
-        if(!window.confirm('Excluir definitivamente '+button.dataset.name+'? Esta ação não pode ser desfeita.'))return;
+        if(!window.confirm('Excluir definitivamente? Ação irreversível.'))return;
         button.disabled=true;
         try{const response=await fetch(button.dataset.url,{method:'DELETE',credentials:'same-origin',headers});const result=await response.json().catch(()=>({}));
             if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível excluir o cartão.');window.location.reload();
         }catch(error){feedback.className='alert alert-danger';feedback.textContent=error.message;feedback.classList.remove('d-none');button.disabled=false;}
     }));
     document.querySelectorAll('.js-close-card').forEach(button=>button.addEventListener('click',async()=>{
-        if(!window.confirm('Encerrar o cartão '+button.dataset.name+'? O histórico será preservado.'))return;button.disabled=true;
+        if(!window.confirm('Encerrar cartão? Histórico preservado.'))return;button.disabled=true;
         try{const response=await fetch(button.dataset.closeUrl,{method:'POST',credentials:'same-origin',headers,body:JSON.stringify({})});const result=await response.json().catch(()=>({}));
             if(!response.ok)throw new Error(result.message||'Não foi possível encerrar o cartão.');window.location.reload();
         }catch(error){feedback.className='alert alert-danger';feedback.textContent=error.message;button.disabled=false;}
