@@ -125,6 +125,32 @@ class FinancialCoreServiceTest extends TestCase
         ]);
     }
 
+    public function test_card_invoice_payment_respects_source_account_overdraft_permission(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->account($user, 'Conta principal', '10.00');
+        $card = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Visa', 'type' => 'credit_card', 'opening_debt_amount' => '0.00',
+            'opening_balance_date' => '2026-11-01', 'closing_day' => 25, 'due_day' => 5,
+            'credit_limit' => '500.00',
+        ]);
+
+        $this->actingAs($user)->postJson('/api/financial/cards/purchases', [
+            'account_id' => $card->id, 'description' => 'Compra', 'amount' => '60.00',
+            'movement_date' => '2026-11-12',
+        ])->assertCreated();
+
+        $invoice = $user->faturas()->firstOrFail();
+        $this->postJson('/api/financial/invoices/'.$invoice->id.'/pay', [
+            'account_id' => $bank->id, 'amount' => '60.00', 'payment_date' => '2026-12-01',
+        ])->assertUnprocessable();
+
+        $this->assertSame('10.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+        $this->assertSame('-60.00', app(AccountBalanceService::class)->balance($card->fresh()));
+        $this->assertSame('open', $invoice->fresh()->status);
+        $this->assertSame(0, $invoice->movimentos()->where('type', 'transfer')->count());
+    }
+
     public function test_installment_commitment_splits_cents_and_supports_partial_payment(): void
     {
         $user = User::factory()->create();
@@ -347,6 +373,16 @@ class FinancialCoreServiceTest extends TestCase
             'legacy_type' => 'despesa', 'legacy_id' => 'legacy-expense-1',
             'is_historical' => false, 'requires_account_assignment' => true,
         ]);
+
+        try {
+            app(FinancialMovementService::class)->create($user, [
+                'type' => 'expense', 'description' => 'Compra direta inválida', 'amount' => '5.00',
+                'movement_date' => '2026-11-12', 'source_account_id' => $card->id,
+            ]);
+            $this->fail('Uma compra no cartão não pode contornar o serviço de faturação.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('type', $exception->errors());
+        }
 
         try {
             app(FinancialMovementService::class)->assignLegacyAccount($user, $legacy, $card->id);
