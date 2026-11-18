@@ -102,6 +102,9 @@ class FinancialDeletionConcurrencyTest extends TestCase
                 $primary->rollBack();
             }
             if ($fixturesCommitted) {
+                DB::table('historico_movimentos')->where('user_id', $user->id)->delete();
+                DB::table('movimentos')->where('user_id', $user->id)->delete();
+                DB::table('contas_financeiras')->where('user_id', $user->id)->delete();
                 DB::table('users')->where('id', $user->id)->delete();
             }
             if ($secondary !== null) {
