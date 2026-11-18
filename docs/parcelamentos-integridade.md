@@ -32,14 +32,28 @@ Para limitar a um utilizador:
 php artisan financial:check-commitments --user=<UUID>
 ```
 
-A auditoria é estritamente de leitura. Identifica:
+Por omissão, a auditoria é estritamente de leitura. Identifica:
 - movimentos ligados a compromissos inexistentes;
 - movimentos ligados a prestações inexistentes;
 - divergência entre o compromisso do movimento e o compromisso da prestação;
 - movimentos ainda associados a compromissos arquivados ou eliminados;
 - movimentos associados a compromissos ou prestações cancelados.
 
-O comando não altera dados. Relações órfãs ou divergentes exigem reconciliação transacional com base nos registos de pagamento e no histórico de auditoria. Não se deve limpar `debt_id` ou `installment_id` por SQL direto, nem eliminar movimentos liquidados para contornar a validação.
+Para corrigir apenas relações que possam ser provadas pela prestação, executar:
+
+```bash
+php artisan financial:check-commitments --user=<UUID> --repair-safe-links
+```
+
+Este modo só atualiza `movimentos.debt_id` quando:
+- a prestação indicada por `installment_id` existe para o mesmo utilizador;
+- o compromisso proprietário dessa prestação existe para o mesmo utilizador;
+- o movimento ainda não está anulado;
+- o valor atual de `debt_id` está vazio ou diverge do compromisso proprietário da prestação.
+
+Cada correção é executada numa transação com locks e registada em `financial_integrity_corrections`, com os valores anteriores e posteriores. Montantes, estados, pagamentos e `installment_id` não são alterados.
+
+Relações sem prestação identificável, prestações inexistentes ou compromissos proprietários inexistentes continuam apenas reportados; não são corrigidos por inferência. Não se deve limpar `debt_id` ou `installment_id` por SQL direto, nem eliminar movimentos liquidados para contornar a validação.
 
 ## Limite operacional
 
