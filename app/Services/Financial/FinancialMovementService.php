@@ -174,8 +174,13 @@ class FinancialMovementService
     public function payCardInvoice(User $user, Fatura $invoice, string $sourceAccountId, string $date, ?string $requestedAmount = null, ?array $allocation = null): Movimento
     {
         return DB::transaction(function () use ($user, $invoice, $sourceAccountId, $date, $requestedAmount, $allocation): Movimento {
+            // A ordem global nas operações de cartão é cartão -> fatura -> conta de origem.
+            $invoiceSnapshot = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->firstOrFail();
+            $card = $user->contasFinanceiras()->whereKey($invoiceSnapshot->account_id)->lockForUpdate()->firstOrFail();
             $locked = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
-            $card = $user->contasFinanceiras()->whereKey($locked->account_id)->lockForUpdate()->firstOrFail();
+            if ($locked->account_id !== $card->id) {
+                throw ValidationException::withMessages(['invoice' => 'O cartão associado à fatura foi alterado. Atualiza a página e tenta novamente.']);
+            }
             $source = $user->contasFinanceiras()->whereKey($sourceAccountId)->lockForUpdate()->firstOrFail();
 
             if ($source->id === $card->id || ! in_array($source->type, ['bank', 'cash'], true) || ! $source->is_operational || $source->status !== 'active') {
