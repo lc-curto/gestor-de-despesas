@@ -3,15 +3,114 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Services\Financial\FinancialAccountService;
 use App\Services\Financial\FinancialMovementService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class FinancialDeletionConcurrencyTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_two_mysql_sessions_cannot_spend_the_same_available_balance(): void
+    {
+        $primaryName = config('database.default');
+        $primary = DB::connection($primaryName);
+
+        if ($primary->getDriverName() !== 'mysql') {
+            $this->markTestSkipped('Este teste exige MySQL/InnoDB e duas ligações independentes.');
+        }
+
+        $user = User::factory()->create();
+        $account = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Conta concorrente',
+            'type' => 'bank',
+            'opening_balance' => '10.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+
+        $fixturesCommitted = false;
+        $secondary = null;
+
+        try {
+            $primary->commit();
+            $fixturesCommitted = true;
+
+            config(['database.connections.concurrent' => config('database.connections.'.$primaryName)]);
+            DB::purge('concurrent');
+            $secondary = DB::connection('concurrent');
+            $this->assertNotSame($primary->getPdo(), $secondary->getPdo());
+
+            // A primeira operação gasta 7 EUR e mantém o lock até ao commit externo.
+            $primary->beginTransaction();
+            app(FinancialMovementService::class)->create($user, [
+                'type' => 'expense',
+                'description' => 'Primeiro débito concorrente',
+                'amount' => '7.00',
+                'movement_date' => '2026-11-18',
+                'source_account_id' => $account->id,
+            ]);
+
+            $secondary->beginTransaction();
+            $lockFailure = null;
+            try {
+                $secondary->select(
+                    'SELECT id FROM contas_financeiras WHERE user_id = ? AND id = ? FOR UPDATE NOWAIT',
+                    [$user->id, $account->id]
+                );
+            } catch (QueryException $exception) {
+                $lockFailure = $exception;
+            } finally {
+                if ($secondary->transactionLevel() > 0) {
+                    $secondary->rollBack();
+                }
+            }
+
+            $this->assertNotNull($lockFailure, 'A segunda sessão não deve adquirir a conta enquanto o primeiro débito está por confirmar.');
+            $this->assertStringContainsString('3572', $lockFailure->getMessage());
+            $primary->commit();
+
+            // Depois do primeiro commit, a segunda sessão lê saldo 3 EUR e rejeita
+            // o segundo débito de 7 EUR, em vez de gastar o mesmo saldo novamente.
+            config(['database.default' => 'concurrent']);
+            try {
+                app(FinancialMovementService::class)->create($user, [
+                    'type' => 'expense',
+                    'description' => 'Segundo débito concorrente',
+                    'amount' => '7.00',
+                    'movement_date' => '2026-11-18',
+                    'source_account_id' => $account->id,
+                ]);
+                $this->fail('O segundo débito devia ser rejeitado depois de o saldo cair para 3 EUR.');
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey('amount', $exception->errors());
+            }
+            config(['database.default' => $primaryName]);
+
+            $this->assertSame('3.00', app(\App\Services\Financial\AccountBalanceService::class)->balance($account->fresh()));
+            $this->assertDatabaseCount('historico_movimentos', 1);
+        } finally {
+            config(['database.default' => $primaryName]);
+
+            if ($secondary !== null && $secondary->transactionLevel() > 0) {
+                $secondary->rollBack();
+            }
+            if ($primary->transactionLevel() > 0) {
+                $primary->rollBack();
+            }
+            if ($fixturesCommitted) {
+                DB::table('users')->where('id', $user->id)->delete();
+            }
+            if ($secondary !== null) {
+                DB::disconnect('concurrent');
+                DB::purge('concurrent');
+            }
+            config(['database.connections.concurrent' => null]);
+        }
+    }
 
     public function test_two_mysql_sessions_serialize_the_same_movement_deletion(): void
     {
