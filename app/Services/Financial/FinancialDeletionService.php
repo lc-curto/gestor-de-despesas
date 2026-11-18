@@ -188,9 +188,34 @@ class FinancialDeletionService
                 }
             }
 
-            // O agregado é bloqueado antes do evento, depois dos locks da fatura
-            // quando aplicável. Isto serializa exclusões concorrentes de pagamentos.
-            $parent = $snapshot->settles_movement_id
+            $parentSnapshot = $snapshot->settles_movement_id
+                ? Movimento::query()->where('user_id', $user->id)->whereKey($snapshot->settles_movement_id)->first()
+                : null;
+
+            // Em prestações, a ordem é dívida -> prestação -> obrigação -> evento,
+            // igual à liquidação e ao cancelamento do parcelamento.
+            if ($parentSnapshot?->installment_id) {
+                $installmentSnapshot = ParcelaDivida::query()
+                    ->where('user_id', $user->id)
+                    ->whereKey($parentSnapshot->installment_id)
+                    ->first();
+                if ($installmentSnapshot) {
+                    Divida::query()
+                        ->where('user_id', $user->id)
+                        ->whereKey($parentSnapshot->debt_id ?? $installmentSnapshot->debt_id)
+                        ->lockForUpdate()
+                        ->first();
+                    ParcelaDivida::query()
+                        ->where('user_id', $user->id)
+                        ->whereKey($parentSnapshot->installment_id)
+                        ->lockForUpdate()
+                        ->first();
+                }
+            }
+
+            // O agregado é bloqueado antes do evento, depois dos locks de fatura
+            // ou prestação quando aplicável. Isto serializa exclusões concorrentes.
+            $parent = $parentSnapshot
                 ? Movimento::query()->where('user_id', $user->id)->whereKey($snapshot->settles_movement_id)->lockForUpdate()->first()
                 : null;
 
