@@ -36,6 +36,8 @@ Com `allow_negative_balance = true`, o sistema permite que o resultado seja nega
 
 A validação ocorre no serviço financeiro, dentro da transação que regista o movimento. A conta debitada é bloqueada antes da leitura do saldo, para serializar débitos concorrentes. Operações que envolvem duas contas bloqueiam-nas por ordem determinística de identificador, evitando ciclos de lock em transferências opostas.
 
+Correções que anulam movimentos liquidados também verificam o efeito líquido da remoção sobre as contas bancárias e de dinheiro. Se a remoção de receitas, transferências recebidas ou ajustes de aumento deixar o saldo negativo sem autorização, a correção é bloqueada até o utilizador ativar a permissão.
+
 ## Desativação da permissão
 
 Não é possível desativar a permissão enquanto o saldo operacional atual for negativo. A regra considera o saldo total atual, não apenas o valor do saldo inicial. Depois de o saldo regressar a zero ou a um valor positivo, o utilizador pode desativar a permissão.
