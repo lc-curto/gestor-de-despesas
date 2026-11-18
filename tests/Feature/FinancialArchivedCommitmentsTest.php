@@ -36,6 +36,46 @@ class FinancialArchivedCommitmentsTest extends TestCase
             ->assertExitCode(0);
     }
 
+    public function test_safe_integrity_repair_restores_only_the_debt_link_confirmed_by_installment(): void
+    {
+        $user = User::factory()->create();
+        $debt = $this->createCommitment($user, null);
+        $installment = $debt->parcelas()->firstOrFail();
+
+        $movement = app(FinancialMovementService::class)->createPending($user, [
+            'type' => 'expense',
+            'description' => 'Previsão com relação incompleta',
+            'amount' => '30.00',
+            'movement_date' => today()->toDateString(),
+            'installment_id' => $installment->id,
+        ]);
+
+        $this->assertNull(DB::table('movimentos')->where('id', $movement->id)->value('debt_id'));
+
+        $this->artisan('financial:check-commitments', [
+            '--user' => $user->id,
+            '--repair-safe-links' => true,
+        ])
+            ->expectsOutputToContain('1 ligações inequívocas corrigidas')
+            ->assertExitCode(0);
+
+        $this->assertDatabaseHas('movimentos', [
+            'id' => $movement->id,
+            'user_id' => $user->id,
+            'debt_id' => $debt->id,
+            'installment_id' => $installment->id,
+            'status' => 'pending',
+            'amount' => '30.00',
+        ]);
+
+        $this->assertDatabaseHas('financial_integrity_corrections', [
+            'user_id' => $user->id,
+            'entity_type' => 'Movimento',
+            'entity_id' => $movement->id,
+            'correction_type' => 'installment_parent_alignment',
+        ]);
+    }
+
     public function test_archived_commitments_are_recoverable_from_archived_and_all_tabs(): void
     {
         $user = User::factory()->create();
