@@ -706,7 +706,7 @@
         }
     });
     deleteButton.addEventListener('click', async () => {
-        if (!deleteActionUrl || !window.confirm('Eliminar compra? Previsões anuladas; pagamentos preservados. Histórico mantido. Inconsistências bloqueiam exclusão.')) return;
+        if (!deleteActionUrl || !window.confirm('Excluir compra? Pagamentos preservados; previsões anuladas.')) return;
         deleteButton.disabled = true;
         try {
             const response = await fetch(deleteActionUrl,{method:'DELETE',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({})});
