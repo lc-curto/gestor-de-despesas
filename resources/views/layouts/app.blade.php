@@ -161,7 +161,7 @@
     </div>
 
     <div class="modal fade" id="inactivityModal" tabindex="-1" aria-labelledby="inactivityModalTitle"
-        aria-describedby="inactivityModalDescription" aria-hidden="true"
+        aria-hidden="true"
         data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4">
