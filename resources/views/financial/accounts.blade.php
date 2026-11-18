@@ -123,7 +123,7 @@
                         <div class="col-sm-6">
                             <label for="openingBalance" class="form-label">Saldo inicial</label>
                             <input id="openingBalance" name="opening_balance" type="text" inputmode="decimal" class="form-control" min="-9999999999.99" max="9999999999.99" data-money="opening" value="0.00" required aria-describedby="openingBalanceHelp">
-                            <div class="form-text" id="openingBalanceHelp">Aceita 90,50, 1.000,00, inteiros e decimais com ponto. Um saldo inicial negativo ativa automaticamente a permissão de saldo negativo.</div>
+                            <div class="form-text" id="openingBalanceHelp">Ex.: 90,50 ou -90,50.</div>
                         </div>
                         <div class="col-sm-6">
                             <label for="openingBalanceDate" class="form-label">Data do saldo</label>
@@ -133,7 +133,7 @@
                     <div class="form-check mt-3">
                         <input class="form-check-input" type="checkbox" id="allowNegativeBalance" name="allow_negative_balance" value="1">
                         <label class="form-check-label" for="allowNegativeBalance">Permitir saldo negativo nesta conta</label>
-                        <div class="form-text">Desativado por padrão. Ativa apenas se quiseres permitir descoberto ou saldo negativo.</div>
+                        <div class="form-text">Permitir saldo negativo.</div>
                     </div>
                     <div class="account-form-feedback small text-danger mt-3" role="alert"></div>
                 </div>
@@ -161,8 +161,8 @@
                     <input type="hidden" name="description" value="Transferência entre contas">
                     <div class="mb-3">
                         <label for="transferAmount" class="form-label">Valor</label>
-                        <input id="transferAmount" name="amount" type="text" inputmode="decimal" class="form-control" min="0.01" max="9999999999.99" data-money="positive" required placeholder="0,00" aria-describedby="transferAmountHelp">
-                        <div class="form-text" id="transferAmountHelp">Usa vírgula decimal (90,50), agrupamento (1.000,00) ou ponto decimal (90.50).</div>
+                        <input id="transferAmount" name="amount" type="text" inputmode="decimal" class="form-control" min="0.01" max="9999999999.99" data-money="positive" required placeholder="0,00">
+                        
                     </div>
                     <div class="row g-3 mb-3">
                         <div class="col-6">
@@ -382,7 +382,7 @@
 
     document.querySelectorAll('.js-edit-credit-card').forEach((button) => button.addEventListener('click', () => { const form=document.getElementById('creditCardEditForm'); form.dataset.updateUrl=button.dataset.updateUrl; form.dataset.settingsUrl=button.dataset.settingsUrl; form.elements.name.value=button.dataset.name; form.elements.credit_limit.value=button.dataset.limit||''; form.elements.closing_day.value=button.dataset.closing||''; form.elements.due_day.value=button.dataset.due||''; document.getElementById('editCardUsed').textContent=Number(button.dataset.used||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; form.querySelector('.account-form-feedback').textContent=''; }));
     document.getElementById('creditCardEditForm')?.addEventListener('submit',async(event)=>{event.preventDefault();const form=event.currentTarget,submit=form.querySelector('[type="submit"]');submit.disabled=true;const headers={'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token};try{let response=await fetch(form.dataset.settingsUrl,{method:'PUT',credentials:'same-origin',headers,body:JSON.stringify({credit_limit:form.elements.credit_limit.value,closing_day:form.elements.closing_day.value,due_day:form.elements.due_day.value})});let result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível atualizar o cartão.');response=await fetch(form.dataset.updateUrl,{method:'PUT',credentials:'same-origin',headers,body:JSON.stringify({name:form.elements.name.value})});result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível atualizar o nome.');window.location.reload();}catch(error){form.querySelector('.account-form-feedback').textContent=error.message;submit.disabled=false;}});
-    document.querySelectorAll('.js-close-credit-card').forEach((button)=>button.addEventListener('click',async()=>{if(!window.confirm('Encerrar o cartão '+button.dataset.name+'? O histórico será preservado.'))return;button.disabled=true;try{const response=await fetch(button.dataset.closeUrl,{method:'POST',credentials:'same-origin',headers:{'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({})});const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.message||'Não foi possível encerrar o cartão.');window.location.reload();}catch(error){showFeedback(error.message,true);button.disabled=false;}}));
+    document.querySelectorAll('.js-close-credit-card').forEach((button)=>button.addEventListener('click',async()=>{if(!window.confirm('Encerrar cartão? Histórico preservado.'))return;button.disabled=true;try{const response=await fetch(button.dataset.closeUrl,{method:'POST',credentials:'same-origin',headers:{'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({})});const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.message||'Não foi possível encerrar o cartão.');window.location.reload();}catch(error){showFeedback(error.message,true);button.disabled=false;}}));
     document.querySelectorAll('.js-edit-account').forEach((button) => {
         button.addEventListener('click', () => {
             const form = document.getElementById('accountNameForm');

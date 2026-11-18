@@ -84,7 +84,7 @@
                             @if ($financialMovement?->requires_account_assignment)
                                 <span class="text-warning">· Conta por associar — usa Editar</span>
                             @elseif ($financialMovement?->is_historical && $financialMovement?->contaOrigem?->type === 'legacy' || $financialMovement?->is_historical && $financialMovement?->contaDestino?->type === 'legacy')
-                                <span class="text-secondary">· Histórico — associa uma conta em Editar</span>
+                                
                             @elseif ($financialMovement?->contaOrigem || $financialMovement?->contaDestino)
                                 <span>· {{ $financialMovement->contaOrigem?->name ?? $financialMovement->contaDestino?->name }}</span>
                             @endif

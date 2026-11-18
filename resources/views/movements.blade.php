@@ -10,7 +10,7 @@
 <header class="dashboard-intro movements-intro">
     <div class="dashboard-intro-copy">
         <h1 class="h2 fw-bold">Movimentos</h1>
-        <p class="text-secondary mb-0">Consulta e gere as tuas despesas e receitas.</p>
+        
     </div>
 </header>
 
@@ -81,10 +81,10 @@
                                     <div class="mb-3">
                                         <label for="movementAmount" class="form-label fw-semibold">Valor</label>
                                         <div class="input-group input-group-lg">
-                                            <input type="text" inputmode="decimal" class="form-control fw-semibold" id="movementAmount" name="amount" placeholder="0,00" aria-describedby="movementAmountHelp" value="{{ old('amount') }}" required>
+                                            <input type="text" inputmode="decimal" class="form-control fw-semibold" id="movementAmount" name="amount" placeholder="0,00" value="{{ old('amount') }}" required>
                                             <span class="input-group-text" id="amountCurrencySymbol">{{ $simbolos[$moeda] ?? $moeda }}</span>
                                         </div>
-                                        <div id="movementAmountHelp" class="form-text">Usa vírgula ou ponto para os cêntimos.</div>
+                                        
                                     </div>
 
                                     <div class="mb-3">
@@ -149,7 +149,7 @@
                                             @endif
                                         </select>
                                         @if ($accounts->isEmpty())
-                                            <div class="form-text text-warning mb-3">Cria uma conta e configura o saldo inicial em <a href="{{ route('financial.accounts.page') }}">Contas</a> antes de registar.</div>
+                                            <div class="form-text text-warning mb-3"><a href="{{ route('financial.accounts.page') }}">Criar conta</a></div>
                                         @endif
                                         <div id="movementPaymentMethodField">
                                             <label for="dashboardActualPaymentMethod" class="form-label fw-semibold">Método de pagamento</label>
@@ -169,7 +169,7 @@
                                         <div class="accordion-item border rounded-3">
                                             <h3 class="accordion-header" id="dashboardAdditionalDetailsHeading">
                                                 <button class="accordion-button collapsed py-3" type="button" data-bs-toggle="collapse" data-bs-target="#dashboardAdditionalDetailsPanel" aria-expanded="false" aria-controls="dashboardAdditionalDetailsPanel">
-                                                    <span><strong>Adicionar detalhes</strong><small class="d-block text-secondary fw-normal">Vencimento, repetição, prestações e notas</small></span>
+                                                    <span><strong>Adicionar detalhes</strong></span>
                                                 </button>
                                             </h3>
                                             <div id="dashboardAdditionalDetailsPanel" class="accordion-collapse collapse" aria-labelledby="dashboardAdditionalDetailsHeading" data-bs-parent="#dashboardAdditionalDetails">
@@ -383,10 +383,10 @@
                             <div class="empty-icon mb-3" aria-hidden="true">◎</div>
                             @if ($totalVisivel > 0)
                                 <h3 class="h6">Mais movimentos por carregar</h3>
-                                <p class="small text-secondary mb-0">Não há movimentos deste tipo nesta primeira página. Carrega mais para continuar.</p>
+                                <p class="small text-secondary mb-0">Sem movimentos nesta página.</p>
                             @else
                                 <h3 class="h6">Ainda não existem movimentos</h3>
-                                <p class="small text-secondary mb-0">Adiciona uma despesa ou receita para começar.</p>
+                                
                             @endif
                         </div>
                     @endforelse
@@ -457,18 +457,18 @@
                     <p class="text-secondary small mb-2" id="deleteMovementDescription"></p>
                     <p class="alert alert-info small py-2 mb-2" id="deleteMovementNote" hidden></p>
                     <div id="deleteSingleConfirmation" class="small text-secondary">
-                        O movimento será retirado dos cálculos financeiros. As dependências e os saldos serão atualizados na mesma operação, e o histórico de auditoria será preservado. Se a propagação não for segura, a exclusão será bloqueada.
+                        Saldos e dependências atualizados. Histórico preservado. Exclusão bloqueada se insegura.
                     </div>
                     <div id="deleteRecurringOptions" class="d-grid gap-2" hidden>
                         <label class="form-check border rounded-3 p-3 mb-0" for="deleteScopeOnly">
                             <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeOnly" value="only">
                             <span class="fw-semibold">Apenas este movimento</span>
-                            <span class="d-block small text-secondary">Anula apenas esta ocorrência e mantém as restantes.</span>
+                            <span class="d-block small text-secondary">Anula apenas esta ocorrência.</span>
                         </label>
                         <label class="form-check border rounded-3 p-3 mb-0" for="deleteScopeFuture">
                             <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeFuture" value="this_and_future">
                             <span class="fw-semibold">Este e os seguintes</span>
-                            <span class="d-block small text-secondary">Anula esta e as ocorrências futuras ainda não confirmadas.</span>
+                            <span class="d-block small text-secondary">Anula esta e futuras ocorrências pendentes.</span>
                         </label>
                     </div>
                 </div>

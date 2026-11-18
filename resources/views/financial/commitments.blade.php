@@ -5,7 +5,7 @@
 @section('content')
 <div class="app-content commitments-page">
     <header class="page-heading commitments-heading mb-4">
-        <div><h1 class="h2 fw-bold mb-1">Parcelamentos</h1><p class="text-secondary mb-0">Gestão de compras e prestações</p></div>
+        <div><h1 class="h2 fw-bold mb-1">Parcelamentos</h1></div>
     </header>
 
     <div id="commitmentFeedback" class="alert d-none" role="status" aria-live="polite"></div>
@@ -117,7 +117,7 @@
                                         data-installment-label="{{ $next->installment_number }}/{{ $partsTotal }}"
                                         data-remaining="{{ number_format($nextRemaining, 2, '.', '') }}">Pagar próxima prestação</button>
                                 @else
-                                    <p class="small text-secondary mb-0">Para pagar, adiciona primeiro uma conta bancária ou de dinheiro ativa em <a href="{{ route('financial.accounts.page') }}">Contas</a>.</p>
+                                    <p class="small text-secondary mb-0"><a href="{{ route('financial.accounts.page') }}">Criar conta</a></p>
                                 @endif
                             </div>
                         @endif
@@ -230,7 +230,7 @@
             @empty
                 <div class="commitment-empty-state">
                     <strong>Nenhuma compra encontrada.</strong>
-                    <span class="text-secondary small">Altera a pesquisa ou seleciona outro separador.</span>
+                    <span class="text-secondary small">Sem resultados.</span>
                 </div>
             @endforelse
         </div>
@@ -310,7 +310,7 @@
         <div class="modal-body">
             <label class="form-label" for="editCommitmentName">Nome da compra</label><input class="form-control mb-3" id="editCommitmentName" name="name" required maxlength="160">
             <label class="form-label" for="editCommitmentMerchant">Comerciante (opcional)</label><input class="form-control mb-3" id="editCommitmentMerchant" name="merchant" maxlength="160">
-            <p class="small text-secondary mb-0">Os valores e as datas das prestações são alterados em Renegociar, mantendo o histórico de pagamentos.</p>
+            
             <div id="editCommitmentError" class="small text-danger mt-2"></div>
         </div>
         <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
@@ -322,12 +322,12 @@
         <form id="renegotiateCommitmentForm">
             <div class="modal-header border-0"><div><h2 class="modal-title h5 fw-bold">Renegociar parcelamento</h2><small class="text-secondary" id="renegotiateCommitmentName"></small></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
             <div class="modal-body">
-                <p class="small text-secondary">Os pagamentos realizados serão preservados. Apenas as prestações futuras serão substituídas.</p>
+                
                 <label class="form-label" for="renegotiateRemaining">Saldo a renegociar (€)</label><input class="form-control mb-3" id="renegotiateRemaining" name="remaining_amount" type="number" min="0.01" step="0.01" required>
                 <label class="form-label" for="renegotiateCount">Número de novas prestações</label><input class="form-control mb-3" id="renegotiateCount" name="installments_count" type="number" min="1" max="120" required>
                 <label class="form-label" for="renegotiateFrequency">Frequência</label><select class="form-select mb-3" id="renegotiateFrequency" name="installment_frequency"><option value="monthly">Mensal</option><option value="biweekly">Quinzenal</option><option value="weekly">Semanal</option></select>
                 <label class="form-label" for="renegotiateDue">Vencimento da primeira nova prestação</label><input class="form-control" id="renegotiateDue" name="due_date" type="date" min="{{ today()->toDateString() }}" required>
-                <div class="commitment-renegotiation-preview mt-3 p-3 rounded-3 bg-body-tertiary"><small class="text-secondary d-block">Valor estimado por prestação</small><strong id="renegotiatePreview">—</strong><small class="text-secondary d-block mt-1" id="renegotiatePreviewNote">O último valor pode variar alguns cêntimos devido ao arredondamento.</small></div>
+                <div class="commitment-renegotiation-preview mt-3 p-3 rounded-3 bg-body-tertiary"><small class="text-secondary d-block">Valor por prestação</small><strong id="renegotiatePreview">—</strong><small class="text-secondary d-block mt-1" id="renegotiatePreviewNote"></small></div>
                 <div id="renegotiateCommitmentError" class="small text-danger mt-2" role="alert"></div>
             </div>
             <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button><button type="submit" class="btn btn-primary">Confirmar renegociação</button></div>
@@ -338,14 +338,14 @@
 <div class="modal fade" id="cancelCommitmentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered"><div class="modal-content rounded-4 border-0">
         <div class="modal-header border-0"><h2 class="modal-title h5 fw-bold">Cancelar compra</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
-        <div class="modal-body"><p id="cancelCommitmentMessage" class="mb-2"></p><p class="small text-secondary mb-0">As prestações futuras serão interrompidas. Pagamentos e movimentos já realizados serão preservados. O cancelamento não gera reembolso.</p><div id="cancelCommitmentError" class="small text-danger mt-2" role="alert"></div></div>
+        <div class="modal-body"><p id="cancelCommitmentMessage" class="mb-2"></p><p class="small text-secondary">Pagamentos anteriores não serão reembolsados.</p><div id="cancelCommitmentError" class="small text-danger mt-2" role="alert"></div></div>
         <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button><button type="button" class="btn btn-danger" id="confirmCancelCommitment">Confirmar cancelamento</button></div>
     </div></div>
 </div>
 <div class="modal fade" id="archiveCommitmentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered"><div class="modal-content rounded-4 border-0">
         <div class="modal-header border-0"><h2 class="modal-title h5 fw-bold">Arquivar compra</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
-        <div class="modal-body"><p id="archiveCommitmentMessage" class="mb-2"></p><p class="small text-secondary mb-0">A compra sai da lista principal. Os pagamentos, movimentos e histórico permanecem guardados.</p><div id="archiveCommitmentError" class="small text-danger mt-2" role="alert"></div></div>
+        <div class="modal-body"><p id="archiveCommitmentMessage" class="mb-2"></p><p class="small text-secondary">Histórico e pagamentos serão preservados.</p><div id="archiveCommitmentError" class="small text-danger mt-2" role="alert"></div></div>
         <div class="modal-footer border-0">
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button>
             <button type="button" class="btn btn-primary" id="confirmArchiveCommitment">Arquivar compra</button>
@@ -706,7 +706,7 @@
         }
     });
     deleteButton.addEventListener('click', async () => {
-        if (!deleteActionUrl || !window.confirm('Eliminar "' + archiveActionName + '"? As previsões pendentes/parciais serão anuladas. Os pagamentos realizados serão preservados como movimentos independentes. O histórico será mantido; se existirem dados inconsistentes ou dependências não reconciliadas, a operação será bloqueada.')) return;
+        if (!deleteActionUrl || !window.confirm('Eliminar compra? Previsões anuladas; pagamentos preservados. Histórico mantido. Inconsistências bloqueiam exclusão.')) return;
         deleteButton.disabled = true;
         try {
             const response = await fetch(deleteActionUrl,{method:'DELETE',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({})});

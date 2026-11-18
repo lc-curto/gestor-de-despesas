@@ -5,7 +5,7 @@
 @section('content')
     <p class="text-uppercase small fw-semibold text-primary mb-2 text-center">Meu Bolso</p>
     <h1 class="h3 fw-bold text-center mb-2">Nova palavra-passe</h1>
-    <p class="text-secondary text-center mb-4">Define uma nova palavra-passe para a tua conta.</p>
+    
 
     @if ($errors->any())
         <div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>

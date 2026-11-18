@@ -44,7 +44,7 @@
                 <div class="card border-0 p-4 text-center category-empty-state">
                     <i class="bi bi-tags fs-2 text-secondary mb-2" aria-hidden="true"></i>
                     <h2 class="h5">Ainda não existem categorias</h2>
-                    <p class="text-secondary mb-3">Cria a primeira categoria para organizar os teus movimentos.</p>
+                    
                     <div><button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#categoryModal" data-mode="create" data-type="{{ $type }}">Criar categoria</button></div>
                 </div>
             @else
@@ -91,7 +91,7 @@
                         </div>
                     @endforeach
                 </div>
-                <p class="category-no-results text-secondary text-center py-4 d-none">Nenhuma categoria corresponde à pesquisa.</p>
+                <p class="category-no-results text-secondary text-center py-4 d-none">Sem resultados.</p>
             @endif
         </section>
     @endforeach
@@ -105,7 +105,7 @@
                 <input type="hidden" name="_method" id="categoryMethod" value="POST">
                 <input type="hidden" name="category_id" id="categoryId" value="">
                 <div class="modal-header">
-                    <div><h2 class="modal-title h5 fw-bold" id="categoryModalTitle">Nova categoria</h2><p class="small text-secondary mb-0">Define como queres identificar esta categoria.</p></div>
+                    <div><h2 class="modal-title h5 fw-bold" id="categoryModalTitle">Nova categoria</h2></div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
                 <div class="modal-body">
@@ -126,7 +126,7 @@
                             <option value="variable">Variável</option>
                             <option value="fixed">Fixa</option>
                         </select>
-                        <small class="form-text text-secondary">As despesas desta categoria serão classificadas automaticamente com este comportamento.</small>
+                        
                     </div>
                     <div class="mb-3">
                         <label for="categoryIconSearch" class="form-label">Ícone</label>
@@ -136,7 +136,7 @@
                             <input type="search" class="form-control" id="categoryIconSearch" placeholder="Pesquisar ícone..." autocomplete="off">
                         </div>
                         <div class="category-icon-picker" id="categoryIconPicker" role="group" aria-label="Escolher ícone da categoria"></div>
-                        <small class="text-secondary">Escolhe um ícone para identificar visualmente esta categoria.</small>
+                        
                     </div>
                     <fieldset>
                         <legend class="form-label">Cor</legend>

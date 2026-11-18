@@ -5,7 +5,7 @@
 @section('content')
 <div class="app-content credit-cards-page">
     <header class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-        <div><h1 class="h2 fw-bold mb-1">Cartões</h1><p class="text-secondary mb-0">Gestão de crédito e utilização.</p></div>
+        <div><h1 class="h2 fw-bold mb-1">Cartões</h1></div>
         <div class="d-flex flex-wrap gap-2"><a href="{{ route('financial.invoices.page') }}" class="btn btn-outline-secondary"><i data-lucide="receipt" aria-hidden="true"></i><span class="ms-1">Faturas</span></a><button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#createCardModal"><i data-lucide="plus" aria-hidden="true"></i><span class="ms-1">Novo cartão</span></button></div>
     </header>
     <div id="cardsFeedback" class="alert d-none" role="status" aria-live="polite"></div>
@@ -36,7 +36,7 @@
                 <a href="{{ route('financial.accounts.show',$card->id) }}" class="btn btn-outline-secondary btn-sm w-100 mt-3">Ver cartão e movimentos</a>
             </article>
         @empty
-            <div class="card border-0 rounded-4 text-center p-4"><div class="card-body"><i data-lucide="credit-card" class="mb-3 text-secondary" style="width:32px;height:32px"></i><h2 class="h5">Ainda não tens cartões</h2><p class="text-secondary mb-3">Adiciona um cartão para acompanhar o limite utilizado e o crédito disponível.</p><button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCardModal">Adicionar cartão</button></div></div>
+            <div class="card border-0 rounded-4 text-center p-4"><div class="card-body"><i data-lucide="credit-card" class="mb-3 text-secondary" style="width:32px;height:32px"></i><h2 class="h5">Ainda não tens cartões</h2><button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCardModal">Adicionar cartão</button></div></div>
         @endforelse
     </section>
     @if($inactiveCards->isNotEmpty())
@@ -54,9 +54,9 @@
     <div class="modal-header border-0 pb-0"><h2 class="modal-title h5 fw-bold" id="createCardTitle">Novo cartão</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
     <div class="modal-body p-4">
         <label class="form-label" for="newCardName">Nome</label><input class="form-control mb-3" id="newCardName" name="name" maxlength="120" placeholder="Ex.: Novo Banco Crédito" required>
-        <label class="form-label" for="newCardLimit">Limite total (€)</label><input class="form-control" id="newCardLimit" name="credit_limit" type="text" inputmode="decimal" placeholder="1.000,00" aria-describedby="newCardLimitHelp" required>
-        <small class="text-secondary d-block mt-2 mb-3" id="newCardLimitHelp">Usa 1000, 1000,50 ou 1000.50. Com pontos de milhar, inclui a vírgula e os cêntimos: 1.000,00. Máximo: 9.999.999.999,99.</small>
-        <div class="rounded-3 p-3 bg-body-tertiary mb-3"><label class="form-label" for="newCardUsed">Limite já utilizado (€)</label><input class="form-control" id="newCardUsed" name="opening_debt_amount" type="text" inputmode="decimal" value="0,00" aria-describedby="newCardUsedHelp" required><small class="text-secondary d-block mt-2" id="newCardUsedHelp">Valor já consumido; não cria compras antigas. Usa 1000, 1000,50 ou 1000.50; com pontos de milhar, inclui a vírgula e os cêntimos: 1.000,00. Máximo: 9.999.999.999,99.</small></div>
+        <label class="form-label" for="newCardLimit">Limite total (€)</label><input class="form-control" id="newCardLimit" name="credit_limit" type="text" inputmode="decimal" placeholder="1.000,00" aria-describedby="newCardLimitHelp" required><small class="text-secondary d-block mt-1" id="newCardLimitHelp">Formato: 1.000,00.</small>
+        
+        <div class="rounded-3 p-3 bg-body-tertiary mb-3"><label class="form-label" for="newCardUsed">Limite já utilizado (€)</label><input class="form-control" id="newCardUsed" name="opening_debt_amount" type="text" inputmode="decimal" value="0,00" aria-describedby="newCardUsedHelp" required><small class="text-secondary d-block mt-1" id="newCardUsedHelp">Formato: 1.000,00.</small></div>
         <div class="row g-3"><div class="col-6"><label class="form-label" for="newCardClosing">Dia de fecho</label><input class="form-control" id="newCardClosing" name="closing_day" type="number" min="1" max="31" value="10" required></div><div class="col-6"><label class="form-label" for="newCardDue">Dia de vencimento</label><input class="form-control" id="newCardDue" name="due_day" type="number" min="1" max="31" value="1" required></div></div>
         <div class="small text-danger mt-3" id="createCardError" role="alert"></div>
     </div>
@@ -68,10 +68,10 @@
     <div class="modal-header border-0 pb-0"><h2 class="modal-title h5 fw-bold" id="editCardTitle">Editar cartão</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
     <div class="modal-body p-4">
         <label class="form-label" for="editCardName">Nome</label><input class="form-control mb-3" id="editCardName" name="name" maxlength="120" required>
-        <label class="form-label" for="editCardLimit">Limite total (€)</label><input class="form-control" id="editCardLimit" name="credit_limit" type="text" inputmode="decimal" aria-describedby="editCardLimitHelp" required>
-        <small class="text-secondary d-block mt-2 mb-3" id="editCardLimitHelp">Usa 1000, 1000,50 ou 1000.50. Com pontos de milhar, inclui a vírgula e os cêntimos: 1.000,00. Máximo: 9.999.999.999,99.</small>
+        <label class="form-label" for="editCardLimit">Limite total (€)</label><input class="form-control" id="editCardLimit" name="credit_limit" type="text" inputmode="decimal" aria-describedby="editCardLimitHelp" required><small class="text-secondary d-block mt-1" id="editCardLimitHelp">Formato: 1.000,00.</small>
+        
         <div class="row g-3"><div class="col-6"><label class="form-label" for="editCardClosing">Dia de fecho</label><input class="form-control" id="editCardClosing" name="closing_day" type="number" min="1" max="31" required></div><div class="col-6"><label class="form-label" for="editCardDue">Dia de vencimento</label><input class="form-control" id="editCardDue" name="due_day" type="number" min="1" max="31" required></div></div>
-        <div class="rounded-3 p-3 bg-body-tertiary mt-3"><label class="form-label" for="editCardOpeningDebt">Dívida inicial / limite já utilizado (€)</label><input class="form-control" id="editCardOpeningDebt" name="opening_debt_amount" type="text" inputmode="decimal" aria-describedby="editCardOpeningDebtHelp" required><small class="text-secondary d-block mt-2" id="editCardOpeningDebtHelp">Só pode ser corrigida enquanto o cartão ainda não tiver movimentos. Usa 1000, 1000,50 ou 1000.50; com pontos de milhar, inclui a vírgula e os cêntimos: 1.000,00. Máximo: 9.999.999.999,99.</small></div><div class="small text-danger mt-3" id="editCardError" role="alert"></div>
+        <div class="rounded-3 p-3 bg-body-tertiary mt-3"><label class="form-label" for="editCardOpeningDebt">Dívida inicial / limite já utilizado (€)</label><input class="form-control" id="editCardOpeningDebt" name="opening_debt_amount" type="text" inputmode="decimal" aria-describedby="editCardOpeningDebtHelp" required><small class="text-secondary d-block mt-1" id="editCardOpeningDebtHelp">Formato: 1.000,00.</small></div><div class="small text-danger mt-3" id="editCardError" role="alert"></div>
     </div>
     <div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" type="submit">Guardar alterações</button></div>
 </form></div></div></div>
@@ -176,21 +176,21 @@
         }catch(error){feedback.className='alert alert-danger';feedback.textContent=error.message;button.disabled=false;}
     }));
     document.querySelectorAll('.js-reopen-card').forEach(button=>button.addEventListener('click',async()=>{
-        if(!window.confirm('Reabrir o cartão '+button.dataset.name+'? O limite, a dívida e o histórico serão preservados.'))return;
+        if(!window.confirm('Reabrir cartão? Limite, dívida e histórico preservados.'))return;
         button.disabled=true;
         try{const response=await fetch(button.dataset.url,{method:'POST',credentials:'same-origin',headers,body:JSON.stringify({})});const result=await response.json().catch(()=>({}));
             if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível reabrir o cartão.');window.location.reload();
         }catch(error){feedback.className='alert alert-danger';feedback.textContent=error.message;button.disabled=false;}
     }));
     document.querySelectorAll('.js-delete-card').forEach(button=>button.addEventListener('click',async()=>{
-        if(!window.confirm('Excluir definitivamente '+button.dataset.name+'? Esta ação não pode ser desfeita.'))return;
+        if(!window.confirm('Excluir definitivamente? Ação irreversível.'))return;
         button.disabled=true;
         try{const response=await fetch(button.dataset.url,{method:'DELETE',credentials:'same-origin',headers});const result=await response.json().catch(()=>({}));
             if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível excluir o cartão.');window.location.reload();
         }catch(error){feedback.className='alert alert-danger';feedback.textContent=error.message;feedback.classList.remove('d-none');button.disabled=false;}
     }));
     document.querySelectorAll('.js-close-card').forEach(button=>button.addEventListener('click',async()=>{
-        if(!window.confirm('Encerrar o cartão '+button.dataset.name+'? O histórico será preservado.'))return;button.disabled=true;
+        if(!window.confirm('Encerrar cartão? Histórico preservado.'))return;button.disabled=true;
         try{const response=await fetch(button.dataset.closeUrl,{method:'POST',credentials:'same-origin',headers,body:JSON.stringify({})});const result=await response.json().catch(()=>({}));
             if(!response.ok)throw new Error(result.message||'Não foi possível encerrar o cartão.');window.location.reload();
         }catch(error){feedback.className='alert alert-danger';feedback.textContent=error.message;button.disabled=false;}
