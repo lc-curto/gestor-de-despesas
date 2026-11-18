@@ -331,3 +331,42 @@
         flex-basis: 100%;
     }
 }
+
+/* Histórico de movimentos: ações compactas, exclusivamente por ícone. */
+.app-main .history-list .expense-actions {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    align-items: flex-end !important;
+    gap: .45rem !important;
+}
+.app-main .history-list .expense-actions .btn-group {
+    display: inline-flex !important;
+    width: auto !important;
+    max-width: none !important;
+    flex: 0 0 auto !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: .35rem !important;
+}
+.app-main .history-list .expense-actions .btn-group > .btn {
+    display: inline-flex !important;
+    width: 2.5rem !important;
+    min-width: 2.5rem !important;
+    max-width: 2.5rem !important;
+    height: 2.5rem !important;
+    min-height: 2.5rem !important;
+    flex: 0 0 2.5rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: .35rem !important;
+    border-radius: .65rem !important;
+}
+.app-main .history-list .expense-actions .btn-group > .btn + .btn {
+    margin-left: 0 !important;
+}
+.app-main .history-list .expense-actions .btn-group > .btn svg {
+    width: 1.1rem;
+    height: 1.1rem;
+}
