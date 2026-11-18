@@ -281,6 +281,14 @@ class FinancialDeletionService
 
             $legacyPair = $lockedRows->except($locked->id)->values();
 
+            // Anular um crédito liquidado também reduz o saldo operacional.
+            // Bloqueia as contas afetadas antes de calcular o efeito líquido de
+            // todos os movimentos que serão anulados nesta operação.
+            $this->assertVoidingDoesNotOverdraw(
+                $user,
+                collect([$locked])->merge($children)->merge($legacyPair)->unique('id')->values()
+            );
+
             $operationId = $this->startOperation(
                 $user,
                 'movement',
@@ -1115,6 +1123,67 @@ class FinancialDeletionService
         $before = $legacy->getAttributes();
         $legacy->delete();
         $this->recordItem($user, $operationId, ucfirst($legacyType), $legacyId, 'hard_deleted', $before, null);
+    }
+
+    /**
+     * Garante que a remoção conjunta de movimentos liquidados não cria um
+     * saldo negativo numa conta sem autorização. Calcula o efeito líquido
+     * por conta, pois uma operação pode anular vários eventos relacionados.
+     */
+    private function assertVoidingDoesNotOverdraw(User $user, $movements): void
+    {
+        $netCredits = [];
+
+        foreach ($movements as $movement) {
+            if ($movement->status !== 'settled' || $movement->is_historical || $movement->is_settlement_parent) {
+                continue;
+            }
+
+            $amount = $this->balances->toCents((string) $movement->amount);
+            $creditAccountId = match ($movement->type) {
+                'income' => $movement->destination_account_id,
+                'transfer' => $movement->destination_account_id,
+                'adjustment' => $movement->adjustment_direction === 'increase' ? $movement->destination_account_id : null,
+                default => null,
+            };
+
+            if ($creditAccountId) {
+                $netCredits[$creditAccountId] = ($netCredits[$creditAccountId] ?? 0) + $amount;
+            }
+
+            if ($movement->type === 'transfer' && $movement->source_account_id) {
+                $netCredits[$movement->source_account_id] = ($netCredits[$movement->source_account_id] ?? 0) - $amount;
+            } elseif ($movement->type === 'expense' && $movement->source_account_id) {
+                $netCredits[$movement->source_account_id] = ($netCredits[$movement->source_account_id] ?? 0) - $amount;
+            } elseif ($movement->type === 'adjustment'
+                && $movement->adjustment_direction === 'decrease' && $movement->source_account_id) {
+                $netCredits[$movement->source_account_id] = ($netCredits[$movement->source_account_id] ?? 0) - $amount;
+            }
+        }
+
+        $debits = array_filter($netCredits, fn (int $netCredit): bool => $netCredit > 0);
+        if ($debits === []) {
+            return;
+        }
+
+        $accountIds = array_keys($debits);
+        sort($accountIds, SORT_STRING);
+        $accounts = ContaFinanceira::query()
+            ->where('user_id', $user->id)
+            ->whereIn('id', $accountIds)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+
+        foreach ($debits as $accountId => $amountCents) {
+            $account = $accounts->get($accountId);
+            if (! $account || ! in_array($account->type, ['bank', 'cash'], true) || $account->allow_negative_balance) {
+                continue;
+            }
+
+            $this->balances->assertCanDebit($account, number_format($amountCents / 100, 2, '.', ''));
+        }
     }
 
     private function voidMovement(
