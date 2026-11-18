@@ -646,11 +646,10 @@ body.sidebar-collapsed .account-avatar {
 @media (max-width: 380px) {
     .finance-page-heading { flex-direction: column; gap: .75rem; }
     .finance-create-button { align-self: flex-start; }
-    .finance-record-item { align-items: flex-start; }
+    .finance-record-item { align-items: center; }
     .finance-record-actions { flex-direction: column; align-items: flex-end; gap: .3rem; }
     .finance-record-amount { font-size: .76rem; }
 }
-
 
 /* DASHBOARD — hierarquia compacta do resumo central */
 @media (max-width: 767.98px) {
