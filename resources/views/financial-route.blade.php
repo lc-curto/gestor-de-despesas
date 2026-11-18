@@ -280,7 +280,7 @@
    document.getElementById('routeMovementNotes').textContent=item.notes||'—';
    document.getElementById('routeDetailError').textContent='';
    document.getElementById('routeEditMovement').disabled=!canEditMovement(item);
-   document.getElementById('routeEditHelp').textContent=item.type==='adjustment'?'Ajustes não editáveis. Elimina o movimento.':item.type==='transfer'?'Transferências não editáveis. Elimina e recria.':item.status==='settled'?'Liquidado: edição bloqueada. Elimina e recria.':!canEditMovement(item)?'Previsão gerada automaticamente. Gere em Faturas.':'';
+   document.getElementById('routeEditHelp').textContent=item.type==='adjustment'?'Ajustes não editáveis. Elimina o movimento.':item.type==='transfer'?'Transferências não editáveis. Elimina e recria.':item.status==='settled'?'Movimento liquidado. Edição bloqueada.':!canEditMovement(item)?'Previsão gerada automaticamente. Gere em Faturas.':'';
    const deleteButton=document.getElementById('routeDeleteMovement');
    deleteButton.textContent=item.recurrence_id?'Eliminar ocorrência':'Eliminar';
    detailModal.show();
@@ -289,7 +289,7 @@
  document.getElementById('routeDeleteMovement').addEventListener('click',()=>{
    const item=activeMovement;const recurring=!!item.recurrence_id;
    document.getElementById('routeConfirmTitle').textContent=recurring?'Eliminar ocorrência':'Confirmar exclusão';
-   document.getElementById('routeConfirmText').textContent='Saldos e dependências atualizados. Histórico preservado. Exclusão bloqueada se insegura.';
+   document.getElementById('routeConfirmText').textContent='Saldos atualizados. Histórico de auditoria será preservado. Exclusão bloqueada se insegura.';
    confirmCallback=async()=>{const endpoint=urls.remove+'/'+item.id;const response=await fetch(endpoint,{method:'DELETE',headers:{'Accept':'application/json','X-CSRF-TOKEN':csrf}});const json=await response.json();if(!response.ok)throw new Error(json.message||'Não foi possível concluir a operação.');window.location.reload()};
    detailModal.hide();confirmModal.show();
  });
