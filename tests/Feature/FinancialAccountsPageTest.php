@@ -120,6 +120,51 @@ class FinancialAccountsPageTest extends TestCase
         $this->assertSame('-25.00', app(\App\Services\Financial\AccountBalanceService::class)->balance($account));
     }
 
+    public function test_setting_a_negative_opening_balance_enables_permission_in_one_update(): void
+    {
+        $user = User::factory()->create();
+        $account = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Conta corrigível',
+            'type' => 'bank',
+            'opening_balance' => '0.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+
+        $updated = app(FinancialAccountService::class)->setOpeningBalance(
+            $user,
+            $account,
+            '-25.00',
+            '2026-11-01',
+            false
+        );
+
+        $this->assertTrue((bool) $updated->allow_negative_balance);
+        $this->assertSame('-25.00', app(\App\Services\Financial\AccountBalanceService::class)->balance($updated));
+    }
+
+    public function test_negative_opening_balance_cannot_be_disabled_even_after_current_balance_recovers(): void
+    {
+        $user = User::factory()->create();
+        $account = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Conta recuperada',
+            'type' => 'bank',
+            'opening_balance' => '-25.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+        app(FinancialMovementService::class)->create($user, [
+            'type' => 'income',
+            'description' => 'Reposição',
+            'amount' => '30.00',
+            'movement_date' => '2026-11-12',
+            'destination_account_id' => $account->id,
+        ]);
+
+        $this->assertSame('5.00', app(\App\Services\Financial\AccountBalanceService::class)->balance($account->fresh()));
+        $this->actingAs($user)->putJson('/api/financial/accounts/'.$account->id.'/settings', [
+            'allow_negative_balance' => false,
+        ])->assertUnprocessable();
+    }
+
     public function test_negative_balance_permission_cannot_be_disabled_for_negative_opening_balance(): void
     {
         $user = User::factory()->create();
