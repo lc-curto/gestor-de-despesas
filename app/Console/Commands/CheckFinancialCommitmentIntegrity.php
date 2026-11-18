@@ -73,9 +73,19 @@ class CheckFinancialCommitmentIntegrity extends Command
 
             foreach ($repairCandidates as $candidate) {
                 $repaired = DB::transaction(function () use ($candidate): bool {
-                    $movement = DB::table('movimentos')
+                    // Mantém a ordem de locks do agregado financeiro:
+                    // compromisso -> prestação -> movimento.
+                    $installmentSnapshot = DB::table('parcelas_divida')
                         ->where('user_id', $candidate->user_id)
-                        ->where('id', $candidate->id)
+                        ->where('id', $candidate->installment_id)
+                        ->first();
+                    if (! $installmentSnapshot) {
+                        return false;
+                    }
+
+                    $debt = DB::table('dividas')
+                        ->where('user_id', $candidate->user_id)
+                        ->where('id', $installmentSnapshot->debt_id)
                         ->lockForUpdate()
                         ->first();
                     $installment = DB::table('parcelas_divida')
@@ -83,19 +93,17 @@ class CheckFinancialCommitmentIntegrity extends Command
                         ->where('id', $candidate->installment_id)
                         ->lockForUpdate()
                         ->first();
-
-                    if (! $movement || ! $installment || $movement->status === 'void'
-                        || $movement->installment_id !== $installment->id) {
-                        return false;
-                    }
-
-                    $debt = DB::table('dividas')
+                    $movement = DB::table('movimentos')
                         ->where('user_id', $candidate->user_id)
-                        ->where('id', $installment->debt_id)
+                        ->where('id', $candidate->id)
                         ->lockForUpdate()
                         ->first();
 
-                    if (! $debt || $movement->debt_id === $debt->id) {
+                    if (! $debt || ! $installment || ! $movement
+                        || $installment->debt_id !== $debt->id
+                        || $movement->status === 'void'
+                        || $movement->installment_id !== $installment->id
+                        || $movement->debt_id === $debt->id) {
                         return false;
                     }
 
