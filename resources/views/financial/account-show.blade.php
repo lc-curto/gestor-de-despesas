@@ -185,77 +185,104 @@ document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', as
 
     .account-movement-item {
         display:grid !important;
-        grid-template-columns:minmax(0,1fr) minmax(6.5rem,auto);
+        grid-template-columns:minmax(0,1fr) 7.25rem !important;
         align-items:center !important;
-        gap:.55rem !important;
-        flex-wrap:nowrap !important;
+        gap:.5rem !important;
+        min-width:0 !important;
     }
 
     .account-movement-item > :first-child {
-        display:flex;
+        display:flex !important;
+        align-items:center;
         min-width:0 !important;
-        flex:1 1 auto;
-        gap:.55rem !important;
+        gap:.5rem !important;
     }
 
     .account-movement-item > :first-child > .min-w-0 {
         flex:1 1 auto;
-        min-width:0;
+        min-width:0 !important;
+        overflow:hidden;
     }
 
     .account-movement-item h3 {
+        display:-webkit-box;
+        overflow:hidden;
+        -webkit-box-orient:vertical;
+        -webkit-line-clamp:2;
         overflow-wrap:anywhere;
+        font-size:.84rem;
+        line-height:1.25;
+    }
+
+    .account-movement-item > :first-child p {
+        overflow:hidden;
+        text-overflow:ellipsis;
+        white-space:nowrap;
+        font-size:.72rem;
     }
 
     .account-movement-actions {
-        display:flex;
-        min-width:0;
-        flex-direction:column;
-        align-items:flex-end;
+        display:flex !important;
+        width:7.25rem !important;
+        min-width:7.25rem !important;
+        flex-direction:column !important;
+        align-items:flex-end !important;
         justify-content:center;
-        gap:.4rem;
+        gap:.35rem !important;
     }
 
     .account-movement-meta {
-        display:flex;
-        max-width:100%;
+        display:flex !important;
+        width:100%;
         flex-direction:column;
         align-items:flex-end;
-        gap:.1rem;
+        gap:.05rem;
         text-align:right;
     }
 
     .account-movement-meta .movement-value {
-        font-size:.82rem;
+        max-width:100%;
+        font-size:.78rem !important;
+        line-height:1.2;
+        white-space:nowrap;
+    }
+
+    .account-movement-meta .small {
+        font-size:.68rem;
+        line-height:1.2;
         white-space:nowrap;
     }
 
     .account-movement-buttons {
-        display:flex;
-        flex-direction:row;
-        flex-wrap:nowrap;
+        display:flex !important;
+        width:100%;
+        flex-direction:row !important;
+        flex-wrap:nowrap !important;
         align-items:center;
         justify-content:flex-end;
-        gap:.3rem;
+        gap:.3rem !important;
     }
 
     .account-movement-buttons form {
-        display:flex;
-        margin:0;
+        display:flex !important;
+        flex:0 0 auto;
+        margin:0 !important;
     }
 
     .account-movement-buttons .btn {
-        display:inline-flex;
-        width:2.25rem;
-        min-width:2.25rem;
-        max-width:2.25rem;
-        height:2.25rem;
-        min-height:2.25rem;
-        max-height:2.25rem;
-        flex:0 0 2.25rem;
+        display:inline-flex !important;
+        width:2.15rem !important;
+        min-width:2.15rem !important;
+        max-width:2.15rem !important;
+        height:2.15rem !important;
+        min-height:2.15rem !important;
+        max-height:2.15rem !important;
+        flex:0 0 2.15rem !important;
         align-items:center;
         justify-content:center;
-        padding:.25rem;
+        padding:.25rem !important;
     }
+
+    .account-movement-buttons svg { width:1rem; height:1rem; }
 }</style>
 @endpush
