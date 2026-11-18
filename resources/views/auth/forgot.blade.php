@@ -5,7 +5,7 @@
 @section('content')
     <p class="text-uppercase small fw-semibold text-primary mb-2 text-center">Meu Bolso</p>
     <h1 class="h3 fw-bold text-center mb-2">Recuperar acesso</h1>
-    <p class="text-secondary text-center mb-4">Enviaremos uma ligação para o email associado à tua conta.</p>
+    
 
     @if (session('status'))
         <div class="alert alert-success" role="status">{{ session('status') }}</div>
