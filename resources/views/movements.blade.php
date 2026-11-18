@@ -512,6 +512,27 @@
 @push('styles')
 
 <style>
+/* Ações do modal de exclusão: duas colunas equilibradas. */
+#deleteMovementModal .delete-movement-actions {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    align-items:stretch;
+    gap:.5rem;
+}
+#deleteMovementModal .delete-movement-actions > .btn {
+    display:inline-flex;
+    width:100%;
+    min-width:0;
+    min-height:2.75rem;
+    align-items:center;
+    justify-content:center;
+    padding:.55rem .65rem;
+    white-space:normal;
+}
+@media(max-width:360px) {
+    #deleteMovementModal .delete-movement-actions { gap:.35rem; }
+    #deleteMovementModal .delete-movement-actions > .btn { padding-inline:.35rem; font-size:.82rem; }
+}
 .movement-entry-dialog{max-width:560px}
 .movement-editor-card .card-body{padding:24px!important}
 .movement-editor-card .form-label{font-size:.875rem;font-weight:600}
