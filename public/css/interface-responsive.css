@@ -189,3 +189,145 @@
     align-items: center;
     justify-content: center;
 }
+
+/* Action layout v2 — explicit component patterns, not generic flex overrides. */
+.app-main .credit-cards-page > header {
+    align-items: center;
+    flex-wrap: wrap !important;
+}
+.app-main .credit-cards-page > header > div:last-child {
+    display: flex;
+    flex: 0 1 auto;
+    flex-wrap: nowrap !important;
+    gap: .5rem;
+}
+.app-main .credit-cards-page > header > div:last-child > .btn {
+    flex: 1 1 0;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+.app-main .accounts-rebuilt .accounts-header-v2 {
+    flex-wrap: nowrap;
+}
+.app-main .accounts-rebuilt .accounts-header-v2 > :last-child {
+    display: flex;
+    flex: 0 1 auto;
+    flex-wrap: nowrap !important;
+    gap: .5rem;
+}
+.app-main .accounts-rebuilt .accounts-header-v2 > :last-child > .btn {
+    flex: 1 1 0;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+.app-main .movements-type-filters {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .5rem !important;
+}
+.app-main .movements-type-filters > .btn {
+    display: inline-flex;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.app-main .history-list .expense-actions {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .5rem !important;
+}
+.app-main .history-list .expense-actions .btn-group {
+    display: inline-flex;
+    flex: 0 0 auto;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 0;
+}
+.app-main .history-list .expense-actions .btn-group > .btn {
+    display: inline-flex;
+    width: 2.5rem;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    flex: 0 0 2.5rem;
+    align-items: center;
+    justify-content: center;
+    padding: .35rem;
+}
+
+.app-main .movement-form-actions,
+.app-main .finance-form-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: .65rem !important;
+}
+.app-main .movement-form-actions > .btn,
+.app-main .finance-form-actions > .btn {
+    display: inline-flex;
+    flex: 1 1 0 !important;
+    width: auto;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    white-space: normal;
+}
+
+@media (max-width: 767.98px) {
+    .app-main .credit-cards-page > header {
+        align-items: center !important;
+    }
+    .app-main .credit-cards-page > header > div:last-child {
+        width: auto;
+        flex: 1 1 auto;
+        flex-wrap: nowrap !important;
+    }
+    .app-main .accounts-rebuilt .accounts-header-v2 {
+        align-items: center;
+        flex-direction: row;
+        gap: .65rem;
+    }
+    .app-main .accounts-rebuilt .accounts-header-v2 > :first-child {
+        flex: 0 1 auto;
+    }
+    .app-main .accounts-rebuilt .accounts-header-v2 > :last-child {
+        width: auto;
+        flex: 1 1 auto;
+    }
+    .app-main .accounts-rebuilt .accounts-header-v2 > :last-child > .btn {
+        flex: 1 1 0;
+        padding-inline: .65rem;
+    }
+    .app-main .movement-form-actions > .btn,
+    .app-main .finance-form-actions > .btn {
+        min-height: 2.75rem;
+        padding-inline: .55rem;
+    }
+}
+
+@media (max-width: 380px) {
+    .app-main .credit-cards-page > header {
+        align-items: stretch !important;
+    }
+    .app-main .credit-cards-page > header > div:last-child {
+        gap: .35rem;
+    }
+    .app-main .credit-cards-page > header > div:last-child > .btn {
+        padding-inline: .45rem;
+        font-size: .82rem;
+    }
+    .app-main .accounts-rebuilt .accounts-header-v2 {
+        align-items: stretch;
+        flex-wrap: wrap;
+    }
+    .app-main .accounts-rebuilt .accounts-header-v2 > :last-child {
+        flex-basis: 100%;
+    }
+}
