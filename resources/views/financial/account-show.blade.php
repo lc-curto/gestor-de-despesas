@@ -100,19 +100,21 @@
                                 @endif
                             </div>
                         </div>
-                        <div class="d-flex align-items-center justify-content-end gap-3">
-                            <div class="text-end">
+                        <div class="account-movement-actions">
+                            <div class="account-movement-meta">
                                 <strong class="{{ $isOutgoing ? 'text-danger' : 'text-success' }} text-nowrap movement-value">{{ $sign }}{{ number_format((float) $movement->amount, 2, ',', '.') }} {{ $movement->currency ?? $account->currency }}</strong>
-                                <span class="d-block small text-secondary">{{ $statusLabels[$movement->status] ?? $movement->status }}</span>
+                                <span class="small text-secondary">{{ $statusLabels[$movement->status] ?? $movement->status }}</span>
                             </div>
-                            @if ($editRoute)
-                                <a class="btn btn-outline-secondary btn-sm" href="{{ $editRoute }}" aria-label="Editar {{ $movement->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></a>
-                            @endif
-                            <form method="POST" action="{{ $deleteRoute }}" onsubmit="return confirm('Eliminar este movimento e atualizar todos os movimentos dependentes e saldos associados?')">
-                                @csrf
-                                @method('DELETE')
-                                <button class="btn btn-outline-danger btn-sm" type="submit" aria-label="Eliminar movimento" title="Eliminar movimento"><i data-lucide="trash-2" aria-hidden="true"></i></button>
-                            </form>
+                            <div class="account-movement-buttons">
+                                @if ($editRoute)
+                                    <a class="btn btn-outline-secondary btn-sm" href="{{ $editRoute }}" aria-label="Editar {{ $movement->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                                @endif
+                                <form method="POST" action="{{ $deleteRoute }}" onsubmit="return confirm('Eliminar este movimento e atualizar todos os movimentos dependentes e saldos associados?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button class="btn btn-outline-danger btn-sm" type="submit" aria-label="Eliminar movimento" title="Eliminar movimento"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                                </form>
+                            </div>
                         </div>
                     </article>
                 @empty
@@ -183,52 +185,77 @@ document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', as
 
     .account-movement-item {
         display:grid !important;
-        grid-template-columns:minmax(0,1fr) auto;
+        grid-template-columns:minmax(0,1fr) minmax(6.5rem,auto);
         align-items:center !important;
-        gap:.5rem !important;
+        gap:.55rem !important;
         flex-wrap:nowrap !important;
     }
 
     .account-movement-item > :first-child {
+        display:flex;
         min-width:0 !important;
+        flex:1 1 auto;
         gap:.55rem !important;
     }
 
-    .account-movement-item > :last-child {
-        display:grid !important;
-        grid-template-columns:repeat(2,2.5rem);
-        align-items:center;
-        justify-items:end;
-        gap:.35rem !important;
-        width:auto !important;
-        min-width:max-content;
+    .account-movement-item > :first-child > .min-w-0 {
+        flex:1 1 auto;
+        min-width:0;
     }
 
-    .account-movement-item > :last-child > :first-child {
-        grid-column:1 / -1;
+    .account-movement-item h3 {
+        overflow-wrap:anywhere;
+    }
+
+    .account-movement-actions {
+        display:flex;
+        min-width:0;
+        flex-direction:column;
+        align-items:flex-end;
+        justify-content:center;
+        gap:.4rem;
+    }
+
+    .account-movement-meta {
+        display:flex;
+        max-width:100%;
+        flex-direction:column;
+        align-items:flex-end;
+        gap:.1rem;
         text-align:right;
     }
 
-    .account-movement-item > :last-child:not(:has(> a)) > form {
-        grid-column:2;
+    .account-movement-meta .movement-value {
+        font-size:.82rem;
+        white-space:nowrap;
     }
 
-    .account-movement-item > :last-child > .btn,
-    .account-movement-item > :last-child > form {
+    .account-movement-buttons {
         display:flex;
-        width:2.5rem !important;
-        margin:0 !important;
+        flex-direction:row;
+        flex-wrap:nowrap;
+        align-items:center;
+        justify-content:flex-end;
+        gap:.3rem;
     }
 
-    .account-movement-item > :last-child .btn {
+    .account-movement-buttons form {
+        display:flex;
+        margin:0;
+    }
+
+    .account-movement-buttons .btn {
         display:inline-flex;
-        width:2.5rem;
-        min-width:2.5rem;
-        height:2.5rem;
-        min-height:2.5rem;
+        width:2.25rem;
+        min-width:2.25rem;
+        max-width:2.25rem;
+        height:2.25rem;
+        min-height:2.25rem;
+        max-height:2.25rem;
+        flex:0 0 2.25rem;
         align-items:center;
         justify-content:center;
+        padding:.25rem;
     }
-}
-</style>
+}</style>
 @endpush
