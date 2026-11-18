@@ -1,12 +1,12 @@
 <?php
 
-namespace Tests\\Feature;
+namespace Tests\Feature;
 
-use App\\Models\\User;
-use App\\Services\\Financial\\FinancialAccountService;
-use App\\Services\\Financial\\FinancialMovementService;
-use Illuminate\\Foundation\\Testing\\RefreshDatabase;
-use Tests\\TestCase;
+use App\Models\User;
+use App\Services\Financial\FinancialAccountService;
+use App\Services\Financial\FinancialMovementService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class NormalizeExistingOverdraftPermissionsMigrationTest extends TestCase
 {
@@ -75,15 +75,15 @@ class NormalizeExistingOverdraftPermissionsMigrationTest extends TestCase
         $migration->up();
 
         $this->assertFalse((bool) $positive->fresh()->allow_negative_balance);
-        $this->assertSame('60.00', app(\\App\\Services\\Financial\\AccountBalanceService::class)->balance($positive->fresh()));
+        $this->assertSame('60.00', app(\App\Services\Financial\AccountBalanceService::class)->balance($positive->fresh()));
 
         $this->assertTrue((bool) $negative->fresh()->allow_negative_balance);
-        $this->assertSame('-20.00', app(\\App\\Services\\Financial\\AccountBalanceService::class)->balance($negative->fresh()));
+        $this->assertSame('-20.00', app(\App\Services\Financial\AccountBalanceService::class)->balance($negative->fresh()));
 
         // O saldo atual é positivo, mas o saldo inicial negativo mantém a
         // permissão por causa da constraint e da regra de negócio existente.
         $this->assertTrue((bool) $recoveredNegativeOpening->fresh()->allow_negative_balance);
-        $this->assertSame('5.00', app(\\App\\Services\\Financial\\AccountBalanceService::class)->balance($recoveredNegativeOpening->fresh()));
+        $this->assertSame('5.00', app(\App\Services\Financial\AccountBalanceService::class)->balance($recoveredNegativeOpening->fresh()));
 
         // Cartões não pertencem ao âmbito desta migração.
         $this->assertTrue((bool) $card->fresh()->allow_negative_balance);
