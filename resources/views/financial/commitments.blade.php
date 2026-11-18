@@ -230,7 +230,7 @@
             @empty
                 <div class="commitment-empty-state">
                     <strong>Nenhuma compra encontrada.</strong>
-                    <span class="text-secondary small">Altera a pesquisa ou seleciona outro separador.</span>
+                    <span class="text-secondary small">Sem resultados.</span>
                 </div>
             @endforelse
         </div>
