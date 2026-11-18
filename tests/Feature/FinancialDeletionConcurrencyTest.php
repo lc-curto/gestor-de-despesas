@@ -95,6 +95,7 @@ class FinancialDeletionConcurrencyTest extends TestCase
         // A segunda sessão repete a exclusão após o commit: deve ser idempotente
         // e não criar uma segunda operação nem itens de auditoria.
         config(['database.default' => 'concurrent']);
+        $this->assertSame($secondary->getPdo(), DB::connection()->getPdo(), 'A repetição deve executar na segunda sessão MySQL.');
 
         try {
             $result = app(FinancialMovementService::class)->deleteAsCorrection(
