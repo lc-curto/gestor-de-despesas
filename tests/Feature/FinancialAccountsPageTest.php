@@ -106,6 +106,20 @@ class FinancialAccountsPageTest extends TestCase
         ]);
     }
 
+    public function test_negative_opening_balance_automatically_enables_overdraft_permission(): void
+    {
+        $user = User::factory()->create();
+        $account = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Conta com saldo inicial negativo',
+            'type' => 'bank',
+            'opening_balance' => '-25.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+
+        $this->assertTrue((bool) $account->allow_negative_balance);
+        $this->assertSame('-25.00', app(\App\Services\Financial\AccountBalanceService::class)->balance($account));
+    }
+
     public function test_negative_balance_permission_cannot_be_disabled_for_negative_opening_balance(): void
     {
         $user = User::factory()->create();
