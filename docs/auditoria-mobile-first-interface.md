@@ -33,13 +33,13 @@ Estilos e scripts de interface:
 2. Há regras repetidas e sobrescritas, especialmente no shell, contas, rota financeira e parcelamentos. Isso dificulta prever o resultado final em cada viewport.
 3. Alguns rodapés de modal e grupos de ações não permitem quebra de linha consistente. Em ecrãs estreitos, rótulos extensos podem comprimir os botões ou provocar desalinhamento.
 4. Existem botões com alturas e dimensões diferentes, sobretudo entre ações principais, ações secundárias e controlos compactos.
-5. A página de boas-vindas ainda utiliza classes e CSS compilado do Tailwind, ao contrário das restantes interfaces, que usam Bootstrap. Deve ser migrada para Bootstrap numa etapa própria, preservando o conteúdo e a composição.
+5. A página de boas-vindas era a única interface a carregar o template Tailwind do Laravel. Foi convertida para o layout de convidado Bootstrap e o plugin Tailwind foi removido do pipeline Vite. As dependências de desenvolvimento Tailwind ainda permanecem no package.json/package-lock e podem ser removidas numa limpeza posterior.
 6. A rota financeira aplica regras mobile genéricas a `.modal-dialog` no CSS da própria view. O escopo deve ser limitado aos modais dessa funcionalidade para não afetar componentes não relacionados.
 7. As views de contas, cartões, parcelamentos e movimentos têm regras mobile específicas; precisam ser verificadas em conjunto com os estilos globais para evitar regressões.
 
 ## Ajustes iniciais nesta branch
 
-- Criar uma camada responsiva partilhada, carregada depois do design system.
+- Criar uma camada responsiva partilhada, carregada depois do design system.\n- Converter a página de boas-vindas para o layout Bootstrap e retirar Tailwind do pipeline Vite.\n- Normalizar alvos de toque para ações iconográficas em listas e cartões.
 - Normalizar alinhamento, quebra e dimensões dos botões sem impor empilhamento universal.
 - Manter grupos de botões horizontais quando existe espaço e permitir quebra natural quando não existe.
 - Garantir que rodapés de modais e formulários não comprimem nem sobrepõem ações.
@@ -57,4 +57,4 @@ Estilos e scripts de interface:
 
 ## Estado
 
-Auditoria estática inicial concluída. A validação visual em dispositivos reais/emuladores e a revisão final de cada breakpoint continuam pendentes.
+Auditoria estática das 20 views concluída. Foram aplicados os primeiros ajustes globais e de escopo. A validação visual em dispositivos reais/emuladores, a revisão final de cada breakpoint e a execução dos testes continuam pendentes.
