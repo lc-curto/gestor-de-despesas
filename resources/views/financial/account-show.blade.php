@@ -36,7 +36,7 @@
     <section class="card border-0 shadow-sm rounded-4 mb-4">
         <div class="card-body p-3 p-sm-4">
             <h2 class="h5 fw-bold mb-1">Dívida anterior à aplicação</h2>
-            <p class="small text-secondary mb-3">Ainda por pagar: <strong>{{ number_format($openingDebtRemaining, 2, ',', '.') }} {{ $account->currency }}</strong>. Regista pagamentos sem criar compras históricas.</p>
+            <p class="small text-secondary mb-3">Por pagar: <strong>{{ number_format($openingDebtRemaining, 2, ',', '.') }} {{ $account->currency }}</strong></p>
             <form id="openingDebtPaymentForm" data-endpoint="{{ route('financial.cards.pay-opening-debt', $account->id) }}">
                 <div class="row g-2">
                     <div class="col-md-5"><label class="form-label" for="openingDebtPaymentAccount">Pagar a partir de</label><select id="openingDebtPaymentAccount" name="account_id" class="form-select" required><option value="">Selecionar conta</option>@foreach ($paymentAccounts as $paymentAccount)<option value="{{ $paymentAccount->id }}">{{ $paymentAccount->name }}</option>@endforeach</select></div>
@@ -56,7 +56,7 @@
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <div>
                         <h2 id="accountMovementsTitle" class="h5 fw-bold mb-1">Movimentos</h2>
-                        <p class="small text-secondary mb-0">Receitas, despesas e transferências desta conta.</p>
+                        
                     </div>
                     <span class="small text-secondary">{{ $movements->total() }} {{ $movements->total() === 1 ? 'movimento' : 'movimentos' }}</span>
                 </div>
@@ -119,7 +119,7 @@
                     <div class="empty-state text-center py-5">
                         <div class="empty-icon mb-3" aria-hidden="true">◎</div>
                         <h3 class="h6">Ainda não existem movimentos</h3>
-                        <p class="small text-secondary mb-0">Os lançamentos associados a esta conta aparecerão aqui.</p>
+                        
                     </div>
                 @endforelse
             </div>
