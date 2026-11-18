@@ -506,7 +506,7 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('55.50', app(AccountBalanceService::class)->balance($account));
     }
 
-    public function test_reversing_a_settlement_restores_the_original_pending_balance(): void
+    public function test_deleting_a_settlement_restores_the_original_pending_balance_without_inverse_event(): void
     {
         $user = User::factory()->create();
         $account = $this->account($user, 'Banco', '100.00');
@@ -520,14 +520,12 @@ class FinancialCoreServiceTest extends TestCase
         ]);
         $event = $original->settlements()->where('status', 'settled')->firstOrFail();
 
-        $service->reverse($user, $event, 'Pagamento efetuado por engano');
+        $service->deleteAsCorrection($user, $event, 'Pagamento efetuado por engano');
 
         $this->assertSame('pending', $original->fresh()->status);
         $this->assertSame('100.00', app(AccountBalanceService::class)->balance($account));
-        $this->assertDatabaseHas('movimentos', ['id' => $event->id, 'status' => 'settled']);
-        $this->assertDatabaseHas('movimentos', [
-            'reversal_of_id' => $event->id, 'settles_movement_id' => $original->id, 'status' => 'settled',
-        ]);
+        $this->assertDatabaseHas('movimentos', ['id' => $event->id, 'status' => 'void']);
+        $this->assertSame(0, $user->movimentos()->whereNotNull('reversal_of_id')->count());
     }
 
     public function test_financial_projection_counts_effective_payment_and_only_remaining_obligation(): void
@@ -559,7 +557,7 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame(-100.0, (float) $events->sum('projection_delta'));
     }
 
-    public function test_reversing_installment_settlement_restores_installment_and_forecast(): void
+    public function test_deleting_installment_settlement_restores_installment_and_forecast(): void
     {
         $user = User::factory()->create();
         $account = $this->account($user, 'Conta principal', '100.00');
@@ -581,7 +579,7 @@ class FinancialCoreServiceTest extends TestCase
 
         $forecast = $user->movimentos()->where('installment_id', $installment->id)->firstOrFail();
         $event = $forecast->settlements()->where('status', 'settled')->firstOrFail();
-        app(FinancialMovementService::class)->reverse($user, $event, 'Pagamento incorreto');
+        app(FinancialMovementService::class)->deleteAsCorrection($user, $event, 'Pagamento incorreto');
 
         $this->assertSame('0.00', (string) $installment->fresh()->paid_amount);
         $this->assertSame('pending', $installment->fresh()->status);
@@ -626,7 +624,7 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame(-60.0, (float) $items->sum('projection_delta'));
     }
 
-    public function test_invoice_payment_reversal_restores_the_due_balance_and_can_be_paid_again(): void
+    public function test_invoice_payment_deletion_restores_the_due_balance_and_can_be_paid_again(): void
     {
         $user = User::factory()->create();
         $bank = $this->account($user, 'Conta principal', '100.00');
@@ -644,7 +642,7 @@ class FinancialCoreServiceTest extends TestCase
             'account_id' => $bank->id, 'amount' => '20.00', 'payment_date' => '2026-12-01',
         ])->assertOk();
         $payment = $user->movimentos()->whereKey($response->json('data.id'))->firstOrFail();
-        $this->postJson('/api/financial/movements/'.$payment->id.'/reverse')->assertOk();
+        $this->deleteJson('/api/financial/movements/'.$payment->id)->assertOk();
 
         $parent = $invoice->movimentos()->where('is_settlement_parent', true)->firstOrFail();
         $this->assertSame('pending', $parent->fresh()->status);

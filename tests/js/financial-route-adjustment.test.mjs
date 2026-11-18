@@ -91,9 +91,9 @@ test('ajustes apresentam tipo, sinal, conta e detalhes corretos e não entram no
         assert.equal(h.el('routeMovementAccount').textContent, account);
         assert.equal(h.el('routeMovementDescription').textContent, description);
         assert.equal(h.el('routeMovementNotes').textContent, notes);
-        assert.equal(h.el('routeDeleteMovement').textContent, 'Estornar');
+        assert.equal(h.el('routeDeleteMovement').textContent, 'Eliminar');
         assert.equal(h.el('routeEditMovement').disabled, true);
-        assert.match(h.el('routeEditHelp').textContent, /estorná-lo/);
+        assert.match(h.el('routeEditHelp').textContent, /elimina o movimento/i);
         h.el('routeEditMovement').dispatchEvent(new h.window.MouseEvent('click', { bubbles: true }));
         assert.equal(h.modals.get('routeMovementModal').shown, 0, 'até um clique sintético não abre edição genérica');
     }
@@ -146,7 +146,7 @@ test('edição suportada mantém o tipo e o comportamento da receita ou despesa 
     }
 });
 
-test('edição de liquidado ou previsão virtual é bloqueada e estorno preserva mensagens de erro', async () => {
+test('edição de liquidado ou previsão virtual é bloqueada e exclusão preserva mensagens de erro', async () => {
     const h = setup();
     h.openItem('Entrada liquidada');
     assert.equal(h.el('routeEditMovement').disabled, true);
@@ -156,11 +156,11 @@ test('edição de liquidado ou previsão virtual é bloqueada e estorno preserva
     assert.match(h.el('routeEditHelp').textContent, /automaticamente/);
     h.openItem('Diminuição');
     h.el('routeDeleteMovement').click();
-    assert.equal(h.el('routeConfirmTitle').textContent, 'Confirmar estorno');
-    assert.match(h.el('routeConfirmText').textContent, /preservar o histórico/);
+    assert.equal(h.el('routeConfirmTitle').textContent, 'Confirmar exclusão');
+    assert.match(h.el('routeConfirmText').textContent, /histórico de auditoria será preservado/);
     h.el('routeConfirmAction').click();
     await flush();
-    assert.equal(h.requests[0].url, '/movements/minus/reverse');
-    assert.equal(h.requests[0].method, 'POST');
+    assert.equal(h.requests[0].url, '/movements/minus');
+    assert.equal(h.requests[0].method, 'DELETE');
     assert.equal(h.el('routeConfirmText').textContent, 'Operação não permitida');
 });

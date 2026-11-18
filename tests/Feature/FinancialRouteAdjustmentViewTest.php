@@ -67,7 +67,7 @@ class FinancialRouteAdjustmentViewTest extends TestCase
             'movement_date' => '2026-12-05', 'source_account_id' => $cash->id,
         ]);
         $payment = $service->payCardOpeningDebt($user, $card->id, $bank->id, '2026-12-05', '10.00');
-        $reversal = $service->reverse($user, $payment);
+        $service->deleteAsCorrection($user, $payment);
 
         $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
         $response = $this->actingAs($user)->get(route('financial.route', ['mes' => '2026-12', 'modo' => 1]));
@@ -82,7 +82,7 @@ class FinancialRouteAdjustmentViewTest extends TestCase
         $this->assertSame(1, preg_match('~<script type="application/json" id="route-day-2026-12-05">(.*?)</script>~s', $response->getContent(), $matches));
         $data = json_decode($matches[1], true, flags: JSON_THROW_ON_ERROR);
         $items = collect($data['items'])->keyBy('id');
-        $this->assertCount(7, $items);
+        $this->assertCount(5, $items);
         $this->assertEqualsWithDelta(150 + $day['cash_delta'], $data['balance'], 0.001);
 
         $this->assertSame('adjustment', $items[$increase->id]['type']);
@@ -97,14 +97,7 @@ class FinancialRouteAdjustmentViewTest extends TestCase
         $this->assertSame($cash->id, $items[$decrease->id]['account_id']);
         $this->assertSame('Carteira', $items[$decrease->id]['account_name']);
 
-        $this->assertSame('transfer', $items[$payment->id]['type']);
-        $this->assertEqualsWithDelta(-10.00, $items[$payment->id]['projection_delta'], 0.001);
-        $this->assertSame($bank->id, $items[$payment->id]['account_id']);
-        $this->assertSame('Conta principal', $items[$payment->id]['account_name']);
-        $this->assertSame('transfer', $items[$reversal->id]['type']);
-        $this->assertEqualsWithDelta(10.00, $items[$reversal->id]['projection_delta'], 0.001);
-        $this->assertSame($bank->id, $items[$reversal->id]['account_id']);
-        $this->assertSame('Conta principal', $items[$reversal->id]['account_name']);
+        $this->assertNull($items->get($payment->id));
 
         $this->assertSame('income', $items[$income->id]['type']);
         $this->assertEqualsWithDelta(30.10, $items[$income->id]['projection_delta'], 0.001);

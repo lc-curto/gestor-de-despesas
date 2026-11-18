@@ -70,7 +70,7 @@
                             @empty <p class="small text-secondary">Sem créditos registados.</p> @endforelse
                             <h3 class="h6 fw-semibold mt-3">Pagamentos</h3>
                             @forelse($invoice->pagamentos as $payment)
-                                <div class="invoice-line"><span>{{ $payment->reversal_of_id ? 'Estorno de pagamento' : 'Pagamento' }} <small class="text-secondary">{{ $payment->movement_date?->format('d/m/Y') }} · {{ $payment->contaOrigem?->name ?? 'Conta' }}</small></span><strong>{{ number_format((float)$payment->amount,2,',','.') }}</strong></div>
+                                <div class="invoice-line"><span>{{ $payment->reversal_of_id ? 'Correção de pagamento' : 'Pagamento' }} <small class="text-secondary">{{ $payment->movement_date?->format('d/m/Y') }} · {{ $payment->contaOrigem?->name ?? 'Conta' }}</small></span><strong>{{ number_format((float)$payment->amount,2,',','.') }}</strong></div>
                             @empty <p class="small text-secondary">Sem pagamentos registados.</p> @endforelse
                         </div>
                     </details>

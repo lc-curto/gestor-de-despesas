@@ -237,13 +237,7 @@ class FinancialCommitmentService
 
             $replaceableParts = $parts->where('status', 'pending')->values();
             foreach ($parts->whereIn('status', ['pending', 'partial']) as $part) {
-                Movimento::query()->where('user_id', $user->id)->where('debt_id', $locked->id)
-                    ->where('installment_id', $part->id)->where('status', 'pending')->get()
-                    ->each(fn (Movimento $forecast) => $this->movements->voidRenegotiatedCommitmentForecast($user, $locked, $forecast));
-                if ($part->status === 'partial') {
-                    // A prestação parcialmente paga permanece como registo histórico.
-                    $part->update(['status' => 'cancelled']);
-                }
+                app(FinancialDeletionService::class)->renegotiateCommitmentInstallment($user, $locked, $part);
             }
 
             $base = intdiv($remainingCents, $count);
@@ -315,38 +309,22 @@ class FinancialCommitmentService
         });
     }
 
-    public function deleteUnused(User $user, Divida $debt): void
+    public function delete(User $user, Divida $debt): void
     {
-        DB::transaction(function () use ($user, $debt): void {
-            $locked = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
-            $hasPayments = $locked->parcelas()->where('paid_amount', '>', 0)->exists()
-                || Movimento::query()->where('user_id', $user->id)->where('debt_id', $locked->id)->where('status', 'settled')->exists();
-            if ($hasPayments) {
-                throw ValidationException::withMessages(['commitment' => 'Esta compra já tem pagamentos registados. Arquiva ou cancela-a; não pode ser eliminada.']);
-            }
-            $locked->update(['status' => 'cancelled']);
-            $locked->parcelas()->whereIn('status', ['pending', 'partial'])->update(['status' => 'cancelled']);
-            Movimento::query()->where('user_id', $user->id)->where('debt_id', $locked->id)->where('status', 'pending')->get()
-                ->each(fn (Movimento $forecast) => $this->movements->voidCancelledCommitmentForecast($user, $locked, $forecast));
-            // Soft delete: preserve installments and renegotiation audit history.
-            $locked->delete();
-        });
+        app(FinancialDeletionService::class)->deleteCommitment(
+            $user,
+            $debt,
+            'Parcelamento eliminado pelo utilizador.'
+        );
     }
 
     public function cancel(User $user, Divida $debt): Divida
     {
-        return DB::transaction(function () use ($user, $debt): Divida {
-            $locked = Divida::query()->where('user_id', $user->id)->whereKey($debt->id)->lockForUpdate()->firstOrFail();
-            if (in_array($locked->status, ['cancelled', 'paid'], true)) {
-                throw ValidationException::withMessages(['commitment' => 'Este compromisso já está encerrado.']);
-            }
-            $locked->parcelas()->whereIn('status', ['pending', 'partial'])->update(['status' => 'cancelled']);
-            $locked->update(['status' => 'cancelled']);
-            Movimento::query()->where('user_id', $user->id)->where('debt_id', $locked->id)->where('status', 'pending')->get()
-                ->each(fn (Movimento $movement) => $this->movements->voidCancelledCommitmentForecast($user, $locked, $movement));
-
-            return $locked->refresh();
-        });
+        return app(FinancialDeletionService::class)->cancelCommitment(
+            $user,
+            $debt,
+            'Parcelamento cancelado pelo utilizador.'
+        );
     }
 
     public function payInstallment(User $user, Divida $debt, ParcelaDivida $installment, array $data): ParcelaDivida

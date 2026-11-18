@@ -329,7 +329,57 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->assertSame('190.00', app(AccountBalanceService::class)->balance($account->fresh()));
     }
 
-    public function test_archive_hides_purchase_and_delete_soft_deletes_only_without_payments(): void
+
+    public function test_renegotiating_partially_paid_installment_voids_old_forecast_and_detaches_real_payment(): void
+    {
+        $user = User::factory()->create();
+        $account = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Conta', 'type' => 'bank', 'opening_balance' => '200.00',
+        ]);
+        $debt = app(FinancialCommitmentService::class)->create($user, [
+            'name' => 'Computador', 'total_amount' => '120.00',
+            'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
+            'payment_condition' => 'installments', 'installments_count' => 12,
+        ]);
+        $part = $debt->parcelas()->where('installment_number', 1)->firstOrFail();
+        $forecast = $user->movimentos()->where('installment_id', $part->id)->firstOrFail();
+
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+        $this->actingAs($user)->postJson(route('financial.commitments.installments.pay', [$debt->id, $part->id]), [
+            'account_id' => $account->id, 'amount' => '5.00', 'payment_date' => now()->toDateString(),
+        ])->assertOk();
+        $payment = $forecast->settlements()->where('status', 'settled')->firstOrFail();
+
+        $this->postJson(route('financial.commitments.renegotiate', $debt->id), [
+            'remaining_amount' => '115.00',
+            'installments_count' => 11,
+            'installment_frequency' => 'monthly',
+            'due_date' => now()->addMonths(2)->toDateString(),
+        ])->assertOk();
+
+        $this->assertSame('cancelled', $part->fresh()->status);
+        $this->assertSame('5.00', $part->fresh()->paid_amount);
+        $this->assertSame('void', $forecast->fresh()->status);
+        $this->assertNull($forecast->fresh()->debt_id);
+        $this->assertNull($forecast->fresh()->installment_id);
+        $this->assertFalse((bool) $forecast->fresh()->is_settlement_parent);
+        $this->assertSame('settled', $payment->fresh()->status);
+        $this->assertNull($payment->fresh()->settles_movement_id);
+        $this->assertNull($payment->fresh()->debt_id);
+        $this->assertNull($payment->fresh()->installment_id);
+        $this->assertSame(11, $debt->fresh()->parcelas()->where('status', 'pending')->count());
+        $this->assertSame(11, $user->movimentos()->where('debt_id', $debt->id)->where('status', 'pending')->count());
+        $this->assertSame(0, $user->movimentos()->where('installment_id', $part->id)->whereIn('status', ['pending', 'partial'])->count());
+        $this->assertSame('195.00', app(AccountBalanceService::class)->balance($account->fresh()));
+        $this->assertDatabaseHas('deletion_operations', [
+            'user_id' => $user->id,
+            'root_entity_type' => 'commitment_renegotiation',
+            'root_entity_id' => $debt->id,
+            'status' => 'completed',
+        ]);
+    }
+
+    public function test_archive_hides_purchase_and_delete_soft_deletes_commitment(): void
     {
         $user = User::factory()->create();
         $service = app(FinancialCommitmentService::class);
@@ -371,6 +421,34 @@ class FinancialCommitmentsPageTest extends TestCase
             $this->assertCount(1, $xpath->query('//*[@id="'.$modalId.'"]'));
         }
         $this->assertCount(1, $xpath->query('//button[contains(@class,"commitment-history-trigger")]'));
+    }
+
+
+    public function test_delete_action_remains_available_for_partially_paid_commitments_with_explicit_endpoint(): void
+    {
+        $user = User::factory()->create();
+        $account = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Conta', 'type' => 'bank', 'opening_balance' => '200.00',
+        ]);
+        $debt = app(FinancialCommitmentService::class)->create($user, [
+            'name' => 'Compra parcialmente paga', 'total_amount' => '60.00',
+            'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
+            'payment_condition' => 'installments', 'installments_count' => 3,
+        ]);
+        $part = $debt->parcelas->sortBy('installment_number')->first();
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+        $this->actingAs($user)->postJson(
+            route('financial.commitments.installments.pay', [$debt->id, $part->id]),
+            ['account_id' => $account->id, 'amount' => '5.00', 'payment_date' => now()->toDateString()]
+        )->assertOk();
+
+        $xpath = $this->document($this->get(route('financial.commitments.page'))->assertOk()->getContent());
+        $deleteButton = $xpath->query('//*[@id="deleteCommitmentButton" and not(contains(concat(" ", normalize-space(@class), " "), " d-none "))]')->item(0);
+        $this->assertNotNull($deleteButton);
+        $archiveButton = $xpath->query('//button[contains(@class,"js-archive-commitment")]')->item(0);
+        $this->assertNotNull($archiveButton);
+        $this->assertSame(route('financial.commitments.destroy', $debt->id), $archiveButton->getAttribute('data-delete-url'));
+        $this->assertSame('', $archiveButton->getAttribute('data-has-payments'));
     }
 
     public function test_commitment_merchant_is_saved_and_displayed_on_purchase_card(): void

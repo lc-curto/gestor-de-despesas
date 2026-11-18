@@ -392,12 +392,12 @@ class FinanceController extends Controller
         $date = $data[$dateField];
 
         DB::transaction(function () use ($request, $service, $invoices, $tipo, $id, $data, $accountId, $legacyType, $date, $expenseBehavior, $actualPaymentMethod, $isPendingExpense): void {
-            $legacy = $this->query($request)->whereKey($id)->lockForUpdate()->firstOrFail();
+            $legacy = $this->query($request)->whereKey($id)->firstOrFail();
             $movement = $this->linkedMovement($request, $tipo, $legacy->id);
             if ($movement?->invoice_id) {
                 $invoice = $request->user()->faturas()->whereKey($movement->invoice_id)->firstOrFail();
                 if ($invoice->status !== 'open') {
-                    throw ValidationException::withMessages(['expense' => 'Não é possível editar uma compra de fatura já liquidada. Estorna o movimento e regista a correção.']);
+                    throw ValidationException::withMessages(['expense' => 'Não é possível editar uma compra de fatura já liquidada. Resolve primeiro os pagamentos e saldos associados à fatura para permitir uma correção segura.']);
                 }
             }
             $payload = $this->canonicalPayload($tipo, array_merge($data, ['account_id' => $accountId, 'expense_behavior' => $expenseBehavior, 'actual_payment_method' => $actualPaymentMethod]), $legacyType, $legacy->id);
@@ -447,7 +447,7 @@ class FinanceController extends Controller
                     && ($tipo !== 'despesa' || $movement->expense_behavior === $payload['expense_behavior']);
                 if (! $sameFinancialData) {
                     throw ValidationException::withMessages([
-                        'movement' => 'Um movimento liquidado não pode ser editado. Estorna-o e regista a correção como um novo movimento.',
+                        'movement' => 'Um movimento liquidado não pode ser editado. Para corrigir, elimina-o pela ação de domínio se a propagação for permitida e regista o movimento correto.',
                     ]);
                 }
                 $currentAccountId = $tipo === 'despesa'
@@ -470,8 +470,21 @@ class FinanceController extends Controller
 
                 $cutoff = $request->user()->financial_cutoff_date?->toDateString();
                 $payload['is_historical'] = (bool) $movement->is_historical || ($cutoff !== null && $date <= $cutoff);
-                $movement->historico()->delete();
-                $movement->delete();
+                // Substitui sem apagar o registo canónico nem o seu histórico.
+                // A referência legacy é libertada para o novo movimento dentro da mesma transação.
+                $service->deleteAsCorrection(
+                    $request->user(),
+                    $movement,
+                    'Movimento substituído durante a edição do registo legado.',
+                    false,
+                    true
+                );
+                $movement->update([
+                    'legacy_type' => null,
+                    'legacy_id' => null,
+                    'recurrence_id' => null,
+                    'recurrence_occurrence_date' => null,
+                ]);
                 $this->createLinkedMovement($request, $payload, $service, $invoices);
 
                 if ($recurrenceId) {
@@ -483,6 +496,8 @@ class FinanceController extends Controller
                 }
             }
 
+            // O movimento é bloqueado antes do registo legacy, mantendo uma ordem de locks única.
+            $legacy = $this->query($request)->whereKey($id)->lockForUpdate()->firstOrFail();
             $legacy->update($data);
         });
 
@@ -526,9 +541,11 @@ class FinanceController extends Controller
                 );
             }
 
-            // O movimento canónico é mantido como void para auditoria.
-            // A representação legada deixa de aparecer nas páginas antigas.
-            $legacy->delete();
+            // Registos legacy sem movimento canónico também passam pela auditoria central.
+            if ($this->query($request)->whereKey($id)->exists()) {
+                app(\App\Services\Financial\FinancialDeletionService::class)
+                    ->deleteLegacyRecord($request->user(), $tipo, $id);
+            }
         });
 
         if ($request->expectsJson()) {

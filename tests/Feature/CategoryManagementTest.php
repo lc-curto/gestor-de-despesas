@@ -97,6 +97,26 @@ class CategoryManagementTest extends TestCase
         $this->assertDatabaseHas('categorias', ['id' => $category->id]);
     }
 
+
+    public function test_category_with_only_canonical_movement_cannot_be_deleted(): void
+    {
+        $user = User::factory()->create();
+        $category = $user->categorias()->where('type', 'despesa')->firstOrFail();
+        app(\App\Services\Financial\FinancialMovementService::class)->createPending($user, [
+            'type' => 'expense',
+            'description' => 'Previsão canónica',
+            'amount' => '25.00',
+            'movement_date' => now()->toDateString(),
+            'category_id' => $category->id,
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('categorias.destroy', $category->id))
+            ->assertSessionHasErrors('categoria');
+
+        $this->assertDatabaseHas('categorias', ['id' => $category->id]);
+    }
+
     public function test_category_type_cannot_change_when_movements_are_linked(): void
     {
         $user = User::factory()->create();

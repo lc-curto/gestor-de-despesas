@@ -79,7 +79,7 @@ class FinancialRecurrenceTest extends TestCase
         $this->get(route('despesas.index'))->assertOk()->assertSee('Previsão recorrente');
 
         $novemberForecast = $user->movimentos()->whereDate('recurrence_occurrence_date', '2026-11-15')->firstOrFail();
-        $this->putJson('/api/financial/movements/'.$novemberForecast->id.'/void', ['reason' => 'Não aplicável este mês.'])->assertOk();
+        $this->deleteJson('/api/financial/movements/'.$novemberForecast->id)->assertOk();
         app(RecurrenceService::class)->generateForUser($user);
         $this->assertSame(3, $user->movimentos()->whereNotNull('recurrence_id')->count());
         $this->getJson(route('dashboard.movimentos.data', ['mes' => '2026-11', 'limit' => 50]))
@@ -157,6 +157,7 @@ class FinancialRecurrenceTest extends TestCase
             ->assertOk()->assertJsonPath('data.is_active', false);
 
         $this->assertSame(0, $user->movimentos()->where('recurrence_id', $rule->id)->count());
+        $this->assertSame(3, $user->movimentos()->where('status', 'void')->count());
         $this->assertSame(0, $user->despesas()->count());
         $this->assertSame('2026-11-15', $rule->fresh()->next_occurrence->toDateString());
 
@@ -164,6 +165,7 @@ class FinancialRecurrenceTest extends TestCase
             ->assertOk()->assertJsonPath('data.is_active', true);
 
         $this->assertSame(3, $user->movimentos()->where('recurrence_id', $rule->id)->count());
+        $this->assertSame(3, $user->movimentos()->where('status', 'void')->count());
         $this->assertSame(3, $user->despesas()->count());
     }
 

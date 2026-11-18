@@ -41,7 +41,6 @@ Route::middleware(['auth', 'financial.review'])->group(function () {
     Route::get('/parcelamentos', FinancialCommitmentsPageController::class)->name('financial.commitments.page');
     Route::redirect('/compromissos', '/parcelamentos', 301);
     Route::delete('/contas/movimentos/{id}', [FinancialAccountsPageController::class, 'destroyMovement'])->name('financial.accounts.movement.destroy');
-    Route::post('/contas/movimentos/{id}/estornar', [FinancialAccountsPageController::class, 'reverseMovement'])->name('financial.accounts.movement.reverse');
     Route::get('/contas/{id}', [FinancialAccountsPageController::class, 'show'])->name('financial.accounts.show');
     Route::get('/dashboard/movimentos', [DashboardController::class, 'paginaMovimentos'])->name('dashboard.movimentos');
     Route::get('/dashboard/movimentos/dados', [DashboardController::class, 'movimentos'])->middleware('throttle:60,1')->name('dashboard.movimentos.data');
@@ -81,8 +80,6 @@ Route::middleware(['auth', 'financial.review'])->group(function () {
         Route::put('/movements/{id}/settle', [FinancialCoreController::class, 'settleMovement'])->name('movements.settle');
         Route::put('/movements/{id}/confirm', [FinancialCoreController::class, 'confirmMovement'])->name('movements.confirm');
         Route::put('/movements/{id}', [FinancialCoreController::class, 'updatePendingMovement'])->name('movements.update');
-        Route::put('/movements/{id}/void', [FinancialCoreController::class, 'voidMovement'])->name('movements.void');
-        Route::post('/movements/{id}/reverse', [FinancialCoreController::class, 'reverseMovement'])->name('movements.reverse');
         Route::delete('/movements/{id}/recurrence-scope', [FinancialCoreController::class, 'destroyRecurringOccurrence'])->name('movements.recurrence.destroy');
         Route::delete('/movements/{id}', [FinancialCoreController::class, 'destroyMovement'])->name('movements.destroy');
     });

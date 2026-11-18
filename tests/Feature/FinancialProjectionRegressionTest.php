@@ -149,19 +149,21 @@ class FinancialProjectionRegressionTest extends TestCase
         $this->assertSame('closed', $inactiveAdjustment->contaDestino->status);
     }
 
-    public function test_reversed_adjustment_cancels_in_the_period_instead_of_disappearing_from_opening_balance(): void
+    public function test_deleting_a_settled_adjustment_removes_its_effect_without_creating_a_compensating_movement(): void
     {
         $user = User::factory()->create();
         $bank = $this->account($user, 'bank', '100.00');
         $original = $this->adjust($user, $bank, 'increase', '23.45', '2026-11-19');
         Carbon::setTestNow('2026-12-02 12:00:00');
-        $reversal = app(FinancialMovementService::class)->reverse($user, $original);
+
+        app(FinancialMovementService::class)->deleteAsCorrection($user, $original);
 
         $result = $this->project($user);
-        $this->assertSame(123.45, $result['openingBalance']);
-        $this->assertSame(-23.45, $result['movements']->firstWhere('id', $reversal->id)->projection_delta);
+        $this->assertSame(100.0, $result['openingBalance']);
+        $this->assertNull($result['movements']->firstWhere('id', $original->id));
+        $this->assertSame('void', $original->fresh()->status);
         $this->assertSame('100.00', app(AccountBalanceService::class)->balance($bank));
-        $this->assertEqualsWithDelta(100.0, $result['openingBalance'] + $result['movements']->sum('projection_delta'), 0.001);
+        $this->assertSame(100.0, $result['openingBalance'] + $result['movements']->sum('projection_delta'));
     }
 
     public function test_route_day_cash_delta_includes_signed_adjustments_without_counting_them_as_income_or_expense(): void

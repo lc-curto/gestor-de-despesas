@@ -114,7 +114,7 @@ class FinancialCoreController extends Controller
     public function deleteCommitment(Request $request, string $id, FinancialCommitmentService $service): JsonResponse
     {
         $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();
-        $service->deleteUnused($request->user(), $debt);
+        $service->delete($request->user(), $debt);
 
         return response()->json(['message' => 'Compra eliminada.']);
     }
@@ -541,21 +541,9 @@ class FinancialCoreController extends Controller
         return response()->json(['data' => $service->confirmPending($request->user(), $movement, $data)]);
     }
 
-    public function voidMovement(Request $request, string $id, FinancialMovementService $service): JsonResponse
-    {
-        $data = $request->validate(['reason' => 'nullable|string|max:1000']);
-        $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
 
-        return response()->json(['data' => $service->voidPending($request->user(), $movement, $data['reason'] ?? null)]);
-    }
 
-    public function reverseMovement(Request $request, string $id, FinancialMovementService $service): JsonResponse
-    {
-        $data = $request->validate(['reason' => 'nullable|string|max:1000']);
-        $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
 
-        return response()->json(['data' => $service->reverse($request->user(), $movement, $data['reason'] ?? null)]);
-    }
 
     public function destroyRecurringOccurrence(Request $request, string $id, FinancialMovementService $service): JsonResponse
     {
@@ -599,7 +587,9 @@ class FinancialCoreController extends Controller
                 $service->deleteAsCorrection(
                     $user,
                     $target,
-                    'Ocorrência removida pelo utilizador na gestão de movimentos.'
+                    'Ocorrência removida pelo utilizador na gestão de movimentos.',
+                    true,
+                    false
                 );
             }
         });

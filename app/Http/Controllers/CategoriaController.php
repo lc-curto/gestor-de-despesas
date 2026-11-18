@@ -64,16 +64,9 @@ class CategoriaController extends Controller
 
     public function destroy(Request $request, string $id)
     {
-        $categoria = $request->user()->categorias()->findOrFail($id);
-        $count = $categoria->type === 'despesa'
-            ? $categoria->despesas()->count()
-            : $categoria->receitas()->count();
-
-        if ($count > 0) {
-            return back()->withErrors(['categoria' => 'Esta categoria tem movimentos associados. Desative-a para preservar o histórico.']);
-        }
-
-        $categoria->delete();
+        $category = $request->user()->categorias()->whereKey($id)->firstOrFail();
+        app(\App\Services\Financial\FinancialDeletionService::class)
+            ->deleteCategory($request->user(), $category);
 
         return redirect()->route('categorias.index')->with('success', 'Categoria eliminada.');
     }

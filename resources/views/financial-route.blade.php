@@ -15,7 +15,6 @@
     data-store-url="{{ route('financial.movements.store') }}"
     data-update-url="{{ url('/api/financial/movements') }}"
     data-delete-url="{{ url('/api/financial/movements') }}"
-    data-reverse-url="{{ url('/api/financial/movements') }}"
     data-currency="{{ $currency }}"
     data-today="{{ $today }}">
     <header class="financial-route-header">
@@ -209,7 +208,7 @@
  const root=document.getElementById('financialRoute'); if(!root)return;
  const csrf=document.querySelector('meta[name="csrf-token"]')?.content||'';
  const currency=root.dataset.currency||'EUR';
- const urls={store:root.dataset.storeUrl,update:root.dataset.updateUrl,remove:root.dataset.deleteUrl,reverse:root.dataset.reverseUrl};
+ const urls={store:root.dataset.storeUrl,update:root.dataset.updateUrl,remove:root.dataset.deleteUrl};
  const modal=id=>bootstrap.Modal.getOrCreateInstance(document.getElementById(id));
  const dayModal=modal('routeDayModal'), movementModal=modal('routeMovementModal'), detailModal=modal('routeMovementDetailModal'), confirmModal=modal('routeConfirmModal');
  let activeDate=root.dataset.today, activeFilter='all', activeMovement=null, editId=null, confirmCallback=null, mode={{ $mode }}, month={{ Illuminate\Support\Js::from($month) }};
@@ -280,17 +279,17 @@
    document.getElementById('routeMovementNotes').textContent=item.notes||'—';
    document.getElementById('routeDetailError').textContent='';
    document.getElementById('routeEditMovement').disabled=!canEditMovement(item);
-   document.getElementById('routeEditHelp').textContent=item.type==='adjustment'?'Este ajuste não pode ser editado aqui. Para o corrigir, podes estorná-lo; o registo de um novo ajuste não está disponível neste formulário.':item.type==='transfer'?'As transferências não podem ser editadas neste formulário. Verifica se é possível estornar a transferência antes de a corrigir.':item.status==='settled'?'Um movimento liquidado não pode ser editado. Para o corrigir, podes estorná-lo e registar o movimento correto.':!canEditMovement(item)?'Esta previsão é gerada automaticamente; gere-a na área de compromissos ou faturas.':'';
+   document.getElementById('routeEditHelp').textContent=item.type==='adjustment'?'Este ajuste não pode ser editado aqui. Elimina o movimento e regista a correção.':item.type==='transfer'?'As transferências não podem ser editadas neste formulário. Elimina a transferência e regista uma nova.':item.status==='settled'?'Um movimento liquidado não pode ser editado. Elimina-o para recalcular os saldos e regista a informação correta.':!canEditMovement(item)?'Esta previsão é gerada automaticamente; gere-a na área de compromissos ou faturas.':'';
    const deleteButton=document.getElementById('routeDeleteMovement');
-   deleteButton.textContent=item.status==='settled'?'Estornar':(item.recurrence_id?'Anular':'Excluir');
+   deleteButton.textContent=item.recurrence_id?'Eliminar ocorrência':'Eliminar';
    detailModal.show();
  }
  document.getElementById('routeEditMovement').addEventListener('click',()=>{if(!activeMovement||!canEditMovement(activeMovement))return;detailModal.hide();openForm(activeMovement.date,activeMovement)});
  document.getElementById('routeDeleteMovement').addEventListener('click',()=>{
-   const item=activeMovement;const settled=item.status==='settled';const recurring=!!item.recurrence_id;
-   document.getElementById('routeConfirmTitle').textContent=settled?'Confirmar estorno':(recurring?'Anular ocorrência':'Confirmar exclusão');
-   document.getElementById('routeConfirmText').textContent=settled?'Este movimento já foi liquidado. Será criado um estorno para preservar o histórico.':(recurring?'Esta ocorrência recorrente será anulada para preservar o histórico.':'O movimento será eliminado. Esta ação não pode ser desfeita.');
-   confirmCallback=async()=>{const endpoint=(settled?urls.reverse:urls.remove)+'/'+item.id+((settled||recurring)?(settled?'/reverse':'/void'):'');const response=await fetch(endpoint,{method:settled?'POST':(recurring?'PUT':'DELETE'),headers:{'Accept':'application/json','X-CSRF-TOKEN':csrf}});const json=await response.json();if(!response.ok)throw new Error(json.message||'Não foi possível concluir a operação.');window.location.reload()};
+   const item=activeMovement;const recurring=!!item.recurrence_id;
+   document.getElementById('routeConfirmTitle').textContent=recurring?'Eliminar ocorrência':'Confirmar exclusão';
+   document.getElementById('routeConfirmText').textContent='O movimento será retirado dos cálculos financeiros. Os pagamentos e movimentos dependentes serão atualizados na mesma operação; o histórico de auditoria será preservado. Se existir uma dependência que não possa ser resolvida com segurança, a exclusão será bloqueada.';
+   confirmCallback=async()=>{const endpoint=urls.remove+'/'+item.id;const response=await fetch(endpoint,{method:'DELETE',headers:{'Accept':'application/json','X-CSRF-TOKEN':csrf}});const json=await response.json();if(!response.ok)throw new Error(json.message||'Não foi possível concluir a operação.');window.location.reload()};
    detailModal.hide();confirmModal.show();
  });
  document.getElementById('routeConfirmAction').addEventListener('click',async()=>{try{if(confirmCallback)await confirmCallback()}catch(e){document.getElementById('routeConfirmText').textContent=e.message} });

@@ -14,11 +14,25 @@ class CardMovementDisplayRegressionTest extends TestCase
 {
     use RefreshDatabase;
 
+    private int $initialOutputBufferLevel;
+
     protected function setUp(): void
     {
         parent::setUp();
+        $this->initialOutputBufferLevel = ob_get_level();
         $this->travelTo(now()->setDate(2026, 11, 17)->setTime(12, 0));
         $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+    }
+
+    protected function tearDown(): void
+    {
+        parent::tearDown();
+
+        $this->assertSame(
+            $this->initialOutputBufferLevel,
+            ob_get_level(),
+            'O teste de cartões deixou um output buffer aberto.'
+        );
     }
 
     public function test_card_purchases_are_in_card_history_not_movements_and_invoice_payment_remains_visible(): void

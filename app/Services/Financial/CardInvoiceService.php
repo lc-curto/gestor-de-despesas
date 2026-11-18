@@ -43,13 +43,7 @@ class CardInvoiceService
             $closing = $reference->copy()->day(min($card->closing_day, $reference->daysInMonth));
             $dueMonth = $reference->copy()->addMonthNoOverflow();
             $due = $dueMonth->copy()->day(min($card->due_day, $dueMonth->daysInMonth));
-            // SQLite pode guardar a data com hora; procura a fatura pelo dia.
-            $invoice = Fatura::query()->where('user_id', $user->id)->where('account_id', $card->id)
-                ->whereDate('reference_month', $reference->toDateString())->first() ?? Fatura::query()->firstOrCreate(
-                    ['user_id' => $user->id, 'account_id' => $card->id, 'reference_month' => $reference->toDateString()],
-                    ['closing_date' => $closing->toDateString(), 'due_date' => $due->toDateString(), 'status' => 'open']
-                );
-            $invoice = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+            $invoice = $this->invoiceForCycle($user, $card->id, $reference, $closing, $due);
             $this->movements->assertInvoiceReconciled($user, $invoice);
             $this->carryOverdueInvoices($user, $invoice);
             if (in_array($invoice->status, ['paid', 'carried', 'closed'], true) || ($invoice->closing_date && $invoice->closing_date->lt(today()))) {
@@ -108,13 +102,7 @@ class CardInvoiceService
             $closing = $reference->copy()->day(min($card->closing_day, $reference->daysInMonth));
             $dueMonth = $reference->copy()->addMonthNoOverflow();
             $due = $dueMonth->copy()->day(min($card->due_day, $dueMonth->daysInMonth));
-            // SQLite pode guardar a data com hora; procura a fatura pelo dia.
-            $invoice = Fatura::query()->where('user_id', $user->id)->where('account_id', $card->id)
-                ->whereDate('reference_month', $reference->toDateString())->first() ?? Fatura::query()->firstOrCreate(
-                    ['user_id' => $user->id, 'account_id' => $card->id, 'reference_month' => $reference->toDateString()],
-                    ['closing_date' => $closing->toDateString(), 'due_date' => $due->toDateString(), 'status' => 'open']
-                );
-            $invoice = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+            $invoice = $this->invoiceForCycle($user, $card->id, $reference, $closing, $due);
             $this->movements->assertInvoiceReconciled($user, $invoice);
             $this->carryOverdueInvoices($user, $invoice);
             if (in_array($invoice->status, ['paid', 'carried', 'closed'], true) || ($invoice->closing_date && $invoice->closing_date->lt(today()))) {
@@ -240,6 +228,41 @@ class CardInvoiceService
      * Transporta apenas saldos de faturas cujo vencimento já passou.
      * O transporte é um registo entre faturas, nunca um movimento de caixa ou despesa.
      */
+    private function invoiceForCycle(User $user, string $cardId, Carbon $reference, Carbon $closing, Carbon $due): Fatura
+    {
+        $invoice = Fatura::withTrashed()
+            ->where('user_id', $user->id)
+            ->where('account_id', $cardId)
+            ->whereDate('reference_month', $reference->toDateString())
+            ->lockForUpdate()
+            ->first();
+
+        if ($invoice?->trashed()) {
+            $invoice->restore();
+            $invoice->update([
+                'closing_date' => $closing->toDateString(),
+                'due_date' => $due->toDateString(),
+                'status' => 'open',
+                'statement_amount' => null,
+                'closed_at' => null,
+            ]);
+        }
+
+        if (! $invoice) {
+            $invoice = Fatura::query()->create([
+                'user_id' => $user->id,
+                'account_id' => $cardId,
+                'reference_month' => $reference->toDateString(),
+                'closing_date' => $closing->toDateString(),
+                'due_date' => $due->toDateString(),
+                'status' => 'open',
+            ]);
+        }
+
+        return Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)
+            ->lockForUpdate()->firstOrFail();
+    }
+
     private function carryOverdueInvoices(User $user, Fatura $target): void
     {
         $sources = Fatura::query()->where('user_id', $user->id)

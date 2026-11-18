@@ -457,18 +457,18 @@
                     <p class="text-secondary small mb-2" id="deleteMovementDescription"></p>
                     <p class="alert alert-info small py-2 mb-2" id="deleteMovementNote" hidden></p>
                     <div id="deleteSingleConfirmation" class="small text-secondary">
-                        Esta ação irá excluir apenas este movimento e não poderá ser desfeita.
+                        O movimento será retirado dos cálculos financeiros. As dependências e os saldos serão atualizados na mesma operação, e o histórico de auditoria será preservado. Se a propagação não for segura, a exclusão será bloqueada.
                     </div>
                     <div id="deleteRecurringOptions" class="d-grid gap-2" hidden>
                         <label class="form-check border rounded-3 p-3 mb-0" for="deleteScopeOnly">
                             <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeOnly" value="only">
                             <span class="fw-semibold">Apenas este movimento</span>
-                            <span class="d-block small text-secondary">Exclui esta ocorrência e mantém as restantes.</span>
+                            <span class="d-block small text-secondary">Anula apenas esta ocorrência e mantém as restantes.</span>
                         </label>
                         <label class="form-check border rounded-3 p-3 mb-0" for="deleteScopeFuture">
                             <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeFuture" value="this_and_future">
                             <span class="fw-semibold">Este e os seguintes</span>
-                            <span class="d-block small text-secondary">Para a recorrência a partir daqui.</span>
+                            <span class="d-block small text-secondary">Anula esta e as ocorrências futuras ainda não confirmadas.</span>
                         </label>
                     </div>
                 </div>
@@ -545,7 +545,6 @@
 
 @push('scripts')
 <script>document.addEventListener('DOMContentLoaded',()=>{const c=document.getElementById('dashboardRecurrenceEnabled'),f=document.getElementById('dashboardRecurrenceFields');if(c&&f){const sync=()=>f.hidden=!c.checked;c.addEventListener('change',sync);sync();}});</script>
-@push('scripts')
 <script>
 window.meuBolsoDashboard = {
     userId: @json(auth()->id()),
