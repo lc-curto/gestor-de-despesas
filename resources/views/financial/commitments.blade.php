@@ -34,7 +34,7 @@
 
     <section class="commitment-list-panel" aria-labelledby="commitmentsTitle">
         <nav class="commitment-tabs" aria-label="Estado das compras">
-            @foreach (['active' => ['Ativos', $summary['active_count']], 'completed' => ['Concluídos', $summary['completed_count']], 'all' => ['Todos', $summary['total_count']]] as $key => [$label, $count])
+            @foreach (['active' => ['Ativos', $summary['active_count']], 'completed' => ['Concluídos', $summary['completed_count']], 'archived' => ['Arquivados', $summary['archived_count']], 'all' => ['Todos', $summary['total_count']]] as $key => [$label, $count])
                 <a href="{{ route('financial.commitments.page', array_merge(request()->except('purchases'), ['status' => $key])) }}"
                    class="btn btn-sm {{ $status === $key ? 'btn-primary' : 'btn-outline-secondary' }}"
                    @if ($status === $key) aria-current="page" @endif>{{ $label }} ({{ $count }})</a>
