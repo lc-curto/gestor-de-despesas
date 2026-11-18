@@ -5,9 +5,7 @@
 @section('content')
     <p class="text-uppercase small fw-semibold text-primary mb-2 text-center">Meu Bolso</p>
     <h1 class="h2 fw-bold mb-2 text-center" id="authTitle">Bem-vindo</h1>
-    <p class="text-secondary mb-4 text-center" id="authDescription">
-        Inicia sessão para acompanhares as tuas despesas.
-    </p>
+    
 
     @if ($errors->any())
         <div class="alert alert-danger" role="alert" aria-live="polite">
@@ -55,7 +53,7 @@
     </form>
 
     <p class="text-center text-secondary mt-4 mb-0">
-        <span id="authToggleText">Ainda não tens uma conta?</span>
+        <span id="authToggleText"></span>
         <button type="button" class="btn btn-link p-0 text-decoration-none fw-semibold" id="authToggleButton">
             Criar conta
         </button>
@@ -93,11 +91,9 @@
             currencyInput.required = registerMode;
             if (!registerMode) nameInput.value = '';
             title.textContent = registerMode ? 'Criar conta' : 'Bem-vindo';
-            description.textContent = registerMode
-                ? 'Regista-te para começares a gerir as tuas despesas.'
-                : 'Inicia sessão para acompanhares as tuas despesas.';
+            description.textContent = '';
             submit.textContent = registerMode ? 'Criar conta' : 'Entrar';
-            toggleText.textContent = registerMode ? 'Já tens uma conta?' : 'Ainda não tens uma conta?';
+            toggleText.textContent = '';
             toggleButton.textContent = registerMode ? 'Iniciar sessão' : 'Criar conta';
             passwordInput.autocomplete = registerMode ? 'new-password' : 'current-password';
             passwordInput.minLength = 6;
@@ -113,8 +109,8 @@
             if (!email || !password || (registerMode && !fullName)) {
                 event.preventDefault();
                 message.textContent = registerMode
-                    ? 'Preenche o nome, o email e a palavra-passe.'
-                    : 'Preenche o email e a palavra-passe.';
+                    ? 'Preenche os campos obrigatórios.'
+                    : 'Preenche os campos obrigatórios.';
                 message.className = 'alert alert-danger mt-3 mb-0';
                 return;
             }
