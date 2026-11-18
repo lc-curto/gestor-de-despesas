@@ -83,6 +83,8 @@ class FinancialCommitmentsPageController extends Controller
             ->where('status', '!=', 'cancelled')
             ->count();
 
+        $archivedCount = $eligibleDebts()->whereNotNull('archived_at')->count();
+
         $summary = [
             'open' => $commitmentOpen,
             'overdue' => $commitmentOverdue,
@@ -90,8 +92,8 @@ class FinancialCommitmentsPageController extends Controller
             'upcoming' => max(0, $commitmentOpen - $commitmentOverdue),
             'active_count' => $activeCount,
             'completed_count' => $completedCount,
-            'archived_count' => (clone $eligibleDebts())->whereNotNull('archived_at')->count(),
-            'total_count' => $activeCount + $completedCount + (clone $eligibleDebts())->whereNotNull('archived_at')->count(),
+            'archived_count' => $archivedCount,
+            'total_count' => $activeCount + $completedCount + $archivedCount,
             'next_installment' => $nextInstallment,
         ];
 
