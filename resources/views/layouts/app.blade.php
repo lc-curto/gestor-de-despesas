@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
     <link rel="stylesheet" href="{{ asset('css/app-shell.css') }}?v={{ filemtime(public_path('css/app-shell.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/design-system.css') }}?v={{ filemtime(public_path('css/design-system.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/interface-responsive.css') }}?v={{ filemtime(public_path('css/interface-responsive.css')) }}">
     @stack('styles')
 </head>
 <body>
