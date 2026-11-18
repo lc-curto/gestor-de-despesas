@@ -268,10 +268,10 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertDatabaseCount('historico_movimentos', 3);
     }
 
-    public function test_expense_can_overdraw_account_without_blocking(): void
+    public function test_expense_can_overdraw_account_when_permission_is_enabled(): void
     {
         $user = User::factory()->create();
-        $account = $this->account($user, 'Conta', '10.00');
+        $account = $this->account($user, 'Conta', '10.00', true);
 
         app(FinancialMovementService::class)->create($user, [
             'type' => 'expense', 'description' => 'Despesa acima do saldo', 'amount' => '11.00',
@@ -279,6 +279,85 @@ class FinancialCoreServiceTest extends TestCase
         ]);
 
         $this->assertSame('-1.00', app(AccountBalanceService::class)->balance($account));
+    }
+
+    public function test_expense_cannot_overdraw_account_when_permission_is_disabled(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->account($user, 'Conta', '10.00');
+
+        try {
+            app(FinancialMovementService::class)->create($user, [
+                'type' => 'expense', 'description' => 'Despesa acima do saldo', 'amount' => '11.00',
+                'movement_date' => '2026-11-12', 'source_account_id' => $account->id,
+            ]);
+            $this->fail('A despesa devia ter sido rejeitada por saldo insuficiente.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('amount', $exception->errors());
+        }
+
+        $this->assertSame('10.00', app(AccountBalanceService::class)->balance($account->fresh()));
+        $this->assertDatabaseCount('historico_movimentos', 0);
+    }
+
+    public function test_transfer_and_decrease_adjustment_respect_negative_balance_permission(): void
+    {
+        $user = User::factory()->create();
+        $source = $this->account($user, 'Origem', '10.00');
+        $destination = $this->account($user, 'Destino', '0.00');
+        $service = app(FinancialMovementService::class);
+
+        foreach ([
+            fn () => $service->transfer($user, [
+                'description' => 'Transferência acima do saldo', 'amount' => '11.00',
+                'movement_date' => '2026-11-12', 'source_account_id' => $source->id,
+                'destination_account_id' => $destination->id,
+            ]),
+            fn () => $service->create($user, [
+                'type' => 'adjustment', 'adjustment_direction' => 'decrease',
+                'description' => 'Ajuste acima do saldo', 'amount' => '11.00',
+                'movement_date' => '2026-11-12', 'source_account_id' => $source->id,
+            ]),
+        ] as $operation) {
+            try {
+                $operation();
+                $this->fail('A operação devia ter sido rejeitada por saldo insuficiente.');
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey('amount', $exception->errors());
+            }
+        }
+
+        $balances = app(AccountBalanceService::class);
+        $this->assertSame('10.00', $balances->balance($source->fresh()));
+        $this->assertSame('0.00', $balances->balance($destination->fresh()));
+        $this->assertDatabaseCount('historico_movimentos', 0);
+    }
+
+    public function test_imported_expense_cannot_be_assigned_to_a_credit_card(): void
+    {
+        $user = User::factory()->create();
+        $card = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Visa', 'type' => 'credit_card', 'opening_debt_amount' => '0.00',
+            'opening_balance_date' => '2026-11-01', 'closing_day' => 25, 'due_day' => 5,
+            'credit_limit' => '500.00',
+        ]);
+        $legacy = $user->movimentos()->create([
+            'type' => 'expense', 'status' => 'settled', 'description' => 'Despesa importada',
+            'amount' => '25.00', 'movement_date' => '2026-11-12',
+            'legacy_type' => 'despesa', 'legacy_id' => 'legacy-expense-1',
+            'is_historical' => false, 'requires_account_assignment' => true,
+        ]);
+
+        try {
+            app(FinancialMovementService::class)->assignLegacyAccount($user, $legacy, $card->id);
+            $this->fail('Uma despesa importada não pode ser associada diretamente a um cartão.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('type', $exception->errors());
+        }
+
+        $this->assertNull($legacy->fresh()->source_account_id);
+        $this->assertSame('0.00', app(AccountBalanceService::class)->balance($card->fresh()));
+        $this->assertDatabaseCount('faturas', 0);
     }
 
     public function test_account_cannot_be_used_by_another_user(): void
