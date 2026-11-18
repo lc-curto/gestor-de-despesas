@@ -65,7 +65,8 @@
                     $partsPaid = (int) $commitment->paid_installments_count;
                     $isCompleted = $commitment->remaining_amount <= 0.009;
                     $isSoftDeleted = $commitment->trashed();
-                    $isArchived = $commitment->archived_at !== null || $isSoftDeleted;
+                    $isCancelled = $commitment->status === 'cancelled';
+                    $isArchived = $commitment->archived_at !== null || $isSoftDeleted || $isCancelled;
                     $next = $commitment->next_installment;
                     $nextRemaining = $next ? max(0, (float) $next->amount - (float) $next->paid_amount) : 0;
                 @endphp
@@ -73,7 +74,7 @@
                     <button class="commitment-card-toggle" type="button" aria-expanded="false" aria-controls="commitment-details-{{ $commitment->id }}">
                         <span class="commitment-card-heading">
                             <span class="commitment-card-name">{{ $commitment->name }}@if ($commitment->merchant)<small class="commitment-merchant">{{ $commitment->merchant }}</small>@endif</span>
-                            <span class="badge {{ $isCompleted ? 'text-bg-success' : ($commitment->has_overdue_installment ? 'text-bg-danger' : 'text-bg-success') }}">{{ $isCompleted ? 'Concluído' : ($commitment->has_overdue_installment ? 'Em atraso' : 'Em dia') }}</span>
+                            <span class="badge {{ $isCancelled ? 'text-bg-secondary' : ($isCompleted ? 'text-bg-success' : ($commitment->has_overdue_installment ? 'text-bg-danger' : 'text-bg-success')) }}">{{ $isCancelled ? 'Cancelado' : ($isCompleted ? 'Concluído' : ($commitment->has_overdue_installment ? 'Em atraso' : 'Em dia')) }}</span>
                         </span>
                         <span class="commitment-card-balances">
                             <span class="commitment-card-balance-primary"><small>Saldo em aberto</small><strong>{{ auth()->user()->currency }} {{ number_format($commitment->remaining_amount, 2, ',', '.') }}</strong></span>
@@ -138,8 +139,13 @@
                                     data-frequency="{{ $commitment->installment_frequency ?? 'monthly' }}"
                                     data-due="{{ $next && $next->due_date->gte(today()) ? $next->due_date->format('Y-m-d') : now()->addMonth()->toDateString() }}">Renegociar</button>
                                 @if ($isArchived)
-                                    <button type="button" class="btn btn-outline-primary js-restore-commitment"
-                                        data-url="{{ route('financial.commitments.restore', $commitment->id) }}">{{ $isSoftDeleted ? 'Recuperar para revisão' : 'Restaurar' }}</button>
+                                    @if ($isSoftDeleted)
+                                        <button type="button" class="btn btn-outline-primary js-restore-commitment"
+                                            data-url="{{ route('financial.commitments.restore', $commitment->id) }}">Recuperar para revisão</button>
+                                    @elseif (!$isCancelled)
+                                        <button type="button" class="btn btn-outline-primary js-restore-commitment"
+                                            data-url="{{ route('financial.commitments.restore', $commitment->id) }}">Restaurar</button>
+                                    @endif
                                     <button type="button" class="btn btn-outline-danger js-archive-commitment"
                                         data-archived="true"
                                         data-name="{{ $commitment->name }}"
