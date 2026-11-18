@@ -19,7 +19,7 @@
     <div class="alert alert-danger" role="alert"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
 @endif
 @if ($lockedFinancial)
-    <div class="alert alert-info" role="status">Este movimento já está liquidado. Os dados financeiros não podem ser alterados aqui; para corrigir um valor ou uma data, usa o estorno e regista o movimento correto.</div>
+    <div class="alert alert-info" role="status">Movimento liquidado. Corrige por estorno.</div>
 @endif
 <form method="POST" action="{{ $registo ? route($tipo === 'despesa' ? 'despesas.update' : 'receitas.update', $registo->id) : route($tipo === 'despesa' ? 'despesas.store' : 'receitas.store') }}" class="card border-0 p-3 p-lg-4">
     @csrf
