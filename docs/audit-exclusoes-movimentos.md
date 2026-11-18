@@ -415,7 +415,7 @@ Integrações já alteradas:
 - Substituição de movimentos legacy na edição deixa de apagar o movimento canónico e o histórico.
 - Endpoints de estorno foram removidos das rotas de produto; os dados antigos permanecem compatíveis.
 
-Testes de regressão atualizados/adicionados para pagamentos parciais, pagamentos de faturas, dívida inicial, transferência, exclusão de parcelamentos parcial e totalmente pagos, cancelamento parcial, divergência entre contador e eventos, idempotência, proteção de cartão com histórico e categoria com movimento canónico. O último CI confirmado antes das alterações mais recentes executou 196 testes aprovados e 1.578 assertions; 2 testes foram classificados como risky, sem falhas. O CI do HEAD atual está em execução.
+Testes de regressão atualizados/adicionados para pagamentos parciais, pagamentos de faturas, dívida inicial, transferência, exclusão de parcelamentos parcial e totalmente pagos, cancelamento parcial, divergência entre contador e eventos, idempotência, proteção de cartão com histórico e categoria com movimento canónico. O CI confirmado no commit `fe4ecbb84f09e295fe8569f3169b658450f64222` executou 204 testes aprovados, 1.655 assertions e zero testes risky. A nova regressão de concorrência ainda aguarda execução no CI.
 
 ## 10. Validação final e limites conhecidos
 
@@ -428,10 +428,10 @@ Testes de regressão atualizados/adicionados para pagamentos parciais, pagamento
 7. [x] CI aprovado no commit `680207807115e762bf56664a4c29be7f84357bc8`: 196 testes aprovados, 1.578 assertions e 2 testes classificados como `risky`.
 8. [ ] CI do commit mais recente, que inclui regressões de eliminação de cartão, categoria com movimento canónico, idempotência e eliminação de compromisso previamente cancelado.
 9. [ ] Investigar os dois testes classificados como `risky` e reduzir a zero os avisos, se forem corrigíveis sem mascarar comportamento.
-10. [ ] Executar stress test de concorrência com duas transações MySQL simultâneas; a revisão estática confirmou locks, mas o workflow atual não simula concorrência real.
+10. [x] Adicionado `FinancialDeletionConcurrencyTest`: duas ligações MySQL independentes disputam a eliminação do mesmo movimento; o teste valida o lock InnoDB, o timeout concorrente, a conclusão pela transação vencedora e a idempotência após o commit. A execução no CI ainda precisa de confirmação.
 11. [ ] Merge e deploy permanecem fora do âmbito até aprovação explícita do utilizador.
 
-A implementação e os testes funcionais/atómicos estão concluídos na branch. A única ressalva de validação adicional é a ausência de um stress test concorrente real em duas transações MySQL simultâneas; a revisão estática e os testes transacionais cobrem atomicidade e locks, mas não substituem esse teste de carga. Não fazer merge nem deploy sem aprovação explícita.
+A implementação e os testes funcionais/atómicos estão concluídos na branch. O teste de concorrência real foi adicionado ao workflow, mas a aprovação depende da sua execução em MySQL no CI. Não fazer merge nem deploy sem aprovação explícita.
 
 ### Atualização adicional da implementação
 
