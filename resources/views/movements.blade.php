@@ -369,7 +369,7 @@
                             <div class="expense-actions d-flex align-items-center justify-content-end gap-2">
                                 <strong class="{{ $isExpense ? 'text-danger' : 'text-success' }} text-nowrap movement-value"
                                     data-value="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}">{{ $isExpense ? '−' : '+' }}{{ number_format((float) $movimento->amount, 2, ',', '.') }}</strong>
-                                <div class="btn-group btn-group-sm" role="group" aria-label="Ações de {{ $movimento->description }}">
+                                <div class="movement-icon-actions" role="group" aria-label="Ações de {{ $movimento->description }}">
                                     <button type="button" class="btn btn-outline-secondary edit-movement" data-acao="editar" aria-label="Editar {{ $movimento->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></button>
                                     @if ($movimento->movement_status === 'pending' && $movimento->financial_movement_id)
                                         <button type="button" class="btn btn-outline-success" data-movement-action="settle" title="Efetivar" aria-label="Efetivar {{ $movimento->description }}"><i data-lucide="check-circle" aria-hidden="true"></i></button>
