@@ -357,6 +357,15 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('10.00', $balances->balance($source->fresh()));
         $this->assertSame('0.00', $balances->balance($destination->fresh()));
         $this->assertDatabaseCount('historico_movimentos', 0);
+
+        $permittedSource = $this->account($user, 'Conta com descoberto', '10.00', true);
+        $service->transfer($user, [
+            'description' => 'Transferência autorizada', 'amount' => '11.00',
+            'movement_date' => '2026-11-12', 'source_account_id' => $permittedSource->id,
+            'destination_account_id' => $destination->id,
+        ]);
+        $this->assertSame('-1.00', $balances->balance($permittedSource->fresh()));
+        $this->assertSame('11.00', $balances->balance($destination->fresh()));
     }
 
     public function test_imported_expense_cannot_be_assigned_to_a_credit_card(): void
