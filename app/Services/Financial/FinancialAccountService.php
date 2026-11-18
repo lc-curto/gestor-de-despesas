@@ -19,8 +19,11 @@ class FinancialAccountService
             // ser corrigido mais tarde, inclusive depois de lançamentos.
             $openingDebt = $data['type'] === 'credit_card' ? (string) ($data['opening_debt_amount'] ?? '0.00') : '0.00';
             $openingBalance = $data['type'] === 'credit_card' ? '-'.ltrim($openingDebt, '-') : ($data['opening_balance'] ?? '0.00');
-            $allowNegative = in_array($data['type'], ['bank', 'cash'], true)
-                && ((bool) ($data['allow_negative_balance'] ?? false) || $this->balances->toCents((string) $openingBalance) < 0);
+            // A coluna mantém true nos cartões por exigência do CHECK legado;
+            // a permissão de descoberto só tem significado em banco e dinheiro.
+            $allowNegative = $data['type'] === 'credit_card'
+                || (in_array($data['type'], ['bank', 'cash'], true)
+                    && ((bool) ($data['allow_negative_balance'] ?? false) || $this->balances->toCents((string) $openingBalance) < 0));
             if (($data['opening_balance_date'] ?? now()->toDateString()) > now()->toDateString()) {
                 throw ValidationException::withMessages(['opening_balance_date' => 'A data do saldo inicial não pode ser futura.']);
             }
