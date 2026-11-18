@@ -279,7 +279,7 @@
    document.getElementById('routeMovementNotes').textContent=item.notes||'—';
    document.getElementById('routeDetailError').textContent='';
    document.getElementById('routeEditMovement').disabled=!canEditMovement(item);
-   document.getElementById('routeEditHelp').textContent=item.type==='adjustment'?'Este ajuste não pode ser editado aqui. Elimina o movimento e regista a correção.':item.type==='transfer'?'As transferências não podem ser editadas neste formulário. Elimina a transferência e regista uma nova.':item.status==='settled'?'Um movimento liquidado não pode ser editado. Elimina-o para recalcular os saldos e regista a informação correta.':!canEditMovement(item)?'Esta previsão é gerada automaticamente; gere-a na área de compromissos ou faturas.':'';
+   document.getElementById('routeEditHelp').textContent=item.type==='adjustment'?'Ajustes não editáveis. Elimina e corrige.':item.type==='transfer'?'Transferências não editáveis aqui. Elimina e recria.':item.status==='settled'?'Movimento liquidado. Edição bloqueada. Elimina e recria.':!canEditMovement(item)?'Previsão automática. Gere em Parcelamentos/Faturas.':'';
    const deleteButton=document.getElementById('routeDeleteMovement');
    deleteButton.textContent=item.recurrence_id?'Eliminar ocorrência':'Eliminar';
    detailModal.show();
@@ -288,7 +288,7 @@
  document.getElementById('routeDeleteMovement').addEventListener('click',()=>{
    const item=activeMovement;const recurring=!!item.recurrence_id;
    document.getElementById('routeConfirmTitle').textContent=recurring?'Eliminar ocorrência':'Confirmar exclusão';
-   document.getElementById('routeConfirmText').textContent='O movimento será retirado dos cálculos financeiros. Os pagamentos e movimentos dependentes serão atualizados na mesma operação; o histórico de auditoria será preservado. Se existir uma dependência que não possa ser resolvida com segurança, a exclusão será bloqueada.';
+   document.getElementById('routeConfirmText').textContent='Saldos e dependências atualizados. Histórico preservado. Exclusão bloqueada se insegura.';
    confirmCallback=async()=>{const endpoint=urls.remove+'/'+item.id;const response=await fetch(endpoint,{method:'DELETE',headers:{'Accept':'application/json','X-CSRF-TOKEN':csrf}});const json=await response.json();if(!response.ok)throw new Error(json.message||'Não foi possível concluir a operação.');window.location.reload()};
    detailModal.hide();confirmModal.show();
  });
