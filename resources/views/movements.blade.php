@@ -463,12 +463,12 @@
                         <label class="form-check border rounded-3 p-3 mb-0" for="deleteScopeOnly">
                             <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeOnly" value="only">
                             <span class="fw-semibold">Apenas este movimento</span>
-                            <span class="d-block small text-secondary">Anula apenas esta ocorrência e mantém as restantes.</span>
+                            <span class="d-block small text-secondary">Anula apenas esta ocorrência.</span>
                         </label>
                         <label class="form-check border rounded-3 p-3 mb-0" for="deleteScopeFuture">
                             <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeFuture" value="this_and_future">
                             <span class="fw-semibold">Este e os seguintes</span>
-                            <span class="d-block small text-secondary">Anula esta e as ocorrências futuras ainda não confirmadas.</span>
+                            <span class="d-block small text-secondary">Anula esta e futuras ocorrências pendentes.</span>
                         </label>
                     </div>
                 </div>
