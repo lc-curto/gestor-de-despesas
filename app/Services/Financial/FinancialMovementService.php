@@ -786,7 +786,7 @@ class FinancialMovementService
             || ($type === 'income' && $destination?->type === 'credit_card')
             || ($type === 'adjustment' && ($source?->type === 'credit_card' || $destination?->type === 'credit_card'))) {
             throw ValidationException::withMessages([
-                'type' => 'Não é possível registar receitas ou ajustes genéricos num cartão de crédito. Para pagar, usa o pagamento da fatura ou da dívida inicial.',
+                'type' => 'Não é possível registar despesas, receitas ou ajustes genéricos num cartão de crédito. Para compras, usa o registo de compra na fatura; para pagar, usa o pagamento da fatura ou da dívida inicial.',
             ]);
         }
     }
