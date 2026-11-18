@@ -143,7 +143,21 @@ class FinancialAccountService
     public function close(User $user, ContaFinanceira $account, ?string $transferToAccountId = null): void
     {
         DB::transaction(function () use ($user, $account, $transferToAccountId) {
-            $locked = ContaFinanceira::query()->where('user_id', $user->id)->whereKey($account->id)->lockForUpdate()->firstOrFail();
+            // O encerramento pode transferir saldo; bloqueia origem e destino
+            // na mesma ordem determinística usada pelo serviço de movimentos.
+            $accountIds = array_values(array_unique(array_filter([$account->id, $transferToAccountId])));
+            sort($accountIds, SORT_STRING);
+            $lockedAccounts = ContaFinanceira::query()
+                ->where('user_id', $user->id)
+                ->whereIn('id', $accountIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+            $locked = $lockedAccounts->get($account->id);
+            if (! $locked) {
+                throw ValidationException::withMessages(['account' => 'A conta selecionada já não está disponível.']);
+            }
             if (! $locked->is_operational || $locked->type === 'legacy') {
                 throw ValidationException::withMessages(['account' => 'A conta já está encerrada ou é histórica.']);
             }
