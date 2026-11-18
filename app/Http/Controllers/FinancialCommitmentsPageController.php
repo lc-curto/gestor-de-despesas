@@ -39,10 +39,9 @@ class FinancialCommitmentsPageController extends Controller
 
         $eligibleDebts = fn () => $user->dividas()->withTrashed()
             ->where('payment_condition', 'installments')
-            ->where(fn ($query) => $query->whereNull('payment_method')->orWhereNotIn('payment_method', ['credit', 'card']))
-            ->where('status', '!=', 'cancelled');
+            ->where(fn ($query) => $query->whereNull('payment_method')->orWhereNotIn('payment_method', ['credit', 'card']));
 
-        $visibleDebts = fn () => $eligibleDebts()->whereNull('archived_at')->whereNull('deleted_at');
+        $visibleDebts = fn () => $eligibleDebts()->whereNull('archived_at')->whereNull('deleted_at')->where('status', '!=', 'cancelled');
 
         $openInstallments = $user->parcelasDivida()
             ->whereHas('divida', fn ($query) => $query
@@ -83,7 +82,7 @@ class FinancialCommitmentsPageController extends Controller
             ->where('status', '!=', 'cancelled')
             ->count();
 
-        $archivedCount = $eligibleDebts()->where(fn ($query) => $query->whereNotNull('archived_at')->orWhereNotNull('deleted_at'))->count();
+        $archivedCount = $eligibleDebts()->where(fn ($query) => $query->whereNotNull('archived_at')->orWhereNotNull('deleted_at')->orWhere('status', 'cancelled'))->count();
 
         $summary = [
             'open' => $commitmentOpen,
@@ -109,8 +108,8 @@ class FinancialCommitmentsPageController extends Controller
         }
 
         $query = $eligibleDebts()
-            ->when($status === 'active' || $status === 'completed', fn ($builder) => $builder->whereNull('archived_at')->whereNull('deleted_at'))
-            ->when($status === 'archived', fn ($builder) => $builder->where(fn ($archived) => $archived->whereNotNull('archived_at')->orWhereNotNull('deleted_at')))
+            ->when($status === 'active' || $status === 'completed', fn ($builder) => $builder->whereNull('archived_at')->whereNull('deleted_at')->where('status', '!=', 'cancelled'))
+            ->when($status === 'archived', fn ($builder) => $builder->where(fn ($archived) => $archived->whereNotNull('archived_at')->orWhereNotNull('deleted_at')->orWhere('status', 'cancelled')))
             ->withCount(['parcelas as paid_installments_count' => fn ($parts) => $parts->where('status', 'paid')])
             ->withSum('parcelas as paid_amount_total', 'paid_amount')
             ->withSum('parcelas as installment_amount_total', 'amount');
