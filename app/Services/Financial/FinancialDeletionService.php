@@ -156,6 +156,12 @@ class FinancialDeletionService
                 ->whereKey($movement->id)
                 ->firstOrFail();
 
+            // A repetição de uma exclusão concluída é idempotente, mesmo quando
+            // a fatura associada já foi arquivada (soft deleted).
+            if ($snapshot->status === 'void') {
+                return $snapshot;
+            }
+
             // Operações ligadas a faturas usam a ordem cartão -> fatura ->
             // conta de origem -> obrigação -> evento, igual ao pagamento da fatura.
             // A leitura inicial da fatura serve apenas para descobrir o cartão.
