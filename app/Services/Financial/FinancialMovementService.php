@@ -883,7 +883,11 @@ class FinancialMovementService
             $this->assertShape($locked->type, $source, $destination, $locked->adjustment_direction);
             // Uma previsão pendente pode apontar para um cartão; a compra só é
             // efetivada posteriormente por settlePendingPurchase e associada à fatura.
-            if (! ($locked->type === 'expense' && $source?->type === 'credit_card')) {
+            if ($locked->type === 'expense' && $source?->type === 'credit_card') {
+                if (! $source->closing_day || ! $source->due_day) {
+                    throw ValidationException::withMessages(['account_id' => 'O cartão deve estar configurado com dia de fecho e dia de vencimento antes de receber previsões.']);
+                }
+            } else {
                 $this->assertNoGenericCardMovement($locked->type, $source, $destination);
             }
 
