@@ -306,97 +306,99 @@
     }
 }
 
-/* HISTÓRICO DE MOVIMENTOS — layout explícito e sem dependência de flex-wrap global. */
-.app-main .history-list .expense-item {
+/* HISTÓRICO DE MOVIMENTOS — estrutura isolada da lista genérica. */
+.app-main .movement-history-item {
     display:grid !important;
     grid-template-columns:minmax(0,1fr) auto;
     align-items:center !important;
     gap:.65rem !important;
     min-width:0;
+    padding-block:.75rem;
 }
-
-.app-main .history-list .expense-item > :first-child {
-    display:flex;
-    min-width:0 !important;
-    flex:1 1 auto !important;
+.app-main .movement-history-main {
+    display:flex !important;
+    min-width:0;
+    align-items:center;
     gap:.55rem;
 }
-
-.app-main .history-list .expense-item > :first-child > .min-w-0 {
+.app-main .movement-history-copy {
     flex:1 1 auto;
     min-width:0;
+    overflow:hidden;
 }
-
-.app-main .history-list .expense-actions {
-    display:grid !important;
-    grid-template-columns:minmax(0,1fr);
-    justify-items:end;
-    align-content:center;
-    gap:.35rem !important;
-    width:auto !important;
-    min-width:max-content;
+.app-main .movement-history-copy h3 {
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:.88rem;
+}
+.app-main .movement-history-copy p {
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:.72rem;
+}
+.app-main .movement-history-actions {
+    display:flex !important;
+    width:max-content !important;
+    min-width:max-content !important;
     flex:0 0 auto !important;
+    flex-direction:column !important;
+    align-items:flex-end !important;
+    justify-content:center;
+    gap:.35rem !important;
 }
-
-.app-main .history-list .expense-actions .movement-value {
+.app-main .movement-history-value {
     display:block;
     margin:0 !important;
-    white-space:nowrap !important;
-    text-align:right;
+    font-size:.8rem;
+    line-height:1.2;
+    white-space:nowrap;
 }
-
-.app-main .history-list .movement-icon-actions {
+.app-main .movement-history-actions .movement-icon-actions {
     display:flex !important;
+    width:max-content !important;
     flex-direction:row !important;
     flex-wrap:nowrap !important;
-    align-items:center !important;
-    justify-content:flex-end !important;
+    align-items:center;
+    justify-content:flex-end;
     gap:.3rem !important;
-    width:max-content !important;
 }
-
-.app-main .history-list .movement-icon-actions > .btn {
+.app-main .movement-history-actions .movement-icon-actions > .btn {
     display:inline-flex !important;
-    width:2.35rem !important;
-    min-width:2.35rem !important;
-    max-width:2.35rem !important;
-    height:2.35rem !important;
-    min-height:2.35rem !important;
-    max-height:2.35rem !important;
-    flex:0 0 2.35rem !important;
-    align-self:center !important;
-    align-items:center !important;
-    justify-content:center !important;
+    width:2.25rem !important;
+    min-width:2.25rem !important;
+    max-width:2.25rem !important;
+    height:2.25rem !important;
+    min-height:2.25rem !important;
+    max-height:2.25rem !important;
+    flex:0 0 2.25rem !important;
+    align-items:center;
+    justify-content:center;
     margin:0 !important;
-    padding:.25rem !important;
+    padding:.2rem !important;
 }
-
-.app-main .history-list .movement-icon-actions > .btn svg {
-    width:1.05rem !important;
-    height:1.05rem !important;
-    flex:0 0 auto !important;
+.app-main .movement-history-actions .movement-icon-actions svg {
+    width:1rem;
+    height:1rem;
 }
-
-@media (max-width:575.98px) {
-    .app-main .history-list .expense-item {
-        gap:.45rem !important;
-        padding-block:.65rem !important;
+@media(max-width:380px) {
+    .app-main .movement-history-item { gap:.35rem !important; }
+    .app-main .movement-history-main { gap:.4rem !important; }
+    .app-main .movement-history-main .expense-icon {
+        width:2rem;
+        height:2rem;
+        flex:0 0 2rem;
     }
-}
-
-@media (max-width:380px) {
-    .app-main .history-list .expense-item {
-        gap:.3rem !important;
-    }
-
-    .app-main .history-list .movement-icon-actions > .btn {
-        width:2.15rem !important;
-        min-width:2.15rem !important;
-        max-width:2.15rem !important;
-        height:2.15rem !important;
-        min-height:2.15rem !important;
-        max-height:2.15rem !important;
-        flex-basis:2.15rem !important;
+    .app-main .movement-history-actions .movement-icon-actions { gap:.2rem !important; }
+    .app-main .movement-history-actions .movement-icon-actions > .btn {
+        width:2rem !important;
+        min-width:2rem !important;
+        max-width:2rem !important;
+        height:2rem !important;
+        min-height:2rem !important;
+        max-height:2rem !important;
+        flex-basis:2rem !important;
     }
 }
 
