@@ -306,102 +306,98 @@
     }
 }
 
-/* HISTÓRICO DE MOVIMENTOS
-   Única fonte de verdade para a coluna do valor e ações por ícone. */
-.app-main .history-list .expense-item {
-    display: flex;
-    flex-wrap: nowrap !important;
-    align-items: center !important;
-    min-width: 0;
+/* HISTÓRICO DE MOVIMENTOS — estrutura isolada da lista genérica. */
+.app-main .movement-history-item {
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:center !important;
+    gap:.65rem !important;
+    min-width:0;
+    padding-block:.75rem;
 }
-
-.app-main .history-list .expense-item > :first-child {
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
+.app-main .movement-history-main {
+    display:flex !important;
+    min-width:0;
+    align-items:center;
+    gap:.55rem;
 }
-
-.app-main .history-list .expense-actions {
-    display: flex !important;
-    flex: 0 0 auto !important;
-    flex-direction: column !important;
-    flex-wrap: nowrap !important;
-    align-items: flex-end !important;
-    justify-content: center !important;
-    gap: .4rem !important;
-    width: max-content !important;
-    min-width: max-content !important;
+.app-main .movement-history-copy {
+    flex:1 1 auto;
+    min-width:0;
+    overflow:hidden;
 }
-
-.app-main .history-list .expense-actions .movement-value {
-    display: block;
-    flex: 0 0 auto !important;
-    margin: 0 !important;
-    white-space: nowrap !important;
-    text-align: right;
+.app-main .movement-history-copy h3 {
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:.88rem;
 }
-
-.app-main .history-list .movement-icon-actions {
-    display: flex !important;
-    flex: 0 0 auto !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: center !important;
-    justify-content: flex-end !important;
-    gap: .35rem !important;
-    width: max-content !important;
-    min-width: max-content !important;
+.app-main .movement-history-copy p {
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:.72rem;
 }
-
-.app-main .history-list .movement-icon-actions > .btn {
-    display: inline-flex !important;
-    flex: 0 0 2.5rem !important;
-    width: 2.5rem !important;
-    min-width: 2.5rem !important;
-    max-width: 2.5rem !important;
-    height: 2.5rem !important;
-    min-height: 2.5rem !important;
-    max-height: 2.5rem !important;
-    align-items: center !important;
-    justify-content: center !important;
-    margin: 0 !important;
-    padding: .35rem !important;
-    border-radius: .65rem !important;
-    white-space: nowrap !important;
+.app-main .movement-history-actions {
+    display:flex !important;
+    width:max-content !important;
+    min-width:max-content !important;
+    flex:0 0 auto !important;
+    flex-direction:column !important;
+    align-items:flex-end !important;
+    justify-content:center;
+    gap:.35rem !important;
 }
-
-.app-main .history-list .movement-icon-actions > .btn svg {
-    width: 1.1rem !important;
-    height: 1.1rem !important;
-    flex: 0 0 auto !important;
+.app-main .movement-history-value {
+    display:block;
+    margin:0 !important;
+    font-size:.8rem;
+    line-height:1.2;
+    white-space:nowrap;
 }
-
-@media (max-width: 575.98px) {
-    .app-main .history-list .expense-item {
-        gap: .45rem !important;
-        padding-block: .65rem !important;
+.app-main .movement-history-actions .movement-icon-actions {
+    display:flex !important;
+    width:max-content !important;
+    flex-direction:row !important;
+    flex-wrap:nowrap !important;
+    align-items:center;
+    justify-content:flex-end;
+    gap:.3rem !important;
+}
+.app-main .movement-history-actions .movement-icon-actions > .btn {
+    display:inline-flex !important;
+    width:2.25rem !important;
+    min-width:2.25rem !important;
+    max-width:2.25rem !important;
+    height:2.25rem !important;
+    min-height:2.25rem !important;
+    max-height:2.25rem !important;
+    flex:0 0 2.25rem !important;
+    align-items:center;
+    justify-content:center;
+    margin:0 !important;
+    padding:.2rem !important;
+}
+.app-main .movement-history-actions .movement-icon-actions svg {
+    width:1rem;
+    height:1rem;
+}
+@media(max-width:380px) {
+    .app-main .movement-history-item { gap:.35rem !important; }
+    .app-main .movement-history-main { gap:.4rem !important; }
+    .app-main .movement-history-main .expense-icon {
+        width:2rem;
+        height:2rem;
+        flex:0 0 2rem;
     }
-
-    .app-main .history-list .expense-actions {
-        gap: .35rem !important;
-    }
-}
-
-@media (max-width: 380px) {
-    .app-main .history-list .expense-item {
-        gap: .3rem !important;
-    }
-
-    .app-main .history-list .movement-icon-actions {
-        gap: .25rem !important;
-    }
-
-    .app-main .history-list .movement-icon-actions > .btn {
-        flex-basis: 2.25rem !important;
-        width: 2.25rem !important;
-        min-width: 2.25rem !important;
-        max-width: 2.25rem !important;
-        height: 2.25rem !important;
-        min-height: 2.25rem !important;
-        max-height: 2.25rem !important;
+    .app-main .movement-history-actions .movement-icon-actions { gap:.2rem !important; }
+    .app-main .movement-history-actions .movement-icon-actions > .btn {
+        width:2rem !important;
+        min-width:2rem !important;
+        max-width:2rem !important;
+        height:2rem !important;
+        min-height:2rem !important;
+        max-height:2rem !important;
+        flex-basis:2rem !important;
     }
 }
