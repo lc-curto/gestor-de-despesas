@@ -23,13 +23,13 @@ return new class extends Migration
             ->where('is_operational', true)
             ->where('allow_negative_balance', true)
             ->orderBy('id')
-            ->chunkById(200, function ($accounts): void {
+            ->chunkById(200, function ($accounts) use ($toCents): void {
                 foreach ($accounts as $account) {
                     // Um saldo inicial negativo mantém a autorização por causa
                     // da constraint contas_opening_balance_valid e da regra de
                     // negócio que impede desativá-la enquanto ele for negativo.
                     if ($account->opening_balance === null
-                        || (float) $account->opening_balance < 0) {
+                        || $toCents((string) $account->opening_balance) < 0) {
                         continue;
                     }
 
