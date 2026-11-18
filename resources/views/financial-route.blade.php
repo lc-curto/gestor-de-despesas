@@ -117,7 +117,7 @@
                     <label><input type="radio" name="route_type" value="variable" checked><span>Variável</span></label>
                 </div></div>
                 <div class="mb-3"><label for="routeDescription" class="form-label">Descrição</label><input id="routeDescription" name="description" class="form-control" maxlength="255" placeholder="Ex.: Supermercado" required></div>
-                <div class="row g-3"><div class="col-6"><label for="routeAmount" class="form-label">Valor ({{ $symbol }})</label><input id="routeAmount" name="amount" type="text" inputmode="decimal" min="0.01" data-money="positive" class="form-control" placeholder="0,00" required aria-describedby="routeAmountHelp"></div><div class="col-6"><label for="routeDate" class="form-label">Data</label><input id="routeDate" name="movement_date" type="date" class="form-control" required></div>
+                <div class="row g-3"><div class="col-6"><label for="routeAmount" class="form-label">Valor ({{ $symbol }})</label><input id="routeAmount" name="amount" type="text" inputmode="decimal" min="0.01" data-money="positive" class="form-control" placeholder="0,00" required></div><div class="col-6"><label for="routeDate" class="form-label">Data</label><input id="routeDate" name="movement_date" type="date" class="form-control" required></div>
                     <div class="col-12"><label for="routeCategory" class="form-label">Categoria</label><select id="routeCategory" name="category_id" class="form-select"><option value="">Selecionar categoria</option>@foreach($categories as $category)<option value="{{ $category->id }}" data-type="{{ $category->type }}">{{ $category->name }}</option>@endforeach</select></div>
                     <div class="col-12"><label for="routeAccount" class="form-label">Conta</label><select id="routeAccount" name="account_id" class="form-select" required><option value="">Selecionar conta</option>@foreach($accounts as $account)<option value="{{ $account->id }}" data-type="{{ $account->type }}">{{ $account->name }}</option>@endforeach</select></div>
                     <div class="col-12"><label for="routeNotes" class="form-label">Observação (opcional)</label><textarea id="routeNotes" name="notes" class="form-control" rows="2" placeholder="Adicionar observação..."></textarea></div>
@@ -257,7 +257,7 @@
  function renderDayItems(data){
    const list=document.getElementById('routeDayMovements');list.innerHTML='';
    const items=data.items.filter(item=>activeFilter==='all'||activeFilter==='balance'||(activeFilter==='income'?item.type==='income':item.type==='expense'&&item.expense_behavior===activeFilter));
-   if(!items.length){list.innerHTML='<p class="text-secondary small mb-0 py-3">Não existem movimentos nesta seleção.</p>';return}
+   if(!items.length){list.innerHTML='<p class="text-secondary small mb-0 py-3">Sem movimentos.</p>';return}
    items.forEach(item=>{
      const b=document.createElement('button');b.type='button';b.className='route-movement-item';
      const left=document.createElement('span'),name=document.createElement('strong'),meta=document.createElement('small'),amount=document.createElement('strong');
