@@ -366,19 +366,37 @@ class CardInvoiceService
     public function addCredit(User $user, Fatura $invoice, array $data): Movimento
     {
         return DB::transaction(function () use ($user, $invoice, $data): Movimento {
-            $locked = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
-            if (in_array($locked->status, ['paid', 'carried', 'closed'], true)) {
-                throw ValidationException::withMessages(['invoice' => 'A fatura está fechada, paga ou já foi transportada. Regista o crédito no ciclo seguinte.']);
+            // Obtém referências sem lock para descobrir o cartão e as duas faturas;
+            // depois bloqueia cartão e faturas por ordem cronológica determinística.
+            $invoiceSnapshot = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->firstOrFail();
+            $purchaseSnapshot = Movimento::query()->where('user_id', $user->id)->whereKey($data['purchase_movement_id'])
+                ->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false)->firstOrFail();
+            if (! $purchaseSnapshot->invoice_id) {
+                throw ValidationException::withMessages(['purchase_movement_id' => 'A compra selecionada não está associada a uma fatura.']);
             }
-            $this->carryOverdueInvoices($user, $locked);
-            $this->movements->assertInvoiceReconciled($user, $locked);
-            $card = $user->contasFinanceiras()->whereKey($locked->account_id)->lockForUpdate()->firstOrFail();
-            if ($card->type !== 'credit_card' || ! $card->is_operational || $card->status !== 'active') {
-                throw ValidationException::withMessages(['invoice' => 'O cartão associado a esta fatura não está ativo.']);
+            $originSnapshot = Fatura::query()->where('user_id', $user->id)->whereKey($purchaseSnapshot->invoice_id)->firstOrFail();
+            $card = $user->contasFinanceiras()->whereKey($invoiceSnapshot->account_id)->lockForUpdate()->firstOrFail();
+            $invoiceIds = array_values(array_unique([$invoice->id, $originSnapshot->id]));
+            $lockedInvoices = Fatura::query()->where('user_id', $user->id)->whereIn('id', $invoiceIds)
+                ->orderBy('reference_month')->orderBy('id')->lockForUpdate()->get();
+            $locked = $lockedInvoices->firstWhere('id', $invoice->id);
+            $originInvoice = $lockedInvoices->firstWhere('id', $originSnapshot->id);
+            if (! $locked || ! $originInvoice || $locked->account_id !== $card->id || $originInvoice->account_id !== $card->id) {
+                throw ValidationException::withMessages(['invoice' => 'As faturas selecionadas não pertencem ao mesmo cartão. Atualiza a página e tenta novamente.']);
             }
             $purchase = Movimento::query()->where('user_id', $user->id)->whereKey($data['purchase_movement_id'])
                 ->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false)->firstOrFail();
-            $originInvoice = Fatura::query()->where('user_id', $user->id)->whereKey($purchase->invoice_id)->firstOrFail();
+            if ($purchase->invoice_id !== $originInvoice->id) {
+                throw ValidationException::withMessages(['purchase_movement_id' => 'A associação da compra foi alterada. Atualiza a página e tenta novamente.']);
+            }
+            if (in_array($locked->status, ['paid', 'carried', 'closed'], true)) {
+                throw ValidationException::withMessages(['invoice' => 'A fatura está fechada, paga ou já foi transportada. Regista o crédito no ciclo seguinte.']);
+            }
+            if ($card->type !== 'credit_card' || ! $card->is_operational || $card->status !== 'active') {
+                throw ValidationException::withMessages(['invoice' => 'O cartão associado a esta fatura não está ativo.']);
+            }
+            $this->carryOverdueInvoices($user, $locked);
+            $this->movements->assertInvoiceReconciled($user, $locked);
             if ($originInvoice->account_id !== $locked->account_id
                 || $originInvoice->reference_month->gt($locked->reference_month)
                 || (! empty($data['origin_invoice_id']) && $data['origin_invoice_id'] !== $originInvoice->id)) {
