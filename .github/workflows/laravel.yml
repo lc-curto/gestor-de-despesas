@@ -53,9 +53,6 @@ jobs:
           extensions: mbstring, pdo_mysql, xml, ctype, fileinfo, openssl, tokenizer
           coverage: none
 
-      - name: Verify MySQL concurrency test prerequisites
-        run: php -r "if (!function_exists('pcntl_fork') || !function_exists('pcntl_waitpid')) { fwrite(STDERR, 'PCNTL is required for the MySQL concurrency regression test.\\n'); exit(1); }"
-
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist
 
