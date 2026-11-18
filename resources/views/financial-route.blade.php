@@ -289,7 +289,7 @@
  document.getElementById('routeDeleteMovement').addEventListener('click',()=>{
    const item=activeMovement;const recurring=!!item.recurrence_id;
    document.getElementById('routeConfirmTitle').textContent=recurring?'Eliminar ocorrência':'Confirmar exclusão';
-   document.getElementById('routeConfirmText').textContent='Garantia: histórico de auditoria será preservado. Exclusão bloqueada se insegura.';
+   document.getElementById('routeConfirmText').textContent='Histórico preservado. Exclusão insegura bloqueada.';
    confirmCallback=async()=>{const endpoint=urls.remove+'/'+item.id;const response=await fetch(endpoint,{method:'DELETE',headers:{'Accept':'application/json','X-CSRF-TOKEN':csrf}});const json=await response.json();if(!response.ok)throw new Error(json.message||'Não foi possível concluir a operação.');window.location.reload()};
    detailModal.hide();confirmModal.show();
  });
