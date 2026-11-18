@@ -33,7 +33,7 @@ class FinancialDeletionConcurrencyTest extends TestCase
             'movement_date' => '2026-11-18',
         ]);
 
-        [$parentSocket, $childSocket] = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+        [$parentSocket, $childSocket] = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, 0);
         $this->assertIsResource($parentSocket);
         $this->assertIsResource($childSocket);
 
@@ -62,25 +62,31 @@ class FinancialDeletionConcurrencyTest extends TestCase
             DB::purge($primaryName);
 
             try {
+                $threadId = DB::connection($primaryName)->selectOne('SELECT CONNECTION_ID() AS id')->id;
+                fwrite($childSocket, 'started:'.$threadId."\\n");
                 app(FinancialMovementService::class)->deleteAsCorrection(
                     $user,
                     $movement,
                     'Concorrência — processo concorrente'
                 );
-                fwrite($childSocket, 'ok');
+                fwrite($childSocket, "ok\\n");
                 fclose($childSocket);
                 exit(0);
             } catch (\Throwable $exception) {
-                fwrite($childSocket, $exception::class.': '.$exception->getMessage());
+                fwrite($childSocket, 'error:'.$exception::class.': '.$exception->getMessage()."\\n");
                 fclose($childSocket);
                 exit(1);
             }
         }
 
         fclose($childSocket);
+        $started = fgets($parentSocket);
+        $this->assertIsString($started);
+        $this->assertStringStartsWith('started:', $started);
+        $childThreadId = (int) trim(substr($started, strlen('started:')));
 
         try {
-            // Aguarda a confirmação do InnoDB de que o filho está realmente
+            // Aguarda a confirmação do InnoDB de que este filho está realmente
             // em LOCK WAIT; isto evita depender de sleeps ou de timing arbitrário.
             $deadline = microtime(true) + 5;
             $waitingTransactions = 0;
@@ -117,19 +123,19 @@ class FinancialDeletionConcurrencyTest extends TestCase
             if ($primary->transactionLevel() > 0) {
                 $primary->rollBack();
             }
-            posix_kill($pid, SIGTERM);
+            // O rollback liberta o lock e permite que o processo filho termine.
             pcntl_waitpid($pid, $childStatus);
             fclose($parentSocket);
             throw $exception;
         }
 
         pcntl_waitpid($pid, $childStatus);
-        $childOutput = stream_get_contents($parentSocket);
+        $childOutput = fgets($parentSocket);
         fclose($parentSocket);
 
         $this->assertTrue(pcntl_wifexited($childStatus), 'O processo concorrente deve terminar normalmente.');
         $this->assertSame(0, pcntl_wexitstatus($childStatus), $childOutput);
-        $this->assertSame('ok', $childOutput);
+        $this->assertSame(\"ok\\n\", $childOutput);
         $this->assertSame('void', $movement->fresh()->status);
         $this->assertDatabaseCount('deletion_operations', 1);
         $this->assertDatabaseCount('deletion_operation_items', 1);
