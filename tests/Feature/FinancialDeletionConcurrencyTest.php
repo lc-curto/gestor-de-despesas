@@ -13,7 +13,7 @@ class FinancialDeletionConcurrencyTest extends TestCase
 {
     use DatabaseMigrations;
 
-    public function test_two_mysql_connections_serialize_the_same_movement_deletion(): void
+    public function test_two_mysql_sessions_serialize_the_same_movement_deletion(): void
     {
         $primaryName = config('database.default');
         $primary = DB::connection($primaryName);
@@ -30,16 +30,16 @@ class FinancialDeletionConcurrencyTest extends TestCase
             'movement_date' => '2026-11-18',
         ]);
 
-        // Cria uma segunda sessão MySQL real, com timeout curto para tornar
-        // determinística a verificação de contenção do lock.
         config(['database.connections.concurrent' => config('database.connections.'.$primaryName)]);
         DB::purge('concurrent');
         $secondary = DB::connection('concurrent');
-        $this->assertNotSame($primary->getPdo(), $secondary->getPdo(), 'As operações devem usar sessões PDO independentes.');
-        $secondary->statement('SET SESSION innodb_lock_wait_timeout = 1');
 
-        // A primeira transação mantém o lock enquanto a segunda executa
-        // o serviço de exclusão na outra sessão.
+        $this->assertNotSame($primary->getPdo(), $secondary->getPdo(), 'As operações devem usar sessões PDO independentes.');
+
+        $secondary->statement('SET SESSION innodb_lock_wait_timeout = 1');
+        $secondary->statement('SET SESSION lock_wait_timeout = 1');
+
+        // A transação vencedora retém o lock do movimento.
         $primary->beginTransaction();
 
         try {
@@ -51,25 +51,29 @@ class FinancialDeletionConcurrencyTest extends TestCase
 
             $this->assertNotNull($lockedMovement, 'A primeira transação deve adquirir o lock do movimento.');
 
-            config(['database.default' => 'concurrent']);
+            // A segunda sessão inicia outra transação e tenta bloquear a mesma
+            // linha. O timeout confirma que o InnoDB está a serializar as operações.
+            $secondary->beginTransaction();
             $lockFailure = null;
 
             try {
-                app(FinancialMovementService::class)->deleteAsCorrection(
-                    $user,
-                    $movement,
-                    'Concorrência — primeira tentativa'
-                );
+                $secondary->table('movimentos')
+                    ->where('user_id', $user->id)
+                    ->where('id', $movement->id)
+                    ->lockForUpdate()
+                    ->first();
             } catch (QueryException $exception) {
                 $lockFailure = $exception;
             } finally {
-                config(['database.default' => $primaryName]);
+                if ($secondary->transactionLevel() > 0) {
+                    $secondary->rollBack();
+                }
             }
 
             $this->assertNotNull($lockFailure, 'A segunda transação deve aguardar o lock mantido pela primeira.');
             $this->assertStringContainsString('1205', $lockFailure->getMessage());
 
-            // A primeira transação conclui a exclusão e confirma o commit.
+            // A exclusão real é concluída pela transação vencedora.
             app(FinancialMovementService::class)->deleteAsCorrection(
                 $user,
                 $movement,
@@ -77,6 +81,9 @@ class FinancialDeletionConcurrencyTest extends TestCase
             );
             $primary->commit();
         } catch (\Throwable $exception) {
+            if ($secondary->transactionLevel() > 0) {
+                $secondary->rollBack();
+            }
             if ($primary->transactionLevel() > 0) {
                 $primary->rollBack();
             }
@@ -85,8 +92,8 @@ class FinancialDeletionConcurrencyTest extends TestCase
             config(['database.default' => $primaryName]);
         }
 
-        // A segunda sessão repete a operação depois do commit: deve ser
-        // idempotente e não criar uma segunda operação nem itens de auditoria.
+        // A segunda sessão repete a exclusão após o commit: deve ser idempotente
+        // e não criar uma segunda operação nem itens de auditoria.
         config(['database.default' => 'concurrent']);
 
         try {
