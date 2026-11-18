@@ -39,7 +39,9 @@ Estilos e scripts de interface:
 
 ## Ajustes iniciais nesta branch
 
-- Criar uma camada responsiva partilhada, carregada depois do design system.\n- Converter a página de boas-vindas para o layout Bootstrap e retirar Tailwind do pipeline Vite.\n- Normalizar alvos de toque para ações iconográficas em listas e cartões.
+- Criar uma camada responsiva partilhada, carregada depois do design system.
+- Converter a página de boas-vindas para o layout Bootstrap e retirar Tailwind do pipeline Vite.
+- Normalizar alvos de toque para ações iconográficas em listas e cartões.
 - Normalizar alinhamento, quebra e dimensões dos botões sem impor empilhamento universal.
 - Manter grupos de botões horizontais quando existe espaço e permitir quebra natural quando não existe.
 - Garantir que rodapés de modais e formulários não comprimem nem sobrepõem ações.
