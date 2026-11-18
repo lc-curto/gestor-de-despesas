@@ -38,10 +38,11 @@ class FinancialCommitmentsPageController extends Controller
             ->get();
 
         $eligibleDebts = fn () => $user->dividas()
-            ->whereNull('archived_at')
             ->where('payment_condition', 'installments')
             ->where(fn ($query) => $query->whereNull('payment_method')->orWhereNotIn('payment_method', ['credit', 'card']))
             ->where('status', '!=', 'cancelled');
+
+        $visibleDebts = fn () => $eligibleDebts()->whereNull('archived_at');
 
         $openInstallments = $user->parcelasDivida()
             ->whereHas('divida', fn ($query) => $query
@@ -68,7 +69,7 @@ class FinancialCommitmentsPageController extends Controller
             ->orderBy('installment_number')
             ->first();
 
-        $eligibleQuery = $eligibleDebts();
+        $eligibleQuery = $visibleDebts();
         $activeCount = (clone $eligibleQuery)
             ->whereHas('parcelas', fn ($query) => $query
                 ->whereColumn('amount', '>', 'paid_amount')
@@ -89,12 +90,13 @@ class FinancialCommitmentsPageController extends Controller
             'upcoming' => max(0, $commitmentOpen - $commitmentOverdue),
             'active_count' => $activeCount,
             'completed_count' => $completedCount,
-            'total_count' => $activeCount + $completedCount,
+            'archived_count' => (clone $eligibleDebts())->whereNotNull('archived_at')->count(),
+            'total_count' => $activeCount + $completedCount + (clone $eligibleDebts())->whereNotNull('archived_at')->count(),
             'next_installment' => $nextInstallment,
         ];
 
         $status = $request->query('status', 'active');
-        if (! in_array($status, ['active', 'completed', 'all'], true)) {
+        if (! in_array($status, ['active', 'completed', 'archived', 'all'], true)) {
             $status = 'active';
         }
 
@@ -105,6 +107,8 @@ class FinancialCommitmentsPageController extends Controller
         }
 
         $query = $eligibleDebts()
+            ->when($status === 'active' || $status === 'completed', fn ($builder) => $builder->whereNull('archived_at'))
+            ->when($status === 'archived', fn ($builder) => $builder->whereNotNull('archived_at'))
             ->withCount(['parcelas as paid_installments_count' => fn ($parts) => $parts->where('status', 'paid')])
             ->withSum('parcelas as paid_amount_total', 'paid_amount')
             ->withSum('parcelas as installment_amount_total', 'amount');
