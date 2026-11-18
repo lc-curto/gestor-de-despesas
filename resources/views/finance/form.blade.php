@@ -13,7 +13,7 @@
     <a class="small text-decoration-none" href="{{ $returnUrl }}"><i data-lucide="arrow-left" class="me-1"></i> Voltar</a>
     <p class="eyebrow mt-3 mb-1">Movimentos financeiros</p>
     <h1 class="h2 fw-bold mb-1">{{ $registo ? 'Editar' : 'Novo' }} {{ $tipo }}</h1>
-    <p class="text-secondary mb-0">{{ $registo ? 'Atualiza os dados deste movimento.' : 'Regista um novo movimento financeiro.' }}</p>
+    
 </header>
 @if ($errors->any())
     <div class="alert alert-danger" role="alert"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
@@ -38,7 +38,7 @@
         <div class="col-md-6">
             <label class="form-label">Moeda da conta</label>
             <input class="form-control" value="{{ auth()->user()->currency }}" readonly>
-            <div class="form-text">Todos os movimentos utilizam a moeda definida na conta.</div>
+            
         </div>
         <div class="col-md-6">
             <label for="account_id" class="form-label">Conta</label>
@@ -49,10 +49,10 @@
                 @endforeach
             </select>
             @if ($tipo === 'despesa')
-                <div class="form-text">Se escolheres um cartão, esta despesa entra automaticamente na fatura do cartão.</div>
+                
             @endif
             @if ($accounts->isEmpty())
-                <div class="form-text text-warning">Cria uma conta ativa e configura o saldo inicial em <a href="{{ route('financial.accounts.page') }}">Contas</a> antes de registar movimentos.</div>
+                <div class="form-text text-warning"><a href="{{ route('financial.accounts.page') }}">Criar conta</a></div>
             @endif
         </div>
         <div class="col-md-6">
@@ -72,7 +72,7 @@
                 <label class="form-check"><input class="form-check-input" type="radio" name="expense_behavior" value="variable" @checked(old("expense_behavior", $financialMovement?->expense_behavior ?? "variable") === "variable")> <span class="form-check-label">Variável</span></label>
                 <label class="form-check"><input class="form-check-input" type="radio" name="expense_behavior" value="fixed" @checked(old("expense_behavior", $financialMovement?->expense_behavior ?? "variable") === "fixed")> <span class="form-check-label">Fixa</span></label>
             </div>
-            <div class="form-text">Fixa é uma despesa estrutural ou regular, mesmo que o valor varie.</div>
+            
         </div>
         @endif
         <div class="col-md-6">
@@ -83,7 +83,7 @@
     @if ($tipo === 'despesa' && request()->boolean('card_only'))
     <section class="alert alert-light border mt-3 mb-0" id="cardCycleInfo" aria-live="polite">
         <strong>Faturação do cartão</strong>
-        <p class="small text-secondary mb-0" id="cardCycleDescription">A compra será integrada automaticamente na fatura do cartão selecionado.</p>
+        
     </section>
     @endif
     @if ($tipo === 'despesa' && !$registo && !request()->boolean('card_only'))
@@ -103,7 +103,7 @@
         <div id="effectivePaymentFields" class="mt-4" hidden>
             <label class="form-label d-block">Já foi pago?</label>
             <div class="d-flex gap-3 mb-3"><label class="form-check"><input class="form-check-input" type="radio" name="paid_now" value="1"> <span class="form-check-label">Sim</span></label><label class="form-check"><input class="form-check-input" type="radio" name="paid_now" value="0" checked> <span class="form-check-label">Ainda não</span></label></div>
-            <div id="effectivePaymentInputs" class="row g-3" hidden><div class="col-md-6"><label for="payment_amount" class="form-label">Valor pago</label><input id="payment_amount" name="payment_amount" type="number" min="0.01" step="0.01" class="form-control"><div class="form-text">O pagamento inicial será aplicado à primeira prestação e não pode exceder o valor dessa prestação.</div></div><div class="col-md-6"><label for="payment_date" class="form-label">Data do pagamento</label><input id="payment_date" name="payment_date" type="date" class="form-control" value="{{ now()->toDateString() }}"></div><div class="col-md-6"><label for="payment_account_id" class="form-label">Conta do pagamento</label><select id="payment_account_id" name="payment_account_id" class="form-select"><option value="">Selecionar conta</option>@foreach ($accounts->whereIn('type', ['bank', 'cash'])->where('is_operational', true)->where('status', 'active') as $account)<option value="{{ $account->id }}">{{ $account->name }} · {{ $account->currency }}</option>@endforeach</select>@if ($accounts->whereIn('type', ['bank', 'cash'])->where('is_operational', true)->where('status', 'active')->isEmpty())<div class="form-text text-warning">Não tens uma conta bancária ou de dinheiro ativa para registar este pagamento.</div>@endif</div></div>
+            <div id="effectivePaymentInputs" class="row g-3" hidden><div class="col-md-6"><label for="payment_amount" class="form-label">Valor pago</label><input id="payment_amount" name="payment_amount" type="number" min="0.01" step="0.01" class="form-control"></div><div class="col-md-6"><label for="payment_date" class="form-label">Data do pagamento</label><input id="payment_date" name="payment_date" type="date" class="form-control" value="{{ now()->toDateString() }}"></div><div class="col-md-6"><label for="payment_account_id" class="form-label">Conta do pagamento</label><select id="payment_account_id" name="payment_account_id" class="form-select"><option value="">Selecionar conta</option>@foreach ($accounts->whereIn('type', ['bank', 'cash'])->where('is_operational', true)->where('status', 'active') as $account)<option value="{{ $account->id }}">{{ $account->name }} · {{ $account->currency }}</option>@endforeach</select>@if ($accounts->whereIn('type', ['bank', 'cash'])->where('is_operational', true)->where('status', 'active')->isEmpty())<div class="form-text text-warning">Cria uma conta ativa.</div>@endif</div></div>
         </div>
     </section>
     @endif
@@ -117,7 +117,7 @@
             <div class="col-md-4"><label for="recurrence_frequency" class="form-label">Frequência</label><select id="recurrence_frequency" name="recurrence_frequency" class="form-select"><option value="daily">Dia(s)</option><option value="weekly">Semana(s)</option><option value="monthly" selected>Mês(es)</option><option value="yearly">Ano(s)</option><option value="custom">Dias personalizados</option></select></div>
             <div class="col-md-4"><label for="recurrence_ends_at" class="form-label">Termina em <span class="text-secondary">(opcional)</span></label><input id="recurrence_ends_at" name="recurrence_ends_at" type="date" class="form-control" value="{{ old('recurrence_ends_at') }}"></div>
         </div>
-        <div class="form-text">As próximas ocorrências aparecem em {{ $tipo === 'despesa' ? 'Despesas' : 'Receitas' }} como previsões e não alteram o saldo até serem liquidadas.</div>
+        
     </section>
     @endif
     <div class="d-flex gap-2 mt-4">
