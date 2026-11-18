@@ -64,7 +64,8 @@
                     $partsTotal = (int) $commitment->installments_count;
                     $partsPaid = (int) $commitment->paid_installments_count;
                     $isCompleted = $commitment->remaining_amount <= 0.009;
-                    $isArchived = $commitment->archived_at !== null;
+                    $isSoftDeleted = $commitment->trashed();
+                    $isArchived = $commitment->archived_at !== null || $isSoftDeleted;
                     $next = $commitment->next_installment;
                     $nextRemaining = $next ? max(0, (float) $next->amount - (float) $next->paid_amount) : 0;
                 @endphp
@@ -138,7 +139,7 @@
                                     data-due="{{ $next && $next->due_date->gte(today()) ? $next->due_date->format('Y-m-d') : now()->addMonth()->toDateString() }}">Renegociar</button>
                                 @if ($isArchived)
                                     <button type="button" class="btn btn-outline-primary js-restore-commitment"
-                                        data-url="{{ route('financial.commitments.restore', $commitment->id) }}">Restaurar</button>
+                                        data-url="{{ route('financial.commitments.restore', $commitment->id) }}">{{ $isSoftDeleted ? 'Recuperar para revisão' : 'Restaurar' }}</button>
                                     <button type="button" class="btn btn-outline-danger js-archive-commitment"
                                         data-archived="true"
                                         data-name="{{ $commitment->name }}"
@@ -678,7 +679,8 @@
             const response = await fetch(button.dataset.url, {method:'POST',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({})});
             const result = await response.json().catch(()=>({}));
             if (!response.ok) throw new Error(result.message || 'Não foi possível restaurar a compra.');
-            window.location.href = @json(route('financial.commitments.page')) + '?status=active';
+            const recoveredAsArchived = Boolean(result.data?.archived_at);
+            window.location.href = @json(route('financial.commitments.page')) + '?status=' + (recoveredAsArchived ? 'archived' : 'active');
         } catch (error) {
             button.disabled = false;
             showError(feedback, error.message);
