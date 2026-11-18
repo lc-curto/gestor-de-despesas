@@ -113,7 +113,7 @@ class FinancialCoreController extends Controller
 
     public function restoreCommitment(Request $request, string $id, FinancialCommitmentService $service): JsonResponse
     {
-        $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();
+        $debt = $request->user()->dividas()->withTrashed()->whereKey($id)->firstOrFail();
 
         return response()->json([
             'data' => $service->restore($request->user(), $debt),
@@ -123,7 +123,7 @@ class FinancialCoreController extends Controller
 
     public function deleteCommitment(Request $request, string $id, FinancialCommitmentService $service): JsonResponse
     {
-        $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();
+        $debt = $request->user()->dividas()->withTrashed()->whereKey($id)->firstOrFail();
         $service->delete($request->user(), $debt);
 
         return response()->json(['message' => 'Compra eliminada.']);
