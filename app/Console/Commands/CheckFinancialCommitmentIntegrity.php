@@ -20,6 +20,9 @@ class CheckFinancialCommitmentIntegrity extends Command
             ->leftJoin('parcelas_divida as p', function ($join): void {
                 $join->on('p.id', '=', 'm.installment_id')->on('p.user_id', '=', 'm.user_id');
             })
+            ->leftJoin('dividas as pd', function ($join): void {
+                $join->on('pd.id', '=', 'p.debt_id')->on('pd.user_id', '=', 'p.user_id');
+            })
             ->where('m.status', '!=', 'void')
             ->where(function ($relations): void {
                 $relations->whereNotNull('m.debt_id')->orWhereNotNull('m.installment_id');
@@ -37,6 +40,10 @@ class CheckFinancialCommitmentIntegrity extends Command
                 'p.id as existing_installment_id',
                 'p.debt_id as installment_debt_id',
                 'p.status as installment_status',
+                'pd.id as installment_parent_exists',
+                'pd.status as installment_parent_status',
+                'pd.archived_at as installment_parent_archived_at',
+                'pd.deleted_at as installment_parent_deleted_at',
             ])
             ->when($this->option('user'), fn ($builder, $userId) => $builder->where('m.user_id', $userId));
 
@@ -45,12 +52,15 @@ class CheckFinancialCommitmentIntegrity extends Command
         $issues = [
             'Movimentos com parcelamento inexistente' => $rows->filter(fn ($row) => $row->debt_id !== null && $row->existing_debt_id === null),
             'Movimentos com prestação inexistente' => $rows->filter(fn ($row) => $row->installment_id !== null && $row->existing_installment_id === null),
-            'Relações movimento/prestação divergentes' => $rows->filter(fn ($row) => $row->debt_id !== null && $row->installment_id !== null
+            'Prestações ligadas a parcelamentos inexistentes' => $rows->filter(fn ($row) => $row->existing_installment_id !== null
+                && $row->installment_parent_exists === null),
+            'Relações movimento/prestação divergentes' => $rows->filter(fn ($row) => $row->installment_id !== null
                 && $row->existing_installment_id !== null && $row->debt_id !== $row->installment_debt_id),
-            'Movimentos ligados a parcelamentos arquivados/eliminados' => $rows->filter(fn ($row) => $row->existing_debt_id !== null
-                && ($row->archived_at !== null || $row->deleted_at !== null)),
+            'Movimentos ligados a parcelamentos arquivados/eliminados' => $rows->filter(fn ($row) =>
+                $row->archived_at !== null || $row->deleted_at !== null
+                || $row->installment_parent_archived_at !== null || $row->installment_parent_deleted_at !== null),
             'Movimentos ligados a parcelamentos/prestações cancelados' => $rows->filter(fn ($row) => $row->debt_status === 'cancelled'
-                || $row->installment_status === 'cancelled'),
+                || $row->installment_status === 'cancelled' || $row->installment_parent_status === 'cancelled'),
         ];
 
         $total = 0;
