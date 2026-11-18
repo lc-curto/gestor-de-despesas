@@ -371,7 +371,7 @@ O inventário das rotas de exclusão, cancelamento, edição/substituição e re
 
 A validação automatizada cobre movimentos, eventos de liquidação, pagamentos parciais/totais, parcelamentos, faturas, dívida inicial de cartão, recorrências, categorias, cartões, isolamento entre utilizadores e idempotência. A revisão estática confirmou que os endpoints de produto para reverse/void isolados já não estão registados em `routes/web.php`.
 
-Limites remanescentes: o CI não simula concorrência real entre transações/processos; a ordem de locks foi revista no código, mas um teste de stress concorrente em ambiente MySQL dedicado ainda seria validação adicional. O CI também reporta dois testes como `risky`, sem falhas; esses avisos devem permanecer visíveis e não ser apresentados como testes aprovados sem ressalva.
+Validação atual: o CI executa um teste de contenção real entre duas sessões PDO MySQL independentes, com transações sobrepostas e `FOR UPDATE NOWAIT`, seguido de repetição idempotente da exclusão. A suíte completa passou com 205 testes, 1.664 assertions e zero testes `risky`. O teste valida contenção entre sessões; não é um teste de carga/throughput.
 
 
 ## 8. Modelo aprovado para exclusões financeiras
@@ -416,7 +416,7 @@ Integrações já alteradas:
 - Substituição de movimentos legacy na edição deixa de apagar o movimento canónico e o histórico.
 - Endpoints de estorno foram removidos das rotas de produto; os dados antigos permanecem compatíveis.
 
-Testes de regressão atualizados/adicionados para pagamentos parciais, pagamentos de faturas, dívida inicial, transferência, exclusão de parcelamentos parcial e totalmente pagos, cancelamento parcial, divergência entre contador e eventos, idempotência, proteção de cartão com histórico e categoria com movimento canónico. O CI confirmado no commit `fe4ecbb84f09e295fe8569f3169b658450f64222` executou 204 testes aprovados, 1.655 assertions e zero testes risky. A nova regressão de concorrência ainda aguarda execução no CI.
+Testes de regressão atualizados/adicionados para pagamentos parciais, pagamentos de faturas, dívida inicial, transferência, exclusão de parcelamentos parcial e totalmente pagos, cancelamento parcial, divergência entre contador e eventos, idempotência, proteção de cartão com histórico, categoria com movimento canónico e contenção concorrente MySQL. O CI do HEAD `bcb1b42069ff4a049dd842d2b397881eba7143ba` executou 205 testes aprovados, 1.664 assertions e zero testes `risky`.
 
 ## 10. Validação final e limites conhecidos
 
@@ -426,13 +426,13 @@ Testes de regressão atualizados/adicionados para pagamentos parciais, pagamento
 4. [x] Testes de regressão para pagamentos parciais/totais, cancelamento e eliminação de parcelamentos, pagamentos de fatura, dívida inicial, recorrências, categorias, cartões e isolamento entre utilizadores.
 5. [x] Teste de idempotência para eliminação repetida de movimento sem duplicar auditoria.
 6. [x] Teste de fatura vazia: soft delete e restauração do mesmo ID quando há nova compra no mesmo ciclo.
-7. [x] CI aprovado no commit `fe4ecbb84f09e295fe8569f3169b658450f64222`: 204 testes aprovados, 1.655 assertions e zero testes `risky`.
-8. [ ] CI do HEAD atualizado, incluindo o teste de concorrência MySQL.
+7. [x] CI histórico aprovado no commit `fe4ecbb84f09e295fe8569f3169b658450f64222`: 204 testes aprovados, 1.655 assertions e zero testes `risky`.
+8. [x] CI do HEAD `bcb1b42069ff4a049dd842d2b397881eba7143ba`: 205 testes aprovados, 1.664 assertions e zero testes `risky`.
 9. [x] Avisos `risky` eliminados: corrigida a diretiva Blade duplicada e adicionadas verificações de integridade dos buffers nos testes de renderização.
-10. [x] Adicionado `FinancialDeletionConcurrencyTest`: duas sessões MySQL independentes executam transações sobrepostas; a segunda sessão confirma que o lock da primeira impede a aquisição imediata (`NOWAIT`) e, após o commit vencedor, a repetição não duplica a auditoria. A execução no CI ainda precisa de confirmação.
+10. [x] `FinancialDeletionConcurrencyTest` executado no CI MySQL: duas sessões independentes, transações sobrepostas, contenção `NOWAIT` e repetição idempotente sem duplicar a auditoria.
 11. [ ] Merge e deploy permanecem fora do âmbito até aprovação explícita do utilizador.
 
-A implementação e os testes funcionais/atómicos estão concluídos na branch. O teste de concorrência entre sessões MySQL independentes foi adicionado ao workflow, mas a aprovação depende da sua execução em MySQL no CI. Não fazer merge nem deploy sem aprovação explícita.
+A implementação e os testes funcionais/atómicos estão concluídos na branch. A suíte completa e o teste de concorrência passaram no CI MySQL. Não fazer merge nem deploy sem aprovação explícita.
 
 ### Atualização adicional da implementação
 
