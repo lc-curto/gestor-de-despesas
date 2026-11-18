@@ -1,0 +1,107 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Http\Middleware\EnsureFinancialDataReviewed;
+use App\Models\Divida;
+use App\Models\ParcelaDivida;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class FinancialArchivedCommitmentsTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_archived_commitments_are_recoverable_from_archived_and_all_tabs(): void
+    {
+        $user = User::factory()->create();
+        $debt = $this->createCommitment($user, now());
+
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class)->actingAs($user);
+
+        $this->get(route('financial.commitments.page', ['status' => 'archived']))
+            ->assertOk()
+            ->assertSee('Compra QA arquivada')
+            ->assertSee('Arquivados (1)');
+
+        $this->get(route('financial.commitments.page', ['status' => 'all']))
+            ->assertOk()
+            ->assertSee('Compra QA arquivada');
+
+        $this->get(route('financial.commitments.page', ['status' => 'active']))
+            ->assertOk()
+            ->assertDontSee('Compra QA arquivada');
+    }
+
+    public function test_archived_commitment_can_be_restored_without_changing_installments_or_payments(): void
+    {
+        $user = User::factory()->create();
+        $debt = $this->createCommitment($user, now());
+
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class)->actingAs($user);
+
+        $this->postJson(route('financial.commitments.restore', $debt->id))
+            ->assertOk()
+            ->assertJsonPath('message', 'Compra restaurada.');
+
+        $this->assertDatabaseHas('dividas', [
+            'id' => $debt->id,
+            'user_id' => $user->id,
+            'archived_at' => null,
+            'status' => 'open',
+        ]);
+
+        $this->assertDatabaseHas('parcelas_divida', [
+            'debt_id' => $debt->id,
+            'installment_number' => 1,
+            'amount' => '30.00',
+            'paid_amount' => '0.00',
+            'status' => 'pending',
+        ]);
+    }
+
+    private function createCommitment(User $user, $archivedAt): Divida
+    {
+        $debt = Divida::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Compra QA arquivada',
+            'type' => 'purchase',
+            'payment_condition' => 'installments',
+            'payment_method' => 'debit',
+            'installments_count' => 2,
+            'installment_frequency' => 'monthly',
+            'total_amount' => '60.00',
+            'start_date' => today()->toDateString(),
+            'due_date' => today()->addMonth()->toDateString(),
+            'status' => 'open',
+            'archived_at' => $archivedAt,
+        ]);
+
+        ParcelaDivida::query()->create([
+            'user_id' => $user->id,
+            'debt_id' => $debt->id,
+            'installment_number' => 1,
+            'due_date' => today()->addMonth()->toDateString(),
+            'amount' => '30.00',
+            'principal_amount' => '30.00',
+            'interest_amount' => '0.00',
+            'paid_amount' => '0.00',
+            'status' => 'pending',
+        ]);
+
+        ParcelaDivida::query()->create([
+            'user_id' => $user->id,
+            'debt_id' => $debt->id,
+            'installment_number' => 2,
+            'due_date' => today()->addMonths(2)->toDateString(),
+            'amount' => '30.00',
+            'principal_amount' => '30.00',
+            'interest_amount' => '0.00',
+            'paid_amount' => '0.00',
+            'status' => 'pending',
+        ]);
+
+        return $debt;
+    }
+}
