@@ -58,11 +58,13 @@ class FinancialDeletionConcurrencyTest extends TestCase
         if ($pid === 0) {
             fclose($parentSocket);
 
-            // Nunca reutilizar no filho o socket PDO herdado do processo pai.
-            DB::purge($primaryName);
+            // O filho usa uma segunda ligação; não fechar a ligação herdada,
+            // pois ela pertence à transação que o processo pai ainda vai concluir.
+            config(['database.connections.concurrent' => config('database.connections.'.$primaryName)]);
+            config(['database.default' => 'concurrent']);
 
             try {
-                $threadId = DB::connection($primaryName)->selectOne('SELECT CONNECTION_ID() AS id')->id;
+                $threadId = DB::connection('concurrent')->selectOne('SELECT CONNECTION_ID() AS id')->id;
                 fwrite($childSocket, 'started:'.$threadId."\n");
                 app(FinancialMovementService::class)->deleteAsCorrection(
                     $user,
@@ -126,11 +128,17 @@ class FinancialDeletionConcurrencyTest extends TestCase
             }
             // O rollback liberta o lock e permite que o processo filho termine.
             pcntl_waitpid($pid, $childStatus);
+            DB::purge($primaryName);
+            DB::connection($primaryName);
             fclose($parentSocket);
             throw $exception;
         }
 
         pcntl_waitpid($pid, $childStatus);
+        // O processo filho pode fechar o socket PDO herdado ao terminar.
+        // Reabre a ligação principal depois de ambos os processos concluírem.
+        DB::purge($primaryName);
+        $primary = DB::connection($primaryName);
         $childOutput = fgets($parentSocket);
         fclose($parentSocket);
 
