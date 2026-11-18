@@ -120,7 +120,7 @@
         
     </section>
     @endif
-    <div class="d-flex gap-2 mt-4">
+    <div class="d-flex gap-2 mt-4 finance-form-actions">
         <button class="btn btn-primary" @disabled($accounts->isEmpty())>Guardar</button>
         <a class="btn btn-outline-secondary" href="{{ $returnUrl }}">Cancelar</a>
     </div>
