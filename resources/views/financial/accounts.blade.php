@@ -123,7 +123,7 @@
                         <div class="col-sm-6">
                             <label for="openingBalance" class="form-label">Saldo inicial</label>
                             <input id="openingBalance" name="opening_balance" type="text" inputmode="decimal" class="form-control" min="-9999999999.99" max="9999999999.99" data-money="opening" value="0.00" required aria-describedby="openingBalanceHelp">
-                            <div class="form-text" id="openingBalanceHelp">Aceita 90,50, 1.000,00, inteiros e decimais com ponto. Pode ser negativo.</div>
+                            <div class="form-text" id="openingBalanceHelp">Aceita 90,50, 1.000,00, inteiros e decimais com ponto. Um saldo inicial negativo ativa automaticamente a permissão de saldo negativo.</div>
                         </div>
                         <div class="col-sm-6">
                             <label for="openingBalanceDate" class="form-label">Data do saldo</label>
@@ -425,11 +425,17 @@
                     body: JSON.stringify(Object.fromEntries(opening.entries())), credentials: 'same-origin'
                 }).then(async (response) => { if (!response.ok) throw new Error((await response.json()).message || 'Não foi possível guardar o saldo inicial.'); });
             }
-            if (!document.getElementById('editNegativeBalanceField').classList.contains('d-none')) {
-                await fetch(form.dataset.settingsEndpoint, {
+            if (!form.elements.opening_balance.value
+                && !document.getElementById('editNegativeBalanceField').classList.contains('d-none')) {
+                const settingsResponse = await fetch(form.dataset.settingsEndpoint, {
                     method: 'PUT', headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
                     body: JSON.stringify({ allow_negative_balance: form.elements.allow_negative_balance.checked }), credentials: 'same-origin'
                 });
+                const settingsResult = await settingsResponse.json().catch(() => ({}));
+                if (!settingsResponse.ok) {
+                    const validationMessage = Object.values(settingsResult.errors || {}).flat().join(' ');
+                    throw new Error(validationMessage || settingsResult.message || 'Não foi possível atualizar a permissão de saldo negativo.');
+                }
             }
             window.location.reload();
         }
