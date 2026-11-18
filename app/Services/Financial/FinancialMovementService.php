@@ -22,13 +22,41 @@ class FinancialMovementService
         return $this->createMovement($user, $data, false);
     }
 
+    /**
+     * Cria uma compra em cartão apenas quando a fatura pertence ao utilizador
+     * e ao próprio cartão. O fluxo de domínio continua responsável pelo limite
+     * e pelo ciclo da fatura.
+     */
+    public function createCardPurchase(User $user, array $data): Movimento
+    {
+        return DB::transaction(function () use ($user, $data): Movimento {
+            $card = $this->account($user, $data['source_account_id'] ?? null);
+            $invoice = Fatura::query()
+                ->where('user_id', $user->id)
+                ->whereKey($data['invoice_id'] ?? null)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($data['type'] !== 'expense' || $card?->type !== 'credit_card' || $invoice->account_id !== $card->id) {
+                throw ValidationException::withMessages([
+                    'account_id' => 'A compra deve usar um cartão e uma fatura pertencentes ao mesmo utilizador.',
+                ]);
+            }
+
+            return $this->createMovement($user, $data, true);
+        });
+    }
+
     /** A via interna permite operações de cartão já validadas pelos serviços de domínio. */
     private function createMovement(User $user, array $data, bool $allowCardTransfer): Movimento
     {
         return DB::transaction(function () use ($user, $data, $allowCardTransfer) {
             $type = $data['type'];
-            $source = $this->account($user, $data['source_account_id'] ?? null);
-            $destination = $this->account($user, $data['destination_account_id'] ?? null);
+            [$source, $destination] = $this->accountsInLockOrder(
+                $user,
+                $data['source_account_id'] ?? null,
+                $data['destination_account_id'] ?? null
+            );
             $this->assertShape($type, $source, $destination, $data['adjustment_direction'] ?? null);
             if (! $allowCardTransfer) {
                 $this->assertNoGenericCardMovement($type, $source, $destination);
@@ -704,6 +732,28 @@ class FinancialMovementService
         return $account;
     }
 
+    /**
+     * Bloqueia contas envolvidas na mesma ordem em qualquer transferência,
+     * evitando ciclos de lock quando duas transferências ocorrem em sentidos opostos.
+     *
+     * @return array{0: ?ContaFinanceira, 1: ?ContaFinanceira}
+     */
+    private function accountsInLockOrder(User $user, ?string $sourceId, ?string $destinationId): array
+    {
+        $ids = array_values(array_unique(array_filter([$sourceId, $destinationId])));
+        sort($ids, SORT_STRING);
+
+        $locked = [];
+        foreach ($ids as $id) {
+            $locked[$id] = $this->account($user, $id);
+        }
+
+        return [
+            $sourceId ? $locked[$sourceId] : null,
+            $destinationId ? $locked[$destinationId] : null,
+        ];
+    }
+
     private function assertShape(string $type, ?ContaFinanceira $source, ?ContaFinanceira $destination, ?string $direction): void
     {
         $valid = match ($type) {
@@ -732,7 +782,8 @@ class FinancialMovementService
                 'type' => 'Não é possível transferir genericamente de ou para um cartão. Para pagar, usa o pagamento da fatura ou da dívida inicial; para compras, regista uma compra no cartão.',
             ]);
         }
-        if (($type === 'income' && $destination?->type === 'credit_card')
+        if (($type === 'expense' && $source?->type === 'credit_card')
+            || ($type === 'income' && $destination?->type === 'credit_card')
             || ($type === 'adjustment' && ($source?->type === 'credit_card' || $destination?->type === 'credit_card'))) {
             throw ValidationException::withMessages([
                 'type' => 'Não é possível registar receitas ou ajustes genéricos num cartão de crédito. Para pagar, usa o pagamento da fatura ou da dívida inicial.',
@@ -819,8 +870,11 @@ class FinancialMovementService
             }
             $this->assertNotCommitmentForecast($locked);
 
-            $source = $this->account($user, $accounts['source_account_id'] ?? null);
-            $destination = $this->account($user, $accounts['destination_account_id'] ?? null);
+            [$source, $destination] = $this->accountsInLockOrder(
+                $user,
+                $accounts['source_account_id'] ?? null,
+                $accounts['destination_account_id'] ?? null
+            );
             $this->assertShape($locked->type, $source, $destination, $locked->adjustment_direction);
             $this->assertNoGenericCardMovement($locked->type, $source, $destination);
 
@@ -852,9 +906,11 @@ class FinancialMovementService
             if ($currentId === $account->id) {
                 return $locked;
             }
-            if ($locked->type === 'income') {
-                $this->assertNoGenericCardMovement('income', null, $account);
-            }
+            $this->assertNoGenericCardMovement(
+                $locked->type,
+                $locked->type === 'expense' ? $account : null,
+                $locked->type === 'income' ? $account : null
+            );
 
             if (! $locked->is_historical && $locked->type === 'expense') {
                 $this->balances->assertCanDebit($account, (string) $locked->amount);
