@@ -22,7 +22,7 @@
         <div class="mb-3">
             <label for="name" class="form-label">Nome completo</label>
             <input type="text" class="form-control form-control-lg" id="name" name="name"
-                   value="{{ old('name') }}" placeholder="Ex.: Maria Silva" autocomplete="name"
+                   value="{{ old('name') }}" placeholder="Nome completo" autocomplete="name"
                    maxlength="80" required>
         </div>
 
