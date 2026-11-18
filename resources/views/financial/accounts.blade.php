@@ -123,7 +123,7 @@
                         <div class="col-sm-6">
                             <label for="openingBalance" class="form-label">Saldo inicial</label>
                             <input id="openingBalance" name="opening_balance" type="text" inputmode="decimal" class="form-control" min="-9999999999.99" max="9999999999.99" data-money="opening" value="0.00" required aria-describedby="openingBalanceHelp">
-                            <div class="form-text" id="openingBalanceHelp">Aceita 90,50, 1.000,00, inteiros e decimais com ponto. Um saldo inicial negativo ativa automaticamente a permissão de saldo negativo.</div>
+                            <div class="form-text" id="openingBalanceHelp">Ex.: 90,50 ou -90,50.</div>
                         </div>
                         <div class="col-sm-6">
                             <label for="openingBalanceDate" class="form-label">Data do saldo</label>
@@ -133,7 +133,7 @@
                     <div class="form-check mt-3">
                         <input class="form-check-input" type="checkbox" id="allowNegativeBalance" name="allow_negative_balance" value="1">
                         <label class="form-check-label" for="allowNegativeBalance">Permitir saldo negativo nesta conta</label>
-                        <div class="form-text">Desativado por padrão. Ativa apenas se quiseres permitir descoberto ou saldo negativo.</div>
+                        <div class="form-text">Permitir saldo negativo.</div>
                     </div>
                     <div class="account-form-feedback small text-danger mt-3" role="alert"></div>
                 </div>
@@ -162,7 +162,7 @@
                     <div class="mb-3">
                         <label for="transferAmount" class="form-label">Valor</label>
                         <input id="transferAmount" name="amount" type="text" inputmode="decimal" class="form-control" min="0.01" max="9999999999.99" data-money="positive" required placeholder="0,00" aria-describedby="transferAmountHelp">
-                        <div class="form-text" id="transferAmountHelp">Usa vírgula decimal (90,50), agrupamento (1.000,00) ou ponto decimal (90.50).</div>
+                        
                     </div>
                     <div class="row g-3 mb-3">
                         <div class="col-6">
