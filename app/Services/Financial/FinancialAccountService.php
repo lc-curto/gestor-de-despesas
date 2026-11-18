@@ -19,7 +19,8 @@ class FinancialAccountService
             // ser corrigido mais tarde, inclusive depois de lançamentos.
             $openingDebt = $data['type'] === 'credit_card' ? (string) ($data['opening_debt_amount'] ?? '0.00') : '0.00';
             $openingBalance = $data['type'] === 'credit_card' ? '-'.ltrim($openingDebt, '-') : ($data['opening_balance'] ?? '0.00');
-            $allowNegative = true;
+            $allowNegative = in_array($data['type'], ['bank', 'cash'], true)
+                && ((bool) ($data['allow_negative_balance'] ?? false) || $this->balances->toCents((string) $openingBalance) < 0);
             if (($data['opening_balance_date'] ?? now()->toDateString()) > now()->toDateString()) {
                 throw ValidationException::withMessages(['opening_balance_date' => 'A data do saldo inicial não pode ser futura.']);
             }
@@ -57,8 +58,13 @@ class FinancialAccountService
             $locked->update([
                 'opening_balance' => $amount,
                 'opening_balance_date' => $date,
-                'allow_negative_balance' => $allowNegative || $this->balances->toCents($amount) < 0,
                 'status' => 'active',
+            ]);
+            $locked->refresh();
+            $currentBalanceIsNegative = $this->balances->toCents($this->balances->balance($locked)) < 0;
+            $locked->update([
+                'allow_negative_balance' => in_array($locked->type, ['bank', 'cash'], true)
+                    && ($allowNegative || $currentBalanceIsNegative),
             ]);
 
             return $locked->refresh();
@@ -86,12 +92,11 @@ class FinancialAccountService
             if (! $locked->is_operational || $locked->status === 'closed' || ! in_array($locked->type, ['bank', 'cash'], true)) {
                 throw ValidationException::withMessages(['account' => 'Esta configuração só se aplica a contas bancárias e de dinheiro ativas.']);
             }
-            if (! $allowed && $locked->opening_balance !== null && $this->balances->toCents((string) $locked->opening_balance) < 0) {
-                throw ValidationException::withMessages(['allow_negative_balance' => 'Não é possível desativar esta opção enquanto o saldo inicial for negativo.']);
+            $currentBalanceIsNegative = $this->balances->toCents($this->balances->balance($locked)) < 0;
+            if (! $allowed && $currentBalanceIsNegative) {
+                throw ValidationException::withMessages(['allow_negative_balance' => 'Não é possível desativar esta opção enquanto o saldo operacional da conta for negativo.']);
             }
-            $locked->update([
-                'allow_negative_balance' => $allowed || ($locked->opening_balance !== null && $this->balances->toCents((string) $locked->opening_balance) < 0),
-            ]);
+            $locked->update(['allow_negative_balance' => $allowed]);
 
             return $locked->refresh();
         });
