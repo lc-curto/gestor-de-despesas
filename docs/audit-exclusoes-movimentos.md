@@ -398,6 +398,7 @@ Foi criado `App\Services\Financial\FinancialDeletionService` como orquestrador d
 - `deletion_operation_items`: entidades abrangidas, ação aplicada e snapshots antes/depois.
 - Movimentos mantidos como registos canónicos com estado `void`; não são removidos fisicamente.
 - Histórico `historico_movimentos` preservado e complementado com a auditoria da operação.
+- Corrigida a lacuna de esquema detetada no CI MySQL: a migration `2026_11_12_190150_add_credit_card_fields_to_contas_financeiras.php` cria `closing_day`, `due_day`, `credit_limit`, `opening_debt_amount` e `opening_debt_paid`, já utilizados pelo modelo e serviço de contas.
 
 Integrações já alteradas:
 
