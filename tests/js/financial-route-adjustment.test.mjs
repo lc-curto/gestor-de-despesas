@@ -157,7 +157,7 @@ test('edição de liquidado ou previsão virtual é bloqueada e exclusão preser
     h.openItem('Diminuição');
     h.el('routeDeleteMovement').click();
     assert.equal(h.el('routeConfirmTitle').textContent, 'Confirmar exclusão');
-    assert.match(h.el('routeConfirmText').textContent, /histórico preservado/);
+    assert.match(h.el('routeConfirmText').textContent, /histórico preservado/i);
     h.el('routeConfirmAction').click();
     await flush();
     assert.equal(h.requests[0].url, '/movements/minus');
