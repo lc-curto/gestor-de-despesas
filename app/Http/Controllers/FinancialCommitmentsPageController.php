@@ -37,12 +37,12 @@ class FinancialCommitmentsPageController extends Controller
             ->orderBy('name')
             ->get();
 
-        $eligibleDebts = fn () => $user->dividas()
+        $eligibleDebts = fn () => $user->dividas()->withTrashed()
             ->where('payment_condition', 'installments')
             ->where(fn ($query) => $query->whereNull('payment_method')->orWhereNotIn('payment_method', ['credit', 'card']))
             ->where('status', '!=', 'cancelled');
 
-        $visibleDebts = fn () => $eligibleDebts()->whereNull('archived_at');
+        $visibleDebts = fn () => $eligibleDebts()->whereNull('archived_at')->whereNull('deleted_at');
 
         $openInstallments = $user->parcelasDivida()
             ->whereHas('divida', fn ($query) => $query
@@ -83,7 +83,7 @@ class FinancialCommitmentsPageController extends Controller
             ->where('status', '!=', 'cancelled')
             ->count();
 
-        $archivedCount = $eligibleDebts()->whereNotNull('archived_at')->count();
+        $archivedCount = $eligibleDebts()->where(fn ($query) => $query->whereNotNull('archived_at')->orWhereNotNull('deleted_at'))->count();
 
         $summary = [
             'open' => $commitmentOpen,
@@ -109,8 +109,8 @@ class FinancialCommitmentsPageController extends Controller
         }
 
         $query = $eligibleDebts()
-            ->when($status === 'active' || $status === 'completed', fn ($builder) => $builder->whereNull('archived_at'))
-            ->when($status === 'archived', fn ($builder) => $builder->whereNotNull('archived_at'))
+            ->when($status === 'active' || $status === 'completed', fn ($builder) => $builder->whereNull('archived_at')->whereNull('deleted_at'))
+            ->when($status === 'archived', fn ($builder) => $builder->where(fn ($archived) => $archived->whereNotNull('archived_at')->orWhereNotNull('deleted_at')))
             ->withCount(['parcelas as paid_installments_count' => fn ($parts) => $parts->where('status', 'paid')])
             ->withSum('parcelas as paid_amount_total', 'paid_amount')
             ->withSum('parcelas as installment_amount_total', 'amount');
