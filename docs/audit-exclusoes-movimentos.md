@@ -168,7 +168,7 @@ Em `FinanceController::update`, num ramo alternativo, `$movement->historico()->d
 - [x] Teste de rollback transacional após falha no recálculo de um agregado.
 - [x] Testes de isolamento entre utilizadores nas rotas de eliminação de compromisso e movimento.
 - [x] Revisão dos fluxos de edição/substituição e projeções de Dashboard, Movimentos, Rota Financeira, Contas, Parcelamentos, Cartões e Faturas.
-- [x] Teste concorrente MySQL adicionado em `FinancialDeletionConcurrencyTest`: duas sessões PDO independentes mantêm transações sobrepostas e disputam a eliminação do mesmo movimento; a segunda sessão usa `FOR UPDATE NOWAIT` para confirmar a contenção do lock InnoDB e, após o commit vencedor, repete a operação de forma idempotente; aguarda execução no CI.
+- [x] Teste concorrente MySQL adicionado em `FinancialDeletionConcurrencyTest`: duas sessões PDO independentes mantêm transações sobrepostas e disputam a eliminação do mesmo movimento; a segunda sessão usa `FOR UPDATE NOWAIT` para confirmar a contenção do lock InnoDB e, após o commit vencedor, repete a operação de forma idempotente; executado e aprovado no CI MySQL.
 - [x] Avisos `risky` eliminados: corrigida diretiva `@push('scripts')` duplicada em `resources/views/movements.blade.php`; adicionadas verificações de integridade dos buffers de saída nos testes de renderização.
 - [ ] Merge/deploy apenas após aprovação explícita.
 
