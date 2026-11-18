@@ -33,17 +33,19 @@ class FinancialDeletionConcurrencyTest extends TestCase
         config(['database.connections.concurrent' => config('database.connections.'.$primaryName)]);
         DB::purge('concurrent');
         $secondary = DB::connection('concurrent');
+        $this->assertNotSame($primary->getPdo(), $secondary->getPdo(), 'A concorrência deve usar duas ligações PDO independentes.');
         $secondary->statement('SET SESSION innodb_lock_wait_timeout = 1');
 
         // A primeira transação mantém o lock enquanto a segunda tenta eliminar
         // o mesmo movimento através do serviço real de domínio.
         $primary->beginTransaction();
         try {
-            $primary->table('movimentos')
+            $lockedMovement = $primary->table('movimentos')
                 ->where('user_id', $user->id)
                 ->where('id', $movement->id)
                 ->lockForUpdate()
                 ->first();
+            $this->assertNotNull($lockedMovement, 'A transação vencedora deve adquirir o lock do movimento.');
 
             config(['database.default' => 'concurrent']);
             $lockFailure = null;
@@ -98,5 +100,9 @@ class FinancialDeletionConcurrencyTest extends TestCase
             'root_entity_id' => $movement->id,
             'status' => 'completed',
         ]);
+
+        DB::disconnect('concurrent');
+        DB::purge('concurrent');
+        config(['database.connections.concurrent' => null]);
     }
 }
