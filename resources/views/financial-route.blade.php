@@ -133,6 +133,7 @@
         <div class="modal-header"><div><p class="small text-secondary mb-1" id="routeMovementKind"></p><h2 class="modal-title h5 fw-bold" id="routeMovementDetailTitle">Movimento</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
         <div class="modal-body"><div class="route-detail-amount" id="routeMovementAmount"></div><dl class="route-detail-list"><div><dt>Categoria</dt><dd id="routeMovementCategory"></dd></div><div><dt>Conta</dt><dd id="routeMovementAccount"></dd></div><div><dt>Data</dt><dd id="routeMovementDate"></dd></div><div><dt>Descrição</dt><dd id="routeMovementDescription"></dd></div><div><dt>Observação</dt><dd id="routeMovementNotes"></dd></div></dl><div class="small text-danger" id="routeDetailError" role="alert"></div></div>
         <div class="modal-footer justify-content-between"><button type="button" class="btn btn-outline-danger" id="routeDeleteMovement">Excluir</button><div><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button type="button" class="btn btn-primary" id="routeEditMovement" aria-describedby="routeEditHelp">Editar</button></div></div>
+        <p class="visually-hidden" id="routeEditHelp" role="status"></p>
     </div></div>
 </div>
 
