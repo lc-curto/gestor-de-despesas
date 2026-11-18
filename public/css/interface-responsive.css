@@ -1,0 +1,191 @@
+/* Mobile-first refinements — Bootstrap 5 only.
+   Keep existing page structures and visual identity; normalize controls and action rows. */
+
+.app-main,
+.auth-view {
+    min-width: 0;
+}
+
+.app-main .btn,
+.auth-view .btn {
+    display: inline-flex;
+    max-width: 100%;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
+    line-height: 1.25;
+    text-align: center;
+    white-space: normal;
+    vertical-align: middle;
+}
+
+.app-main .btn > svg,
+.app-main .btn > i,
+.auth-view .btn > svg,
+.auth-view .btn > i {
+    flex: 0 0 auto;
+}
+
+.app-main .btn-group {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+}
+
+.app-main .modal-footer:not(.d-grid) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
+}
+
+.app-main .modal-footer:not(.d-grid) > .btn,
+.app-main .modal-footer:not(.d-grid) > form {
+    flex: 0 1 auto;
+    margin: 0;
+}
+
+.app-main .modal-footer:not(.d-grid) > form .btn {
+    width: 100%;
+}
+
+.app-main .modal-footer:not(.d-grid) > div {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: .5rem;
+}
+
+.app-main .modal-footer:not(.d-grid) > div > .btn {
+    flex: 0 1 auto;
+}
+
+.app-main .d-flex.gap-2:has(> .btn),
+.app-main .d-flex.gap-2:has(> form) {
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.app-main .d-flex.gap-2:has(> .btn) > .btn,
+.app-main .d-flex.gap-2:has(> form) > .btn,
+.app-main .d-flex.gap-2:has(> form) > form {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.app-main .d-flex.gap-2:has(> form) > form .btn {
+    width: 100%;
+}
+
+.app-main .form-control,
+.app-main .form-select,
+.app-main .input-group-text {
+    min-width: 0;
+}
+
+.app-main .table-responsive {
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 767.98px) {
+    .app-main .btn {
+        min-height: 2.75rem;
+    }
+
+    .app-main .btn-sm {
+        min-height: 2.4rem;
+    }
+
+    .app-main .modal-footer:not(.d-grid) > .btn,
+    .app-main .modal-footer:not(.d-grid) > form {
+        flex: 1 1 8rem;
+    }
+
+    .app-main .modal-footer:not(.d-grid) > div {
+        flex: 1 1 100%;
+    }
+
+    .app-main .modal-footer:not(.d-grid) > div > .btn {
+        flex: 1 1 8rem;
+    }
+
+    .app-main .d-flex.gap-2:has(> .btn) > .btn {
+        flex: 1 1 8rem;
+    }
+
+    .app-main .d-flex.gap-2:has(> form) > form {
+        flex: 1 1 8rem;
+    }
+
+    .app-main .d-flex.gap-2:has(> form) > .btn {
+        flex: 1 1 8rem;
+    }
+
+    .app-main .btn-group .btn {
+        min-height: 2.5rem;
+        white-space: nowrap;
+    }
+
+    .app-main .modal-dialog {
+        max-width: calc(100% - 1rem);
+        margin-inline: auto;
+    }
+
+    .app-main .modal-content {
+        max-width: 100%;
+    }
+
+    .app-main .modal-body {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .app-main .page-heading,
+    .app-main .finance-page-heading,
+    .app-main .accounts-toolbar,
+    .app-main .accounts-header-v2 {
+        min-width: 0;
+    }
+}
+
+@media (max-width: 380px) {
+    .app-main .modal-footer:not(.d-grid) > .btn,
+    .app-main .modal-footer:not(.d-grid) > form,
+    .app-main .modal-footer:not(.d-grid) > div > .btn {
+        flex-basis: 100%;
+    }
+
+    .app-main .d-flex.gap-2:has(> .btn) > .btn,
+    .app-main .d-flex.gap-2:has(> form) > form,
+    .app-main .d-flex.gap-2:has(> form) > .btn {
+        flex-basis: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-main *,
+    .auth-view * {
+        scroll-behavior: auto;
+        transition-duration: .01ms !important;
+    }
+}
+
+/* Icon-only actions share a predictable tap target across list components. */
+.app-main .expense-actions .btn,
+.app-main .finance-action-buttons .btn,
+.app-main .category-card .btn,
+.app-main .account-row-menu-v2-button,
+.app-main .account-menu-button {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+}
+
+.app-main .expense-actions .btn,
+.app-main .finance-action-buttons .btn,
+.app-main .category-card .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
