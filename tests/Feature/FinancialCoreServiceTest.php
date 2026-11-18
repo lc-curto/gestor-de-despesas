@@ -368,6 +368,35 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('11.00', $balances->balance($destination->fresh()));
     }
 
+    public function test_deleting_settled_income_cannot_overdraw_account_without_permission(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->account($user, 'Conta', '0.00');
+        $service = app(FinancialMovementService::class);
+        $income = $service->create($user, [
+            'type' => 'income', 'description' => 'Entrada', 'amount' => '10.00',
+            'movement_date' => '2026-11-12', 'destination_account_id' => $account->id,
+        ]);
+        $service->create($user, [
+            'type' => 'expense', 'description' => 'Saída', 'amount' => '5.00',
+            'movement_date' => '2026-11-12', 'source_account_id' => $account->id,
+        ]);
+
+        try {
+            $service->deleteAsCorrection($user, $income, 'Correção de entrada');
+            $this->fail('A correção não deve deixar a conta negativa sem autorização.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('amount', $exception->errors());
+        }
+
+        $this->assertSame('5.00', app(AccountBalanceService::class)->balance($account->fresh()));
+        $this->assertSame('settled', $income->fresh()->status);
+
+        app(FinancialAccountService::class)->setNegativeBalancePermission($user, $account, true);
+        $service->deleteAsCorrection($user, $income, 'Correção autorizada');
+        $this->assertSame('-5.00', app(AccountBalanceService::class)->balance($account->fresh()));
+    }
+
     public function test_imported_expense_cannot_be_assigned_to_a_credit_card(): void
     {
         $user = User::factory()->create();
