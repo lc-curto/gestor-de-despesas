@@ -168,7 +168,7 @@ Em `FinanceController::update`, num ramo alternativo, `$movement->historico()->d
 - [x] Teste de rollback transacional após falha no recálculo de um agregado.
 - [x] Testes de isolamento entre utilizadores nas rotas de eliminação de compromisso e movimento.
 - [x] Revisão dos fluxos de edição/substituição e projeções de Dashboard, Movimentos, Rota Financeira, Contas, Parcelamentos, Cartões e Faturas.
-- [ ] Stress test concorrente com duas transações MySQL simultâneas; os locks foram revistos, mas não simulados pelo workflow.
+- [x] Teste de concorrência MySQL adicionado em `FinancialDeletionConcurrencyTest`: duas ligações independentes disputam a eliminação do mesmo movimento, verificam o lock InnoDB e a repetição idempotente após commit; aguarda execução no CI.
 - [x] Avisos `risky` eliminados: corrigida diretiva `@push('scripts')` duplicada em `resources/views/movements.blade.php`; adicionadas verificações de integridade dos buffers de saída nos testes de renderização.
 - [ ] Merge/deploy apenas após aprovação explícita.
 
@@ -425,9 +425,9 @@ Testes de regressão atualizados/adicionados para pagamentos parciais, pagamento
 4. [x] Testes de regressão para pagamentos parciais/totais, cancelamento e eliminação de parcelamentos, pagamentos de fatura, dívida inicial, recorrências, categorias, cartões e isolamento entre utilizadores.
 5. [x] Teste de idempotência para eliminação repetida de movimento sem duplicar auditoria.
 6. [x] Teste de fatura vazia: soft delete e restauração do mesmo ID quando há nova compra no mesmo ciclo.
-7. [x] CI aprovado no commit `680207807115e762bf56664a4c29be7f84357bc8`: 196 testes aprovados, 1.578 assertions e 2 testes classificados como `risky`.
-8. [ ] CI do commit mais recente, que inclui regressões de eliminação de cartão, categoria com movimento canónico, idempotência e eliminação de compromisso previamente cancelado.
-9. [ ] Investigar os dois testes classificados como `risky` e reduzir a zero os avisos, se forem corrigíveis sem mascarar comportamento.
+7. [x] CI aprovado no commit `fe4ecbb84f09e295fe8569f3169b658450f64222`: 204 testes aprovados, 1.655 assertions e zero testes `risky`.
+8. [ ] CI do HEAD atualizado, incluindo o teste de concorrência MySQL.
+9. [x] Avisos `risky` eliminados: corrigida a diretiva Blade duplicada e adicionadas verificações de integridade dos buffers nos testes de renderização.
 10. [x] Adicionado `FinancialDeletionConcurrencyTest`: duas ligações MySQL independentes disputam a eliminação do mesmo movimento; o teste valida o lock InnoDB, o timeout concorrente, a conclusão pela transação vencedora e a idempotência após o commit. A execução no CI ainda precisa de confirmação.
 11. [ ] Merge e deploy permanecem fora do âmbito até aprovação explícita do utilizador.
 
