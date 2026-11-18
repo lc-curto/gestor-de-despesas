@@ -876,7 +876,11 @@ class FinancialMovementService
                 $accounts['destination_account_id'] ?? null
             );
             $this->assertShape($locked->type, $source, $destination, $locked->adjustment_direction);
-            $this->assertNoGenericCardMovement($locked->type, $source, $destination);
+            // Uma previsão pendente pode apontar para um cartão; a compra só é
+            // efetivada posteriormente por settlePendingPurchase e associada à fatura.
+            if (! ($locked->type === 'expense' && $source?->type === 'credit_card')) {
+                $this->assertNoGenericCardMovement($locked->type, $source, $destination);
+            }
 
             $before = $locked->getAttributes();
             $locked->update([
