@@ -327,7 +327,7 @@
                 <label class="form-label" for="renegotiateCount">Número de novas prestações</label><input class="form-control mb-3" id="renegotiateCount" name="installments_count" type="number" min="1" max="120" required>
                 <label class="form-label" for="renegotiateFrequency">Frequência</label><select class="form-select mb-3" id="renegotiateFrequency" name="installment_frequency"><option value="monthly">Mensal</option><option value="biweekly">Quinzenal</option><option value="weekly">Semanal</option></select>
                 <label class="form-label" for="renegotiateDue">Vencimento da primeira nova prestação</label><input class="form-control" id="renegotiateDue" name="due_date" type="date" min="{{ today()->toDateString() }}" required>
-                <div class="commitment-renegotiation-preview mt-3 p-3 rounded-3 bg-body-tertiary"><small class="text-secondary d-block">Valor estimado por prestação</small><strong id="renegotiatePreview">—</strong><small class="text-secondary d-block mt-1" id="renegotiatePreviewNote">O último valor pode variar alguns cêntimos devido ao arredondamento.</small></div>
+                <div class="commitment-renegotiation-preview mt-3 p-3 rounded-3 bg-body-tertiary"><small class="text-secondary d-block">Valor por prestação</small><strong id="renegotiatePreview">—</strong><small class="text-secondary d-block mt-1" id="renegotiatePreviewNote"></small></div>
                 <div id="renegotiateCommitmentError" class="small text-danger mt-2" role="alert"></div>
             </div>
             <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button><button type="submit" class="btn btn-primary">Confirmar renegociação</button></div>
@@ -338,14 +338,14 @@
 <div class="modal fade" id="cancelCommitmentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered"><div class="modal-content rounded-4 border-0">
         <div class="modal-header border-0"><h2 class="modal-title h5 fw-bold">Cancelar compra</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
-        <div class="modal-body"><p id="cancelCommitmentMessage" class="mb-2"></p><div id="cancelCommitmentError" class="small text-danger mt-2" role="alert"></div></div>
+        <div class="modal-body"><p id="cancelCommitmentMessage" class="mb-2"></p><p class="small text-secondary">Pagamentos anteriores não serão reembolsados.</p><div id="cancelCommitmentError" class="small text-danger mt-2" role="alert"></div></div>
         <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button><button type="button" class="btn btn-danger" id="confirmCancelCommitment">Confirmar cancelamento</button></div>
     </div></div>
 </div>
 <div class="modal fade" id="archiveCommitmentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered"><div class="modal-content rounded-4 border-0">
         <div class="modal-header border-0"><h2 class="modal-title h5 fw-bold">Arquivar compra</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
-        <div class="modal-body"><p id="archiveCommitmentMessage" class="mb-2"></p><div id="archiveCommitmentError" class="small text-danger mt-2" role="alert"></div></div>
+        <div class="modal-body"><p id="archiveCommitmentMessage" class="mb-2"></p><p class="small text-secondary">Histórico e pagamentos serão preservados.</p><div id="archiveCommitmentError" class="small text-danger mt-2" role="alert"></div></div>
         <div class="modal-footer border-0">
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button>
             <button type="button" class="btn btn-primary" id="confirmArchiveCommitment">Arquivar compra</button>
