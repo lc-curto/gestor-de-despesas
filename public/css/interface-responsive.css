@@ -171,3 +171,21 @@
         transition-duration: .01ms !important;
     }
 }
+
+/* Icon-only actions share a predictable tap target across list components. */
+.app-main .expense-actions .btn,
+.app-main .finance-action-buttons .btn,
+.app-main .category-card .btn,
+.app-main .account-row-menu-v2-button,
+.app-main .account-menu-button {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+}
+
+.app-main .expense-actions .btn,
+.app-main .finance-action-buttons .btn,
+.app-main .category-card .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
