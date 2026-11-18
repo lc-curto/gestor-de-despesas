@@ -457,7 +457,7 @@
                     <p class="text-secondary small mb-2" id="deleteMovementDescription"></p>
                     <p class="alert alert-info small py-2 mb-2" id="deleteMovementNote" hidden></p>
                     <div id="deleteSingleConfirmation" class="small text-secondary">
-                        O movimento será retirado dos cálculos financeiros. As dependências e os saldos serão atualizados na mesma operação, e o histórico de auditoria será preservado. Se a propagação não for segura, a exclusão será bloqueada.
+                        Saldos e dependências atualizados. Histórico preservado. Exclusão bloqueada se insegura.
                     </div>
                     <div id="deleteRecurringOptions" class="d-grid gap-2" hidden>
                         <label class="form-check border rounded-3 p-3 mb-0" for="deleteScopeOnly">
