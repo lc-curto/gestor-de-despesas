@@ -7,6 +7,7 @@ use App\Models\Divida;
 use App\Models\ParcelaDivida;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class FinancialArchivedCommitmentsTest extends TestCase
@@ -81,9 +82,9 @@ class FinancialArchivedCommitmentsTest extends TestCase
         $this->assertDatabaseHas('dividas', [
             'id' => $debt->id,
             'deleted_at' => null,
-            'archived_at' => $debt->fresh()->archived_at,
             'status' => 'open',
         ]);
+        $this->assertNotNull(DB::table('dividas')->where('id', $debt->id)->value('archived_at'));
     }
 
     private function createCommitment(User $user, $archivedAt): Divida
