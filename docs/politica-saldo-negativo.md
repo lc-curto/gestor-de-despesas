@@ -40,7 +40,7 @@ Correções que anulam movimentos liquidados também verificam o efeito líquido
 
 ## Desativação da permissão
 
-Não é possível desativar a permissão enquanto o saldo operacional atual for negativo. A regra considera o saldo total atual, não apenas o valor do saldo inicial. Depois de o saldo regressar a zero ou a um valor positivo, o utilizador pode desativar a permissão.
+Não é possível desativar a permissão enquanto o saldo operacional atual ou o saldo inicial forem negativos. A segunda condição preserva a restrição de integridade existente na base de dados para saldos iniciais negativos. Quando ambos forem zero ou positivos, o utilizador pode desativar a permissão.
 
 ## Cartões de crédito
 
