@@ -309,6 +309,28 @@ class FinancialCommitmentService
         });
     }
 
+    public function restore(User $user, Divida $debt): Divida
+    {
+        return DB::transaction(function () use ($user, $debt): Divida {
+            $locked = Divida::query()
+                ->where('user_id', $user->id)
+                ->whereKey($debt->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($locked->archived_at === null) {
+                throw ValidationException::withMessages(['commitment' => 'Esta compra já está ativa.']);
+            }
+            if ($locked->status === 'cancelled') {
+                throw ValidationException::withMessages(['commitment' => 'Uma compra cancelada não pode ser restaurada como ativa.']);
+            }
+
+            $locked->update(['archived_at' => null]);
+
+            return $locked->refresh();
+        });
+    }
+
     public function delete(User $user, Divida $debt): void
     {
         app(FinancialDeletionService::class)->deleteCommitment(
