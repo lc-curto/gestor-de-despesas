@@ -280,7 +280,7 @@
    document.getElementById('routeMovementNotes').textContent=item.notes||'—';
    document.getElementById('routeDetailError').textContent='';
    document.getElementById('routeEditMovement').disabled=!canEditMovement(item);
-   document.getElementById('routeEditHelp').textContent=item.type==='adjustment'?'Ajustes não editáveis. Elimina o movimento.':item.type==='transfer'?'Transferências não editáveis aqui. Elimina e recria.':item.status==='settled'?'Movimento liquidado. Edição bloqueada. Elimina e recria.':!canEditMovement(item)?'Previsão gerada automaticamente. Gere em Faturas.':'';
+   document.getElementById('routeEditHelp').textContent=item.type==='adjustment'?'Ajustes não editáveis. Elimina o movimento.':item.type==='transfer'?'Transferências não editáveis. Elimina e recria.':item.status==='settled'?'Liquidado: edição bloqueada. Elimina e recria.':!canEditMovement(item)?'Previsão gerada automaticamente. Gere em Faturas.':'';
    const deleteButton=document.getElementById('routeDeleteMovement');
    deleteButton.textContent=item.recurrence_id?'Eliminar ocorrência':'Eliminar';
    detailModal.show();
