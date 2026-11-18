@@ -12,7 +12,7 @@
     <header class="dashboard-intro home-dashboard-intro">
         <div class="dashboard-intro-copy">
             <h1 class="h2 fw-bold mb-1" id="greetingTitle">Bom dia, {{ auth()->user()->name }}!</h1>
-            <p class="text-secondary mb-0">O teu resumo financeiro</p>
+            
         </div>
         <div class="date-time-card" aria-label="Data e hora locais do utilizador">
             <span class="date-time-label">Agora</span>
@@ -83,7 +83,7 @@
                 <span class="small text-secondary">{{ $isExpense ? 'Despesa' : 'Receita' }} · {{ $movementDate->format('d/m') }}</span>
             </div>
         @empty
-            <p class="small text-secondary mb-0">Ainda não existem movimentos neste período.</p>
+            
         @endforelse
     </section>
 </div>
@@ -92,7 +92,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow rounded-4">
             <div class="modal-header border-0 pb-2">
-                <div><h2 class="modal-title h5 fw-bold" id="currencyConverterTitle">Conversor de moedas</h2><p class="small text-secondary mb-0">Taxas de câmbio</p></div>
+                <div><h2 class="modal-title h5 fw-bold" id="currencyConverterTitle">Conversor de moedas</h2></div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body pt-2">
@@ -102,7 +102,7 @@
                     <div class="col-2 text-center pb-2"><button type="button" class="btn btn-outline-secondary" id="swapCurrencies" aria-label="Inverter moedas"><i data-lucide="arrow-left-right"></i></button></div>
                     <div class="col-5"><label for="conversionTo" class="form-label">Para</label><select class="form-select" id="conversionTo">@foreach (\App\Support\Categorias::MOEDAS as $currency)<option value="{{ $currency }}">{{ $currency }} ({{ $simbolos[$currency] ?? $currency }})</option>@endforeach</select></div>
                 </div>
-                <div class="conversion-result mt-3" aria-live="polite"><span class="small text-secondary">Resultado</span><strong id="convertedValue">—</strong><span id="conversionRate" class="small text-secondary">Introduz o valor e seleciona as moedas.</span></div>
+                <div class="conversion-result mt-3" aria-live="polite"><span class="small text-secondary">Resultado</span><strong id="convertedValue">—</strong><span id="conversionRate" class="small text-secondary"></span></div>
                 <button type="button" class="btn btn-primary w-100 mt-3" id="convertButton">Converter</button>
             </div>
         </div>
