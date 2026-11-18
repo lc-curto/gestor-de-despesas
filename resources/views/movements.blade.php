@@ -340,19 +340,19 @@
                             $dataMovimento = \Illuminate\Support\Carbon::parse($movimento->data_movimento);
                             $categoriaLabel = $categorias[$movimento->category] ?? $movimento->category;
                         @endphp
-                        <article class="movement-history-item border-bottom"
+                        <article class="expense-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom"
                             data-movement-id="{{ $movimento->id }}" data-movement-type="{{ $movimento->tipo }}"
                             data-edit-url="{{ route($isExpense ? 'despesas.update' : 'receitas.update', $movimento->id) }}"
                             data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}"
                             data-amount="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}"
                             data-category-id="{{ $movimento->category }}" data-account-id="{{ $movimento->account_id }}"
                             data-movement-status="{{ $movimento->movement_status }}" data-expense-behavior="{{ $movimento->expense_behavior ?? 'variable' }}" data-recurrence-id="{{ $movimento->recurrence_id }}" data-financial-movement-id="{{ $movimento->financial_movement_id }}">
-                            <div class="movement-history-main">
+                            <div class="d-flex align-items-center gap-3 min-w-0">
                                 <div class="expense-icon flex-shrink-0" style="--category-color: {{ $movimento->category_color ?? '#635BFF' }}" aria-hidden="true">
                                     <i data-lucide="{{ $movimento->category_icon ?? 'tag' }}"></i>
                                 </div>
-                                <div class="movement-history-copy">
-                                    <h3 class="h6 fw-semibold mb-1">{{ $movimento->description }}</h3>
+                                <div class="min-w-0">
+                                    <h3 class="h6 fw-semibold mb-1 text-break">{{ $movimento->description }}</h3>
                                     <div class="movement-badges d-flex flex-wrap align-items-center gap-1 mt-1">
                                         @if($movimento->movement_status === 'settled')
                                             <span class="badge rounded-pill text-bg-success">Pago</span>
@@ -366,10 +366,10 @@
                                     <p class="small text-secondary mb-0">{{ $categoriaLabel }} · {{ $dataMovimento->format('d/m/Y') }}</p>
                                 </div>
                             </div>
-                            <div class="movement-history-actions">
-                                <strong class="{{ $isExpense ? 'text-danger' : 'text-success' }} movement-history-value"
+                            <div class="expense-actions d-flex align-items-center justify-content-end gap-2">
+                                <strong class="{{ $isExpense ? 'text-danger' : 'text-success' }} text-nowrap movement-value"
                                     data-value="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}">{{ $isExpense ? '−' : '+' }}{{ number_format((float) $movimento->amount, 2, ',', '.') }}</strong>
-                                <div class="movement-icon-actions" role="group" aria-label="Ações de {{ $movimento->description }}">
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Ações de {{ $movimento->description }}">
                                     <button type="button" class="btn btn-outline-secondary edit-movement" data-acao="editar" aria-label="Editar {{ $movimento->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></button>
                                     @if ($movimento->movement_status === 'pending' && $movimento->financial_movement_id)
                                         <button type="button" class="btn btn-outline-success" data-movement-action="settle" title="Efetivar" aria-label="Efetivar {{ $movimento->description }}"><i data-lucide="check-circle" aria-hidden="true"></i></button>
@@ -472,9 +472,9 @@
                         </label>
                     </div>
                 </div>
-                <div class="modal-footer delete-movement-actions border-0 pt-0">
-                    <button type="submit" class="btn btn-danger" id="deleteMovementSubmit">Confirmar exclusão</button>
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <div class="modal-footer border-0 pt-0 d-grid gap-2">
+                    <button type="submit" class="btn btn-danger w-100" id="deleteMovementSubmit">Confirmar exclusão</button>
+                    <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">Cancelar</button>
                 </div>
             </form>
         </div>
@@ -512,27 +512,9 @@
 @push('styles')
 
 <style>
-/* Ações do modal de exclusão: duas colunas equilibradas. */
-#deleteMovementModal .delete-movement-actions {
-    display:grid;
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    align-items:stretch;
-    gap:.5rem;
-}
-#deleteMovementModal .delete-movement-actions > .btn {
-    display:inline-flex;
-    width:100%;
-    min-width:0;
-    min-height:2.75rem;
-    align-items:center;
-    justify-content:center;
-    padding:.55rem .65rem;
-    white-space:normal;
-}
-@media(max-width:360px) {
-    #deleteMovementModal .delete-movement-actions { gap:.35rem; }
-    #deleteMovementModal .delete-movement-actions > .btn { padding-inline:.35rem; font-size:.82rem; }
-}
+/* Botões do modal de exclusão ocupam toda a largura e ficam empilhados. */
+#deleteMovementModal .modal-footer{display:flex;flex-direction:column;align-items:stretch;gap:.75rem}
+#deleteMovementModal .modal-footer>.btn{display:block;width:100%;margin:0}
 .movement-entry-dialog{max-width:560px}
 .movement-editor-card .card-body{padding:24px!important}
 .movement-editor-card .form-label{font-size:.875rem;font-weight:600}

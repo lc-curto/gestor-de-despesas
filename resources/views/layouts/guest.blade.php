@@ -10,8 +10,6 @@
     <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet" crossorigin="anonymous">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/design-system.css') }}?v={{ filemtime(public_path('css/design-system.css')) }}">
-    <link rel="stylesheet" href="{{ asset('css/interface-responsive.css') }}?v={{ filemtime(public_path('css/interface-responsive.css')) }}">
 </head>
 <body>
     <main class="min-vh-100 d-flex align-items-center auth-view">
