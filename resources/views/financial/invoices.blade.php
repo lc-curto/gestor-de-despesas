@@ -8,7 +8,7 @@
         <div>
             <a href="{{ route('financial.cards.page') }}" class="small text-secondary text-decoration-none">← Cartões</a>
             <h1 class="h2 fw-bold mb-1 mt-2">Faturas</h1>
-            <p class="text-secondary mb-0">Compras, pagamentos, encargos, créditos e reconciliação.</p>
+            
         </div>
     </header>
     <div id="invoiceFeedback" class="alert d-none" role="status" aria-live="polite"></div>
@@ -16,7 +16,7 @@
         <div class="card border-0 rounded-4"><div class="card-body text-center p-4">
             <i data-lucide="receipt" class="text-secondary mb-3" style="width:32px;height:32px"></i>
             <h2 class="h5">Ainda não existem faturas</h2>
-            <p class="text-secondary mb-0">As faturas aparecem aqui quando registares compras num cartão de crédito.</p>
+            
         </div></div>
     @else
         <section class="invoice-list" aria-label="Faturas dos cartões">
@@ -98,11 +98,11 @@
                         @foreach(['principal'=>'Capital','interest'=>'Juros','fees'=>'Comissões','taxes'=>'Impostos','other'=>'Outros'] as $key=>$label)
                             <div class="col-6"><label class="form-label small" for="allocation_{{ $key }}">{{ $label }}</label><input class="form-control form-control-sm" id="allocation_{{ $key }}" inputmode="decimal" placeholder="0,00"></div>
                         @endforeach
-                    </div><small class="text-secondary">A soma tem de coincidir exatamente com o pagamento.</small>
+                    </div>
                 </div>
                 <div class="mb-3 d-none" data-field="chargeType"><label class="form-label" for="invoiceChargeType">Tipo de encargo</label><select class="form-select" id="invoiceChargeType"><option value="interest">Juros</option><option value="late_fee">Multa</option><option value="commission">Comissão</option><option value="tax">Imposto</option><option value="other">Outro</option></select></div>
                 <div class="mb-3 d-none" data-field="purchase"><label class="form-label" for="invoicePurchase">Compra a creditar</label><select class="form-select" id="invoicePurchase"></select></div>
-                <div class="mb-3 d-none" data-field="statement"><label class="form-label" for="invoiceStatement">Total do extrato</label><input class="form-control" id="invoiceStatement" inputmode="decimal" placeholder="0,00"><small class="text-secondary">O valor tem de coincidir com os lançamentos líquidos da fatura.</small></div>
+                <div class="mb-3 d-none" data-field="statement"><label class="form-label" for="invoiceStatement">Total do extrato</label><input class="form-control" id="invoiceStatement" inputmode="decimal" placeholder="0,00"></div>
                 <div class="alert alert-danger d-none mb-0" id="invoiceActionError" role="alert"></div>
             </div>
             <div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar</button></div>
