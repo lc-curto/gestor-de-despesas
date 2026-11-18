@@ -57,6 +57,21 @@ class FinancialArchivedCommitmentsTest extends TestCase
             ->assertDontSee('Compra QA arquivada');
     }
 
+    public function test_cancelled_commitments_remain_accessible_in_archived_tab(): void
+    {
+        $user = User::factory()->create();
+        $debt = $this->createCommitment($user, null);
+        $debt->update(['status' => 'cancelled']);
+
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class)->actingAs($user);
+
+        $this->get(route('financial.commitments.page', ['status' => 'archived']))
+            ->assertOk()
+            ->assertSee('Compra QA arquivada')
+            ->assertSee('Cancelado')
+            ->assertSee('Arquivados (1)');
+    }
+
     public function test_archived_commitment_can_be_restored_without_changing_installments_or_payments(): void
     {
         $user = User::factory()->create();
