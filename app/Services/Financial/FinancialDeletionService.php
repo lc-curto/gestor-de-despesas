@@ -156,8 +156,40 @@ class FinancialDeletionService
                 ->whereKey($movement->id)
                 ->firstOrFail();
 
-            // O agregado é sempre bloqueado antes do evento, na mesma ordem usada
-            // pela liquidação. Isto serializa exclusões concorrentes de pagamentos.
+            // Operações ligadas a faturas usam a ordem cartão -> fatura ->
+            // conta de origem -> obrigação -> evento, igual ao pagamento da fatura.
+            // A leitura inicial da fatura serve apenas para descobrir o cartão.
+            $invoice = null;
+            if ($snapshot->invoice_id) {
+                $invoiceSnapshot = Fatura::query()
+                    ->where('user_id', $user->id)
+                    ->whereKey($snapshot->invoice_id)
+                    ->firstOrFail();
+                $card = ContaFinanceira::query()
+                    ->where('user_id', $user->id)
+                    ->whereKey($invoiceSnapshot->account_id)
+                    ->where('type', 'credit_card')
+                    ->lockForUpdate()
+                    ->firstOrFail();
+                $invoice = Fatura::query()
+                    ->where('user_id', $user->id)
+                    ->whereKey($snapshot->invoice_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+                if ($invoice->account_id !== $card->id) {
+                    throw ValidationException::withMessages(['invoice' => 'O cartão associado à fatura foi alterado. Atualiza a página e tenta novamente.']);
+                }
+                if ($snapshot->type === 'transfer' && $snapshot->source_account_id) {
+                    ContaFinanceira::query()
+                        ->where('user_id', $user->id)
+                        ->whereKey($snapshot->source_account_id)
+                        ->lockForUpdate()
+                        ->firstOrFail();
+                }
+            }
+
+            // O agregado é bloqueado antes do evento, depois dos locks da fatura
+            // quando aplicável. Isto serializa exclusões concorrentes de pagamentos.
             $parent = $snapshot->settles_movement_id
                 ? Movimento::query()->where('user_id', $user->id)->whereKey($snapshot->settles_movement_id)->lockForUpdate()->first()
                 : null;
@@ -208,11 +240,10 @@ class FinancialDeletionService
                 ? ParcelaDivida::query()->where('user_id', $user->id)->whereKey($parent->installment_id)->first()?->getAttributes()
                 : null;
 
-            $invoice = null;
             $invoiceParentBefore = null;
             $isInvoicePayment = $locked->type === 'transfer' && $locked->invoice_id;
             if ($locked->invoice_id) {
-                $invoice = Fatura::query()
+                $invoice ??= Fatura::query()
                     ->where('user_id', $user->id)
                     ->whereKey($locked->invoice_id)
                     ->lockForUpdate()
