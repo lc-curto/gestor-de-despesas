@@ -66,8 +66,9 @@ class FinancialAccountService
             $locked->refresh();
             $currentBalanceIsNegative = $this->balances->toCents($this->balances->balance($locked)) < 0;
             $locked->update([
-                'allow_negative_balance' => in_array($locked->type, ['bank', 'cash'], true)
-                    && ($allowNegative || $currentBalanceIsNegative),
+                'allow_negative_balance' => $locked->type === 'credit_card'
+                    || (in_array($locked->type, ['bank', 'cash'], true)
+                        && ($allowNegative || $currentBalanceIsNegative)),
             ]);
 
             return $locked->refresh();
