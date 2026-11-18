@@ -185,7 +185,7 @@ document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', as
 
     .account-movement-item {
         display:grid !important;
-        grid-template-columns:minmax(0,1fr) 7.25rem !important;
+        grid-template-columns:minmax(0,1fr) auto;
         align-items:center !important;
         gap:.5rem !important;
         min-width:0 !important;
@@ -223,8 +223,8 @@ document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', as
 
     .account-movement-actions {
         display:flex !important;
-        width:7.25rem !important;
-        min-width:7.25rem !important;
+        width:auto;
+        min-width:0;
         flex-direction:column !important;
         align-items:flex-end !important;
         justify-content:center;
@@ -271,13 +271,13 @@ document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', as
 
     .account-movement-buttons .btn {
         display:inline-flex !important;
-        width:2.15rem !important;
-        min-width:2.15rem !important;
-        max-width:2.15rem !important;
-        height:2.15rem !important;
-        min-height:2.15rem !important;
-        max-height:2.15rem !important;
-        flex:0 0 2.15rem !important;
+        width:2.25rem;
+        min-width:2.25rem;
+        max-width:2.25rem;
+        height:2.25rem;
+        min-height:2.25rem;
+        max-height:2.25rem;
+        flex:0 0 2.25rem;
         align-items:center;
         justify-content:center;
         padding:.25rem !important;
