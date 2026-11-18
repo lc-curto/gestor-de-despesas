@@ -193,6 +193,7 @@
 /* Action layout v2 — explicit component patterns, not generic flex overrides. */
 .app-main .credit-cards-page > header {
     align-items: center;
+    flex-wrap: wrap !important;
 }
 .app-main .credit-cards-page > header > div:last-child {
     display: flex;
@@ -212,7 +213,7 @@
 .app-main .accounts-rebuilt .accounts-header-v2 > :last-child {
     display: flex;
     flex: 0 1 auto;
-    flex-wrap: nowrap;
+    flex-wrap: nowrap !important;
     gap: .5rem;
 }
 .app-main .accounts-rebuilt .accounts-header-v2 > :last-child > .btn {
