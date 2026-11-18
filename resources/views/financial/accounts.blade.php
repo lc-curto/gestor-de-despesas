@@ -130,6 +130,11 @@
                             <input id="openingBalanceDate" name="opening_balance_date" type="date" class="form-control" value="{{ now()->toDateString() }}" max="{{ now()->toDateString() }}" required>
                         </div>
                     </div>
+                    <div class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" id="allowNegativeBalance" name="allow_negative_balance" value="1">
+                        <label class="form-check-label" for="allowNegativeBalance">Permitir saldo negativo nesta conta</label>
+                        <div class="form-text">Desativado por padrão. Ativa apenas se quiseres permitir descoberto ou saldo negativo.</div>
+                    </div>
                     <div class="account-form-feedback small text-danger mt-3" role="alert"></div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
