@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Services\Financial\FinancialAccountService;
+use App\Services\Financial\FinancialMovementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -39,6 +40,7 @@ class FinancialAccountsPageTest extends TestCase
             ->get('/contas')
             ->assertOk()
             ->assertSee('Conta da Ana')
+            ->assertSee('Permitir saldo negativo nesta conta')
             ->assertDontSee('Conta privada de outro utilizador');
     }
 
@@ -69,8 +71,9 @@ class FinancialAccountsPageTest extends TestCase
         $user = User::factory()->create();
         $account = app(FinancialAccountService::class)->create($user, [
             'name' => 'Conta à ordem', 'type' => 'bank', 'opening_balance' => '100.00',
-            'opening_balance_date' => '2026-11-01', 'allow_negative_balance' => false,
+            'opening_balance_date' => '2026-11-01',
         ]);
+        $this->assertFalse((bool) $account->allow_negative_balance);
 
         $this->actingAs($user)->putJson('/api/financial/accounts/'.$account->id.'/settings', [
             'allow_negative_balance' => true,
@@ -81,6 +84,86 @@ class FinancialAccountsPageTest extends TestCase
             'allow_negative_balance' => false,
         ])->assertOk();
         $this->assertDatabaseHas('contas_financeiras', ['id' => $account->id, 'allow_negative_balance' => false]);
+    }
+
+    public function test_negative_balance_permission_cannot_be_disabled_when_operational_balance_is_negative(): void
+    {
+        $user = User::factory()->create();
+        $account = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Conta em descoberto', 'type' => 'bank', 'opening_balance' => '100.00',
+            'opening_balance_date' => '2026-11-01', 'allow_negative_balance' => true,
+        ]);
+        app(\App\Services\Financial\FinancialMovementService::class)->create($user, [
+            'type' => 'expense', 'description' => 'Débito em descoberto', 'amount' => '125.00',
+            'movement_date' => '2026-11-12', 'source_account_id' => $account->id,
+        ]);
+
+        $this->actingAs($user)->putJson('/api/financial/accounts/'.$account->id.'/settings', [
+            'allow_negative_balance' => false,
+        ])->assertUnprocessable();
+
+        $this->assertDatabaseHas('contas_financeiras', [
+            'id' => $account->id, 'allow_negative_balance' => true,
+        ]);
+    }
+
+    public function test_negative_opening_balance_automatically_enables_overdraft_permission(): void
+    {
+        $user = User::factory()->create();
+        $account = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Conta com saldo inicial negativo',
+            'type' => 'bank',
+            'opening_balance' => '-25.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+
+        $this->assertTrue((bool) $account->allow_negative_balance);
+        $this->assertSame('-25.00', app(\App\Services\Financial\AccountBalanceService::class)->balance($account));
+    }
+
+    public function test_setting_a_negative_opening_balance_enables_permission_in_one_update(): void
+    {
+        $user = User::factory()->create();
+        $account = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Conta corrigível',
+            'type' => 'bank',
+            'opening_balance' => '0.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+
+        $updated = app(FinancialAccountService::class)->setOpeningBalance(
+            $user,
+            $account,
+            '-25.00',
+            '2026-11-01',
+            false
+        );
+
+        $this->assertTrue((bool) $updated->allow_negative_balance);
+        $this->assertSame('-25.00', app(\App\Services\Financial\AccountBalanceService::class)->balance($updated));
+    }
+
+    public function test_negative_opening_balance_cannot_be_disabled_even_after_current_balance_recovers(): void
+    {
+        $user = User::factory()->create();
+        $account = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Conta recuperada',
+            'type' => 'bank',
+            'opening_balance' => '-25.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+        app(FinancialMovementService::class)->create($user, [
+            'type' => 'income',
+            'description' => 'Reposição',
+            'amount' => '30.00',
+            'movement_date' => '2026-11-12',
+            'destination_account_id' => $account->id,
+        ]);
+
+        $this->assertSame('5.00', app(\App\Services\Financial\AccountBalanceService::class)->balance($account->fresh()));
+        $this->actingAs($user)->putJson('/api/financial/accounts/'.$account->id.'/settings', [
+            'allow_negative_balance' => false,
+        ])->assertUnprocessable();
     }
 
     public function test_negative_balance_permission_cannot_be_disabled_for_negative_opening_balance(): void

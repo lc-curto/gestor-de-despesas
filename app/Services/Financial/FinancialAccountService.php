@@ -19,7 +19,11 @@ class FinancialAccountService
             // ser corrigido mais tarde, inclusive depois de lançamentos.
             $openingDebt = $data['type'] === 'credit_card' ? (string) ($data['opening_debt_amount'] ?? '0.00') : '0.00';
             $openingBalance = $data['type'] === 'credit_card' ? '-'.ltrim($openingDebt, '-') : ($data['opening_balance'] ?? '0.00');
-            $allowNegative = true;
+            // A coluna mantém true nos cartões por exigência do CHECK legado;
+            // a permissão de descoberto só tem significado em banco e dinheiro.
+            $allowNegative = $data['type'] === 'credit_card'
+                || (in_array($data['type'], ['bank', 'cash'], true)
+                    && ((bool) ($data['allow_negative_balance'] ?? false) || $this->balances->toCents((string) $openingBalance) < 0));
             if (($data['opening_balance_date'] ?? now()->toDateString()) > now()->toDateString()) {
                 throw ValidationException::withMessages(['opening_balance_date' => 'A data do saldo inicial não pode ser futura.']);
             }
@@ -54,10 +58,17 @@ class FinancialAccountService
             if ($date > now()->toDateString()) {
                 throw ValidationException::withMessages(['opening_balance_date' => 'A data do saldo inicial não pode ser futura.']);
             }
+            $currentBalanceCents = $this->balances->toCents($this->balances->balance($locked));
+            $previousOpeningBalanceCents = $this->balances->toCents((string) $locked->opening_balance);
+            $newOpeningBalanceCents = $this->balances->toCents($amount);
+            $newOperationalBalanceIsNegative = $newOpeningBalanceCents
+                + ($currentBalanceCents - $previousOpeningBalanceCents) < 0;
             $locked->update([
                 'opening_balance' => $amount,
                 'opening_balance_date' => $date,
-                'allow_negative_balance' => $allowNegative || $this->balances->toCents($amount) < 0,
+                'allow_negative_balance' => $locked->type === 'credit_card'
+                    || (in_array($locked->type, ['bank', 'cash'], true)
+                        && ($allowNegative || $newOpeningBalanceCents < 0 || $newOperationalBalanceIsNegative)),
                 'status' => 'active',
             ]);
 
@@ -86,12 +97,15 @@ class FinancialAccountService
             if (! $locked->is_operational || $locked->status === 'closed' || ! in_array($locked->type, ['bank', 'cash'], true)) {
                 throw ValidationException::withMessages(['account' => 'Esta configuração só se aplica a contas bancárias e de dinheiro ativas.']);
             }
-            if (! $allowed && $locked->opening_balance !== null && $this->balances->toCents((string) $locked->opening_balance) < 0) {
-                throw ValidationException::withMessages(['allow_negative_balance' => 'Não é possível desativar esta opção enquanto o saldo inicial for negativo.']);
+            $currentBalanceIsNegative = $this->balances->toCents($this->balances->balance($locked)) < 0;
+            $openingBalanceIsNegative = $locked->opening_balance !== null
+                && $this->balances->toCents((string) $locked->opening_balance) < 0;
+            if (! $allowed && ($openingBalanceIsNegative || $currentBalanceIsNegative)) {
+                throw ValidationException::withMessages([
+                    'allow_negative_balance' => 'Não é possível desativar esta opção enquanto o saldo inicial ou o saldo operacional da conta for negativo.',
+                ]);
             }
-            $locked->update([
-                'allow_negative_balance' => $allowed || ($locked->opening_balance !== null && $this->balances->toCents((string) $locked->opening_balance) < 0),
-            ]);
+            $locked->update(['allow_negative_balance' => $allowed]);
 
             return $locked->refresh();
         });
@@ -134,7 +148,21 @@ class FinancialAccountService
     public function close(User $user, ContaFinanceira $account, ?string $transferToAccountId = null): void
     {
         DB::transaction(function () use ($user, $account, $transferToAccountId) {
-            $locked = ContaFinanceira::query()->where('user_id', $user->id)->whereKey($account->id)->lockForUpdate()->firstOrFail();
+            // O encerramento pode transferir saldo; bloqueia origem e destino
+            // na mesma ordem determinística usada pelo serviço de movimentos.
+            $accountIds = array_values(array_unique(array_filter([$account->id, $transferToAccountId])));
+            sort($accountIds, SORT_STRING);
+            $lockedAccounts = ContaFinanceira::query()
+                ->where('user_id', $user->id)
+                ->whereIn('id', $accountIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+            $locked = $lockedAccounts->get($account->id);
+            if (! $locked) {
+                throw ValidationException::withMessages(['account' => 'A conta selecionada já não está disponível.']);
+            }
             if (! $locked->is_operational || $locked->type === 'legacy') {
                 throw ValidationException::withMessages(['account' => 'A conta já está encerrada ou é histórica.']);
             }

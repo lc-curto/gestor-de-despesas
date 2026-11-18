@@ -18,11 +18,12 @@ class InstallmentSettlementRegressionTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function setupDebt(string $balance = '200.00'): array
+    private function setupDebt(string $balance = '200.00', bool $allowNegative = false): array
     {
         $user = User::factory()->create();
         $bank = app(FinancialAccountService::class)->create($user, [
-            'name' => 'Conta local', 'type' => 'bank', 'opening_balance' => $balance, 'opening_balance_date' => '2026-11-01',
+            'name' => 'Conta local', 'type' => 'bank', 'opening_balance' => $balance,
+            'opening_balance_date' => '2026-11-01', 'allow_negative_balance' => $allowNegative,
         ]);
         $debt = app(FinancialCommitmentService::class)->create($user, [
             'name' => 'Compra', 'total_amount' => '90.00', 'start_date' => '2026-11-17', 'due_date' => '2026-12-17',
@@ -128,15 +129,30 @@ class InstallmentSettlementRegressionTest extends TestCase
         $this->assertSame(3, $user->movimentos()->where('debt_id', $debt->id)->count());
     }
 
-    public function test_partial_payment_respects_existing_negative_balance_policy(): void
+    public function test_partial_payment_is_allowed_to_overdraw_only_when_permission_is_enabled(): void
     {
-        [$user, $bank, $debt] = $this->setupDebt('10.00');
+        [$user, $bank, $debt] = $this->setupDebt('10.00', true);
         $part = $debt->parcelas->sortBy('installment_number')->first();
         $forecast = $user->movimentos()->where('installment_id', $part->id)->firstOrFail();
         $this->settle($user, $bank, $forecast->id, '20.00', '30.00')->assertOk();
         $this->assertSame('-10.00', app(AccountBalanceService::class)->balance($bank->fresh()));
         $this->assertSame('30.00', $forecast->fresh()->amount);
         $this->assertSame('70.00', $this->openAmount($debt));
+    }
+
+    public function test_partial_payment_is_rejected_when_negative_balance_is_disabled(): void
+    {
+        [$user, $bank, $debt] = $this->setupDebt('10.00', false);
+        $part = $debt->parcelas->sortBy('installment_number')->first();
+        $forecast = $user->movimentos()->where('installment_id', $part->id)->firstOrFail();
+
+        $this->settle($user, $bank, $forecast->id, '20.00', '30.00')->assertUnprocessable();
+
+        $this->assertSame('10.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+        $this->assertSame('pending', $forecast->fresh()->status);
+        $this->assertSame('0.00', $part->fresh()->paid_amount);
+        $this->assertSame('90.00', $this->openAmount($debt));
+        $this->assertSame(3, $user->movimentos()->where('debt_id', $debt->id)->count());
     }
 
     public function test_editing_commitment_updates_only_pending_forecast_names_and_months(): void

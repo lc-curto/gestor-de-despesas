@@ -156,9 +156,72 @@ class FinancialDeletionService
                 ->whereKey($movement->id)
                 ->firstOrFail();
 
-            // O agregado é sempre bloqueado antes do evento, na mesma ordem usada
-            // pela liquidação. Isto serializa exclusões concorrentes de pagamentos.
-            $parent = $snapshot->settles_movement_id
+            // A repetição de uma exclusão concluída é idempotente, mesmo quando
+            // a fatura associada já foi arquivada (soft deleted).
+            if ($snapshot->status === 'void') {
+                return $snapshot;
+            }
+
+            // Operações ligadas a faturas usam a ordem cartão -> fatura ->
+            // conta de origem -> obrigação -> evento, igual ao pagamento da fatura.
+            // A leitura inicial da fatura serve apenas para descobrir o cartão.
+            $invoice = null;
+            if ($snapshot->invoice_id) {
+                $invoiceSnapshot = Fatura::query()
+                    ->where('user_id', $user->id)
+                    ->whereKey($snapshot->invoice_id)
+                    ->firstOrFail();
+                $card = ContaFinanceira::query()
+                    ->where('user_id', $user->id)
+                    ->whereKey($invoiceSnapshot->account_id)
+                    ->where('type', 'credit_card')
+                    ->lockForUpdate()
+                    ->firstOrFail();
+                $invoice = Fatura::query()
+                    ->where('user_id', $user->id)
+                    ->whereKey($snapshot->invoice_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+                if ($invoice->account_id !== $card->id) {
+                    throw ValidationException::withMessages(['invoice' => 'O cartão associado à fatura foi alterado. Atualiza a página e tenta novamente.']);
+                }
+                if ($snapshot->type === 'transfer' && $snapshot->source_account_id) {
+                    ContaFinanceira::query()
+                        ->where('user_id', $user->id)
+                        ->whereKey($snapshot->source_account_id)
+                        ->lockForUpdate()
+                        ->firstOrFail();
+                }
+            }
+
+            $parentSnapshot = $snapshot->settles_movement_id
+                ? Movimento::query()->where('user_id', $user->id)->whereKey($snapshot->settles_movement_id)->first()
+                : null;
+
+            // Em prestações, a ordem é dívida -> prestação -> obrigação -> evento,
+            // igual à liquidação e ao cancelamento do parcelamento.
+            if ($parentSnapshot?->installment_id) {
+                $installmentSnapshot = ParcelaDivida::query()
+                    ->where('user_id', $user->id)
+                    ->whereKey($parentSnapshot->installment_id)
+                    ->first();
+                if ($installmentSnapshot) {
+                    Divida::query()
+                        ->where('user_id', $user->id)
+                        ->whereKey($parentSnapshot->debt_id ?? $installmentSnapshot->debt_id)
+                        ->lockForUpdate()
+                        ->first();
+                    ParcelaDivida::query()
+                        ->where('user_id', $user->id)
+                        ->whereKey($parentSnapshot->installment_id)
+                        ->lockForUpdate()
+                        ->first();
+                }
+            }
+
+            // O agregado é bloqueado antes do evento, depois dos locks de fatura
+            // ou prestação quando aplicável. Isto serializa exclusões concorrentes.
+            $parent = $parentSnapshot
                 ? Movimento::query()->where('user_id', $user->id)->whereKey($snapshot->settles_movement_id)->lockForUpdate()->first()
                 : null;
 
@@ -208,11 +271,10 @@ class FinancialDeletionService
                 ? ParcelaDivida::query()->where('user_id', $user->id)->whereKey($parent->installment_id)->first()?->getAttributes()
                 : null;
 
-            $invoice = null;
             $invoiceParentBefore = null;
             $isInvoicePayment = $locked->type === 'transfer' && $locked->invoice_id;
             if ($locked->invoice_id) {
-                $invoice = Fatura::query()
+                $invoice ??= Fatura::query()
                     ->where('user_id', $user->id)
                     ->whereKey($locked->invoice_id)
                     ->lockForUpdate()
@@ -280,6 +342,14 @@ class FinancialDeletionService
             }
 
             $legacyPair = $lockedRows->except($locked->id)->values();
+
+            // Anular um crédito liquidado também reduz o saldo operacional.
+            // Bloqueia as contas afetadas antes de calcular o efeito líquido de
+            // todos os movimentos que serão anulados nesta operação.
+            $this->assertVoidingDoesNotOverdraw(
+                $user,
+                collect([$locked])->merge($children)->merge($legacyPair)->unique('id')->values()
+            );
 
             $operationId = $this->startOperation(
                 $user,
@@ -1115,6 +1185,68 @@ class FinancialDeletionService
         $before = $legacy->getAttributes();
         $legacy->delete();
         $this->recordItem($user, $operationId, ucfirst($legacyType), $legacyId, 'hard_deleted', $before, null);
+    }
+
+    /**
+     * Garante que a remoção conjunta de movimentos liquidados não cria um
+     * saldo negativo numa conta sem autorização. Calcula o efeito líquido
+     * por conta, pois uma operação pode anular vários eventos relacionados.
+     */
+    private function assertVoidingDoesNotOverdraw(User $user, $movements): void
+    {
+        $netCredits = [];
+
+        foreach ($movements as $movement) {
+            if ($movement->status !== 'settled' || $movement->is_historical || $movement->is_settlement_parent) {
+                continue;
+            }
+
+            $amount = $this->balances->toCents((string) $movement->amount);
+            $creditAccountId = match ($movement->type) {
+                'income' => $movement->destination_account_id,
+                'transfer' => $movement->destination_account_id,
+                'adjustment' => $movement->adjustment_direction === 'increase' ? $movement->destination_account_id : null,
+                default => null,
+            };
+
+            if ($creditAccountId) {
+                $netCredits[$creditAccountId] = ($netCredits[$creditAccountId] ?? 0) + $amount;
+            }
+
+            if ($movement->type === 'transfer' && $movement->source_account_id) {
+                $netCredits[$movement->source_account_id] = ($netCredits[$movement->source_account_id] ?? 0) - $amount;
+            } elseif ($movement->type === 'expense' && $movement->source_account_id) {
+                $netCredits[$movement->source_account_id] = ($netCredits[$movement->source_account_id] ?? 0) - $amount;
+            } elseif ($movement->type === 'adjustment'
+                && $movement->adjustment_direction === 'decrease' && $movement->source_account_id) {
+                $netCredits[$movement->source_account_id] = ($netCredits[$movement->source_account_id] ?? 0) - $amount;
+            }
+        }
+
+        $debits = array_filter($netCredits, fn (int $netCredit): bool => $netCredit > 0);
+        if ($debits === []) {
+            return;
+        }
+
+        $accountIds = array_keys($debits);
+        sort($accountIds, SORT_STRING);
+        $accounts = ContaFinanceira::query()
+            ->where('user_id', $user->id)
+            ->whereIn('id', $accountIds)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+
+        foreach ($debits as $accountId => $amountCents) {
+            $account = $accounts->get($accountId);
+            if (! $account || ! in_array($account->type, ['bank', 'cash'], true) || $account->allow_negative_balance) {
+                continue;
+            }
+
+            $amount = intdiv($amountCents, 100).'.'.str_pad((string) ($amountCents % 100), 2, '0', STR_PAD_LEFT);
+            $this->balances->assertCanDebit($account, $amount);
+        }
     }
 
     private function voidMovement(

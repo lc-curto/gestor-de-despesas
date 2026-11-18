@@ -4,6 +4,7 @@ namespace App\Services\Financial;
 
 use App\Models\ContaFinanceira;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 class AccountBalanceService
@@ -44,9 +45,23 @@ class AccountBalanceService
 
     public function assertCanDebit(ContaFinanceira $account, string $amount): void
     {
-        // O saldo é informativo e pode ficar negativo: bancos permitem
-        // descoberto, dinheiro pode ser corrigido depois e cartões são crédito.
-        // A aplicação não bloqueia um lançamento por falta de saldo calculado.
+        // Cartões seguem as regras de limite e faturação. A política de descoberto
+        // aplica-se apenas a contas bancárias e de dinheiro.
+        if (! in_array($account->type, ['bank', 'cash'], true) || $account->allow_negative_balance) {
+            return;
+        }
+
+        $debitCents = $this->toCents($amount);
+        if ($debitCents <= 0) {
+            throw ValidationException::withMessages(['amount' => 'O valor do débito deve ser superior a zero.']);
+        }
+
+        $availableCents = $this->toCents($this->balance($account));
+        if ($debitCents > $availableCents) {
+            throw ValidationException::withMessages([
+                'amount' => 'Saldo insuficiente. Ativa a permissão de saldo negativo nas definições da conta para permitir esta operação.',
+            ]);
+        }
     }
 
     public function toCents(string $amount): int
