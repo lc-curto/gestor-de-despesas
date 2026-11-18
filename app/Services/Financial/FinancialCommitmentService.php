@@ -312,20 +312,26 @@ class FinancialCommitmentService
     public function restore(User $user, Divida $debt): Divida
     {
         return DB::transaction(function () use ($user, $debt): Divida {
-            $locked = Divida::query()
+            $locked = Divida::withTrashed()
                 ->where('user_id', $user->id)
                 ->whereKey($debt->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($locked->archived_at === null) {
-                throw ValidationException::withMessages(['commitment' => 'Esta compra já está ativa.']);
+            if ($locked->trashed()) {
+                // Registos eliminados regressam apenas à área Arquivados para revisão.
+                // Não são reativados nem alteram prestações ou movimentos.
+                $locked->restore();
+                $locked->update(['archived_at' => $locked->archived_at ?? now()]);
+            } else {
+                if ($locked->archived_at === null) {
+                    throw ValidationException::withMessages(['commitment' => 'Esta compra já está ativa.']);
+                }
+                if ($locked->status === 'cancelled') {
+                    throw ValidationException::withMessages(['commitment' => 'Uma compra cancelada não pode ser restaurada como ativa.']);
+                }
+                $locked->update(['archived_at' => null]);
             }
-            if ($locked->status === 'cancelled') {
-                throw ValidationException::withMessages(['commitment' => 'Uma compra cancelada não pode ser restaurada como ativa.']);
-            }
-
-            $locked->update(['archived_at' => null]);
 
             return $locked->refresh();
         });
