@@ -9,6 +9,15 @@ return new class extends Migration
     {
         // Só migramos contas operacionais bancárias/dinheiro ainda autorizadas.
         // Cartões e contas legadas não fazem parte desta política.
+        $toCents = static function (string $amount): int {
+            $negative = str_starts_with($amount, '-');
+            $digits = ltrim($amount, '-');
+            [$whole, $fraction] = array_pad(explode('.', $digits, 2), 2, '0');
+            $cents = ((int) $whole * 100) + (int) str_pad($fraction, 2, '0', STR_PAD_RIGHT);
+
+            return $negative ? -$cents : $cents;
+        };
+
         DB::table('contas_financeiras')
             ->whereIn('type', ['bank', 'cash'])
             ->where('is_operational', true)
@@ -44,12 +53,12 @@ return new class extends Migration
                         )
                         ->value('delta');
 
-                    // O saldo é calculado em decimal pela base de dados, sem
-                    // conversões float em PHP. Só removemos a permissão quando
-                    // o saldo operacional atual é zero ou positivo.
-                    $operationalBalance = bcadd((string) $account->opening_balance, (string) $delta, 2);
+                    // Calcula em cêntimos inteiros para evitar dependência de
+                    // BCMath e qualquer imprecisão de ponto flutuante.
+                    $operationalBalanceCents = $toCents((string) $account->opening_balance)
+                        + $toCents((string) $delta);
 
-                    if (bccomp($operationalBalance, '0.00', 2) >= 0) {
+                    if ($operationalBalanceCents >= 0) {
                         DB::table('contas_financeiras')
                             ->where('id', $account->id)
                             ->where('user_id', $account->user_id)
