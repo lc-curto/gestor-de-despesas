@@ -58,18 +58,18 @@ class FinancialAccountService
             if ($date > now()->toDateString()) {
                 throw ValidationException::withMessages(['opening_balance_date' => 'A data do saldo inicial não pode ser futura.']);
             }
+            $currentBalanceCents = $this->balances->toCents($this->balances->balance($locked));
+            $previousOpeningBalanceCents = $this->balances->toCents((string) $locked->opening_balance);
+            $newOpeningBalanceCents = $this->balances->toCents($amount);
+            $newOperationalBalanceIsNegative = $newOpeningBalanceCents
+                + ($currentBalanceCents - $previousOpeningBalanceCents) < 0;
             $locked->update([
                 'opening_balance' => $amount,
                 'opening_balance_date' => $date,
-                'status' => 'active',
-            ]);
-            $locked->refresh();
-            $currentBalanceIsNegative = $this->balances->toCents($this->balances->balance($locked)) < 0;
-            $openingBalanceIsNegative = $this->balances->toCents($amount) < 0;
-            $locked->update([
                 'allow_negative_balance' => $locked->type === 'credit_card'
                     || (in_array($locked->type, ['bank', 'cash'], true)
-                        && ($allowNegative || $openingBalanceIsNegative || $currentBalanceIsNegative)),
+                        && ($allowNegative || $newOpeningBalanceCents < 0 || $newOperationalBalanceIsNegative)),
+                'status' => 'active',
             ]);
 
             return $locked->refresh();
