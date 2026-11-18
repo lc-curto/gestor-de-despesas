@@ -19,7 +19,7 @@
     data-today="{{ $today }}">
     <header class="financial-route-header">
         <div>
-            <p class="financial-route-eyebrow">Planeamento financeiro</p>
+            
             <h1>Rota Financeira</h1>
         </div>
         <div class="financial-route-actions">
@@ -98,7 +98,7 @@
 
 <div class="modal fade" id="routeDayModal" tabindex="-1" aria-labelledby="routeDayTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content route-sheet-content">
-        <div class="modal-header"><div><p class="text-secondary small mb-1">Movimentos do dia</p><h2 class="modal-title h5 fw-bold" id="routeDayTitle">Detalhes do dia</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+        <div class="modal-header"><div><h2 class="modal-title h5 fw-bold" id="routeDayTitle">Detalhes do dia</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
         <div class="modal-body"><div class="route-day-balance" id="routeDayBalance"></div><div class="route-filter-tabs" id="routeFilterTabs">
             <button type="button" class="active" data-day-filter="all">Todos</button><button type="button" data-day-filter="income">Entradas</button><button type="button" data-day-filter="fixed">Gasto fixo</button><button type="button" data-day-filter="variable">Variável</button>
         </div><div id="routeDayMovements" class="route-movement-list"></div></div>
@@ -117,7 +117,7 @@
                     <label><input type="radio" name="route_type" value="variable" checked><span>Variável</span></label>
                 </div></div>
                 <div class="mb-3"><label for="routeDescription" class="form-label">Descrição</label><input id="routeDescription" name="description" class="form-control" maxlength="255" placeholder="Ex.: Supermercado" required></div>
-                <div class="row g-3"><div class="col-6"><label for="routeAmount" class="form-label">Valor ({{ $symbol }})</label><input id="routeAmount" name="amount" type="text" inputmode="decimal" min="0.01" data-money="positive" class="form-control" placeholder="0,00" required aria-describedby="routeAmountHelp"><div class="form-text" id="routeAmountHelp">Ex.: 90,50, 1.000,00 ou 90.50</div></div><div class="col-6"><label for="routeDate" class="form-label">Data</label><input id="routeDate" name="movement_date" type="date" class="form-control" required></div>
+                <div class="row g-3"><div class="col-6"><label for="routeAmount" class="form-label">Valor ({{ $symbol }})</label><input id="routeAmount" name="amount" type="text" inputmode="decimal" min="0.01" data-money="positive" class="form-control" placeholder="0,00" required aria-describedby="routeAmountHelp"></div><div class="col-6"><label for="routeDate" class="form-label">Data</label><input id="routeDate" name="movement_date" type="date" class="form-control" required></div>
                     <div class="col-12"><label for="routeCategory" class="form-label">Categoria</label><select id="routeCategory" name="category_id" class="form-select"><option value="">Selecionar categoria</option>@foreach($categories as $category)<option value="{{ $category->id }}" data-type="{{ $category->type }}">{{ $category->name }}</option>@endforeach</select></div>
                     <div class="col-12"><label for="routeAccount" class="form-label">Conta</label><select id="routeAccount" name="account_id" class="form-select" required><option value="">Selecionar conta</option>@foreach($accounts as $account)<option value="{{ $account->id }}" data-type="{{ $account->type }}">{{ $account->name }}</option>@endforeach</select></div>
                     <div class="col-12"><label for="routeNotes" class="form-label">Observação (opcional)</label><textarea id="routeNotes" name="notes" class="form-control" rows="2" placeholder="Adicionar observação..."></textarea></div>
@@ -131,7 +131,7 @@
 <div class="modal fade" id="routeMovementDetailModal" tabindex="-1" aria-labelledby="routeMovementDetailTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered"><div class="modal-content route-sheet-content">
         <div class="modal-header"><div><p class="small text-secondary mb-1" id="routeMovementKind"></p><h2 class="modal-title h5 fw-bold" id="routeMovementDetailTitle">Movimento</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
-        <div class="modal-body"><div class="route-detail-amount" id="routeMovementAmount"></div><dl class="route-detail-list"><div><dt>Categoria</dt><dd id="routeMovementCategory"></dd></div><div><dt>Conta</dt><dd id="routeMovementAccount"></dd></div><div><dt>Data</dt><dd id="routeMovementDate"></dd></div><div><dt>Descrição</dt><dd id="routeMovementDescription"></dd></div><div><dt>Observação</dt><dd id="routeMovementNotes"></dd></div></dl><p class="small text-secondary mt-3 mb-0" id="routeEditHelp" role="status"></p><div class="small text-danger" id="routeDetailError" role="alert"></div></div>
+        <div class="modal-body"><div class="route-detail-amount" id="routeMovementAmount"></div><dl class="route-detail-list"><div><dt>Categoria</dt><dd id="routeMovementCategory"></dd></div><div><dt>Conta</dt><dd id="routeMovementAccount"></dd></div><div><dt>Data</dt><dd id="routeMovementDate"></dd></div><div><dt>Descrição</dt><dd id="routeMovementDescription"></dd></div><div><dt>Observação</dt><dd id="routeMovementNotes"></dd></div></dl><div class="small text-danger" id="routeDetailError" role="alert"></div></div>
         <div class="modal-footer justify-content-between"><button type="button" class="btn btn-outline-danger" id="routeDeleteMovement">Excluir</button><div><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button type="button" class="btn btn-primary" id="routeEditMovement" aria-describedby="routeEditHelp">Editar</button></div></div>
     </div></div>
 </div>
