@@ -29,7 +29,7 @@
                     <span class="brand-mark" aria-hidden="true"><i data-lucide="wallet"></i></span>
                     <span class="app-brand-copy">
                         <strong>Meu Bolso</strong>
-                        <small>Gestão Financeira Pessoal</small>
+                        
                     </span>
                 </a>
                 <button type="button" class="btn btn-outline-secondary sidebar-toggle" id="sidebarToggle"
@@ -58,7 +58,7 @@
                         <span class="account-avatar">{{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 1)) }}</span>
                         <span class="account-profile-copy">
                             <strong>{{ auth()->user()->name }}</strong>
-                            <small>Ver perfil e sessão</small>
+                            
                         </span>
                         <i data-lucide="chevron-up" class="account-chevron" aria-hidden="true"></i>
                     </button>
@@ -115,8 +115,8 @@
     <div class="offcanvas offcanvas-bottom mobile-action-sheet" tabindex="-1" id="mobileNewMenu" aria-labelledby="mobileNewMenuTitle">
         <div class="offcanvas-header"><h2 class="offcanvas-title h5 fw-bold" id="mobileNewMenuTitle">Novo registo</h2><button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button></div>
         <div class="offcanvas-body pt-0">
-            <a class="mobile-sheet-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'despesa']) }}"><i data-lucide="arrow-down-right" aria-hidden="true"></i><span><strong>Nova despesa</strong><small>Registar um pagamento ou compromisso</small></span></a>
-            <a class="mobile-sheet-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'receita']) }}"><i data-lucide="arrow-up-right" aria-hidden="true"></i><span><strong>Nova receita</strong><small>Registar dinheiro recebido</small></span></a>
+            <a class="mobile-sheet-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'despesa']) }}"><i data-lucide="arrow-down-right" aria-hidden="true"></i><span><strong>Nova despesa</strong></span></a>
+            <a class="mobile-sheet-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'receita']) }}"><i data-lucide="arrow-up-right" aria-hidden="true"></i><span><strong>Nova receita</strong></span></a>
         </div>
     </div>
 
@@ -130,22 +130,22 @@
             <nav class="mobile-more-list" aria-label="Mais funcionalidades">
                 <a class="mobile-more-item" href="{{ route('financial.route') }}">
                     <i data-lucide="calendar-range" aria-hidden="true"></i>
-                    <span><strong>Rota Financeira</strong><small>Planeamento diário do saldo</small></span>
+                    <span><strong>Rota Financeira</strong></span>
                     <i data-lucide="chevron-right" class="mobile-more-chevron" aria-hidden="true"></i>
                 </a>
                 <a class="mobile-more-item {{ request()->routeIs('financial.cards.*') ? 'active' : '' }}" href="{{ route('financial.cards.page') }}">
                     <i data-lucide="credit-card" aria-hidden="true"></i>
-                    <span><strong>Cartões</strong><small>Limites e utilização de crédito</small></span>
+                    <span><strong>Cartões</strong></span>
                     <i data-lucide="chevron-right" class="mobile-more-chevron" aria-hidden="true"></i>
                 </a>
                 <a class="mobile-more-item {{ request()->routeIs('financial.commitments.*') ? 'active' : '' }}" href="{{ route('financial.commitments.page') }}">
                     <i data-lucide="calendar-clock" aria-hidden="true"></i>
-                    <span><strong>Parcelamentos</strong><small>Gerir prestações ativas</small></span>
+                    <span><strong>Parcelamentos</strong></span>
                     <i data-lucide="chevron-right" class="mobile-more-chevron" aria-hidden="true"></i>
                 </a>
                 <a class="mobile-more-item" href="{{ route('categorias.index') }}">
                     <i data-lucide="tags" aria-hidden="true"></i>
-                    <span><strong>Categorias</strong><small>Gerir categorias</small></span>
+                    <span><strong>Categorias</strong></span>
                     <i data-lucide="chevron-right" class="mobile-more-chevron" aria-hidden="true"></i>
                 </a>
             </nav>
@@ -168,7 +168,7 @@
                 <div class="modal-body text-center p-4 p-md-5">
                     <i data-lucide="clock-3" class="text-warning fs-1 mb-3" aria-hidden="true"></i>
                     <h2 class="h4 fw-bold mb-3" id="inactivityModalTitle">Ainda estás aí?</h2>
-                    <p class="text-secondary mb-3" id="inactivityModalDescription">A tua sessão será encerrada por inatividade. Continua a utilizar a aplicação para manteres a sessão ativa.</p>
+                    
                     <div class="display-5 fw-bold text-warning mb-4"><span id="inactivityCountdown">01:00</span></div>
                     <button type="button" class="btn btn-primary w-100" id="continueSessionButton">Continuar sessão</button>
                 </div>
