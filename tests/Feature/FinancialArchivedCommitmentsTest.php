@@ -61,6 +61,31 @@ class FinancialArchivedCommitmentsTest extends TestCase
         ]);
     }
 
+    public function test_soft_deleted_commitment_with_legacy_links_can_be_recovered_into_archived_review(): void
+    {
+        $user = User::factory()->create();
+        $debt = $this->createCommitment($user, null);
+        $debt->delete();
+
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class)->actingAs($user);
+
+        $this->get(route('financial.commitments.page', ['status' => 'archived']))
+            ->assertOk()
+            ->assertSee('Compra QA arquivada')
+            ->assertSee('Arquivados (1)');
+
+        $this->postJson(route('financial.commitments.restore', $debt->id))
+            ->assertOk()
+            ->assertJsonPath('message', 'Compra restaurada.');
+
+        $this->assertDatabaseHas('dividas', [
+            'id' => $debt->id,
+            'deleted_at' => null,
+            'archived_at' => $debt->fresh()->archived_at,
+            'status' => 'open',
+        ]);
+    }
+
     private function createCommitment(User $user, $archivedAt): Divida
     {
         $debt = Divida::query()->create([
