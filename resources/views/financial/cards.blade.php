@@ -216,8 +216,11 @@
         form.elements.name.value=button.dataset.name;form.elements.credit_limit.value=button.dataset.limit||'';form.elements.closing_day.value=button.dataset.closing||'';form.elements.due_day.value=button.dataset.due||'';form.elements.opening_debt_amount.value=button.dataset.openingDebt||'';
         moneyFields.forEach(name=>form.elements[name].setCustomValidity(''));
         showError(document.getElementById('editCardError'),'');
-        const detailsModal=button.closest('.modal');
-        if(detailsModal){detailsModal.addEventListener('hidden.bs.modal',()=>bootstrap.Modal.getOrCreateInstance(document.getElementById('editCardModal')).show(),{once:true});bootstrap.Modal.getOrCreateInstance(detailsModal).hide();}
+        const detailsModal=typeof button.closest==='function' ? button.closest('.modal') : null;
+        if(detailsModal){
+            detailsModal.addEventListener('hidden.bs.modal',()=>bootstrap.Modal.getOrCreateInstance(document.getElementById('editCardModal')).show(),{once:true});
+            bootstrap.Modal.getOrCreateInstance(detailsModal).hide();
+        }
     }));
     document.getElementById('editCardForm')?.addEventListener('submit',async(event)=>{
         event.preventDefault();const form=event.currentTarget,button=form.querySelector('[type="submit"]'),errorElement=document.getElementById('editCardError');showError(errorElement,'');
