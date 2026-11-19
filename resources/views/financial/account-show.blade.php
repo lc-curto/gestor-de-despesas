@@ -51,14 +51,33 @@
     </section>
     @endif
 
-    <section class="card border-0 shadow-sm rounded-4 history-card account-history-card" aria-labelledby="accountMovementsTitle">
-        <div class="card-body p-0 history-card-body">
-            <div class="px-3 px-sm-4 py-3 border-bottom">
-                <div class="d-flex justify-content-between align-items-center gap-2">
-                    <h2 id="accountMovementsTitle" class="h5 fw-bold mb-0">Movimentos</h2>
-                    <span class="small text-secondary">{{ $movements->total() }} {{ $movements->total() === 1 ? 'registo' : 'registos' }}</span>
+    <div class="account-movements-launcher mt-3">
+        <button type="button" class="btn btn-outline-secondary account-movements-trigger w-100 d-flex align-items-center justify-content-between gap-3 rounded-4 p-3" data-bs-toggle="modal" data-bs-target="#accountMovementsModal">
+            <span class="d-flex align-items-center gap-3">
+                <span class="account-movements-trigger-icon"><i data-lucide="arrow-left-right" aria-hidden="true"></i></span>
+                <span class="text-start">
+                    <strong class="d-block">Movimentos</strong>
+                    <small class="text-secondary">{{ $movements->total() }} {{ $movements->total() === 1 ? 'registo' : 'registos' }}</small>
+                </span>
+            </span>
+            <i data-lucide="chevron-right" class="text-secondary" aria-hidden="true"></i>
+        </button>
+    </div>
+</div>
+
+<div class="modal fade" id="accountMovementsModal" tabindex="-1" aria-labelledby="accountMovementsTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down account-movements-dialog">
+        <div class="modal-content border-0 shadow rounded-4 account-movements-modal">
+            <div class="modal-header px-3 px-sm-4 py-3">
+                <div>
+                    <h2 id="accountMovementsTitle" class="modal-title h5 fw-bold mb-1">Movimentos</h2>
+                    <span class="small text-secondary">{{ $movements->total() }} {{ $movements->total() === 1 ? 'registo' : 'registos' }} · {{ $account->name }}</span>
                 </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
+            <div class="modal-body p-0">
+                <div class="history-card account-history-card">
+                    <div class="history-list px-3 px-sm-4">
 
             <div class="history-list px-3 px-sm-4">
                 @forelse ($movements as $movement)
@@ -127,13 +146,15 @@
                 @endforelse
             </div>
 
-            @if ($movements->hasPages())
-                <div class="p-3 p-sm-4 border-top">
-                    {{ $movements->links() }}
+                    @if ($movements->hasPages())
+                        <div class="p-3 p-sm-4 border-top">
+                            {{ $movements->links() }}
+                        </div>
+                    @endif
                 </div>
-            @endif
+            </div>
         </div>
-    </section>
+    </div>
 </div>
 
 <div class="modal fade" id="accountMovementDetailsModal" tabindex="-1" aria-labelledby="accountMovementDetailsTitle" aria-hidden="true">
@@ -282,6 +303,33 @@ document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', as
 .account-history-balance { text-align:left; }
 .account-history-balance span { display:block; color:var(--bs-secondary-color); font-size:.8rem; }
 .account-history-balance strong { display:block; font-size:1.65rem; letter-spacing:-.04em; line-height:1.2; }
+.account-movements-trigger {
+    min-height:4.5rem;
+    border-color:var(--bs-border-color);
+    background:var(--bs-body-bg);
+    color:var(--bs-body-color);
+    text-align:left;
+}
+.account-movements-trigger:hover,
+.account-movements-trigger:focus-visible {
+    border-color:var(--bs-primary);
+    background:var(--bs-tertiary-bg);
+    color:var(--bs-body-color);
+}
+.account-movements-trigger-icon {
+    display:inline-flex;
+    width:2.5rem;
+    height:2.5rem;
+    align-items:center;
+    justify-content:center;
+    border-radius:.8rem;
+    background:var(--bs-tertiary-bg);
+    color:var(--bs-primary);
+}
+.account-movements-dialog { max-width:42rem; }
+.account-movements-modal { background:var(--bs-body-bg); color:var(--bs-body-color); }
+.account-movements-modal .modal-header { border-bottom:1px solid var(--bs-border-color); }
+.account-movements-modal .modal-body { background:var(--bs-body-bg); }
 .account-history-card { overflow:hidden; }
 .account-movement-item:last-child { border-bottom:0 !important; }
 .account-movement-item[data-account-movement] { cursor:pointer; transition:background-color .15s ease; }
