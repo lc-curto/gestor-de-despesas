@@ -101,9 +101,15 @@
         <div class="modal-header"><div><h2 class="modal-title h5 fw-bold" id="routeDayTitle">Detalhes do dia</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
         <div class="modal-body"><div class="route-day-balance" id="routeDayBalance"></div><div class="route-filter-tabs" id="routeFilterTabs">
             <button type="button" class="active" data-day-filter="all">Todos</button><button type="button" data-day-filter="income">Entradas</button><button type="button" data-day-filter="fixed">Gasto fixo</button><button type="button" data-day-filter="variable">Variável</button>
-        </div><div id="routeDayMovements" class="route-movement-list"></div></div>
+        </div><section id="routeOverdueSection" class="route-overdue-section" hidden>
+            <div class="route-overdue-heading"><strong>Vencidas</strong><span id="routeOverdueCount"></span></div>
+            <div id="routeOverdueMovements" class="route-overdue-list"></div>
+        </section>
+        <div id="routeDayMovements" class="route-movement-list"></div></div>
         <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button type="button" class="btn btn-primary" id="routeAddFromDay">Adicionar movimento</button></div>
     </div></div>
+</div>
+    <script type="application/json" id="route-overdue-data">{!! json_encode($overdueItems, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) !!}</script>
 </div>
 
 <div class="modal fade" id="routeMovementModal" tabindex="-1" aria-labelledby="routeMovementTitle" aria-hidden="true">
@@ -200,6 +206,16 @@
  .financial-route-table thead th{font-size:clamp(.49rem,1.8vw,.56rem)}
 }
 
+
+.route-overdue-section{margin:0 0 1rem}
+.route-overdue-heading{display:flex;align-items:center;justify-content:space-between;margin:0 0 .55rem;font-size:.82rem;font-weight:700;color:var(--bs-emphasis-color)}
+.route-overdue-heading span{font-size:.72rem;font-weight:650;color:#a52b35}
+.route-overdue-list{display:grid;gap:.5rem}
+.route-overdue-item{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.8rem .9rem;border:1px solid #f2caca;border-radius:.75rem;background:#fff1f1;color:#7f1d1d}
+.route-overdue-item__details{display:grid;gap:.18rem;min-width:0}
+.route-overdue-item__name{font-size:.86rem;font-weight:650;overflow-wrap:anywhere}
+.route-overdue-item__date{font-size:.72rem;color:#9b343b}
+.route-overdue-item__amount{flex:0 0 auto;font-size:.86rem;font-weight:750;color:#b4232d;font-variant-numeric:tabular-nums}
 </style>
 @endpush
 
@@ -220,6 +236,7 @@
  const signedAmount=item=>['adjustment','transfer'].includes(item.type)?(item.projection_delta>0?'+':item.projection_delta<0?'−':'')+fmt(Math.abs(item.projection_delta)):(item.type==='income'?'+':'−')+fmt(item.amount);
  const canEditMovement=item=>['income','expense'].includes(item.type)&&item.status==='pending'&&!/^(debt|invoice)-/.test(String(item.id));
  const dayData=date=>{const el=document.getElementById('route-day-'+date);return el?JSON.parse(el.textContent):null};
+ const overdueItems=JSON.parse(document.getElementById('route-overdue-data')?.textContent||'[]');
  const setPeriod=()=>{const url=new URL(window.location.href);url.searchParams.set('mes',month);url.searchParams.set('modo',mode);window.location.href=url.toString()};
  const periodStep=()=>window.matchMedia('(max-width: 767.98px)').matches?1:mode;
  const shiftMonth=(value,count)=>{const [y,m]=value.split('-').map(Number);const d=new Date(y,m-1+count,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
@@ -248,12 +265,30 @@
    document.getElementById('routeFormError').textContent='';
    movementModal.show();
  }
+ function renderOverdueItems(){
+   const section=document.getElementById('routeOverdueSection');
+   const list=document.getElementById('routeOverdueMovements');
+   const count=document.getElementById('routeOverdueCount');
+   list.innerHTML='';
+   section.hidden=overdueItems.length===0;
+   if(!overdueItems.length)return;
+   count.textContent=overdueItems.length+' em aberto';
+   overdueItems.forEach(item=>{
+     const row=document.createElement('div');row.className='route-overdue-item';
+     const details=document.createElement('span');details.className='route-overdue-item__details';
+     const name=document.createElement('strong');name.className='route-overdue-item__name';name.textContent=item.description;
+     const due=document.createElement('small');due.className='route-overdue-item__date';
+     due.textContent='Vencimento: '+dateLabel(String(item.movement_date).slice(0,10));
+     const amount=document.createElement('strong');amount.className='route-overdue-item__amount';amount.textContent=fmt(Number(item.amount));
+     details.append(name,due);row.append(details,amount);list.append(row);
+   });
+ }
  function openDay(date,filter='all'){
    activeDate=date;activeFilter=filter;const data=dayData(date);if(!data)return;
    document.getElementById('routeDayTitle').textContent=dateLabel(date);
    document.getElementById('routeDayBalance').textContent=fmt(data.balance);
    document.querySelectorAll('[data-day-filter]').forEach(b=>b.classList.toggle('active',b.dataset.dayFilter===filter));
-   renderDayItems(data);dayModal.show();
+   renderOverdueItems();renderDayItems(data);dayModal.show();
  }
  function renderDayItems(data){
    const list=document.getElementById('routeDayMovements');list.innerHTML='';
