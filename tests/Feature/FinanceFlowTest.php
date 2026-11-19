@@ -46,6 +46,45 @@ class FinanceFlowTest extends TestCase
         ]);
     }
 
+    public function test_movements_page_initial_payload_preserves_remaining_amount_for_partial_movements(): void
+    {
+        $user = User::factory()->create();
+        $accountId = $this->account($user);
+
+        $this->actingAs($user)->postJson(route('despesas.store'), [
+            'description' => 'Despesa parcialmente paga',
+            'amount' => '120.00',
+            'category' => 'casa',
+            'expense_date' => '2026-11-19',
+            'paid_now' => '0',
+        ])->assertOk();
+
+        $legacy = $user->despesas()->where('description', 'Despesa parcialmente paga')->firstOrFail();
+        $movement = $user->movimentos()
+            ->where('legacy_type', 'despesa')
+            ->where('legacy_id', $legacy->id)
+            ->firstOrFail();
+
+        app(\App\Services\Financial\FinancialMovementService::class)->settle($user, $movement, [
+            'source_account_id' => $accountId,
+            'amount' => '40.00',
+            'movement_date' => '2026-11-19',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('dashboard.movimentos', ['mes' => '2026-11']))
+            ->assertOk()
+            ->assertViewHas('movimentosIniciais', function ($items) {
+                $partial = collect($items)->firstWhere('description', 'Despesa parcialmente paga');
+
+                $this->assertNotNull($partial);
+                $this->assertSame('partial', $partial['movement_status']);
+                $this->assertEquals(80.00, (float) $partial['remaining_amount']);
+
+                return true;
+            });
+    }
+
     public function test_credit_card_opening_debt_reduces_available_limit_and_can_be_paid_without_historical_purchases(): void
     {
         $user = User::factory()->create(['currency' => 'EUR']);
