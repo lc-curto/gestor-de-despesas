@@ -124,7 +124,7 @@
 
                                     <div id="movementSettlementFields" class="mb-3" hidden>
                                         <label for="movementAccount" class="form-label fw-semibold" id="movementAccountLabel">De onde saiu o dinheiro?</label>
-                                        <select class="form-select mb-3" id="movementAccount" name="account_id">
+                                        <select class="form-select mb-3 account-picker-native" id="movementAccount" name="account_id">
                                             <option value="">Selecionar conta</option>
                                             @if ($accounts->where('type', 'bank')->isNotEmpty())
                                                 <optgroup label="Contas bancárias">
@@ -355,18 +355,7 @@
                                     <i data-lucide="{{ $movimento->category_icon ?? 'tag' }}"></i>
                                 </div>
                                 <div class="min-w-0">
-                                    <h3 class="h6 fw-semibold mb-1 text-break">{{ $movimento->description }}</h3>
-                                    <div class="movement-badges d-flex flex-wrap align-items-center gap-1 mt-1">
-                                        @if($movimento->movement_status === 'settled')
-                                            <span class="badge rounded-pill text-bg-success">Pago</span>
-                                        @elseif($movimento->movement_status === 'partial' || $movimento->movement_status === 'partially_settled')
-                                            <span class="badge rounded-pill text-bg-info">Parcialmente pago</span>
-                                        @else
-                                            <span class="badge rounded-pill text-bg-warning">Pendente</span>
-                                        @endif
-                                        @if($movimento->recurrence_id)<span class="badge rounded-pill text-bg-light border text-secondary">Recorrente</span>@endif
-                                    </div>
-                                    @if (in_array($movimento->movement_status, ['partial', 'partially_settled'], true))
+                                    <h3 class="h6 fw-semibold mb-1 text-break">{{ $movimento->description }}</h3>@if (in_array($movimento->movement_status, ['partial', 'partially_settled'], true))
                                         @php $valorPago = max(0, (float) $movimento->amount - (float) ($movimento->remaining_amount ?? $movimento->amount)); @endphp
                                         <p class="small text-secondary mb-0">{{ number_format($valorPago, 2, ',', '.') }} {{ $moeda }} pago · {{ number_format((float) ($movimento->remaining_amount ?? 0), 2, ',', '.') }} {{ $moeda }} pendente</p>
                                     @endif
@@ -435,7 +424,7 @@
                     </div>
                     <div>
                         <label for="settleMovementAccount" class="form-label fw-semibold" id="settleMovementAccountLabel">Conta</label>
-                        <select id="settleMovementAccount" name="account_id" class="form-select" required>
+                        <select id="settleMovementAccount" name="account_id" class="form-select account-picker-native" required>
                             <option value="">Selecionar conta</option>
                             @if ($accounts->where('type', 'bank')->isNotEmpty())
                                 <optgroup label="Contas bancárias">
@@ -514,6 +503,15 @@
 
 @push('styles')
 <style>
+    .account-picker-native { position:absolute !important; width:1px !important; height:1px !important; padding:0 !important; margin:-1px !important; overflow:hidden !important; clip:rect(0,0,0,0) !important; white-space:nowrap !important; border:0 !important; }
+    .account-picker .dropdown-menu { width:100%; max-height:min(55vh, 420px); overflow-y:auto; }
+    .account-picker .dropdown-item { white-space:normal; padding:.7rem .85rem; }
+    .account-picker .account-option { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+    .account-picker .account-name { min-width:0; overflow-wrap:anywhere; }
+    .account-picker .account-balance { flex-shrink:0; font-size:.875rem; font-weight:600; text-align:right; }
+    .account-picker .account-balance.negative { color:var(--bs-danger); }
+    .account-picker .account-group { padding:.45rem .85rem .25rem; color:var(--bs-secondary-color); font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+
     .payment-mode-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.65rem; }
     .payment-status-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.5rem; }
     .payment-status-option { display:flex; align-items:center; gap:.45rem; min-height:44px; padding:.65rem .7rem; border:1px solid var(--bs-border-color); border-radius:.75rem; font-size:.82rem; cursor:pointer; }

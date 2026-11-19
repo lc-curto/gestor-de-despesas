@@ -278,7 +278,7 @@ class DashboardController extends Controller
             ->whereBetween('despesas.expense_date', [$inicio->toDateString(), $fim->toDateString()])
             ->where(fn ($q) => $q->whereNull('financial_movements.status')->orWhere('financial_movements.status', '!=', 'void'))
             ->whereNull('financial_movements.invoice_id')
-            ->selectRaw("despesas.id, financial_movements.id AS financial_movement_id, 0 AS is_invoice_payment, CASE WHEN financial_movements.settles_movement_id IS NOT NULL THEN 1 ELSE 0 END AS is_settlement_event, 'despesa' AS tipo, despesas.description, despesas.amount,
+            ->selectRaw("despesas.id, financial_movements.id AS financial_movement_id, 0 AS is_invoice_payment, CASE WHEN financial_movements.settles_movement_id IS NOT NULL OR financial_movements.is_settlement_parent = 1 THEN 1 ELSE 0 END AS is_settlement_event, 'despesa' AS tipo, despesas.description, despesas.amount,
                 CASE WHEN financial_movements.is_settlement_parent = 1 THEN CASE WHEN (financial_movements.amount - COALESCE((
                     SELECT SUM(CASE WHEN settlement_events.reversal_of_id IS NULL THEN settlement_events.amount ELSE -settlement_events.amount END)
                     FROM movimentos AS settlement_events
@@ -318,7 +318,7 @@ class DashboardController extends Controller
             ->where('receitas.user_id', $userId)
             ->whereBetween('receitas.income_date', [$inicio->toDateString(), $fim->toDateString()])
             ->where(fn ($q) => $q->whereNull('financial_movements.status')->orWhere('financial_movements.status', '!=', 'void'))
-            ->selectRaw("receitas.id, financial_movements.id AS financial_movement_id, 0 AS is_invoice_payment, CASE WHEN financial_movements.settles_movement_id IS NOT NULL THEN 1 ELSE 0 END AS is_settlement_event, 'receita' AS tipo, receitas.description, receitas.amount,
+            ->selectRaw("receitas.id, financial_movements.id AS financial_movement_id, 0 AS is_invoice_payment, CASE WHEN financial_movements.settles_movement_id IS NOT NULL OR financial_movements.is_settlement_parent = 1 THEN 1 ELSE 0 END AS is_settlement_event, 'receita' AS tipo, receitas.description, receitas.amount,
                 CASE WHEN financial_movements.is_settlement_parent = 1 THEN CASE WHEN (financial_movements.amount - COALESCE((
                     SELECT SUM(CASE WHEN settlement_events.reversal_of_id IS NULL THEN settlement_events.amount ELSE -settlement_events.amount END)
                     FROM movimentos AS settlement_events
@@ -346,7 +346,7 @@ class DashboardController extends Controller
             // previsões ainda sem fatura (mesmo quando têm conta de cartão).
             ->where(fn ($query) => $query->where('canonical_movements.type', '!=', 'expense')->orWhereNull('canonical_movements.invoice_id'))
             ->whereBetween('canonical_movements.movement_date', [$inicio->toDateString(), $fim->toDateString()])
-            ->selectRaw("canonical_movements.id, canonical_movements.id AS financial_movement_id, 0 AS is_invoice_payment, CASE WHEN canonical_movements.settles_movement_id IS NOT NULL THEN 1 ELSE 0 END AS is_settlement_event, CASE WHEN canonical_movements.type = 'income' THEN 'receita' ELSE 'despesa' END AS tipo, canonical_movements.description, canonical_movements.amount,
+            ->selectRaw("canonical_movements.id, canonical_movements.id AS financial_movement_id, 0 AS is_invoice_payment, CASE WHEN canonical_movements.settles_movement_id IS NOT NULL OR canonical_movements.is_settlement_parent = 1 THEN 1 ELSE 0 END AS is_settlement_event, CASE WHEN canonical_movements.type = 'income' THEN 'receita' ELSE 'despesa' END AS tipo, canonical_movements.description, canonical_movements.amount,
                 CASE WHEN canonical_movements.is_settlement_parent = 1 THEN CASE WHEN (canonical_movements.amount - COALESCE((
                     SELECT SUM(CASE WHEN settlement_events.reversal_of_id IS NULL THEN settlement_events.amount ELSE -settlement_events.amount END)
                     FROM movimentos AS settlement_events
