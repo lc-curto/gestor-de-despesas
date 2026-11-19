@@ -526,6 +526,38 @@ class FinanceFlowTest extends TestCase
             ->assertSee('Próxima prestação');
     }
 
+    public function test_deferred_expense_ignores_stale_effective_method_and_is_not_mislabelled_as_installment(): void
+    {
+        $user = User::factory()->create(['currency' => 'EUR']);
+        $category = $user->categorias()->where('type', 'despesa')->where('slug', 'casa')->firstOrFail();
+
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+        $this->actingAs($user)->postJson(route('despesas.store'), [
+            'description' => 'Eletricidade QA',
+            'amount' => '120.00',
+            'category_id' => $category->id,
+            'expense_date' => '2026-10-01',
+            'due_date' => '2026-10-10',
+            'payment_condition' => 'deferred',
+            'payment_method' => 'transfer',
+            'paid_now' => '0',
+            // Simula o valor residual do select que ficou oculto após mudar para Pendente.
+            'actual_payment_method' => 'credit',
+        ])->assertOk()->assertJsonPath('ok', true);
+
+        $debt = $user->dividas()->where('name', 'Eletricidade QA')->firstOrFail();
+        $forecast = $user->movimentos()->where('debt_id', $debt->id)->firstOrFail();
+
+        $this->assertSame('deferred', $debt->payment_condition);
+        $this->assertSame('Eletricidade QA · A prazo', $forecast->description);
+        $this->assertDatabaseMissing('movimentos', [
+            'debt_id' => $debt->id,
+            'description' => 'Eletricidade QA · Parcela 1/1',
+        ]);
+
+        $this->get(route('financial.commitments.page'))->assertOk()->assertDontSee('Eletricidade QA');
+    }
+
     public function test_commitments_page_excludes_single_deferred_expenses_and_shows_installment_plans(): void
     {
         $user = User::factory()->create();
