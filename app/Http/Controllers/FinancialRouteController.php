@@ -30,6 +30,7 @@ class FinancialRouteController extends Controller
         $projectionData = $projection->build($request->user(), $rangeStart, $rangeEnd);
         $openingBalance = $projectionData['openingBalance'];
         $movements = $projectionData['movements'];
+        $overdueItems = $projectionData['overdue'] ?? collect();
 
         $days = [];
         foreach ($months as $month) {
@@ -59,6 +60,7 @@ class FinancialRouteController extends Controller
             'month' => $start->format('Y-m'),
             'currency' => $request->user()->currency,
             'openingBalance' => $openingBalance,
+            'overdueItems' => $overdueItems,
             'categories' => $request->user()->categorias()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'type']),
             'accounts' => $request->user()->contasFinanceiras()->where('is_operational', true)->where('status', 'active')->orderBy('name')->get(['id', 'name', 'type']),
         ]);
