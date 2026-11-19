@@ -20,6 +20,7 @@ const items = [
     { ...base, id: 'transfer-in', type: 'transfer', description: 'Transferência entrada', amount: 10, projection_delta: 10, account_id: 'cash', account_name: 'Carteira' },
     { ...base, id: 'income', type: 'income', status: 'pending', description: 'Entrada', amount: 30.1, projection_delta: 30.1, account_id: 'bank', account_name: 'Conta principal' },
     { ...base, id: 'fixed', type: 'expense', status: 'pending', description: 'Fixo', amount: 12.4, projection_delta: -12.4, expense_behavior: 'fixed', account_id: 'bank', account_name: 'Conta principal' },
+    { ...base, id: 'partial-loan', type: 'expense', status: 'partial', description: 'Empréstimo', amount: 120, projection_delta: -80, expense_behavior: 'fixed', account_id: 'bank', account_name: 'Conta principal', paid_amount: 40, remaining_amount: 80, is_partial_summary: true },
     { ...base, id: 'variable', type: 'expense', status: 'pending', description: 'Variável', amount: 6.3, projection_delta: -6.3, account_id: 'cash', account_name: 'Carteira' },
     { ...base, id: 'income-settled', type: 'income', description: 'Entrada liquidada', amount: 3, projection_delta: 3, account_id: 'bank', account_name: 'Conta principal' },
     { ...base, id: 'invoice-example', type: 'expense', status: 'pending', description: 'Fatura prevista', amount: 4, projection_delta: -4, expense_behavior: 'fixed', account_id: null, account_name: 'Sem conta associada' },
@@ -33,7 +34,7 @@ function setup(response = { ok: false, json: async () => ({ message: 'Operação
       </section>
       <script type="application/json" id="route-day-2026-12-05">${JSON.stringify({ items, balance: 174.65, status: 'comfortable' })}</script>
       <div id="routeDayModal"></div><div id="routeMovementModal"></div><div id="routeMovementDetailModal"></div><div id="routeConfirmModal"></div>
-      <div id="routeDayTitle"></div><div id="routeDayBalance"></div><section id="routeOverdueSection" hidden><span id="routeOverdueCount"></span><div id="routeOverdueMovements"></div></section><div id="routeDayMovements"></div><button id="routeAddFromDay"></button>
+      <div id="routeDayTitle"></div><div id="routeDayBalance"><span class="route-day-balance__label"></span><strong id="routeDayBalanceValue"></strong></div><section id="routeOverdueSection" hidden><span id="routeOverdueCount"></span><div id="routeOverdueMovements"></div></section><div id="routeDayMovements"></div><button id="routeAddFromDay"></button>
       <script type="application/json" id="route-overdue-data">[]</script>
       <button data-day-filter="all"></button><button data-day-filter="income"></button><button data-day-filter="fixed"></button><button data-day-filter="variable"></button>
       <div id="routeMovementTitle"></div><form id="routeMovementForm">
@@ -99,10 +100,31 @@ test('ajustes apresentam tipo, sinal, conta e detalhes corretos e não entram no
         assert.equal(h.modals.get('routeMovementModal').shown, 0, 'até um clique sintético não abre edição genérica');
     }
 
-    for (const [filter, expected] of [['income', ['Entrada', 'Entrada liquidada']], ['fixed', ['Fixo', 'Fatura prevista']], ['variable', ['Variável']]]) {
+    for (const [filter, expected] of [['income', ['Entrada', 'Entrada liquidada']], ['fixed', ['Fixo', 'Empréstimo', 'Fatura prevista']], ['variable', ['Variável']]]) {
         h.window.document.querySelector(`[data-day-filter="${filter}"]`).click();
         assert.deepEqual(h.rows().map(row => row.querySelector('span strong').textContent), expected);
     }
+});
+
+test('movimento parcial aparece uma vez com valores pagos, pendentes e barra proporcional', () => {
+    const h = setup();
+    h.openDay();
+    const row = h.openItem('Empréstimo');
+    assert.equal(row.lastElementChild.textContent, '−120,00 €');
+    assert.equal(row.querySelector('.route-movement-item__payment .is-paid').textContent, 'Pago: 40,00 €');
+    assert.equal(row.querySelector('.route-movement-item__payment span:last-child').textContent, 'Pendente: 80,00 €');
+    assert.equal(row.querySelector('[role="progressbar"]').getAttribute('aria-valuenow'), '33');
+    assert.equal(row.querySelector('.route-movement-item__progress span').style.width, '33.33333333333333%');
+});
+
+test('modal inicia em Todos, remove botão Fechar e usa Adicionar em largura total', () => {
+    const h = setup();
+    h.openDay();
+    assert.equal(h.window.document.querySelector('[data-day-filter="all"]').classList.contains('active'), true);
+    const blade = readFileSync(new URL('../../resources/views/financial-route.blade.php', import.meta.url), 'utf8');
+    assert.match(blade, /id="routeAddFromDay"[^>]*class="btn btn-primary w-100"/);
+    assert.match(blade, />Adicionar<\/button>/);
+    assert.doesNotMatch(blade, /data-bs-dismiss="modal">Fechar<\/button>/);
 });
 
 test('transferências são identificadas pelo delta e também não abrem edição genérica', () => {
