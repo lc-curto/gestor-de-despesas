@@ -17,33 +17,29 @@
                 $cardStatusLabel = $card->status === 'suspended' ? 'Suspenso' : ($isInactive ? 'Cartão encerrado' : 'Ativo');
             @endphp
             <article class="card border rounded-4 shadow-sm {{ $isInactive ? 'credit-card-inactive' : '' }}" @if($isInactive) hidden @endif>
-                <button type="button" class="btn btn-light text-start w-100 rounded-4 border-0 p-3 p-md-4" data-bs-toggle="modal" data-bs-target="#{{ $detailModalId }}" aria-label="Ver detalhes de {{ $card->name }}">
-                    <div class="d-flex align-items-center justify-content-between gap-3">
-                        <div class="d-flex align-items-center gap-3 min-w-0">
-                            <span class="rounded-3 bg-body-secondary p-3 text-primary flex-shrink-0"><i data-lucide="credit-card" aria-hidden="true"></i></span>
-                            <span class="min-w-0">
-                                <strong class="d-block text-body text-break">{{ $card->name }}</strong>
-                                <small class="text-secondary">Cartão de crédito</small>
-                            </span>
-                        </div>
-                        <span class="badge {{ $card->status === 'active' && $card->is_operational ? 'text-bg-success' : ($card->status === 'suspended' ? 'text-bg-warning' : 'text-bg-secondary') }}">{{ $cardStatusLabel }}</span>
+                <button type="button" class="btn btn-light text-start w-100 rounded-4 border-0 p-2 p-md-3" data-bs-toggle="modal" data-bs-target="#{{ $detailModalId }}" aria-label="Ver detalhes de {{ $card->name }}">
+                    <div class="d-flex align-items-center justify-content-between gap-2">
+                        <span class="fw-semibold text-body text-break">{{ $card->name }}</span>
+                        <span class="badge flex-shrink-0 {{ $card->status === 'active' && $card->is_operational ? 'text-bg-success' : ($card->status === 'suspended' ? 'text-bg-warning' : 'text-bg-secondary') }}">{{ $cardStatusLabel }}</span>
                     </div>
-                    <div class="mt-4">
-                        <span class="small text-secondary d-block">Disponível</span>
-                        <strong class="fs-3 text-body d-block">{{ number_format($card->available_limit,2,',','.') }} {{ $card->currency }}</strong>
+                    <div class="d-flex justify-content-between align-items-end gap-2 mt-1">
+                        <span class="min-w-0">
+                            <span class="small text-secondary d-block">Disponível</span>
+                            <strong class="fs-4 text-body">{{ number_format($card->available_limit,2,',','.') }} {{ $card->currency }}</strong>
+                        </span>
+                        <span class="text-end flex-shrink-0">
+                            <span class="small text-secondary d-block">Utilizado</span>
+                            <strong class="small text-body">{{ number_format($card->used_limit,2,',','.') }} {{ $card->currency }} · {{ number_format($card->usage_percent,0) }}%</strong>
+                        </span>
                     </div>
-                    <div class="progress mt-3" role="progressbar" aria-label="Percentagem do limite utilizado" aria-valuenow="{{ round($card->usage_percent) }}" aria-valuemin="0" aria-valuemax="100" style="height:8px">
+                    <div class="progress mt-1" role="progressbar" aria-label="Percentagem do limite utilizado" aria-valuenow="{{ round($card->usage_percent) }}" aria-valuemin="0" aria-valuemax="100" style="height:4px">
                         <div class="progress-bar" style="width:{{ $card->usage_percent }}%"></div>
                     </div>
-                    <div class="d-flex justify-content-between gap-2 mt-2 small text-secondary">
-                        <span>Utilizado: {{ number_format($card->used_limit,2,',','.') }} {{ $card->currency }}</span>
-                        <span>{{ number_format($card->usage_percent,0) }}%</span>
+                    <div class="d-flex justify-content-between gap-2 mt-1 small text-secondary">
+                        <span>Limite: {{ number_format((float)$card->credit_limit,2,',','.') }} {{ $card->currency }}</span>
+                        <span class="text-end">Fecho {{ $card->closing_day ?? '—' }} · Venc. {{ $card->due_day ?? '—' }}</span>
                     </div>
-                    <div class="d-flex justify-content-between gap-3 border-top mt-3 pt-3 small">
-                        <span class="text-secondary">Fecho: <strong class="text-body">dia {{ $card->closing_day ?? '—' }}</strong></span>
-                        <span class="text-secondary">Vencimento: <strong class="text-body">dia {{ $card->due_day ?? '—' }}</strong></span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                    <div class="d-flex justify-content-between align-items-center border-top mt-2 pt-2">
                         <span class="small fw-semibold text-primary">Ver detalhes</span>
                         <i data-lucide="chevron-right" class="text-secondary" aria-hidden="true"></i>
                     </div>
