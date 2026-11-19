@@ -65,7 +65,7 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
             'amount' => '20.00',
             'movement_date' => '2026-11-17',
         ]);
-        $invoice = \\App\\Models\\Fatura::query()->whereKey($purchase->invoice_id)->firstOrFail();
+        $invoice = \App\Models\Fatura::query()->whereKey($purchase->invoice_id)->firstOrFail();
         $payment = $invoices->pay($user, $invoice, $bank->id, '2026-11-17', '20.00');
 
         $this->actingAs($user)
