@@ -110,7 +110,6 @@
     </div></div>
 </div>
     <script type="application/json" id="route-overdue-data">{!! json_encode($overdueItems, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) !!}</script>
-</div>
 
 <div class="modal fade" id="routeMovementModal" tabindex="-1" aria-labelledby="routeMovementTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered"><div class="modal-content route-sheet-content">
