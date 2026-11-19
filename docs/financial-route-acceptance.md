@@ -80,6 +80,43 @@ Ficheiro: tests/Feature/FinancialRouteAcceptanceMatrixTest.php
 - test_pending_credit_card_expense_does_not_reduce_cash_balance_on_purchase_date
   - Impede que uma despesa pendente de cartão reduza prematuramente o saldo de caixa.
 
+
+## 5. Resultado da primeira execução de CI — 19/11/2026
+
+**Execução após corrigir a tipagem UUID do helper de teste:**
+
+- php artisan test: **226 aprovados, 2 falhados**, 1.769 assertions, 16,26 s.
+- npm run check: aprovado.
+- npm run test:js: aprovado.
+- npm run build: aprovado.
+- Workflow Verificação do projeto: aprovado.
+
+### Falhas funcionais confirmadas
+
+1. **RF-14 / RF-15 — Obrigações vencidas**
+   - A página não contém a secção Vencidas nem apresenta o compromisso vencido.
+   - O compromisso com vencimento anterior ao início do período desaparece da consulta da Rota.
+   - A implementação precisa de consultar obrigações abertas vencidas separadamente, calcular o remanescente e apresentá-lo sem o incorporar no saldo diário.
+
+2. **RF-07 — Despesa pendente de cartão**
+   - Uma despesa pendente de 80,00 € associada a cartão foi devolvida pela projeção com projection_delta = -80.00.
+   - Confirma-se que a condição atual de cashDelta() reduz o caixa na data da compra, mesmo quando a conta de origem é um cartão.
+   - A correção deverá excluir esse débito de caixa na data da compra e preservar o tratamento da fatura no vencimento.
+
+### Critérios aprovados nesta execução
+
+- RF-03: saldo inicial negativo preservado.
+- RF-04 / RF-19 / RF-20: continuidade de saldo entre dezembro, janeiro e fevereiro, com equivalência entre consulta de três meses e consultas isoladas.
+- Os testes existentes da suíte também passaram: 226 testes no total, incluindo os dois novos cenários acima.
+
+### Nota sobre a primeira tentativa
+
+A primeira execução registou 224 aprovados e 3 falhados. Uma das falhas era apenas uma tipagem incorreta no helper do teste (?int em vez de ?string para IDs UUID). O helper foi corrigido; essa falha não representa defeito de produção.
+
+### Limites
+
+A execução de CI foi feita num PR em rascunho. As etapas de SSH, publicação e ativação de release foram ignoradas por serem exclusivas de eventos que não sejam pull_request. Nenhuma publicação foi realizada.
+
 ## 4. Estado e limites desta preparação
 
 - Esta alteração adiciona apenas especificação e testes.
