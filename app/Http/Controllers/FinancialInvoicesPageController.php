@@ -9,7 +9,7 @@ class FinancialInvoicesPageController extends Controller
 {
     public function __invoke(Request $request, CardInvoiceService $invoices)
     {
-        $items = $invoices->listInvoices($request->user());
+        $items = $invoices->listInvoices($request->user(), $request->query('account_id'));
         $accounts = $request->user()->contasFinanceiras()
             ->whereIn('type', ['bank', 'cash'])
             ->where('status', 'active')
