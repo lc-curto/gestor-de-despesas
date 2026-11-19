@@ -13,21 +13,22 @@
         <a class="small text-decoration-none" href="{{ route('financial.accounts.page') }}">
             <i data-lucide="arrow-left" class="me-1" aria-hidden="true"></i> Voltar às contas
         </a>
-        <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mt-3">
-            <div>
+        <div class="mt-3">
+            <div class="mb-3">
                 <p class="eyebrow mb-1">Histórico da conta</p>
                 <h1 class="h2 fw-bold mb-1">{{ $account->name }}</h1>
                 <p class="text-secondary mb-0">{{ $typeLabels[$account->type] ?? $account->type }} · {{ $account->currency }}</p>
             </div>
-            <div class="account-history-balance">
+            <div class="account-history-balance rounded-4 bg-body-tertiary p-3">
                 @if ($account->type === 'credit_card')
                     <span>Crédito disponível</span>
                     <strong>{{ $account->credit_limit !== null && $account->current_balance !== null ? number_format(max(0, (float) $account->credit_limit - abs((float) $account->current_balance)), 2, ',', '.') . ' ' . $account->currency : '—' }}</strong>
                     <small class="text-secondary">Dívida utilizada: {{ number_format(abs((float) ($account->current_balance ?? 0)), 2, ',', '.') }} {{ $account->currency }}</small>
                 @else
                     <span>Saldo atual</span>
-                    <strong>{{ $account->current_balance !== null ? number_format((float) $account->current_balance, 2, ',', '.') . ' ' . $account->currency : '—' }}</strong>
+                    <strong class="{{ (float) ($account->current_balance ?? 0) < 0 ? 'text-danger' : 'text-body' }}">{{ $account->current_balance !== null ? number_format((float) $account->current_balance, 2, ',', '.') . ' ' . $account->currency : '—' }}</strong>
                 @endif
+                <small class="d-block text-secondary mt-1">{{ $movements->total() }} {{ $movements->total() === 1 ? 'movimento registado' : 'movimentos registados' }}</small>
             </div>
         </div>
     </header>
@@ -52,13 +53,10 @@
 
     <section class="card border-0 shadow-sm rounded-4 history-card account-history-card" aria-labelledby="accountMovementsTitle">
         <div class="card-body p-0 history-card-body">
-            <div class="p-3 p-sm-4 pb-3 border-bottom">
-                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                    <div>
-                        <h2 id="accountMovementsTitle" class="h5 fw-bold mb-1">Movimentos</h2>
-                        
-                    </div>
-                    <span class="small text-secondary">{{ $movements->total() }} {{ $movements->total() === 1 ? 'movimento' : 'movimentos' }}</span>
+            <div class="px-3 px-sm-4 py-3 border-bottom">
+                <div class="d-flex justify-content-between align-items-center gap-2">
+                    <h2 id="accountMovementsTitle" class="h5 fw-bold mb-0">Movimentos</h2>
+                    <span class="small text-secondary">{{ $movements->total() }} {{ $movements->total() === 1 ? 'registo' : 'registos' }}</span>
                 </div>
             </div>
 
@@ -82,13 +80,13 @@
                                 ? route('receitas.destroy', $movement->legacy_id) . '?return_to=' . $account->id
                                 : route('financial.accounts.movement.destroy', $movement->id));
                     @endphp
-                    <article class="expense-item account-movement-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom">
+                    <article class="expense-item account-movement-item d-flex justify-content-between align-items-center gap-2 py-3 border-bottom">
                         <div class="d-flex align-items-center gap-3 min-w-0">
-                            <div class="expense-icon flex-shrink-0" aria-hidden="true">
+                            <div class="expense-icon account-movement-icon flex-shrink-0" aria-hidden="true">
                                 <i data-lucide="{{ $isTransfer ? 'arrow-left-right' : ($isOutgoing ? 'arrow-down-left' : 'arrow-up-right') }}"></i>
                             </div>
-                            <div class="min-w-0">
-                                <h3 class="h6 fw-semibold mb-1 text-break">{{ $movement->description }}</h3>
+                            <div class="min-w-0 flex-grow-1">
+                                <h3 class="account-movement-description h6 fw-semibold mb-1">{{ $movement->description }}</h3>
                                 <p class="small text-secondary mb-1">{{ $category }} · {{ $movement->movement_date->format('d/m/Y') }}</p>
                                 @if ($movement->status === 'pending')
                                     <span class="badge rounded-pill text-bg-warning">Pendente</span>
@@ -102,16 +100,16 @@
                                 @endif
                             </div>
                         </div>
-                        <div class="expense-actions d-flex align-items-center justify-content-end gap-2">
+                        <div class="expense-actions account-movement-actions d-flex align-items-center justify-content-end gap-2 flex-shrink-0">
                             <strong class="{{ $isOutgoing ? 'text-danger' : 'text-success' }} text-nowrap movement-value">{{ $sign }}{{ number_format((float) $movement->amount, 2, ',', '.') }} {{ $movement->currency ?? $account->currency }}</strong>
-                            <div class="d-inline-flex align-items-center gap-2" role="group" aria-label="Ações de {{ $movement->description }}">
+                            <div class="d-inline-flex align-items-center gap-1" role="group" aria-label="Ações de {{ $movement->description }}">
                                 @if ($editRoute)
-                                    <a class="btn btn-sm btn-outline-secondary" href="{{ $editRoute }}" aria-label="Editar {{ $movement->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                                    <a class="btn btn-sm btn-light border account-action-button" href="{{ $editRoute }}" aria-label="Editar {{ $movement->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></a>
                                 @endif
                                 <form method="POST" action="{{ $deleteRoute }}" class="d-inline-flex" onsubmit="return confirm('Eliminar este movimento e atualizar todos os movimentos dependentes e saldos associados?')">
                                     @csrf
                                     @method('DELETE')
-                                    <button class="btn btn-sm btn-outline-danger" type="submit" aria-label="Eliminar movimento" title="Eliminar movimento"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                                    <button class="btn btn-sm btn-light border text-danger account-action-button" type="submit" aria-label="Eliminar movimento" title="Eliminar"><i data-lucide="trash-2" aria-hidden="true"></i></button>
                                 </form>
                             </div>
                         </div>
@@ -166,19 +164,26 @@ document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', as
 <style>
 .account-history-page { width:100%; max-width:none; }
 .account-history-heading { margin-bottom:1.25rem; }
-.account-history-balance { text-align:right; }
+.account-history-balance { text-align:left; }
 .account-history-balance span { display:block; color:var(--bs-secondary-color); font-size:.8rem; }
-.account-history-balance strong { display:block; font-size:1.5rem; letter-spacing:-.03em; }
+.account-history-balance strong { display:block; font-size:1.65rem; letter-spacing:-.04em; line-height:1.2; }
 .account-history-card { overflow:hidden; }
 .account-movement-item:last-child { border-bottom:0 !important; }
-.account-movement-item .expense-icon { background:rgba(220,53,69,.1); color:var(--bs-danger); }
-.account-movement-item .income-icon { background:rgba(25,135,84,.1); color:var(--bs-success); }
-.account-movement-item .movement-value { font-size:1rem; }
+.account-movement-item .expense-icon { width:2.5rem; height:2.5rem; display:flex; align-items:center; justify-content:center; border-radius:.8rem; background:rgba(220,53,69,.1); color:var(--bs-danger); }
+.account-movement-item .movement-value { font-size:.9rem; }
+.account-movement-description { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.account-movement-actions { max-width:58%; }
+.account-action-button { width:2.25rem; height:2.25rem; display:inline-flex; align-items:center; justify-content:center; border-radius:.65rem; }
 .movement-transfer-counterpart { max-width:100%; font-size:.78rem; }
 @media (max-width:640px) {
-    .account-history-balance { text-align:left; }
-    .account-movement-item { align-items:flex-start !important; flex-wrap:wrap; }
-    .account-movement-item > :last-child { width:100%; justify-content:flex-end; }
+    .account-history-heading { margin-bottom:1rem; }
+    .account-history-balance strong { font-size:1.55rem; }
+    .account-movement-item { gap:.5rem !important; }
+    .account-movement-item > .d-flex:first-child { flex:1 1 0; min-width:0; gap:.6rem !important; }
+    .account-movement-actions { flex-direction:column; align-items:flex-end !important; gap:.35rem !important; }
+    .account-movement-actions > div { justify-content:flex-end; }
+    .account-movement-description { font-size:.9rem; }
+    .account-movement-item .movement-value { font-size:.82rem; }
 }
 </style>
 @endpush
