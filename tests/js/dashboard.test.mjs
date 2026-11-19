@@ -459,7 +459,7 @@ test('modal de detalhes apresenta totais pagos e pendentes e mantém as ações 
     const ui = setup(async () => jsonResponse(200, { data: [] }), [partial]);
     ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
     assert.equal(ui.element('movementDetailsName').textContent, 'Despesa de teste');
-    assert.match(ui.element('movementDetailsAmount').textContent, /120,00\\s*€/);
+    assert.match(ui.element('movementDetailsAmount').textContent, /120,00\s*€/);
     assert.equal(ui.element('movementDetailsPaid').textContent, '40,00 €');
     assert.equal(ui.element('movementDetailsPending').textContent, '80,00 €');
     assert.equal(ui.element('movementDetailsSettle').hidden, false);
