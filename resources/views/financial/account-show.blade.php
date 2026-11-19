@@ -106,11 +106,7 @@
                                 @if ($editRoute)
                                     <a class="btn btn-sm btn-light border account-action-button" href="{{ $editRoute }}" aria-label="Editar {{ $movement->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></a>
                                 @endif
-                                <form method="POST" action="{{ $deleteRoute }}" class="d-inline-flex" onsubmit="return confirm('Eliminar este movimento e atualizar todos os movimentos dependentes e saldos associados?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-sm btn-light border text-danger account-action-button" type="submit" aria-label="Eliminar movimento" title="Eliminar"><i data-lucide="trash-2" aria-hidden="true"></i></button>
-                                </form>
+                                <button class="btn btn-sm btn-light border text-danger account-action-button js-account-delete" type="button" data-delete-url="{{ $deleteRoute }}" aria-label="Eliminar movimento" title="Eliminar"><i data-lucide="trash-2" aria-hidden="true"></i></button>
                             </div>
                         </div>
                     </article>
@@ -131,10 +127,56 @@
         </div>
     </section>
 </div>
+
+<div class="modal fade" id="accountDeleteModal" tabindex="-1" aria-labelledby="accountDeleteTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <form id="accountDeleteForm" method="POST">
+                @csrf
+                @method('DELETE')
+                <div class="modal-header border-0 pb-0">
+                    <h2 class="modal-title h5 fw-bold" id="accountDeleteTitle">Eliminar movimento?</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-1" id="accountDeleteDescription">Este movimento será eliminado e os saldos das suas contas serão atualizados.</p>
+                    <small class="text-secondary" id="accountDeleteHint">Esta ação não pode ser desfeita.</small>
+                </div>
+                <div class="modal-footer border-0 d-flex flex-row gap-2">
+                    <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger flex-fill" id="accountDeleteSubmit">Eliminar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
 <script>
+const accountDeleteModalElement = document.getElementById('accountDeleteModal');
+if (accountDeleteModalElement) {
+    const accountDeleteModal = bootstrap.Modal.getOrCreateInstance(accountDeleteModalElement);
+    const accountDeleteForm = document.getElementById('accountDeleteForm');
+    const accountDeleteSubmit = document.getElementById('accountDeleteSubmit');
+
+    document.querySelectorAll('.js-account-delete').forEach((button) => {
+        button.addEventListener('click', () => {
+            accountDeleteForm.action = button.dataset.deleteUrl;
+            accountDeleteSubmit.disabled = false;
+            accountDeleteSubmit.textContent = 'Eliminar';
+            document.getElementById('accountDeleteDescription').textContent = 'Este movimento será eliminado e os saldos das suas contas serão atualizados.';
+            document.getElementById('accountDeleteHint').hidden = false;
+            accountDeleteModal.show();
+        });
+    });
+
+    accountDeleteForm.addEventListener('submit', () => {
+        accountDeleteSubmit.disabled = true;
+        accountDeleteSubmit.textContent = 'A eliminar…';
+    });
+}
+
 document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = event.currentTarget, button = form.querySelector('[type="submit"]'), feedback = document.getElementById('openingDebtPaymentFeedback');
