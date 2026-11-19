@@ -559,7 +559,7 @@
                 <div class="modal-body">
                     <p class="text-secondary small mb-2" id="deleteMovementDescription"></p>
                     <p class="alert alert-info small py-2 mb-2" id="deleteMovementNote" hidden></p>
-                    <div id="deleteSingleConfirmation" hidden></div>
+                    <div id="deleteSingleConfirmation" class="small text-secondary" hidden>Esta ação não pode ser desfeita.</div>
                     <div id="deleteRecurringOptions" class="d-grid gap-2" hidden>
                         <label class="form-check border rounded-3 p-3 mb-0" for="deleteScopeOnly">
                             <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeOnly" value="only">
