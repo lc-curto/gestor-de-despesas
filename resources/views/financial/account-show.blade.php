@@ -80,7 +80,20 @@
                                 ? route('receitas.destroy', $movement->legacy_id) . '?return_to=' . $account->id
                                 : route('financial.accounts.movement.destroy', $movement->id));
                     @endphp
-                    <article class="expense-item account-movement-item d-flex justify-content-between align-items-center gap-2 py-3 border-bottom">
+                    <article class="expense-item account-movement-item d-flex justify-content-between align-items-center gap-2 py-3 border-bottom"
+                        tabindex="0" role="button" aria-label="Ver detalhes de {{ $movement->description }}"
+                        data-account-movement
+                        data-description="{{ $movement->description }}"
+                        data-amount="{{ number_format((float) $movement->amount, 2, '.', '') }}"
+                        data-signed-amount="{{ $sign }}{{ number_format((float) $movement->amount, 2, ',', '.') }} {{ $movement->currency ?? $account->currency }}"
+                        data-amount-class="{{ $isOutgoing ? 'text-danger' : 'text-success' }}"
+                        data-category="{{ $category }}"
+                        data-date="{{ $movement->movement_date->format('d/m/Y') }}"
+                        data-kind="{{ $isTransfer ? 'Transferência' : ($movement->type === 'adjustment' ? 'Ajuste de saldo' : ($isOutgoing ? 'Despesa' : 'Receita')) }}"
+                        data-status="{{ $statusLabels[$movement->status] ?? $movement->status }}"
+                        data-counterpart="{{ $isTransfer ? (($isCurrentAccountSource ? 'Para: ' : 'De: ') . ($isCurrentAccountSource ? ($movement->contaDestino?->name ?? 'Conta encerrada') : ($movement->contaOrigem?->name ?? 'Conta encerrada'))) : '' }}"
+                        data-edit-url="{{ $editRoute ?? '' }}"
+                        data-delete-url="{{ $deleteRoute }}">
                         <div class="d-flex align-items-center gap-3 min-w-0">
                             <div class="expense-icon account-movement-icon flex-shrink-0" aria-hidden="true">
                                 <i data-lucide="{{ $isTransfer ? 'arrow-left-right' : ($isOutgoing ? 'arrow-down-left' : 'arrow-up-right') }}"></i>
@@ -102,12 +115,7 @@
                         </div>
                         <div class="expense-actions account-movement-actions d-flex align-items-center justify-content-end gap-2 flex-shrink-0">
                             <strong class="{{ $isOutgoing ? 'text-danger' : 'text-success' }} text-nowrap movement-value">{{ $sign }}{{ number_format((float) $movement->amount, 2, ',', '.') }} {{ $movement->currency ?? $account->currency }}</strong>
-                            <div class="d-inline-flex align-items-center gap-1" role="group" aria-label="Ações de {{ $movement->description }}">
-                                @if ($editRoute)
-                                    <a class="btn btn-sm btn-light border account-action-button" href="{{ $editRoute }}" aria-label="Editar {{ $movement->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></a>
-                                @endif
-                                <button class="btn btn-sm btn-light border text-danger account-action-button js-account-delete" type="button" data-delete-url="{{ $deleteRoute }}" aria-label="Eliminar movimento" title="Eliminar"><i data-lucide="trash-2" aria-hidden="true"></i></button>
-                            </div>
+                            <span class="text-secondary" aria-hidden="true"><i data-lucide="chevron-right"></i></span>
                         </div>
                     </article>
                 @empty
@@ -126,6 +134,25 @@
             @endif
         </div>
     </section>
+</div>
+
+<div class="modal fade" id="accountMovementDetailsModal" tabindex="-1" aria-labelledby="accountMovementDetailsTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow rounded-4">
+        <div class="modal-header border-0 pb-0"><h2 class="modal-title h5 fw-bold" id="accountMovementDetailsTitle">Detalhes do movimento</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+        <div class="modal-body">
+            <div class="d-flex justify-content-between align-items-start gap-3 mb-3"><div><h3 class="h6 fw-semibold mb-1" id="accountMovementDetailsName"></h3><p class="small text-secondary mb-0" id="accountMovementDetailsCategory"></p></div><span class="badge text-bg-secondary" id="accountMovementDetailsStatus"></span></div>
+            <strong class="fs-3 d-block mb-1" id="accountMovementDetailsAmount"></strong>
+            <hr><h3 class="small fw-semibold mb-3">Informações</h3>
+            <div class="d-flex justify-content-between gap-3 mb-2"><span class="small text-secondary">Data</span><span class="small fw-medium" id="accountMovementDetailsDate"></span></div>
+            <div class="d-flex justify-content-between gap-3 mb-2"><span class="small text-secondary">Tipo</span><span class="small fw-medium" id="accountMovementDetailsKind"></span></div>
+            <div class="d-flex justify-content-between gap-3" id="accountMovementDetailsCounterpartRow" hidden><span class="small text-secondary">Conta relacionada</span><span class="small fw-medium text-end" id="accountMovementDetailsCounterpart"></span></div>
+            <hr><h3 class="small fw-semibold mb-3">Ações</h3>
+            <div class="list-group list-group-flush border rounded-3 overflow-hidden">
+                <a class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3" id="accountMovementDetailsEdit" href="#" hidden><i data-lucide="pencil" aria-hidden="true"></i><span>Editar movimento</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i></a>
+                <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3 text-danger" id="accountMovementDetailsDelete"><i data-lucide="trash-2" aria-hidden="true"></i><span>Eliminar movimento</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i></button>
+            </div>
+        </div>
+    </div></div>
 </div>
 
 <div class="modal fade" id="accountDeleteModal" tabindex="-1" aria-labelledby="accountDeleteTitle" aria-hidden="true">
@@ -155,23 +182,65 @@
 @push('scripts')
 <script>
 const accountDeleteModalElement = document.getElementById('accountDeleteModal');
-if (accountDeleteModalElement) {
+const accountDetailsElement = document.getElementById('accountMovementDetailsModal');
+if (accountDeleteModalElement && accountDetailsElement) {
     const accountDeleteModal = bootstrap.Modal.getOrCreateInstance(accountDeleteModalElement);
+    const accountDetailsModal = bootstrap.Modal.getOrCreateInstance(accountDetailsElement);
     const accountDeleteForm = document.getElementById('accountDeleteForm');
     const accountDeleteSubmit = document.getElementById('accountDeleteSubmit');
+    let activeAccountMovement = null;
+    let returnToAccountDetails = false;
 
-    document.querySelectorAll('.js-account-delete').forEach((button) => {
-        button.addEventListener('click', () => {
-            accountDeleteForm.action = button.dataset.deleteUrl;
-            accountDeleteSubmit.disabled = false;
-            accountDeleteSubmit.textContent = 'Eliminar';
-            document.getElementById('accountDeleteDescription').textContent = 'Este movimento será eliminado e os saldos das suas contas serão atualizados.';
-            document.getElementById('accountDeleteHint').hidden = false;
-            accountDeleteModal.show();
+    const openAccountMovementDetails = (row) => {
+        activeAccountMovement = row;
+        document.getElementById('accountMovementDetailsName').textContent = row.dataset.description;
+        document.getElementById('accountMovementDetailsCategory').textContent = row.dataset.category;
+        document.getElementById('accountMovementDetailsAmount').textContent = row.dataset.signedAmount;
+        document.getElementById('accountMovementDetailsAmount').className = 'fs-3 d-block mb-1 ' + row.dataset.amountClass;
+        document.getElementById('accountMovementDetailsDate').textContent = row.dataset.date;
+        document.getElementById('accountMovementDetailsKind').textContent = row.dataset.kind;
+        document.getElementById('accountMovementDetailsStatus').textContent = row.dataset.status;
+        const counterpartRow = document.getElementById('accountMovementDetailsCounterpartRow');
+        counterpartRow.hidden = !row.dataset.counterpart;
+        document.getElementById('accountMovementDetailsCounterpart').textContent = row.dataset.counterpart;
+        const editLink = document.getElementById('accountMovementDetailsEdit');
+        editLink.hidden = !row.dataset.editUrl;
+        editLink.href = row.dataset.editUrl || '#';
+        document.getElementById('accountDeleteForm').action = row.dataset.deleteUrl;
+        accountDetailsModal.show();
+    };
+
+    document.querySelectorAll('[data-account-movement]').forEach((row) => {
+        row.addEventListener('click', (event) => {
+            if (event.target.closest('a, button, input, select, textarea, label')) return;
+            openAccountMovementDetails(row);
+        });
+        row.addEventListener('keydown', (event) => {
+            if (!['Enter', ' '].includes(event.key)) return;
+            event.preventDefault();
+            openAccountMovementDetails(row);
         });
     });
 
+    document.getElementById('accountMovementDetailsDelete').addEventListener('click', () => {
+        if (!activeAccountMovement) return;
+        returnToAccountDetails = true;
+        accountDetailsModal.hide();
+        accountDeleteSubmit.disabled = false;
+        accountDeleteSubmit.textContent = 'Eliminar';
+        document.getElementById('accountDeleteDescription').textContent = 'Este movimento será eliminado e os saldos das suas contas serão atualizados.';
+        document.getElementById('accountDeleteHint').hidden = false;
+        accountDeleteModal.show();
+    });
+
+    accountDeleteModalElement.addEventListener('hidden.bs.modal', () => {
+        if (!returnToAccountDetails || !activeAccountMovement) return;
+        returnToAccountDetails = false;
+        accountDetailsModal.show();
+    });
+
     accountDeleteForm.addEventListener('submit', () => {
+        returnToAccountDetails = false;
         accountDeleteSubmit.disabled = true;
         accountDeleteSubmit.textContent = 'A eliminar…';
     });
@@ -211,6 +280,9 @@ document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', as
 .account-history-balance strong { display:block; font-size:1.65rem; letter-spacing:-.04em; line-height:1.2; }
 .account-history-card { overflow:hidden; }
 .account-movement-item:last-child { border-bottom:0 !important; }
+.account-movement-item[data-account-movement] { cursor:pointer; transition:background-color .15s ease; }
+.account-movement-item[data-account-movement]:hover { background:var(--bs-tertiary-bg); }
+.account-movement-item[data-account-movement]:focus-visible { outline:2px solid var(--bs-primary); outline-offset:-2px; }
 .account-movement-item .expense-icon { width:2.5rem; height:2.5rem; display:flex; align-items:center; justify-content:center; border-radius:.8rem; background:rgba(220,53,69,.1); color:var(--bs-danger); }
 .account-movement-item .movement-value { font-size:.9rem; }
 .account-movement-description { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
