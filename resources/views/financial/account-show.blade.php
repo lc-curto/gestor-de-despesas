@@ -84,12 +84,21 @@
                     @endphp
                     <article class="expense-item account-movement-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom">
                         <div class="d-flex align-items-center gap-3 min-w-0">
-                            <div class="expense-icon {{ $isOutgoing ? '' : 'income-icon' }} flex-shrink-0" aria-hidden="true">
+                            <div class="expense-icon flex-shrink-0" aria-hidden="true">
                                 <i data-lucide="{{ $isTransfer ? 'arrow-left-right' : ($isOutgoing ? 'arrow-down-left' : 'arrow-up-right') }}"></i>
                             </div>
                             <div class="min-w-0">
                                 <h3 class="h6 fw-semibold mb-1 text-break">{{ $movement->description }}</h3>
-                                <p class="small text-secondary mb-1">{{ $category }} · {{ $movement->movement_date->format('d/m/Y') }}</p>
+                                <div class="movement-badges d-flex flex-wrap align-items-center gap-1 mt-1">
+                                    @if ($movement->status === 'settled')
+                                        <span class="badge rounded-pill text-bg-success">Liquidado</span>
+                                    @elseif ($movement->status === 'pending')
+                                        <span class="badge rounded-pill text-bg-warning">Pendente</span>
+                                    @elseif ($movement->status === 'void')
+                                        <span class="badge rounded-pill text-bg-secondary">Anulado</span>
+                                    @endif
+                                </div>
+                                <p class="small text-secondary mb-0">{{ $category }} · {{ $movement->movement_date->format('d/m/Y') }}</p>
                                 @if ($isTransfer)
                                     <div class="movement-transfer-route {{ $isCurrentAccountSource ? 'is-outgoing' : 'is-incoming' }}">
                                         <span class="movement-transfer-direction">{{ $isCurrentAccountSource ? 'Saída' : 'Entrada' }}</span>
@@ -100,19 +109,18 @@
                                 @endif
                             </div>
                         </div>
-                        <div class="d-flex align-items-center justify-content-end gap-3">
-                            <div class="text-end">
-                                <strong class="{{ $isOutgoing ? 'text-danger' : 'text-success' }} text-nowrap movement-value">{{ $sign }}{{ number_format((float) $movement->amount, 2, ',', '.') }} {{ $movement->currency ?? $account->currency }}</strong>
-                                <span class="d-block small text-secondary">{{ $statusLabels[$movement->status] ?? $movement->status }}</span>
+                        <div class="expense-actions d-flex align-items-center justify-content-end gap-2">
+                            <strong class="{{ $isOutgoing ? 'text-danger' : 'text-success' }} text-nowrap movement-value">{{ $sign }}{{ number_format((float) $movement->amount, 2, ',', '.') }} {{ $movement->currency ?? $account->currency }}</strong>
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Ações de {{ $movement->description }}">
+                                @if ($editRoute)
+                                    <a class="btn btn-outline-secondary" href="{{ $editRoute }}" aria-label="Editar {{ $movement->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                                @endif
+                                <form method="POST" action="{{ $deleteRoute }}" class="d-inline-flex" onsubmit="return confirm('Eliminar este movimento e atualizar todos os movimentos dependentes e saldos associados?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button class="btn btn-outline-danger" type="submit" aria-label="Eliminar movimento" title="Eliminar movimento"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                                </form>
                             </div>
-                            @if ($editRoute)
-                                <a class="btn btn-outline-secondary btn-sm" href="{{ $editRoute }}" aria-label="Editar {{ $movement->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></a>
-                            @endif
-                            <form method="POST" action="{{ $deleteRoute }}" onsubmit="return confirm('Eliminar este movimento e atualizar todos os movimentos dependentes e saldos associados?')">
-                                @csrf
-                                @method('DELETE')
-                                <button class="btn btn-outline-danger btn-sm" type="submit" aria-label="Eliminar movimento" title="Eliminar movimento"><i data-lucide="trash-2" aria-hidden="true"></i></button>
-                            </form>
                         </div>
                     </article>
                 @empty
