@@ -540,7 +540,7 @@
                 ? Math.min(100, Math.max(0, (paidAmount / originalAmount) * 100))
                 : 0;
             progress.setAttribute('aria-valuenow', String(Math.round(paidPercentage)));
-            progress.style.height = '3px';
+            progress.style.height = '4px';
             progress.style.backgroundColor = 'var(--bs-secondary-bg)';
             progress.style.overflow = 'hidden';
 
