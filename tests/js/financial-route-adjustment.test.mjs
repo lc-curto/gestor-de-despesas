@@ -45,7 +45,7 @@ function setup(response = { ok: false, json: async () => ({ message: 'Operação
       <div id="routeMovementDetailTitle"></div><div id="routeMovementKind"></div><div id="routeMovementAmount"></div>
       <div id="routeMovementCategory"></div><div id="routeMovementAccount"></div><div id="routeMovementDate"></div><div id="routeMovementDescription"></div><div id="routeMovementNotes"></div>
       <div id="routeDetailError" role="alert"></div><p id="routeEditHelp" role="status"></p><button id="routeEditMovement"></button><button id="routeDeleteMovement"></button>
-      <div id="routeConfirmTitle"></div><div id="routeConfirmText"></div><button id="routeConfirmAction"></button>`;
+      <div id="routeConfirmTitle"></div><div id="routeConfirmText"></div><small id="routeConfirmHint"></small><button id="routeConfirmAction"></button>`;
     const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'https://example.test/rota-financeira' });
     const { window } = dom;
     const modals = new Map();
@@ -156,11 +156,14 @@ test('edição de liquidado ou previsão virtual é bloqueada e exclusão preser
     assert.match(h.el('routeEditHelp').textContent, /automaticamente/);
     h.openItem('Diminuição');
     h.el('routeDeleteMovement').click();
-    assert.equal(h.el('routeConfirmTitle').textContent, 'Confirmar exclusão');
-    assert.match(h.el('routeConfirmText').textContent, /Histórico preservado/i);
+    assert.equal(h.el('routeConfirmTitle').textContent, 'Eliminar movimento?');
+    assert.equal(h.el('routeConfirmText').textContent, 'Este movimento será eliminado e os saldos das suas contas serão atualizados.');
+    assert.equal(h.el('routeConfirmHint').textContent, 'Esta ação não pode ser desfeita.');
+    assert.equal(h.el('routeConfirmAction').textContent, 'Eliminar');
     h.el('routeConfirmAction').click();
     await flush();
     assert.equal(h.requests[0].url, '/movements/minus');
     assert.equal(h.requests[0].method, 'DELETE');
     assert.equal(h.el('routeConfirmText').textContent, 'Operação não permitida');
+    assert.equal(h.el('routeConfirmHint').hidden, true);
 });
