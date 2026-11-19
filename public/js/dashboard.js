@@ -423,6 +423,7 @@
         article.dataset.expenseBehavior = item.expense_behavior || 'variable';
         article.dataset.movementStatus = item.movement_status || '';
         article.dataset.isInvoicePayment = item.is_invoice_payment ? '1' : '0';
+        article.dataset.isSettlementEvent = item.is_settlement_event ? '1' : '0';
         article.dataset.dueDate = item.due_date || '';
         article.dataset.recurrenceId = item.recurrence_id || '';
         article.dataset.recurrenceFrequency = item.recurrence_frequency || '';
@@ -1046,7 +1047,7 @@
 
     function openDeleteModal(row) {
         actionMovement = row;
-        const recurring = Boolean(row.dataset.recurrenceId && row.dataset.recurrenceFrequency);
+        const recurring = row.dataset.isSettlementEvent !== '1' && Boolean(row.dataset.recurrenceId && row.dataset.recurrenceFrequency);
         const settled = row.dataset.movementStatus === 'settled';
         const onlyOption = document.getElementById('deleteScopeOnly');
         const futureOption = document.getElementById('deleteScopeFuture');
@@ -1174,7 +1175,7 @@
         submit.textContent = 'A excluir...';
         try {
             let response;
-            if (actionMovement.dataset.recurrenceId && actionMovement.dataset.financialMovementId) {
+            if (actionMovement.dataset.isSettlementEvent !== '1' && actionMovement.dataset.recurrenceId && actionMovement.dataset.recurrenceFrequency && actionMovement.dataset.financialMovementId) {
                 const scope = document.querySelector('input[name="delete_scope"]:checked')?.value || 'only';
                 response = await fetch(cfg.financialMovementBase + '/' + encodeURIComponent(actionMovement.dataset.financialMovementId) + '/recurrence-scope', {
                     method: 'DELETE',

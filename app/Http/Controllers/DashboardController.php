@@ -21,6 +21,21 @@ class DashboardController extends Controller
             ->whereNotNull('opening_balance')
             ->orderBy('name')
             ->get();
+        $accountBalances = $accounts->mapWithKeys(function ($account) use ($balances) {
+            if (! $account->opening_balance_date) {
+                return [$account->id => null];
+            }
+
+            $currentBalance = (float) $balances->balance($account);
+
+            return [$account->id => [
+                'balance' => $currentBalance,
+                'available_credit' => $account->type === 'credit_card' && $account->credit_limit !== null
+                    ? max(0, (float) $account->credit_limit - abs($currentBalance))
+                    : null,
+            ]];
+        });
+
         [$inicio, $mes] = $this->periodo($request->query('mes'));
         $fim = $inicio->copy()->endOfMonth();
 
@@ -107,6 +122,7 @@ class DashboardController extends Controller
                 'id' => $item->id,
                 'financial_movement_id' => $item->financial_movement_id,
                 'is_invoice_payment' => (bool) ($item->is_invoice_payment ?? false),
+                'is_settlement_event' => (bool) ($item->is_settlement_event ?? false),
                 'tipo' => $item->tipo,
                 'description' => $item->description,
                 'amount' => $item->amount,
@@ -133,7 +149,7 @@ class DashboardController extends Controller
             'inicio', 'mes', 'movimentos', 'movimentosVisiveis', 'movimentosIniciais', 'categorias', 'categoriasDespesa',
             'categoriasReceita', 'expenseCategoryBehaviors', 'filtroTipo', 'filtroCategoria',
             'totalDespesas', 'totalReceitas', 'availableBalance', 'pendingPaymentTotal', 'pendingPaymentCount', 'totalMovimentos', 'totalDespesasFiltradas', 'totalReceitasFiltradas', 'limit'
-        ))->with('moeda', $user->currency)->with('accounts', $accounts);
+        ))->with('moeda', $user->currency)->with('accounts', $accounts)->with('accountBalances', $accountBalances);
     }
 
     public function paginaMovimentos(Request $request, AccountBalanceService $balances, CardInvoiceService $invoices)
@@ -262,7 +278,7 @@ class DashboardController extends Controller
             ->whereBetween('despesas.expense_date', [$inicio->toDateString(), $fim->toDateString()])
             ->where(fn ($q) => $q->whereNull('financial_movements.status')->orWhere('financial_movements.status', '!=', 'void'))
             ->whereNull('financial_movements.invoice_id')
-            ->selectRaw("despesas.id, financial_movements.id AS financial_movement_id, 0 AS is_invoice_payment, 'despesa' AS tipo, despesas.description, despesas.amount,
+            ->selectRaw("despesas.id, financial_movements.id AS financial_movement_id, 0 AS is_invoice_payment, CASE WHEN financial_movements.settles_movement_id IS NOT NULL THEN 1 ELSE 0 END AS is_settlement_event, 'despesa' AS tipo, despesas.description, despesas.amount,
                 CASE WHEN financial_movements.is_settlement_parent = 1 THEN CASE WHEN (financial_movements.amount - COALESCE((
                     SELECT SUM(CASE WHEN settlement_events.reversal_of_id IS NULL THEN settlement_events.amount ELSE -settlement_events.amount END)
                     FROM movimentos AS settlement_events
@@ -289,7 +305,7 @@ class DashboardController extends Controller
             ->where('card_payments.status', 'settled')
             ->whereNotNull('card_payments.invoice_id')
             ->whereBetween('card_payments.movement_date', [$inicio->toDateString(), $fim->toDateString()])
-            ->selectRaw("card_payments.id, card_payments.id AS financial_movement_id, 1 AS is_invoice_payment, CASE WHEN source_accounts.type = 'credit_card' THEN 'receita' ELSE 'despesa' END AS tipo, card_payments.description, card_payments.amount, card_payments.amount AS remaining_amount, movement_users.currency, NULL AS category, CASE WHEN source_accounts.type = 'credit_card' THEN 'Estorno de pagamento de fatura' ELSE 'Pagamento de fatura' END AS category_label, 'credit-card' AS category_icon, '#64748b' AS category_color, card_payments.movement_date AS data_movimento, card_payments.source_account_id AS account_id, card_payments.status AS movement_status, 0 AS requires_account_assignment, 0 AS is_historical, 'variable' AS expense_behavior, NULL AS due_date, NULL AS recurrence_id, NULL AS recurrence_frequency, NULL AS recurrence_interval, NULL AS recurrence_ends_at");
+            ->selectRaw("card_payments.id, card_payments.id AS financial_movement_id, 1 AS is_invoice_payment, 0 AS is_settlement_event, CASE WHEN source_accounts.type = 'credit_card' THEN 'receita' ELSE 'despesa' END AS tipo, card_payments.description, card_payments.amount, card_payments.amount AS remaining_amount, movement_users.currency, NULL AS category, CASE WHEN source_accounts.type = 'credit_card' THEN 'Estorno de pagamento de fatura' ELSE 'Pagamento de fatura' END AS category_label, 'credit-card' AS category_icon, '#64748b' AS category_color, card_payments.movement_date AS data_movimento, card_payments.source_account_id AS account_id, card_payments.status AS movement_status, 0 AS requires_account_assignment, 0 AS is_historical, 'variable' AS expense_behavior, NULL AS due_date, NULL AS recurrence_id, NULL AS recurrence_frequency, NULL AS recurrence_interval, NULL AS recurrence_ends_at");
 
         $receitas = DB::table('receitas')
             ->join('categorias', 'categorias.id', '=', 'receitas.category_id')
@@ -302,7 +318,7 @@ class DashboardController extends Controller
             ->where('receitas.user_id', $userId)
             ->whereBetween('receitas.income_date', [$inicio->toDateString(), $fim->toDateString()])
             ->where(fn ($q) => $q->whereNull('financial_movements.status')->orWhere('financial_movements.status', '!=', 'void'))
-            ->selectRaw("receitas.id, financial_movements.id AS financial_movement_id, 0 AS is_invoice_payment, 'receita' AS tipo, receitas.description, receitas.amount,
+            ->selectRaw("receitas.id, financial_movements.id AS financial_movement_id, 0 AS is_invoice_payment, CASE WHEN financial_movements.settles_movement_id IS NOT NULL THEN 1 ELSE 0 END AS is_settlement_event, 'receita' AS tipo, receitas.description, receitas.amount,
                 CASE WHEN financial_movements.is_settlement_parent = 1 THEN CASE WHEN (financial_movements.amount - COALESCE((
                     SELECT SUM(CASE WHEN settlement_events.reversal_of_id IS NULL THEN settlement_events.amount ELSE -settlement_events.amount END)
                     FROM movimentos AS settlement_events
@@ -330,7 +346,7 @@ class DashboardController extends Controller
             // previsões ainda sem fatura (mesmo quando têm conta de cartão).
             ->where(fn ($query) => $query->where('canonical_movements.type', '!=', 'expense')->orWhereNull('canonical_movements.invoice_id'))
             ->whereBetween('canonical_movements.movement_date', [$inicio->toDateString(), $fim->toDateString()])
-            ->selectRaw("canonical_movements.id, canonical_movements.id AS financial_movement_id, 0 AS is_invoice_payment, CASE WHEN canonical_movements.type = 'income' THEN 'receita' ELSE 'despesa' END AS tipo, canonical_movements.description, canonical_movements.amount,
+            ->selectRaw("canonical_movements.id, canonical_movements.id AS financial_movement_id, 0 AS is_invoice_payment, CASE WHEN canonical_movements.settles_movement_id IS NOT NULL THEN 1 ELSE 0 END AS is_settlement_event, CASE WHEN canonical_movements.type = 'income' THEN 'receita' ELSE 'despesa' END AS tipo, canonical_movements.description, canonical_movements.amount,
                 CASE WHEN canonical_movements.is_settlement_parent = 1 THEN CASE WHEN (canonical_movements.amount - COALESCE((
                     SELECT SUM(CASE WHEN settlement_events.reversal_of_id IS NULL THEN settlement_events.amount ELSE -settlement_events.amount END)
                     FROM movimentos AS settlement_events
