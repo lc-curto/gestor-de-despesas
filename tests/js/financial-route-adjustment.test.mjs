@@ -122,7 +122,7 @@ test('modal inicia em Todos, remove botão Fechar e usa Adicionar em largura tot
     h.openDay();
     assert.equal(h.window.document.querySelector('[data-day-filter="all"]').classList.contains('active'), true);
     const blade = readFileSync(new URL('../../resources/views/financial-route.blade.php', import.meta.url), 'utf8');
-    assert.match(blade, /id="routeAddFromDay"[^>]*class="btn btn-primary w-100"/);
+    assert.match(blade, /class="btn btn-primary w-100" id="routeAddFromDay"/);
     assert.match(blade, />Adicionar<\/button>/);
     assert.doesNotMatch(blade, /data-bs-dismiss="modal">Fechar<\/button>/);
 });
