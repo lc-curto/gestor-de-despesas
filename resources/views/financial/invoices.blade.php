@@ -22,21 +22,24 @@
         <section class="d-grid gap-3" aria-label="Faturas dos cartões">
         @foreach($items as $invoice)
             @php
-                $labels = ['open'=>'Aberta','closed'=>'Fechada','partial'=>'Parcialmente paga','overdue'=>'Vencida','paid'=>'Paga','carried'=>'Transportada'];
-                $classes = ['open'=>'text-bg-primary','closed'=>'text-bg-secondary','partial'=>'text-bg-warning','overdue'=>'text-bg-danger','paid'=>'text-bg-success','carried'=>'text-bg-secondary'];
+                $cycleLabels = ['open'=>'Aberta','closed'=>'Fechada'];
+                $cycleClasses = ['open'=>'text-bg-primary','closed'=>'text-bg-secondary'];
+                $paymentLabels = ['unpaid'=>'Por pagar','partial'=>'Parcialmente paga','paid'=>'Paga','overdue'=>'Em atraso','carried'=>'Saldo transportado'];
+                $paymentClasses = ['unpaid'=>'text-bg-light text-dark border','partial'=>'text-bg-warning','paid'=>'text-bg-success','overdue'=>'text-bg-danger','carried'=>'text-bg-secondary'];
                 $progress = (float)$invoice->total_amount > 0 ? min(100,(float)$invoice->paid_amount/(float)$invoice->total_amount*100) : 100;
                 $locked = in_array($invoice->status,['closed','paid','carried'],true);
                 $currency = $invoice->conta?->currency ?? auth()->user()->currency;
                 $detailModalId = 'invoiceDetails-'.$invoice->id;
             @endphp
-            <article class="card border rounded-4 shadow-sm" data-invoice-id="{{ $invoice->id }}" data-status="{{ $invoice->display_status }}" data-remaining="{{ $invoice->remaining_amount }}" data-currency="{{ $currency }}" data-closing="{{ $invoice->closing_date->toDateString() }}">
+            <article class="card border rounded-4 shadow-sm" data-invoice-id="{{ $invoice->id }}" data-status="{{ $invoice->payment_status }}" data-remaining="{{ $invoice->remaining_amount }}" data-currency="{{ $currency }}" data-closing="{{ $invoice->closing_date->toDateString() }}">
                 <div class="card-body p-0">
                     <button type="button" class="btn btn-light text-start w-100 rounded-4 p-3 p-md-4 border-0" data-bs-toggle="modal" data-bs-target="#{{ $detailModalId }}" aria-label="Ver fatura de {{ $invoice->conta?->name ?? 'Cartão' }}, {{ $invoice->reference_month->translatedFormat('F Y') }}">
                         <div class="d-flex justify-content-between align-items-start gap-3">
                             <div class="min-w-0">
                                 <div class="d-flex flex-wrap align-items-center gap-2">
                                     <h2 class="h6 fw-bold text-body mb-0">{{ $invoice->conta?->name ?? 'Cartão' }}</h2>
-                                    <span class="badge {{ $classes[$invoice->display_status] ?? 'text-bg-secondary' }}">{{ $labels[$invoice->display_status] ?? $invoice->display_status }}</span>
+                                    <span class="badge {{ $cycleClasses[$invoice->cycle_status] ?? 'text-bg-secondary' }}">{{ $cycleLabels[$invoice->cycle_status] ?? $invoice->cycle_status }}</span>
+                                    <span class="badge {{ $paymentClasses[$invoice->payment_status] ?? 'text-bg-secondary' }}">{{ $paymentLabels[$invoice->payment_status] ?? $invoice->payment_status }}</span>
                                 </div>
                                 <p class="small text-secondary mb-0 mt-1 text-capitalize">{{ $invoice->reference_month->translatedFormat('F Y') }}</p>
                             </div>
@@ -71,7 +74,8 @@
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                         </div>
                         <div class="modal-body pt-2">
-                            <div class="mb-3"><span class="badge {{ $classes[$invoice->display_status] ?? 'text-bg-secondary' }}">{{ $labels[$invoice->display_status] ?? $invoice->display_status }}</span></div>
+                            <div class="mb-3"><span class="badge {{ $cycleClasses[$invoice->cycle_status] ?? 'text-bg-secondary' }}">{{ $cycleLabels[$invoice->cycle_status] ?? $invoice->cycle_status }}</span>
+                                    <span class="badge {{ $paymentClasses[$invoice->payment_status] ?? 'text-bg-secondary' }}">{{ $paymentLabels[$invoice->payment_status] ?? $invoice->payment_status }}</span></div>
                             <div class="rounded-4 bg-body-tertiary p-3 mb-3">
                                 <div class="small text-secondary mb-1">Valor por pagar</div>
                                 <div class="display-6 fw-bold text-body">{{ number_format((float)$invoice->remaining_amount,2,',','.') }} <span class="fs-5">{{ $currency }}</span></div>
