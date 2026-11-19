@@ -50,7 +50,7 @@
 |---|---|---|
 | RF-01 | Saldo de abertura soma contas banco/dinheiro operacionais ativas | Testes de projeção |
 | RF-02 | Cartões não integram o saldo de caixa | Testes de projeção |
-| RF-03 | Saldo inicial negativo é preservado | Teste dedicado a preparar |
+| RF-03 | Saldo inicial negativo é preservado | Novo teste de matriz |
 | RF-04 | Movimentos liquidados anteriores ao período são incorporados uma única vez | Teste de janela multi-mês |
 | RF-05 | Movimentos históricos não alteram a projeção | Testes de regressão existentes |
 | RF-06 | Receita/despesa pendente de conta de caixa usa a data prevista | Testes de projeção existentes |
