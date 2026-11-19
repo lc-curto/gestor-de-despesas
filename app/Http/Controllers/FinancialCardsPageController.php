@@ -37,14 +37,8 @@ class FinancialCardsPageController extends Controller
                 : 0;
         });
 
-        $activeCards = $cards->where('status', 'active')->where('is_operational', true);
         $inactiveCards = $cards->filter(fn (ContaFinanceira $card) => $card->status !== 'active' || ! $card->is_operational)->values();
-        $summary = [
-            'used' => $activeCards->sum('used_limit'),
-            'available' => $activeCards->sum('available_limit'),
-            'count' => $activeCards->count(),
-        ];
 
-        return view('financial.cards', compact('cards', 'inactiveCards', 'summary'));
+        return view('financial.cards', compact('cards', 'inactiveCards'));
     }
 }
