@@ -477,7 +477,7 @@
         }
 
         const article = document.createElement('article');
-        article.className = 'expense-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom';
+        article.className = 'expense-item d-flex flex-column align-items-stretch gap-1 py-3 border-bottom';
         article.dataset.movementId = item.id;
         article.dataset.financialMovementId = item.financial_movement_id || '';
         article.dataset.movementType = item.tipo;
@@ -519,6 +519,7 @@
         const originalAmount = Number(item.amount);
         const remainingAmount = Number(item.remaining_amount ?? item.amount);
         const paidAmount = Math.max(0, originalAmount - remainingAmount);
+        let partialProgress = null;
         if ((item.movement_status === 'partial' || item.movement_status === 'partially_settled') && paidAmount > 0) {
             const settlementSummary = document.createElement('div');
             settlementSummary.className = 'small text-body-secondary d-flex justify-content-between gap-2 mb-0';
@@ -528,8 +529,9 @@
             pendingLabel.textContent = 'Pendente: ' + formatCurrency(remainingAmount, item.currency || cfg.currency || 'EUR');
             settlementSummary.append(paidLabel, pendingLabel);
 
-            const progress = document.createElement('div');
-            progress.className = 'settlement-progress-track rounded-pill mt-1';
+            partialProgress = document.createElement('div');
+            partialProgress.className = 'settlement-progress-track rounded-pill mt-1 w-100';
+            const progress = partialProgress;
             progress.setAttribute('role', 'progressbar');
             progress.setAttribute('aria-label', 'Percentagem do movimento paga');
             progress.setAttribute('aria-valuemin', '0');
@@ -538,7 +540,7 @@
                 ? Math.min(100, Math.max(0, (paidAmount / originalAmount) * 100))
                 : 0;
             progress.setAttribute('aria-valuenow', String(Math.round(paidPercentage)));
-            progress.style.height = '3px';
+            progress.style.height = '4px';
             progress.style.backgroundColor = 'var(--bs-secondary-bg)';
             progress.style.overflow = 'hidden';
 
@@ -547,7 +549,7 @@
             progressFill.style.width = paidPercentage + '%';
             progressFill.style.backgroundColor = 'var(--bs-success-border-subtle, #86b99a)';
             progress.append(progressFill);
-            details.append(settlementSummary, progress);
+            details.append(settlementSummary);
         }
         if (isExpense && item.due_date) {
             const due = String(item.due_date).slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -626,7 +628,11 @@
             actions.append(remove);
     
         }
-        article.append(info, actions);
+        const movementRow = document.createElement('div');
+        movementRow.className = 'd-flex justify-content-between align-items-center gap-3 w-100';
+        movementRow.append(info, actions);
+        article.append(movementRow);
+        if (partialProgress) article.append(partialProgress);
         return article;
     }
 
