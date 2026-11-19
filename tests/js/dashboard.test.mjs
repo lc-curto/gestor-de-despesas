@@ -291,10 +291,12 @@ test('movimento parcialmente pago mostra os valores liquidados e pendentes', () 
     const ui = setup(async () => jsonResponse(200, { data: [] }), [partial]);
     const row = ui.element('expensesList').querySelector('[data-movement-id]');
     assert.ok(row);
-    assert.match(row.textContent, /40,00/);
-    assert.match(row.textContent, /80,00/);
-    assert.match(row.textContent, /pago/);
-    assert.match(row.textContent, /pendente/);
+    assert.match(row.textContent, /Pago: 40,00/);
+    assert.match(row.textContent, /Pendente: 80,00/);
+    const progress = row.querySelector('[role="progressbar"]');
+    assert.ok(progress);
+    assert.equal(progress.getAttribute('aria-valuenow'), '33');
+    assert.equal(progress.style.height, '3px');
     ui.dom.window.close();
 });
 
