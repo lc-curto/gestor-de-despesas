@@ -170,9 +170,78 @@ class FinancialProjectionService
             $items->push($synthetic);
         }
 
+        // Obrigações vencidas são apresentadas separadamente: não entram em $items
+        // e, por isso, não alteram o saldo diário do período consultado.
+        $overdue = collect();
+
+        $overdueInstallments = $user->parcelasDivida()
+            ->with('divida')
+            ->whereIn('status', ['pending', 'partial'])
+            ->where('due_date', '<', $rangeStart->toDateString())
+            ->whereHas('divida', fn ($query) => $query
+                ->whereNull('archived_at')
+                ->whereNotIn('status', ['cancelled', 'paid'])
+                ->whereNotIn('payment_method', ['credit', 'card']))
+            ->get();
+
+        foreach ($overdueInstallments as $installment) {
+            $remaining = round((float) $installment->amount - (float) $installment->paid_amount, 2);
+            if ($remaining <= 0 || ! $installment->divida) {
+                continue;
+            }
+
+            $overdueItem = $this->syntheticExpense(
+                'overdue-debt-'.$installment->id,
+                $installment->divida->name.($installment->divida->installments_count > 1
+                    ? ' · Parcela '.$installment->installment_number.'/'.$installment->divida->installments_count
+                    : ''),
+                $remaining,
+                $installment->due_date,
+                'fixed'
+            );
+            $overdueItem->setAttribute('overdue', true);
+            $overdue->push($overdueItem);
+        }
+
+        $overdueInvoices = Fatura::query()
+            ->where('user_id', $user->id)
+            ->where('status', '!=', 'carried')
+            ->where('due_date', '<', $rangeStart->toDateString())
+            ->with([
+                'conta',
+                'movimentos' => fn ($query) => $query->where('status', 'settled'),
+                'creditos' => fn ($query) => $query->where('status', 'settled')->select('id', 'invoice_id', 'amount', 'invoice_charge_type'),
+                'saldosTransportados:id,user_id,source_invoice_id,target_invoice_id,amount',
+            ])
+            ->get();
+
+        foreach ($overdueInvoices as $invoice) {
+            $total = (float) $invoice->movimentos
+                ->where('type', 'expense')->where('is_settlement_parent', false)->sum('amount')
+                + (float) $invoice->saldosTransportados->sum('amount')
+                - (float) $invoice->creditos->sum('amount');
+            $paid = (float) $invoice->movimentos->where('type', 'transfer')
+                ->sum(fn (Movimento $movement) => $movement->reversal_of_id ? -(float) $movement->amount : (float) $movement->amount);
+            $remaining = round($total - $paid, 2);
+            if ($remaining <= 0) {
+                continue;
+            }
+
+            $overdueItem = $this->syntheticExpense(
+                'overdue-invoice-'.$invoice->id,
+                'Fatura vencida · '.($invoice->conta?->name ?? 'Cartão'),
+                $remaining,
+                $invoice->due_date,
+                'fixed'
+            );
+            $overdueItem->setAttribute('overdue', true);
+            $overdue->push($overdueItem);
+        }
+
         return [
             'openingBalance' => round($openingBalance, 2),
             'movements' => $items->sortBy('movement_date')->values(),
+            'overdue' => $overdue->sortBy('movement_date')->values(),
         ];
     }
 
@@ -182,12 +251,17 @@ class FinancialProjectionService
         $sourceType = $movement->source_account_id ? ($accountTypes[$movement->source_account_id] ?? null) : null;
         $destinationType = $movement->destination_account_id ? ($accountTypes[$movement->destination_account_id] ?? null) : null;
         $sourceIsCash = in_array($sourceType, ['bank', 'cash'], true);
+        $sourceIsCreditCard = $sourceType === 'credit_card';
         $destinationIsCash = in_array($destinationType, ['bank', 'cash'], true);
 
         if ($movement->type === 'income' && $destinationIsCash) {
             $delta += (float) $movement->amount;
         }
-        if ($movement->type === 'expense' && ($movement->status === 'pending' || $sourceIsCash)) {
+        // Despesas pendentes sem conta de origem (previsões de prestações)
+        // continuam projetadas. Apenas compras pendentes num cartão ficam
+        // fora do caixa até ao pagamento da respetiva fatura.
+        if ($movement->type === 'expense'
+            && ($sourceIsCash || ($movement->status === 'pending' && ! $sourceIsCreditCard && $sourceType === null))) {
             $delta -= (float) $movement->amount;
         }
         if ($movement->type === 'transfer') {

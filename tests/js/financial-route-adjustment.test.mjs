@@ -33,7 +33,8 @@ function setup(response = { ok: false, json: async () => ({ message: 'Operação
       </section>
       <script type="application/json" id="route-day-2026-12-05">${JSON.stringify({ items, balance: 174.65, status: 'comfortable' })}</script>
       <div id="routeDayModal"></div><div id="routeMovementModal"></div><div id="routeMovementDetailModal"></div><div id="routeConfirmModal"></div>
-      <div id="routeDayTitle"></div><div id="routeDayBalance"></div><div id="routeDayMovements"></div><button id="routeAddFromDay"></button>
+      <div id="routeDayTitle"></div><div id="routeDayBalance"></div><section id="routeOverdueSection" hidden><span id="routeOverdueCount"></span><div id="routeOverdueMovements"></div></section><div id="routeDayMovements"></div><button id="routeAddFromDay"></button>
+      <script type="application/json" id="route-overdue-data">[]</script>
       <button data-day-filter="all"></button><button data-day-filter="income"></button><button data-day-filter="fixed"></button><button data-day-filter="variable"></button>
       <div id="routeMovementTitle"></div><form id="routeMovementForm">
         <input type="radio" name="route_type" value="income"><input type="radio" name="route_type" value="fixed"><input type="radio" name="route_type" value="variable" checked>
