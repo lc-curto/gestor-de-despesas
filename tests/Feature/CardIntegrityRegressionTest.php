@@ -475,4 +475,23 @@ class CardIntegrityRegressionTest extends TestCase
         $this->assertSame('partial', $closed->display_status);
     }
 
+    public function test_cards_page_renders_compact_cards_and_bootstrap_details_without_summary_kpis(): void
+    {
+        $user = User::factory()->create();
+        $card = $this->card($user, 'Cartão Pessoal', '0.00', '500.00');
+
+        $response = $this->actingAs($user)->get(route('financial.cards.page'));
+
+        $response->assertOk()
+            ->assertSee('cardDetails-'.$card->id)
+            ->assertSee('Ver detalhes')
+            ->assertSee('Crédito disponível')
+            ->assertSee('Faturas')
+            ->assertSee('Movimentos')
+            ->assertSee('Editar cartão')
+            ->assertDontSee('cards-kpi-grid')
+            ->assertDontSee('Limite utilizado</span>');
+    }
+
+
 }
