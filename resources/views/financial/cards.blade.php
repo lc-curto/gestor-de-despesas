@@ -17,7 +17,7 @@
                 $cardStatusLabel = $card->status === 'suspended' ? 'Suspenso' : ($isInactive ? 'Cartão encerrado' : 'Ativo');
             @endphp
             <article class="card border rounded-4 shadow-sm {{ $isInactive ? 'credit-card-inactive' : '' }}" @if($isInactive) hidden @endif>
-                <button type="button" class="btn btn-light text-start w-100 rounded-4 border-0 p-2 p-md-3" data-bs-toggle="modal" data-bs-target="#{{ $detailModalId }}" aria-label="Ver detalhes de {{ $card->name }}">
+                <button type="button" class="btn financial-summary-trigger text-start w-100 rounded-4 border-0 p-2 p-md-3" data-bs-toggle="modal" data-bs-target="#{{ $detailModalId }}" aria-label="Ver detalhes de {{ $card->name }}">
                     <div class="d-flex align-items-center justify-content-between gap-2">
                         <span class="fw-semibold text-body text-break">{{ $card->name }}</span>
                         <span class="badge flex-shrink-0 {{ $card->status === 'active' && $card->is_operational ? 'text-bg-success' : ($card->status === 'suspended' ? 'text-bg-warning' : 'text-bg-secondary') }}">{{ $cardStatusLabel }}</span>
@@ -155,6 +155,27 @@
     <div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" type="submit">Guardar alterações</button></div>
 </form></div></div></div>
 @endsection
+
+@push('styles')
+<style>
+.credit-cards-page .financial-summary-trigger {
+    background-color: var(--bs-tertiary-bg) !important;
+    color: var(--bs-body-color) !important;
+    border: 1px solid var(--bs-border-color) !important;
+}
+.credit-cards-page .financial-summary-trigger:hover,
+.credit-cards-page .financial-summary-trigger:active {
+    background-color: var(--bs-secondary-bg) !important;
+    color: var(--bs-body-color) !important;
+}
+.credit-cards-page .financial-summary-trigger:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+}
+.credit-cards-page .progress { background-color: var(--bs-secondary-bg); }
+.credit-cards-page .border-top { border-color: var(--bs-border-color) !important; }
+</style>
+@endpush
 
 @push('scripts')
 <script>
