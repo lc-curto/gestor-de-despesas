@@ -477,7 +477,7 @@
         }
 
         const article = document.createElement('article');
-        article.className = 'expense-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom';
+        article.className = 'expense-item d-flex flex-column align-items-stretch gap-1 py-3 border-bottom';
         article.dataset.movementId = item.id;
         article.dataset.financialMovementId = item.financial_movement_id || '';
         article.dataset.movementType = item.tipo;
@@ -520,8 +520,7 @@
         const remainingAmount = Number(item.remaining_amount ?? item.amount);
         const paidAmount = Math.max(0, originalAmount - remainingAmount);
         let partialProgress = null;
-        const isPartiallyPaid = ['partial', 'partially_settled'].includes(item.movement_status) && paidAmount > 0;
-        if (isPartiallyPaid) {
+        if ((item.movement_status === 'partial' || item.movement_status === 'partially_settled') && paidAmount > 0) {
             const settlementSummary = document.createElement('div');
             settlementSummary.className = 'small text-body-secondary d-flex justify-content-between gap-2 mb-0';
             const paidLabel = document.createElement('span');
@@ -531,9 +530,7 @@
             settlementSummary.append(paidLabel, pendingLabel);
 
             partialProgress = document.createElement('div');
-            partialProgress.className = 'settlement-progress-track rounded-pill mt-1';
-            partialProgress.style.flex = '0 0 100%';
-            partialProgress.style.width = '100%';
+            partialProgress.className = 'settlement-progress-track rounded-pill mt-1 w-100';
             const progress = partialProgress;
             progress.setAttribute('role', 'progressbar');
             progress.setAttribute('aria-label', 'Percentagem do movimento paga');
@@ -543,7 +540,7 @@
                 ? Math.min(100, Math.max(0, (paidAmount / originalAmount) * 100))
                 : 0;
             progress.setAttribute('aria-valuenow', String(Math.round(paidPercentage)));
-            progress.style.height = '3px';
+            progress.style.height = '4px';
             progress.style.backgroundColor = 'var(--bs-secondary-bg)';
             progress.style.overflow = 'hidden';
 
@@ -631,8 +628,10 @@
             actions.append(remove);
     
         }
-        if (partialProgress) article.classList.add('flex-wrap');
-        article.append(info, actions);
+        const movementRow = document.createElement('div');
+        movementRow.className = 'd-flex justify-content-between align-items-center gap-3 w-100';
+        movementRow.append(info, actions);
+        article.append(movementRow);
         if (partialProgress) article.append(partialProgress);
         return article;
     }
