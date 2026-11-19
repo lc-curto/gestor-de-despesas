@@ -153,12 +153,21 @@ body.sidebar-hidden .app-main { margin-left: 0; padding-top: 4.25rem; }
 .summary-card-primary .summary-icon svg { width: 1.35rem; height: 1.35rem; }
 /* O modal deve ocupar a largura disponível independentemente do tipo selecionado. */
 #movementEntryModal .movement-entry-dialog {
-    width: min(calc(100% - 1rem), 34rem);
+    width: min(calc(100vw - 1rem), 34rem);
     max-width: 34rem;
-    margin-inline: auto;
+    margin: .5rem auto;
 }
+#movementEntryModal .modal-content,
+#movementEntryModal .movement-editor-card { width: 100%; min-width: 0; }
+#movementEntryModal .modal-body,
+#movementEntryModal .card-body,
+#movementEntryModal #recordEditorPanel,
+#movementEntryModal form { min-width: 0; max-width: 100%; }
 .movement-editor-card .card-body { min-width: 0; }
-.movement-editor-card .record-type-buttons .btn { min-height: 2.7rem; font-weight: 650; }
+.movement-editor-card .record-type-buttons { display: flex; width: 100%; }
+.movement-editor-card .record-type-buttons .btn { min-width: 0; flex: 1 1 0; white-space: normal; min-height: 2.7rem; font-weight: 650; }
+.movement-editor-card .movement-status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.movement-editor-card .movement-status-grid .payment-status-option { min-width: 0; }
 .history-card .expense-item { min-width: 0; }
 .history-card .expense-actions .btn { min-width: 2.35rem; min-height: 2.35rem; }
 @media (max-width: 575.98px) {
