@@ -298,10 +298,11 @@ test('movimento parcialmente pago mostra os valores liquidados e pendentes', () 
     const progress = row.querySelector('[role="progressbar"]');
     assert.ok(progress);
     assert.equal(progress.getAttribute('aria-valuenow'), '33');
-    assert.equal(progress.style.height, '4px');
+    assert.equal(progress.style.height, '3px');
     assert.equal(progress.parentElement, row);
-    assert.equal(progress.classList.contains('w-100'), true);
-    assert.match(row.className, /flex-column/);
+    assert.match(row.className, /justify-content-between/);
+    assert.match(row.className, /flex-wrap/);
+    assert.doesNotMatch(row.className, /flex-column/);
     ui.dom.window.close();
 });
 
