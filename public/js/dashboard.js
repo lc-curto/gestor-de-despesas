@@ -463,6 +463,16 @@
             badges.append(recurrenceBadge);
         }
         details.append(name, metadata);
+        const originalAmount = Number(item.amount);
+        const remainingAmount = Number(item.remaining_amount ?? item.amount);
+        const paidAmount = Math.max(0, originalAmount - remainingAmount);
+        if ((item.movement_status === 'partial' || item.movement_status === 'partially_settled') && paidAmount > 0) {
+            const settlementSummary = document.createElement('p');
+            settlementSummary.className = 'small text-secondary mb-0';
+            settlementSummary.textContent = formatCurrency(paidAmount, item.currency || cfg.currency || 'EUR')
+                + ' pago · ' + formatCurrency(remainingAmount, item.currency || cfg.currency || 'EUR') + ' pendente';
+            details.append(settlementSummary);
+        }
         if (isExpense && item.due_date) {
             const due = String(item.due_date).slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
             if (due) {
