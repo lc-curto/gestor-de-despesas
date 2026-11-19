@@ -21,6 +21,21 @@ class DashboardController extends Controller
             ->whereNotNull('opening_balance')
             ->orderBy('name')
             ->get();
+        $accountBalances = $accounts->mapWithKeys(function ($account) use ($balances) {
+            if (! $account->opening_balance_date) {
+                return [$account->id => null];
+            }
+
+            $currentBalance = (float) $balances->balance($account);
+
+            return [$account->id => [
+                'balance' => $currentBalance,
+                'available_credit' => $account->type === 'credit_card' && $account->credit_limit !== null
+                    ? max(0, (float) $account->credit_limit - abs($currentBalance))
+                    : null,
+            ]];
+        });
+
         [$inicio, $mes] = $this->periodo($request->query('mes'));
         $fim = $inicio->copy()->endOfMonth();
 
@@ -133,7 +148,7 @@ class DashboardController extends Controller
             'inicio', 'mes', 'movimentos', 'movimentosVisiveis', 'movimentosIniciais', 'categorias', 'categoriasDespesa',
             'categoriasReceita', 'expenseCategoryBehaviors', 'filtroTipo', 'filtroCategoria',
             'totalDespesas', 'totalReceitas', 'availableBalance', 'pendingPaymentTotal', 'pendingPaymentCount', 'totalMovimentos', 'totalDespesasFiltradas', 'totalReceitasFiltradas', 'limit'
-        ))->with('moeda', $user->currency)->with('accounts', $accounts);
+        ))->with('moeda', $user->currency)->with('accounts', $accounts)->with('accountBalances', $accountBalances);
     }
 
     public function paginaMovimentos(Request $request, AccountBalanceService $balances, CardInvoiceService $invoices)
