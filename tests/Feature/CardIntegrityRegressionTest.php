@@ -450,4 +450,29 @@ class CardIntegrityRegressionTest extends TestCase
             ->assertDontSee('<details class="invoice-details', false);
     }
 
+    public function test_invoice_page_exposes_cycle_and_payment_statuses_independently(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->bank($user);
+        $card = $this->card($user, 'Cartão com fatura');
+        $this->purchase($user, $card, '100.00');
+        $invoice = $user->faturas()->firstOrFail();
+
+        $open = app(CardInvoiceService::class)->listInvoices($user)->items()[0];
+        $this->assertSame('open', $open->cycle_status);
+        $this->assertSame('unpaid', $open->payment_status);
+
+        app(CardInvoiceService::class)->pay($user, $invoice, $bank->id, '2026-11-17', '25.00');
+        $partial = app(CardInvoiceService::class)->listInvoices($user)->items()[0];
+        $this->assertSame('open', $partial->cycle_status);
+        $this->assertSame('partial', $partial->payment_status);
+
+        $invoice->update(['status' => 'closed', 'closed_at' => now()]);
+        $closed = app(CardInvoiceService::class)->listInvoices($user)->items()[0];
+        $this->assertSame('closed', $closed->cycle_status);
+        $this->assertSame('partial', $closed->payment_status);
+
+        $this->assertSame('partial', $closed->display_status);
+    }
+
 }
