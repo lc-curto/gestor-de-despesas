@@ -386,11 +386,11 @@
      details.append(name,due);row.append(details,amount);list.append(row);
    });
  }
- function openDay(date,filter='all'){
-   activeDate=date;activeFilter=filter;const data=dayData(date);if(!data)return;
+ function openDay(date){
+   activeDate=date;activeFilter='all';const data=dayData(date);if(!data)return;
    document.getElementById('routeDayTitle').textContent=dateLabel(date);
    document.getElementById('routeDayBalanceValue').textContent=fmt(data.balance);
-   document.querySelectorAll('[data-day-filter]').forEach(b=>b.classList.toggle('active',b.dataset.dayFilter===filter));
+   document.querySelectorAll('[data-day-filter]').forEach(b=>b.classList.toggle('active',b.dataset.dayFilter==='all'));
    renderOverdueItems();renderDayItems(data);dayModal.show();
  }
  function renderDayItems(data){
@@ -418,7 +418,7 @@
    });
  }
  document.querySelectorAll('[data-day-filter]').forEach(b=>b.addEventListener('click',()=>{activeFilter=b.dataset.dayFilter;document.querySelectorAll('[data-day-filter]').forEach(x=>x.classList.toggle('active',x===b));renderDayItems(dayData(activeDate))}));
- root.querySelectorAll('[data-date]').forEach(b=>b.addEventListener('click',()=>openDay(b.dataset.date,b.dataset.filter==='income'?'income':b.dataset.filter==='balance'?'all':b.dataset.filter||'all')));
+ root.querySelectorAll('[data-date]').forEach(b=>b.addEventListener('click',()=>openDay(b.dataset.date)));
  function openMovementDetail(item){
    activeMovement=item;document.getElementById('routeMovementDetailTitle').textContent=item.description;
    document.getElementById('routeMovementKind').textContent=movementKind(item);
