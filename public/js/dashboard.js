@@ -563,7 +563,28 @@
                 details.append(dueLine);
             }
         }
-        details.append(badges);
+        const statusLine = document.createElement('div');
+        statusLine.className = 'small text-secondary d-flex flex-wrap align-items-center gap-2 mt-1';
+        const statusLabels = {
+            settled: { text: 'Pago', className: 'text-success' },
+            partial: { text: 'Parcialmente pago', className: 'text-info-emphasis' },
+            partially_settled: { text: 'Parcialmente pago', className: 'text-info-emphasis' },
+            pending: { text: 'Pendente', className: 'text-secondary' }
+        };
+        const status = statusLabels[item.movement_status] || null;
+        if (status) {
+            const statusText = document.createElement('span');
+            statusText.className = status.className;
+            statusText.textContent = status.text;
+            statusLine.append(statusText);
+        }
+        if (item.recurrence_id) {
+            const recurrence = document.createElement('span');
+            recurrence.className = 'text-body-tertiary d-inline-flex align-items-center gap-1';
+            recurrence.innerHTML = '<i data-lucide="repeat" aria-hidden="true"></i><span>Recorrente</span>';
+            statusLine.append(recurrence);
+        }
+        if (statusLine.childElementCount) details.append(statusLine);
         info.append(icon, details);
 
         const actions = document.createElement('div');
