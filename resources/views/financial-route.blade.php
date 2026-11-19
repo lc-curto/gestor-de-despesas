@@ -331,7 +331,8 @@
  const urls={store:root.dataset.storeUrl,update:root.dataset.updateUrl,remove:root.dataset.deleteUrl};
  const modal=id=>bootstrap.Modal.getOrCreateInstance(document.getElementById(id));
  const dayModal=modal('routeDayModal'), movementModal=modal('routeMovementModal'), detailModal=modal('routeMovementDetailModal'), confirmModal=modal('routeConfirmModal');
- let activeDate=root.dataset.today, activeFilter='all', activeMovement=null, editId=null, confirmCallback=null, mode={{ $mode }}, month={{ Illuminate\Support\Js::from($month) }};
+ const detailElement=document.getElementById('routeMovementDetailModal'), movementElement=document.getElementById('routeMovementModal'), confirmElement=document.getElementById('routeConfirmModal');
+ let activeDate=root.dataset.today, activeFilter='all', activeMovement=null, editId=null, confirmCallback=null, returnToRouteDetails=false, routeDetailsNext=''; mode={{ $mode }}, month={{ Illuminate\Support\Js::from($month) }};
  const form=document.getElementById('routeMovementForm');
  const fmt=value=>new Intl.NumberFormat('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2}).format(value)+' '+({EUR:'€',USD:'$',GBP:'£',BRL:'R$'}[currency]||currency);
  const dateLabel=value=>new Intl.DateTimeFormat('pt-PT',{day:'2-digit',month:'long',year:'numeric'}).format(new Date(value+'T12:00:00'));
@@ -351,7 +352,7 @@
  if(window.location.hash==='#route-today'){requestAnimationFrame(()=>document.querySelector('[data-date="'+root.dataset.today+'"]')?.scrollIntoView({behavior:'smooth',block:'center'}));window.history.replaceState(null,'',window.location.pathname+window.location.search);}
  document.getElementById('routeNewMovement').addEventListener('click',()=>openForm());
  document.getElementById('routeAddFromDay').addEventListener('click',()=>{dayModal.hide();openForm(activeDate)});
- function openForm(date=activeDate,movement=null){
+ function openForm(date=activeDate,movement=null,show=true){
    if(movement&&!canEditMovement(movement))return;
    editId=movement?.id||null;form.reset();document.getElementById('routeMovementTitle').textContent=editId?'Editar movimento':'Novo movimento';
    document.getElementById('routeDate').value=movement?.date||date;document.getElementById('routeDescription').value=movement?.description||'';
@@ -366,7 +367,7 @@
    form.querySelector('[name="route_type"][value="'+type+'"]').checked=true;
    form.querySelectorAll('[name="route_type"]').forEach(radio=>radio.disabled=!!movement);
    document.getElementById('routeFormError').textContent='';
-   movementModal.show();
+   if(show)movementModal.show();
  }
  function renderOverdueItems(){
    const section=document.getElementById('routeOverdueSection');
@@ -436,7 +437,7 @@
    deleteButton.textContent=item.recurrence_id?'Eliminar ocorrência':'Eliminar';
    detailModal.show();
  }
- document.getElementById('routeEditMovement').addEventListener('click',()=>{if(!activeMovement||!canEditMovement(activeMovement))return;detailModal.hide();openForm(activeMovement.date,activeMovement)});
+ document.getElementById('routeEditMovement').addEventListener('click',()=>{if(!activeMovement||!canEditMovement(activeMovement))return;returnToRouteDetails=true;routeDetailsNext='edit';openForm(activeMovement.date,activeMovement,false);detailModal.hide()});
  document.getElementById('routeDeleteMovement').addEventListener('click',()=>{
    const item=activeMovement;const recurring=!!item.recurrence_id;
    document.getElementById('routeConfirmTitle').textContent=recurring?'Eliminar ocorrência?':'Eliminar movimento?';
@@ -444,9 +445,12 @@
    document.getElementById('routeConfirmHint').hidden=false;
    document.getElementById('routeConfirmAction').textContent='Eliminar';
    confirmCallback=async()=>{const endpoint=urls.remove+'/'+item.id;const response=await fetch(endpoint,{method:'DELETE',headers:{'Accept':'application/json','X-CSRF-TOKEN':csrf}});const json=await response.json();if(!response.ok)throw new Error(json.message||'Não foi possível concluir a operação.');window.location.reload()};
-   detailModal.hide();confirmModal.show();
+   returnToRouteDetails=true;routeDetailsNext='delete';detailModal.hide();
  });
- document.getElementById('routeConfirmAction').addEventListener('click',async()=>{try{if(confirmCallback)await confirmCallback()}catch(e){document.getElementById('routeConfirmText').textContent=e.message;document.getElementById('routeConfirmHint').hidden=true} });
+ detailElement.addEventListener('hidden.bs.modal',()=>{if(!returnToRouteDetails)return;if(routeDetailsNext==='delete')confirmModal.show();else if(routeDetailsNext==='edit')movementModal.show()});
+ movementElement.addEventListener('hidden.bs.modal',()=>{if(returnToRouteDetails){returnToRouteDetails=false;routeDetailsNext='';detailModal.show()}});
+ confirmElement.addEventListener('hidden.bs.modal',()=>{if(returnToRouteDetails){returnToRouteDetails=false;routeDetailsNext='';detailModal.show()}});
+ document.getElementById('routeConfirmAction').addEventListener('click',async()=>{try{if(confirmCallback){returnToRouteDetails=false;routeDetailsNext='';await confirmCallback()}}catch(e){returnToRouteDetails=true;routeDetailsNext='delete';document.getElementById('routeConfirmText').textContent=e.message;document.getElementById('routeConfirmHint').hidden=true} });
  form.querySelectorAll('[name="route_type"]').forEach(radio=>radio.addEventListener('change',()=>{const type=radio.value==='income'?'receita':'despesa';form.querySelectorAll('#routeCategory option[data-type]').forEach(option=>{option.hidden=option.dataset.type!==type});if(document.getElementById('routeCategory').selectedOptions[0]?.hidden)document.getElementById('routeCategory').value=''}));
    form.addEventListener('submit',async e=>{
    e.preventDefault();const data=new FormData(form);const selected=form.querySelector('[name="route_type"]:checked')?.value||data.get('route_type');
