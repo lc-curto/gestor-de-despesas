@@ -39,6 +39,10 @@
     const editorPanel = document.getElementById('recordEditorPanel');
     const editorCard = document.getElementById('movementEntryCard');
     const editorModalElement = document.getElementById('movementEntryModal');
+    // O modal fica diretamente no body para não herdar a largura/transformação de colunas ou contentores da página.
+    if (editorModalElement && editorModalElement.parentElement !== document.body) {
+        document.body.appendChild(editorModalElement);
+    }
     const editorModal = editorModalElement ? bootstrap.Modal.getOrCreateInstance(editorModalElement) : null;
     const paymentFields = document.getElementById('dashboardPaymentFields');
     const commitmentOptions = document.getElementById('dashboardCommitmentOptions');
