@@ -65,7 +65,7 @@ class FinanceFlowTest extends TestCase
             ->where('legacy_id', $legacy->id)
             ->firstOrFail();
 
-        app(\\App\\Services\\Financial\\FinancialMovementService::class)->settle($user, $movement, [
+        app(\App\Services\Financial\FinancialMovementService::class)->settle($user, $movement, [
             'source_account_id' => $accountId,
             'amount' => '40.00',
             'movement_date' => '2026-11-19',
