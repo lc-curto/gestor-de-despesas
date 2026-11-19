@@ -33,7 +33,7 @@ const markup = `<!doctype html><meta name="csrf-token" content="test-token">
  <h2 id="movementDetailsTitle"></h2><span id="movementDetailsName"></span><span id="movementDetailsType"></span><span id="movementDetailsStatus"></span>
  <span id="movementDetailsAmount"></span><span id="movementDetailsPaid"></span><span id="movementDetailsPending"></span>
  <div id="movementDetailsProgressWrap"><div id="movementDetailsProgress"></div></div><span id="movementDetailsProgressLabel"></span>
- <div id="movementDetailsPaidLine"></div><div id="movementDetailsPendingLine"></div><div id="movementDetailsPaymentHeading"></div>
+ <div id="movementDetailsPaidLine"></div><div id="movementDetailsPendingLine"></div><div id="movementDetailsPaymentHeading" hidden></div>
  <span id="movementDetailsCategory"></span><span id="movementDetailsDate"></span><span id="movementDetailsKind"></span>
  <button id="movementDetailsSettle"></button><button id="movementDetailsEdit"></button><button id="movementDetailsDelete"></button>
 </div>
@@ -229,6 +229,11 @@ const existingMovement = {
     description: 'Despesa de teste', amount: '90.50', currency: 'EUR', category: 'casa-id',
     data_movimento: '2026-11-17', account_id: 'account-id', movement_status: 'pending',
 };
+
+test('modal de novo movimento mantém largura integral no mobile para despesa e receita', () => {
+    const shell = readFileSync(new URL('../../public/css/app-shell.css', import.meta.url), 'utf8');
+    assert.match(shell, /#movementEntryModal\\s+\\.movement-entry-dialog\\s*\\{[^}]*width:\\s*min\\(calc\\(100%\\s*-\\s*1rem\\),\\s*34rem\\)/s);
+});
 
 test('a vista usa entradas textuais com teclado decimal para todos os valores monetários de Movimentos', () => {
     const blade = readFileSync(new URL('../../resources/views/movements.blade.php', import.meta.url), 'utf8');
