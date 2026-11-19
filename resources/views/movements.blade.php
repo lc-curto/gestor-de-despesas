@@ -431,6 +431,61 @@
 
 
 
+<div class="modal fade" id="movementDetailsModal" tabindex="-1" aria-labelledby="movementDetailsTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h2 class="modal-title h5 fw-bold" id="movementDetailsTitle">Detalhes do movimento</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="expense-icon flex-shrink-0" aria-hidden="true"><i data-lucide="wallet"></i></div>
+                    <div class="min-w-0 flex-grow-1">
+                        <h3 class="h6 fw-semibold mb-1 text-break" id="movementDetailsName">Movimento</h3>
+                        <p class="small text-secondary mb-0" id="movementDetailsType">Despesa</p>
+                    </div>
+                    <span class="badge text-bg-secondary" id="movementDetailsStatus">Pendente</span>
+                </div>
+                <div class="mb-3">
+                    <div class="h3 fw-bold mb-0" id="movementDetailsAmount">0,00 €</div>
+                    <div class="small text-secondary">Valor total do movimento</div>
+                </div>
+                <hr>
+                <section id="movementDetailsPaymentHeading" class="mb-3" hidden>
+                    <h3 class="small fw-semibold mb-3">Estado do pagamento</h3>
+                    <div class="d-flex justify-content-between gap-3 mb-2">
+                        <div id="movementDetailsPaidLine"><div class="small text-secondary">Valor pago</div><strong id="movementDetailsPaid">0,00 €</strong></div>
+                        <div id="movementDetailsPendingLine" class="text-end"><div class="small text-secondary">Valor pendente</div><strong id="movementDetailsPending">0,00 €</strong></div>
+                    </div>
+                    <div id="movementDetailsProgressWrap" class="progress rounded-pill" style="height:8px" hidden>
+                        <div id="movementDetailsProgress" class="progress-bar bg-success" role="progressbar" aria-label="Percentagem paga" aria-valuemin="0" aria-valuemax="100" style="width:0%"></div>
+                    </div>
+                    <div class="small text-secondary mt-2" id="movementDetailsProgressLabel"></div>
+                </section>
+                <hr>
+                <h3 class="small fw-semibold mb-3">Informações</h3>
+                <div class="d-flex justify-content-between gap-3 mb-2"><span class="small text-secondary">Data</span><span class="small fw-medium" id="movementDetailsDate">—</span></div>
+                <div class="d-flex justify-content-between gap-3 mb-2"><span class="small text-secondary">Categoria</span><span class="small fw-medium" id="movementDetailsCategory">—</span></div>
+                <div class="d-flex justify-content-between gap-3"><span class="small text-secondary">Tipo</span><span class="small fw-medium" id="movementDetailsKind">—</span></div>
+                <hr>
+                <h3 class="small fw-semibold mb-3">Ações</h3>
+                <div class="list-group list-group-flush border rounded-3 overflow-hidden">
+                    <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3" id="movementDetailsSettle">
+                        <i data-lucide="check-circle" class="text-success" aria-hidden="true"></i><span>Registar pagamento</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3" id="movementDetailsEdit">
+                        <i data-lucide="pencil" aria-hidden="true"></i><span>Editar movimento</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3 text-danger" id="movementDetailsDelete">
+                        <i data-lucide="trash-2" aria-hidden="true"></i><span>Excluir movimento</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="settleMovementModal" tabindex="-1" aria-labelledby="settleMovementTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow rounded-4">
