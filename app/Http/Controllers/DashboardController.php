@@ -122,6 +122,7 @@ class DashboardController extends Controller
                 'id' => $item->id,
                 'financial_movement_id' => $item->financial_movement_id,
                 'is_invoice_payment' => (bool) ($item->is_invoice_payment ?? false),
+                'is_settlement_event' => (bool) ($item->is_settlement_event ?? false),
                 'tipo' => $item->tipo,
                 'description' => $item->description,
                 'amount' => $item->amount,
