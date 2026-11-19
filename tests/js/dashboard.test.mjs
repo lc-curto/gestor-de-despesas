@@ -37,7 +37,7 @@ const markup = `<!doctype html><meta name="csrf-token" content="test-token">
  <button id="settleMovementSubmit" type="submit"></button>
 </form></div>
 <div id="deleteMovementModal"><form id="deleteMovementForm">
- <div id="deleteMovementDescription"></div><div id="deleteMovementNote" hidden></div>
+ <h2 id="deleteMovementTitle"></h2><div id="deleteMovementDescription"></div><div id="deleteMovementNote" hidden></div>
  <div id="deleteSingleConfirmation"></div><div id="deleteRecurringOptions" hidden>
   <label><input id="deleteScopeOnly" type="radio"></label><label><input id="deleteScopeFuture" type="radio"></label>
  </div><button id="deleteMovementSubmit" type="submit"></button>
@@ -301,7 +301,7 @@ test('despesa simples mostra confirmação única, sem opções de recorrência'
     ui.element('expensesList').querySelector('[data-movement-action="delete"]').click();
     assert.equal(ui.element('deleteRecurringOptions').hidden, true);
     assert.equal(ui.element('deleteSingleConfirmation').hidden, false);
-    assert.equal(ui.element('deleteMovementTitle')?.textContent, undefined);
+    assert.equal(ui.element('deleteMovementTitle').textContent, 'Excluir movimento');
     ui.dom.window.close();
 });
 
