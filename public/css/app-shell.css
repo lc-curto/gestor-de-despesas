@@ -1658,3 +1658,16 @@ body.sidebar-collapsed .app-main { margin-left:var(--sidebar-collapsed-width); }
     .mobile-bottom-bar { display:grid !important; padding-bottom:calc(.35rem + env(safe-area-inset-bottom)); }
     .mobile-bottom-link { min-width:0; touch-action:manipulation; }
 }
+
+/* Linhas de movimentos: a área livre também abre os detalhes. */
+.history-card .expense-item[data-movement-id] {
+    cursor: pointer;
+    transition: background-color .15s ease;
+}
+.history-card .expense-item[data-movement-id]:hover {
+    background-color: var(--bs-tertiary-bg);
+}
+.history-card .expense-item[data-movement-id]:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: -2px;
+}
