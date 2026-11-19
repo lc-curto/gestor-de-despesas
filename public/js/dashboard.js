@@ -1151,15 +1151,24 @@
     function runMovementDetailsAction(action) {
         if (!actionMovement) return;
         const row = actionMovement;
-        movementDetailsModal?.hide();
-        if (action === 'settle') {
-            // Wait for the details modal to finish its hide transition before opening the payment modal.
-            movementDetailsModalElement?.addEventListener('hidden.bs.modal', () => openSettleModal(row), { once: true });
-        } else if (action === 'delete') {
-            movementDetailsModalElement?.addEventListener('hidden.bs.modal', () => openDeleteModal(row), { once: true });
-        } else if (action === 'edit') {
-            movementDetailsModalElement?.addEventListener('hidden.bs.modal', () => startEdit(row), { once: true });
+        const actions = {
+            settle: () => openSettleModal(row),
+            delete: () => openDeleteModal(row),
+            edit: () => startEdit(row),
+        };
+        const nextAction = actions[action];
+        if (!nextAction) return;
+
+        // Regista antes de hide(): o Bootstrap emite hidden após a transição,
+        // mas implementações sem transição (e os testes) podem emiti-lo imediatamente.
+        if (movementDetailsModalElement?.classList.contains('show')) {
+            movementDetailsModalElement.addEventListener('hidden.bs.modal', nextAction, { once: true });
+            movementDetailsModal?.hide();
+            return;
         }
+
+        movementDetailsModal?.hide();
+        nextAction();
     }
 
     function openSettleModal(row) {
@@ -1189,7 +1198,7 @@
 
         document.getElementById('deleteMovementDescription').textContent = row.dataset.description || '';
         document.getElementById('deleteRecurringOptions').hidden = !recurring;
-        document.getElementById('deleteSingleConfirmation').hidden = true;
+        document.getElementById('deleteSingleConfirmation').hidden = recurring;
         document.getElementById('deleteMovementTitle').textContent = recurring ? 'Excluir recorrência' : 'Excluir movimento';
 
         // Reinicia sempre a seleção: o estado anterior do modal não pode influenciar esta exclusão.
