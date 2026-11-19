@@ -424,7 +424,7 @@
                     </div>
                     <div>
                         <label for="settleMovementAccount" class="form-label fw-semibold" id="settleMovementAccountLabel">Conta</label>
-                        <select id="settleMovementAccount" name="account_id" class="form-select account-picker-native" required>
+                        <select id="settleMovementAccount" name="account_id" class="form-select account-picker-native">
                             <option value="">Selecionar conta</option>
                             @if ($accounts->where('type', 'bank')->isNotEmpty())
                                 <optgroup label="Contas bancárias">
