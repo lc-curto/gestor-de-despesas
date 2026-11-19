@@ -89,23 +89,16 @@
                             </div>
                             <div class="min-w-0">
                                 <h3 class="h6 fw-semibold mb-1 text-break">{{ $movement->description }}</h3>
-                                <div class="movement-badges d-flex flex-wrap align-items-center gap-1 mt-1">
-                                    @if ($movement->status === 'settled')
-                                        <span class="badge rounded-pill text-bg-success">Liquidado</span>
-                                    @elseif ($movement->status === 'pending')
-                                        <span class="badge rounded-pill text-bg-warning">Pendente</span>
-                                    @elseif ($movement->status === 'void')
-                                        <span class="badge rounded-pill text-bg-secondary">Anulado</span>
-                                    @endif
-                                </div>
-                                <p class="small text-secondary mb-0">{{ $category }} · {{ $movement->movement_date->format('d/m/Y') }}</p>
+                                <p class="small text-secondary mb-1">{{ $category }} · {{ $movement->movement_date->format('d/m/Y') }}</p>
+                                @if ($movement->status === 'pending')
+                                    <span class="badge rounded-pill text-bg-warning">Pendente</span>
+                                @elseif ($movement->status === 'void')
+                                    <span class="badge rounded-pill text-bg-secondary">Anulado</span>
+                                @endif
                                 @if ($isTransfer)
-                                    <div class="movement-transfer-route {{ $isCurrentAccountSource ? 'is-outgoing' : 'is-incoming' }}">
-                                        <span class="movement-transfer-direction">{{ $isCurrentAccountSource ? 'Saída' : 'Entrada' }}</span>
-                                        <span>{{ $movement->contaOrigem?->name ?? 'Conta encerrada' }}</span>
-                                        <i data-lucide="arrow-right" aria-hidden="true"></i>
-                                        <span>{{ $movement->contaDestino?->name ?? 'Conta encerrada' }}</span>
-                                    </div>
+                                    <p class="small text-secondary mb-0 text-truncate movement-transfer-counterpart">
+                                        {{ $isCurrentAccountSource ? 'Para' : 'De' }}: {{ $isCurrentAccountSource ? ($movement->contaDestino?->name ?? 'Conta encerrada') : ($movement->contaOrigem?->name ?? 'Conta encerrada') }}
+                                    </p>
                                 @endif
                             </div>
                         </div>
@@ -181,11 +174,7 @@ document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', as
 .account-movement-item .expense-icon { background:rgba(220,53,69,.1); color:var(--bs-danger); }
 .account-movement-item .income-icon { background:rgba(25,135,84,.1); color:var(--bs-success); }
 .account-movement-item .movement-value { font-size:1rem; }
-.movement-transfer-route { display:flex; align-items:center; flex-wrap:wrap; gap:.35rem; color:var(--bs-secondary-color); font-size:.75rem; }
-.movement-transfer-route svg { width:13px; height:13px; }
-.movement-transfer-direction { padding:.12rem .42rem; border-radius:999px; font-size:.68rem; font-weight:700; }
-.movement-transfer-route.is-outgoing .movement-transfer-direction { background:rgba(220,53,69,.1); color:var(--bs-danger); }
-.movement-transfer-route.is-incoming .movement-transfer-direction { background:rgba(25,135,84,.1); color:var(--bs-success); }
+.movement-transfer-counterpart { max-width:100%; font-size:.78rem; }
 @media (max-width:640px) {
     .account-history-balance { text-align:left; }
     .account-movement-item { align-items:flex-start !important; flex-wrap:wrap; }
