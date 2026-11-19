@@ -59,7 +59,7 @@ class AccountBalanceService
         $availableCents = $this->toCents($this->balance($account));
         if ($debitCents > $availableCents) {
             throw ValidationException::withMessages([
-                'amount' => 'Saldo insuficiente. Ativa a permissão de saldo negativo nas definições da conta para permitir esta operação.',
+                'amount' => 'Saldo insuficiente. Faltam '.number_format(($debitCents - $availableCents) / 100, 2, ',', '.').' '.$account->currency.'. Ativa a permissão de saldo negativo nas definições da conta ou reduz o valor.',
             ]);
         }
     }

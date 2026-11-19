@@ -38,6 +38,21 @@ class FinancialCoreServiceTest extends TestCase
         ]);
     }
 
+    public function test_insufficient_balance_feedback_includes_the_missing_amount_and_next_action(): void
+    {
+        $user = User::factory()->create(['currency' => 'EUR']);
+        $account = $this->account($user, 'Conta à ordem', '10.00', false);
+
+        try {
+            app(AccountBalanceService::class)->assertCanDebit($account, '11.00');
+            $this->fail('O débito deveria ser rejeitado.');
+        } catch (ValidationException $exception) {
+            $message = $exception->errors()['amount'][0];
+            $this->assertStringContainsString('Faltam 1,00 EUR', $message);
+            $this->assertStringContainsString('Ativa a permissão de saldo negativo', $message);
+        }
+    }
+
     public function test_card_purchase_creates_invoice_and_invoice_payment_is_a_transfer(): void
     {
         $user = User::factory()->create();
@@ -243,6 +258,11 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('90.00', (string) $debt->parcelas->first()->amount);
         $this->assertSame('pending', $debt->parcelas->first()->status);
         $this->assertDatabaseCount('movimentos', 1);
+        $this->assertDatabaseHas('movimentos', [
+            'debt_id' => $debt->id,
+            'installment_id' => $debt->parcelas->first()->id,
+            'description' => 'Fatura de eletricidade · A prazo',
+        ]);
     }
 
     public function test_installment_cannot_be_settled_using_a_credit_card(): void

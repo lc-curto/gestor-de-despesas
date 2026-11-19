@@ -36,6 +36,12 @@ const markup = `<!doctype html><meta name="csrf-token" content="test-token">
  <label id="settleMovementAccountLabel"></label><select id="settleMovementAccount"><option value="account-id">Conta</option></select>
  <button id="settleMovementSubmit" type="submit"></button>
 </form></div>
+<div id="deleteMovementModal"><form id="deleteMovementForm">
+ <h2 id="deleteMovementTitle"></h2><div id="deleteMovementDescription"></div><div id="deleteMovementNote" hidden></div>
+ <div id="deleteSingleConfirmation"></div><div id="deleteRecurringOptions" hidden>
+  <label><input id="deleteScopeOnly" type="radio"></label><label><input id="deleteScopeFuture" type="radio"></label>
+ </div><button id="deleteMovementSubmit" type="submit"></button>
+</form></div>
 <button id="expenseTypeButton"></button><button id="incomeTypeButton"></button><h2 id="recordTitle"></h2>
 <input type="month" id="periodMonth" value="2026-11"><div id="expensesList"></div>
 <div id="totalAmount" data-total="0"></div><div id="totalIncome" data-total="0"></div>`;
@@ -181,6 +187,35 @@ test('rejeição de parcelamento por cartão orienta para Cartões e mantém mod
     ui.dom.window.close();
 });
 
+test('método efetivo antigo é limpo quando a despesa volta a Pendente', async () => {
+    let sent;
+    const ui = setup(async (_url, options = {}) => {
+        if (options.method === 'POST') { sent = options.body; return jsonResponse(200, { ok: true }); }
+        return jsonResponse(200, { data: [] });
+    });
+    ui.element('dashboardInstallmentsEnabled').checked = false;
+    ui.element('dashboardDueDateEnabled').checked = true;
+    ui.element('dashboardDueDateEnabled').dispatchEvent(new ui.window.Event('change'));
+    ui.form.querySelector('[name="paid_now"][value="1"]').checked = true;
+    ui.form.querySelector('[name="paid_now"][value="1"]').dispatchEvent(new ui.window.Event('change'));
+    ui.element('movementAccount').value = 'account-id';
+    ui.element('dashboardActualPaymentMethod').value = 'transfer';
+    ui.element('dashboardActualPaymentMethod').dispatchEvent(new ui.window.Event('change'));
+    assert.equal(ui.element('dashboardActualPaymentMethod').disabled, false);
+
+    ui.form.querySelector('[name="paid_now"][value="0"]').checked = true;
+    ui.form.querySelector('[name="paid_now"][value="0"]').dispatchEvent(new ui.window.Event('change'));
+    ui.element('dashboardDueDateEnabled').checked = true;
+    ui.element('dashboardDueDateEnabled').dispatchEvent(new ui.window.Event('change'));
+    assert.equal(ui.element('dashboardActualPaymentMethod').disabled, true);
+    assert.equal(ui.element('dashboardActualPaymentMethod').value, '');
+    ui.submit();
+    await flush();
+    assert.equal(sent.has('actual_payment_method'), false);
+    assert.equal(sent.get('payment_condition'), 'deferred');
+    ui.dom.window.close();
+});
+
 const existingMovement = {
     id: 'movement-id', financial_movement_id: 'movement-id', tipo: 'despesa',
     description: 'Despesa de teste', amount: '90.50', currency: 'EUR', category: 'casa-id',
@@ -244,6 +279,34 @@ test('formatos ambíguos, precisão excessiva e valores fora dos limites são re
             ui.dom.window.close();
         });
     }
+});
+
+test('movimento parcialmente pago mostra os valores liquidados e pendentes', () => {
+    const partial = {
+        ...existingMovement,
+        amount: '120.00',
+        remaining_amount: '80.00',
+        movement_status: 'partial',
+    };
+    const ui = setup(async () => jsonResponse(200, { data: [] }), [partial]);
+    const row = ui.element('expensesList').querySelector('[data-movement-id]');
+    assert.ok(row);
+    assert.match(row.textContent, /Pago: 40,00/);
+    assert.match(row.textContent, /Pendente: 80,00/);
+    const progress = row.querySelector('[role="progressbar"]');
+    assert.ok(progress);
+    assert.equal(progress.getAttribute('aria-valuenow'), '33');
+    assert.equal(progress.style.height, '3px');
+    ui.dom.window.close();
+});
+
+test('despesa simples mostra confirmação única, sem opções de recorrência', () => {
+    const ui = setup(async () => jsonResponse(200, { data: [] }), [existingMovement]);
+    ui.element('expensesList').querySelector('[data-movement-action="delete"]').click();
+    assert.equal(ui.element('deleteRecurringOptions').hidden, true);
+    assert.equal(ui.element('deleteSingleConfirmation').hidden, false);
+    assert.equal(ui.element('deleteMovementTitle').textContent, 'Excluir movimento');
+    ui.dom.window.close();
 });
 
 test('edição envia ao backend o valor com vírgula convertido em decimal canónico', async () => {

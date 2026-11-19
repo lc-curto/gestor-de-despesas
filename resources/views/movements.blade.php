@@ -344,9 +344,9 @@
                             data-movement-id="{{ $movimento->id }}" data-movement-type="{{ $movimento->tipo }}"
                             data-edit-url="{{ route($isExpense ? 'despesas.update' : 'receitas.update', $movimento->id) }}"
                             data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}"
-                            data-amount="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}"
+                            data-amount="{{ $movimento->amount }}" data-remaining-amount="{{ $movimento->remaining_amount ?? $movimento->amount }}" data-currency="{{ $movimento->currency }}"
                             data-category-id="{{ $movimento->category }}" data-account-id="{{ $movimento->account_id }}"
-                            data-movement-status="{{ $movimento->movement_status }}" data-expense-behavior="{{ $movimento->expense_behavior ?? 'variable' }}" data-recurrence-id="{{ $movimento->recurrence_id }}" data-financial-movement-id="{{ $movimento->financial_movement_id }}">
+                            data-movement-status="{{ $movimento->movement_status }}" data-expense-behavior="{{ $movimento->expense_behavior ?? 'variable' }}" data-recurrence-id="{{ $movimento->recurrence_id }}" data-recurrence-frequency="{{ $movimento->recurrence_frequency }}" data-financial-movement-id="{{ $movimento->financial_movement_id }}">
                             <div class="d-flex align-items-center gap-3 min-w-0">
                                 <div class="expense-icon flex-shrink-0" style="--category-color: {{ $movimento->category_color ?? '#635BFF' }}" aria-hidden="true">
                                     <i data-lucide="{{ $movimento->category_icon ?? 'tag' }}"></i>
@@ -363,6 +363,10 @@
                                         @endif
                                         @if($movimento->recurrence_id)<span class="badge rounded-pill text-bg-light border text-secondary">Recorrente</span>@endif
                                     </div>
+                                    @if (in_array($movimento->movement_status, ['partial', 'partially_settled'], true))
+                                        @php $valorPago = max(0, (float) $movimento->amount - (float) ($movimento->remaining_amount ?? $movimento->amount)); @endphp
+                                        <p class="small text-secondary mb-0">{{ number_format($valorPago, 2, ',', '.') }} {{ $moeda }} pago · {{ number_format((float) ($movimento->remaining_amount ?? 0), 2, ',', '.') }} {{ $moeda }} pendente</p>
+                                    @endif
                                     <p class="small text-secondary mb-0">{{ $categoriaLabel }} · {{ $dataMovimento->format('d/m/Y') }}</p>
                                 </div>
                             </div>

@@ -126,7 +126,10 @@ class FinanceController extends Controller
             throw ValidationException::withMessages(['payment_account_id' => 'Seleciona uma conta ativa, configurada e na moeda da tua conta.']);
         }
 
-        $paymentMethod = $data['actual_payment_method'] ?? null;
+        // O método efetivo só se aplica quando existe liquidação agora.
+        // Um valor residual num select oculto não pode invalidar uma obrigação pendente.
+        $hasEffectivePayment = in_array($data['paid_now'] ?? '0', ['1', 'partial'], true);
+        $paymentMethod = $hasEffectivePayment ? ($data['actual_payment_method'] ?? null) : null;
         if ($paymentMethod !== null && $paymentMethod !== '') {
             $allowedMethods = match ($account?->type) {
                 'bank' => ['debit', 'transfer', 'mbway', 'direct_debit'],
