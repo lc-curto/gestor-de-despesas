@@ -172,7 +172,7 @@
         const needsAssignedAccount = isPaid || Boolean(recurrence?.checked);
         if (settlementFields) settlementFields.hidden = !needsAssignedAccount;
         if (paymentMethodField) paymentMethodField.hidden = !isPaid;
-        if (accountField) accountField.required = needsAssignedAccount;
+        if (accountField) accountField.required = false; // A validação é feita no formulário, pois o select nativo está visualmente oculto.
         if (methodField) methodField.required = isPaid;
         if (accountLabel) accountLabel.textContent = isExpense ? 'De onde saiu o dinheiro?' : 'Para onde entrou o dinheiro?';
 
@@ -949,6 +949,10 @@
             showMovementError('Não é possível guardar movimentos sem ligação à internet.');
             return;
         }
+        if (document.getElementById('movementSettlementFields') && !document.getElementById('movementSettlementFields').hidden && !account.value) {
+            showMovementError('Seleciona a conta do movimento.');
+            return;
+        }
         if (!form.reportValidity()) return;
 
         const buttonText = saveButton.textContent;
@@ -1168,6 +1172,10 @@
         showSettleError('');
         if (!navigator.onLine) {
             showSettleError('Não é possível confirmar movimentos sem ligação à internet.');
+            return;
+        }
+        if (!document.getElementById('settleMovementAccount')?.value) {
+            showSettleError('Seleciona a conta do movimento.');
             return;
         }
         if (!settleForm.reportValidity()) return;
