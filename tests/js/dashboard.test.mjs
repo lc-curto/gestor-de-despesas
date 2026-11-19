@@ -454,6 +454,23 @@ test('cada movimento substitui os botões de ação por um único menu de detalh
     ui.dom.window.close();
 });
 
+test('clicar na linha do movimento abre detalhes sem exigir o clique nos três pontos', () => {
+    const ui = setup(async () => jsonResponse(200, { data: [] }), [existingMovement]);
+    const row = ui.element('expensesList').querySelector('[data-movement-id]');
+    const detailsModal = ui.window.bootstrap.Modal.getOrCreateInstance(ui.element('movementDetailsModal'));
+
+    assert.equal(row.tabIndex, 0);
+    row.querySelector('h3').dispatchEvent(new ui.window.MouseEvent('click', { bubbles: true }));
+    assert.equal(detailsModal.open, true);
+    assert.equal(ui.element('movementDetailsName').textContent, 'Despesa de teste');
+
+    detailsModal.hide();
+    row.focus();
+    row.dispatchEvent(new ui.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    assert.equal(detailsModal.open, true);
+    ui.dom.window.close();
+});
+
 test('modal de detalhes apresenta totais pagos e pendentes e mantém as ações correspondentes', () => {
     const partial = { ...existingMovement, amount: '120.00', remaining_amount: '80.00', movement_status: 'partial' };
     const ui = setup(async () => jsonResponse(200, { data: [] }), [partial]);
