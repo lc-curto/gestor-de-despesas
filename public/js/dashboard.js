@@ -467,11 +467,34 @@
         const remainingAmount = Number(item.remaining_amount ?? item.amount);
         const paidAmount = Math.max(0, originalAmount - remainingAmount);
         if ((item.movement_status === 'partial' || item.movement_status === 'partially_settled') && paidAmount > 0) {
-            const settlementSummary = document.createElement('p');
-            settlementSummary.className = 'small text-secondary mb-0';
-            settlementSummary.textContent = formatCurrency(paidAmount, item.currency || cfg.currency || 'EUR')
-                + ' pago · ' + formatCurrency(remainingAmount, item.currency || cfg.currency || 'EUR') + ' pendente';
-            details.append(settlementSummary);
+            const settlementSummary = document.createElement('div');
+            settlementSummary.className = 'small text-body-secondary d-flex justify-content-between gap-2 mb-0';
+            const paidLabel = document.createElement('span');
+            paidLabel.textContent = 'Pago: ' + formatCurrency(paidAmount, item.currency || cfg.currency || 'EUR');
+            const pendingLabel = document.createElement('span');
+            pendingLabel.textContent = 'Pendente: ' + formatCurrency(remainingAmount, item.currency || cfg.currency || 'EUR');
+            settlementSummary.append(paidLabel, pendingLabel);
+
+            const progress = document.createElement('div');
+            progress.className = 'settlement-progress-track rounded-pill mt-1';
+            progress.setAttribute('role', 'progressbar');
+            progress.setAttribute('aria-label', 'Percentagem do movimento paga');
+            progress.setAttribute('aria-valuemin', '0');
+            progress.setAttribute('aria-valuemax', '100');
+            const paidPercentage = originalAmount > 0
+                ? Math.min(100, Math.max(0, (paidAmount / originalAmount) * 100))
+                : 0;
+            progress.setAttribute('aria-valuenow', String(Math.round(paidPercentage)));
+            progress.style.height = '3px';
+            progress.style.backgroundColor = 'var(--bs-secondary-bg)';
+            progress.style.overflow = 'hidden';
+
+            const progressFill = document.createElement('div');
+            progressFill.className = 'settlement-progress-fill rounded-pill h-100';
+            progressFill.style.width = paidPercentage + '%';
+            progressFill.style.backgroundColor = 'var(--bs-success-border-subtle, #86b99a)';
+            progress.append(progressFill);
+            details.append(settlementSummary, progress);
         }
         if (isExpense && item.due_date) {
             const due = String(item.due_date).slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
