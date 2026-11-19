@@ -171,11 +171,20 @@ class CardInvoiceService
                 $invoice->setAttribute('total_amount', number_format($total, 2, '.', ''));
                 $invoice->setAttribute('paid_amount', number_format($paid, 2, '.', ''));
                 $invoice->setAttribute('remaining_amount', number_format($remaining, 2, '.', ''));
+                $cycleStatus = $invoice->closed_at || in_array($invoice->status, ['closed', 'paid', 'carried'], true)
+                    ? 'closed'
+                    : 'open';
+                $paymentStatus = $invoice->status === 'carried' ? 'carried'
+                    : ($remaining <= 0 ? 'paid'
+                        : ($invoice->due_date->lt(today()) ? 'overdue'
+                            : ($paid > 0 ? 'partial' : 'unpaid')));
+                $invoice->setAttribute('cycle_status', $cycleStatus);
+                $invoice->setAttribute('payment_status', $paymentStatus);
+                // Mantém o campo legado para consumidores existentes da API.
                 $invoice->setAttribute('display_status', $invoice->status === 'carried' ? 'carried'
                     : ($remaining <= 0 ? 'paid'
                         : ($invoice->due_date->lt(today()) ? 'overdue'
-                            : ($paid > 0 ? 'partial'
-                                : ($invoice->closed_at || $invoice->status === 'closed' ? 'closed' : 'open')))));
+                            : ($paid > 0 ? 'partial' : ($cycleStatus === 'closed' ? 'closed' : 'open')))));
 
                 return $invoice;
             });
