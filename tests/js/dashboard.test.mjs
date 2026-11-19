@@ -299,6 +299,12 @@ test('movimento parcialmente pago mostra os valores liquidados e pendentes', () 
     assert.ok(progress);
     assert.equal(progress.getAttribute('aria-valuenow'), '33');
     assert.equal(progress.style.height, '3px');
+    assert.equal(progress.parentElement, row);
+    assert.equal(row.classList.contains('expense-item--partial'), true);
+    assert.equal(row.classList.contains('flex-wrap'), true);
+    assert.equal(progress.style.flex, '0 0 calc(100% - 3rem)');
+    assert.equal(progress.style.width, 'calc(100% - 3rem)');
+    assert.equal(progress.style.marginLeft, '3rem');
     ui.dom.window.close();
 });
 
