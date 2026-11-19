@@ -29,7 +29,7 @@
                         <span class="badge {{ $card->status === 'active' && $card->is_operational ? 'text-bg-success' : ($card->status === 'suspended' ? 'text-bg-warning' : 'text-bg-secondary') }}">{{ $cardStatusLabel }}</span>
                     </div>
                     <div class="mt-4">
-                        <span class="small text-secondary d-block">Crédito disponível</span>
+                        <span class="small text-secondary d-block">Disponível</span>
                         <strong class="fs-3 text-body d-block">{{ number_format($card->available_limit,2,',','.') }} {{ $card->currency }}</strong>
                     </div>
                     <div class="progress mt-3" role="progressbar" aria-label="Percentagem do limite utilizado" aria-valuenow="{{ round($card->usage_percent) }}" aria-valuemin="0" aria-valuemax="100" style="height:8px">
