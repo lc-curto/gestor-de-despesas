@@ -53,6 +53,35 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
     }
 
 
+    public function test_settled_invoice_payment_cannot_be_deleted_directly(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->bank($user);
+        $card = $this->card($user);
+        $invoices = app(CardInvoiceService::class);
+        $purchase = $invoices->purchase($user, [
+            'account_id' => $card->id,
+            'description' => 'Compra de teste',
+            'amount' => '20.00',
+            'movement_date' => '2026-11-17',
+        ]);
+        $invoice = \\App\\Models\\Fatura::query()->whereKey($purchase->invoice_id)->firstOrFail();
+        $payment = $invoices->pay($user, $invoice, $bank->id, '2026-11-17', '20.00');
+
+        $this->actingAs($user)
+            ->deleteJson(route('financial.movements.destroy', $payment->id))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('movement');
+
+        $this->assertSame('settled', $payment->fresh()->status);
+        $this->assertSame('180.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+        $this->assertDatabaseMissing('deletion_operations', [
+            'user_id' => $user->id,
+            'root_entity_id' => $payment->id,
+            'status' => 'completed',
+        ]);
+    }
+
     public function test_another_user_cannot_delete_commitment_or_linked_movement(): void
     {
         $owner = User::factory()->create();
