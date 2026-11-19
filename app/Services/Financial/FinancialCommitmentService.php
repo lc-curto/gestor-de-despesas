@@ -64,7 +64,7 @@ class FinancialCommitmentService
                     $installment = ParcelaDivida::query()->where('user_id', $user->id)->where('debt_id', $debt->id)->where('installment_number', $i)->firstOrFail();
                     $this->movements->createPending($user, [
                         'type' => 'expense',
-                        'description' => $debt->name.' · Parcela '.$i.'/'.$count,
+                        'description' => $condition === 'installments' ? $debt->name.' · Parcela '.$i.'/'.$count : $debt->name.' · A prazo',
                         'amount' => number_format($amountCents / 100, 2, '.', ''),
                         'movement_date' => $installment->due_date,
                         'source_account_id' => $data['account_id'] ?? null,
