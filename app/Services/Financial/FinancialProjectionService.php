@@ -70,6 +70,7 @@ class FinancialProjectionService
 
         // Uma obrigação parcialmente liquidada projeta apenas o saldo não pago.
         $partiallySettled = $user->movimentos()
+            ->with('categoria:id,name')
             ->where('is_settlement_parent', true)
             ->whereNull('installment_id')
             ->whereNull('invoice_id')
@@ -79,6 +80,8 @@ class FinancialProjectionService
             ->where('movement_date', '>=', $rangeStart->toDateString())
             ->where('movement_date', '<', $rangeEndExclusive)
             ->get();
+        $displayItems = $items->values();
+
         foreach ($partiallySettled as $original) {
             $netSettled = $original->settlements()
                 ->where('status', 'settled')
@@ -88,6 +91,8 @@ class FinancialProjectionService
             if ($remaining <= 0) {
                 continue;
             }
+            // Mantém os eventos reais separados para os cálculos de caixa,
+            // mas prepara um único lançamento consolidado para a interface.
             $synthetic = $this->syntheticExpense(
                 'settlement-'.$original->id,
                 $original->description.' · Saldo pendente',
@@ -100,6 +105,30 @@ class FinancialProjectionService
             $synthetic->destination_account_id = $original->destination_account_id;
             $synthetic->setAttribute('projection_delta', $original->type === 'income' ? $remaining : -$remaining);
             $items->push($synthetic);
+
+            $summary = $this->syntheticExpense(
+                (string) $original->id,
+                $original->description,
+                (float) $original->amount,
+                $original->movement_date,
+                $original->expense_behavior ?? 'variable'
+            );
+            $summary->type = $original->type;
+            $summary->status = 'partial';
+            $summary->source_account_id = $original->source_account_id;
+            $summary->destination_account_id = $original->destination_account_id;
+            $summary->category_id = $original->category_id;
+            $summary->recurrence_id = $original->recurrence_id;
+            $summary->notes = $original->notes;
+            $summary->setRelation('categoria', $original->categoria);
+            $summary->setAttribute('paid_amount', $netSettled);
+            $summary->setAttribute('remaining_amount', $remaining);
+            $summary->setAttribute('is_partial_summary', true);
+            $summary->setAttribute('projection_delta', $original->type === 'income' ? $remaining : -$remaining);
+            $displayItems = $displayItems
+                ->reject(fn (Movimento $item) => (string) ($item->settles_movement_id ?? '') === (string) $original->id
+                    || (string) $item->id === 'settlement-'.$original->id)
+                ->push($summary);
         }
 
         $installments = $user->parcelasDivida()
@@ -241,6 +270,7 @@ class FinancialProjectionService
         return [
             'openingBalance' => round($openingBalance, 2),
             'movements' => $items->sortBy('movement_date')->values(),
+            'displayMovements' => $displayItems->sortBy('movement_date')->values(),
             'overdue' => $overdue->sortBy('movement_date')->values(),
         ];
     }
