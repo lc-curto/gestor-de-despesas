@@ -6,7 +6,7 @@
 <div class="app-content credit-cards-page">
     <header class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
         <div><h1 class="h2 fw-bold mb-1">Cartões</h1></div>
-        <div class="d-flex flex-wrap gap-2"><a href="{{ route('financial.invoices.page') }}" class="btn btn-outline-secondary"><i data-lucide="receipt" aria-hidden="true"></i><span class="ms-1">Faturas</span></a><button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#createCardModal"><i data-lucide="plus" aria-hidden="true"></i><span class="ms-1">Novo cartão</span></button></div>
+        <div class="d-flex flex-wrap gap-2"><button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#createCardModal"><i data-lucide="plus" aria-hidden="true"></i><span class="ms-1">Novo cartão</span></button></div>
     </header>
     <div id="cardsFeedback" class="alert d-none" role="status" aria-live="polite"></div>
     <section class="row row-cols-3 g-2 mb-4 cards-kpi-grid" aria-label="Resumo dos cartões">
@@ -33,7 +33,7 @@
                 <div class="credit-card-usage"><small>Utilização: {{ number_format($card->usage_percent,0) }}%</small><small>Limite: {{ number_format((float)$card->credit_limit,2,',','.') }} {{ $card->currency }}</small></div>
                 <div class="credit-card-cycle"><span>Fecho: <strong>dia {{ $card->closing_day??'—' }}</strong></span><span>Vencimento: <strong>dia {{ $card->due_day??'—' }}</strong></span></div>
                 @if($card->status!=='active' || !$card->is_operational)<div class="mt-3"><span class="badge text-bg-secondary">{{ $card->status === 'suspended' ? 'Suspenso' : 'Encerrado' }}</span></div>@endif
-                <a href="{{ route('financial.accounts.show',$card->id) }}" class="btn btn-outline-secondary btn-sm w-100 mt-3">Ver cartão e movimentos</a>
+                <div class="d-grid gap-2 mt-3"><a href="{{ route('financial.invoices.page', ['account_id' => $card->id]) }}" class="btn btn-outline-primary btn-sm"><i data-lucide="receipt" aria-hidden="true"></i><span class="ms-1">Faturas</span></a><a href="{{ route('financial.accounts.show',$card->id) }}" class="btn btn-outline-secondary btn-sm">Ver cartão e movimentos</a></div>
             </article>
         @empty
             <div class="card border-0 rounded-4 text-center p-4"><div class="card-body"><i data-lucide="credit-card" class="mb-3 text-secondary" style="width:32px;height:32px"></i><h2 class="h5">Ainda não tens cartões</h2><button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCardModal">Adicionar cartão</button></div></div>
