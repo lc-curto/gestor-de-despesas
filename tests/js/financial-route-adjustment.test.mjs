@@ -30,7 +30,7 @@ function setup(response = { ok: false, json: async () => ({ message: 'Operação
     const html = `<!doctype html><meta name="csrf-token" content="token">
       <section id="financialRoute" data-store-url="/store" data-update-url="/movements" data-delete-url="/movements" data-reverse-url="/movements" data-currency="EUR" data-today="2026-12-05">
         <button id="routePrevious"></button><button id="routeNext"></button><button id="routeToday"></button><strong id="routePeriodLabel"></strong>
-        <button id="routeNewMovement"></button><button data-route-mode="1"></button><button data-date="2026-12-05"></button>
+        <button id="routeNewMovement"></button><button data-route-mode="1"></button><button data-date="2026-12-05" data-filter="income"></button><button data-date="2026-12-05" data-filter="fixed"></button><button data-date="2026-12-05" data-filter="variable"></button><button data-date="2026-12-05" data-filter="balance"></button>
       </section>
       <script type="application/json" id="route-day-2026-12-05">${JSON.stringify({ items, balance: 174.65, status: 'comfortable' })}</script>
       <div id="routeDayModal"></div><div id="routeMovementModal"></div><div id="routeMovementDetailModal"></div><div id="routeConfirmModal"></div>
@@ -60,7 +60,7 @@ function setup(response = { ok: false, json: async () => ({ message: 'Operação
     window.fetch = async (url, options) => { requests.push({ url, ...options }); return response; };
     window.eval(script);
     const el = id => window.document.getElementById(id);
-    const openDay = () => window.document.querySelector('[data-date="2026-12-05"]').click();
+    const openDay = (filter = 'income') => window.document.querySelector(`[data-date="2026-12-05"][data-filter="${filter}"]`).click();
     const rows = () => [...el('routeDayMovements').querySelectorAll('.route-movement-item')];
     const openItem = description => {
         openDay();
@@ -115,6 +115,15 @@ test('movimento parcial aparece uma vez com valores pagos, pendentes e barra pro
     assert.equal(row.querySelector('.route-movement-item__payment span:last-child').textContent, 'Pendente: 80,00 €');
     assert.equal(row.querySelector('[role="progressbar"]').getAttribute('aria-valuenow'), '33');
     assert.equal(row.querySelector('.route-movement-item__progress span').style.width, '33.33333333333333%');
+});
+
+test('abrir qualquer coluna da Rota Financeira repõe sempre o filtro Todos', () => {
+    const h = setup();
+    for (const filter of ['income', 'fixed', 'variable', 'balance']) {
+        h.openDay(filter);
+        assert.equal(h.window.document.querySelector('[data-day-filter="all"]').classList.contains('active'), true);
+        assert.equal(h.rows().length, items.length);
+    }
 });
 
 test('modal inicia em Todos, remove botão Fechar e usa Adicionar em largura total', () => {
