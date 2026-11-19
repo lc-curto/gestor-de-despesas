@@ -251,12 +251,17 @@ class FinancialProjectionService
         $sourceType = $movement->source_account_id ? ($accountTypes[$movement->source_account_id] ?? null) : null;
         $destinationType = $movement->destination_account_id ? ($accountTypes[$movement->destination_account_id] ?? null) : null;
         $sourceIsCash = in_array($sourceType, ['bank', 'cash'], true);
+        $sourceIsCreditCard = $sourceType === 'credit_card';
         $destinationIsCash = in_array($destinationType, ['bank', 'cash'], true);
 
         if ($movement->type === 'income' && $destinationIsCash) {
             $delta += (float) $movement->amount;
         }
-        if ($movement->type === 'expense' && $sourceIsCash) {
+        // Despesas pendentes sem conta de origem (previsões de prestações)
+        // continuam projetadas. Apenas compras pendentes num cartão ficam
+        // fora do caixa até ao pagamento da respetiva fatura.
+        if ($movement->type === 'expense'
+            && ($sourceIsCash || ($movement->status === 'pending' && ! $sourceIsCreditCard && $sourceType === null))) {
             $delta -= (float) $movement->amount;
         }
         if ($movement->type === 'transfer') {
