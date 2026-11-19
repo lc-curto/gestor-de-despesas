@@ -124,9 +124,10 @@ class CardInvoiceService
         return $this->movements->payCardOpeningDebt($user, $cardId, $sourceAccountId, $date, $requestedAmount);
     }
 
-    public function listInvoices(User $user)
+    public function listInvoices(User $user, ?string $accountId = null)
     {
         return Fatura::query()->where('user_id', $user->id)
+            ->when($accountId, fn ($query) => $query->where('account_id', $accountId))
             ->where(function ($query) {
                 $query->whereHas('movimentos', fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false))->orWhereHas('saldosTransportados');
             })
