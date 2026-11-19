@@ -45,7 +45,7 @@ function setup(response = { ok: false, json: async () => ({ message: 'Operação
       <div id="routeMovementDetailTitle"></div><div id="routeMovementKind"></div><div id="routeMovementAmount"></div>
       <div id="routeMovementCategory"></div><div id="routeMovementAccount"></div><div id="routeMovementDate"></div><div id="routeMovementDescription"></div><div id="routeMovementNotes"></div>
       <div id="routeDetailError" role="alert"></div><p id="routeEditHelp" role="status"></p><button id="routeEditMovement"></button><button id="routeDeleteMovement"></button>
-      <div id="routeConfirmTitle"></div><div id="routeConfirmText"></div><small id="routeConfirmHint"></small><button id="routeConfirmAction"></button>`;
+      <div id="routeConfirmTitle"></div><div id="routeConfirmText"></div><small id="routeConfirmHint">Esta ação não pode ser desfeita.</small><button id="routeConfirmAction"></button>`;
     const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'https://example.test/rota-financeira' });
     const { window } = dom;
     const modals = new Map();
