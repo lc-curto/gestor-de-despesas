@@ -115,6 +115,8 @@ test('movimento parcial aparece uma vez com valores pagos, pendentes e barra pro
     assert.equal(row.querySelector('.route-movement-item__payment span:last-child').textContent, 'Pendente: 80,00 €');
     assert.equal(row.querySelector('[role="progressbar"]').getAttribute('aria-valuenow'), '33');
     assert.equal(row.querySelector('.route-movement-item__progress span').style.width, '33.33333333333333%');
+    assert.equal(row.querySelector('.route-movement-item__progress').parentElement, row);
+    assert.equal(row.querySelector('.route-movement-item__row').parentElement, row);
 });
 
 test('abrir qualquer coluna da Rota Financeira repõe sempre o filtro Todos', () => {
