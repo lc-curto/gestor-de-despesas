@@ -33,29 +33,29 @@
             @endphp
             <article class="card border rounded-4 shadow-sm" data-invoice-id="{{ $invoice->id }}" data-status="{{ $invoice->payment_status }}" data-remaining="{{ $invoice->remaining_amount }}" data-currency="{{ $currency }}" data-closing="{{ $invoice->closing_date->toDateString() }}">
                 <div class="card-body p-0">
-                    <button type="button" class="btn btn-light text-start w-100 rounded-4 p-3 p-md-4 border-0" data-bs-toggle="modal" data-bs-target="#{{ $detailModalId }}" aria-label="Ver fatura de {{ $invoice->conta?->name ?? 'Cartão' }}, {{ $invoice->reference_month->translatedFormat('F Y') }}">
-                        <div class="d-flex justify-content-between align-items-start gap-3">
+                    <button type="button" class="btn btn-light text-start w-100 rounded-4 p-2 p-md-3 border-0" data-bs-toggle="modal" data-bs-target="#{{ $detailModalId }}" aria-label="Ver fatura de {{ $invoice->conta?->name ?? 'Cartão' }}, {{ $invoice->reference_month->translatedFormat('F Y') }}">
+                        <div class="d-flex justify-content-between align-items-center gap-2">
                             <div class="min-w-0">
-                                <div class="d-flex flex-wrap align-items-center gap-2">
-                                    <h2 class="h6 fw-bold text-body mb-0">{{ $invoice->conta?->name ?? 'Cartão' }}</h2>
-                                    <span class="badge {{ $cycleClasses[$invoice->cycle_status] ?? 'text-bg-secondary' }}">{{ $cycleLabels[$invoice->cycle_status] ?? $invoice->cycle_status }}</span>
-                                    <span class="badge {{ $paymentClasses[$invoice->payment_status] ?? 'text-bg-secondary' }}">{{ $paymentLabels[$invoice->payment_status] ?? $invoice->payment_status }}</span>
-                                </div>
-                                <p class="small text-secondary mb-0 mt-1 text-capitalize">{{ $invoice->reference_month->translatedFormat('F Y') }}</p>
+                                <h2 class="h6 fw-semibold text-body mb-0 text-break">{{ $invoice->conta?->name ?? 'Cartão' }}</h2>
+                                <p class="small text-secondary mb-0 text-capitalize">{{ $invoice->reference_month->translatedFormat('F Y') }}</p>
                             </div>
                             <div class="text-end flex-shrink-0">
                                 <strong class="fs-5 text-body d-block">{{ number_format((float)$invoice->remaining_amount,2,',','.') }} {{ $currency }}</strong>
-                                <span class="small text-secondary">por pagar</span>
+                                <span class="small text-secondary">Por pagar</span>
                             </div>
                         </div>
-                        <div class="progress mt-3" role="progressbar" aria-label="Percentagem paga" aria-valuenow="{{ round($progress) }}" aria-valuemin="0" aria-valuemax="100" style="height:6px">
+                        <div class="d-flex flex-wrap align-items-center gap-1 mt-1">
+                            <span class="badge {{ $cycleClasses[$invoice->cycle_status] ?? 'text-bg-secondary' }}">{{ $cycleLabels[$invoice->cycle_status] ?? $invoice->cycle_status }}</span>
+                            <span class="badge {{ $paymentClasses[$invoice->payment_status] ?? 'text-bg-secondary' }}">{{ $paymentLabels[$invoice->payment_status] ?? $invoice->payment_status }}</span>
+                        </div>
+                        <div class="progress mt-2" role="progressbar" aria-label="Percentagem paga" aria-valuenow="{{ round($progress) }}" aria-valuemin="0" aria-valuemax="100" style="height:4px">
                             <div class="progress-bar" style="width:{{ $progress }}%"></div>
                         </div>
-                        <div class="d-flex justify-content-between gap-2 mt-2 small text-secondary">
+                        <div class="d-flex justify-content-between gap-2 mt-1 small text-secondary">
                             <span>Total: {{ number_format((float)$invoice->total_amount,2,',','.') }} {{ $currency }}</span>
                             <span>Pago: {{ number_format((float)$invoice->paid_amount,2,',','.') }} {{ $currency }}</span>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center border-top mt-3 pt-2">
+                        <div class="d-flex justify-content-between align-items-center border-top mt-2 pt-2">
                             <span class="small fw-semibold text-primary">Ver detalhes</span>
                             <i data-lucide="chevron-right" class="text-secondary" aria-hidden="true"></i>
                         </div>
