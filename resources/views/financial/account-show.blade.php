@@ -226,6 +226,10 @@ if (accountDeleteModalElement && accountDetailsElement) {
         if (!activeAccountMovement) return;
         returnToAccountDetails = true;
         accountDetailsModal.hide();
+    });
+
+    accountDetailsElement.addEventListener('hidden.bs.modal', () => {
+        if (!returnToAccountDetails || !activeAccountMovement) return;
         accountDeleteSubmit.disabled = false;
         accountDeleteSubmit.textContent = 'Eliminar';
         document.getElementById('accountDeleteDescription').textContent = 'Este movimento será eliminado e os saldos das suas contas serão atualizados.';
