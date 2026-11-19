@@ -44,7 +44,7 @@ class FinancialRouteAcceptanceMatrixTest extends TestCase
         ]);
     }
 
-    private function movement(User $user, string $type, string $amount, string $date, ?int $accountId): Movimento
+    private function movement(User $user, string $type, string $amount, string $date, ?string $accountId): Movimento
     {
         $data = [
             'type' => $type,
@@ -168,4 +168,19 @@ class FinancialRouteAcceptanceMatrixTest extends TestCase
         );
         $this->assertSame(500.0, $projection['openingBalance'] + $projection['movements']->sum('projection_delta'));
     }
+    public function test_negative_opening_balance_is_preserved_in_the_projection(): void
+    {
+        $user = User::factory()->create();
+        $this->account($user, 'bank', '-250.75');
+
+        $projection = app(FinancialProjectionService::class)->build(
+            $user,
+            Carbon::parse('2026-12-01'),
+            Carbon::parse('2026-12-31')
+        );
+
+        $this->assertSame(-250.75, $projection['openingBalance']);
+        $this->assertCount(0, $projection['movements']);
+    }
+
 }
