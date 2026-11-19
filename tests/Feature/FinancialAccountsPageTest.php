@@ -262,6 +262,66 @@ class FinancialAccountsPageTest extends TestCase
         ])->assertUnprocessable()->assertJsonFragment(['message' => 'A dívida inicial só pode ser corrigida antes de existirem movimentos no cartão.']);
     }
 
+    public function test_account_movement_details_modal_and_inline_edit_are_available_for_pending_movements(): void
+    {
+        $user = User::factory()->create();
+        $account = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Conta de teste',
+            'type' => 'bank',
+            'opening_balance' => '100.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+        $movement = app(FinancialMovementService::class)->createPending($user, [
+            'type' => 'expense',
+            'description' => 'Movimento editável',
+            'amount' => '15.00',
+            'movement_date' => '2026-11-19',
+            'source_account_id' => $account->id,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('financial.accounts.show', $account->id))
+            ->assertOk()
+            ->assertSee('data-bs-toggle="modal"', false)
+            ->assertSee('data-bs-target="#accountMovementDetailsModal"', false)
+            ->assertSee('data-editable="1"', false)
+            ->assertSee(route('financial.movements.update', $movement->id), false)
+            ->assertSee('Editar movimento');
+    }
+
+    public function test_pending_movement_can_be_edited_through_the_existing_financial_endpoint(): void
+    {
+        $user = User::factory()->create();
+        $account = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Conta de teste',
+            'type' => 'bank',
+            'opening_balance' => '100.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+        $movement = app(FinancialMovementService::class)->createPending($user, [
+            'type' => 'expense',
+            'description' => 'Descrição antiga',
+            'amount' => '15.00',
+            'movement_date' => '2026-11-19',
+            'source_account_id' => $account->id,
+        ]);
+
+        $this->actingAs($user)->putJson(route('financial.movements.update', $movement->id), [
+            'description' => 'Descrição corrigida',
+            'amount' => '18.50',
+            'movement_date' => '2026-11-18',
+            'notes' => 'Nota atualizada',
+        ])->assertOk();
+
+        $this->assertDatabaseHas('movimentos', [
+            'id' => $movement->id,
+            'description' => 'Descrição corrigida',
+            'amount' => '18.50',
+            'notes' => 'Nota atualizada',
+            'status' => 'pending',
+        ]);
+    }
+
     public function test_accounts_page_shows_bank_to_cash_transfer_form(): void
     {
         $user = User::factory()->create();
