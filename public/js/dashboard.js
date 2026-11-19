@@ -1023,7 +1023,7 @@
 
     function openDeleteModal(row) {
         actionMovement = row;
-        const recurring = Boolean(row.dataset.recurrenceId);
+        const recurring = Boolean(row.dataset.recurrenceId && row.dataset.recurrenceFrequency);
         const settled = row.dataset.movementStatus === 'settled';
         const onlyOption = document.getElementById('deleteScopeOnly');
         const futureOption = document.getElementById('deleteScopeFuture');
