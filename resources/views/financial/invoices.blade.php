@@ -19,63 +19,117 @@
             
         </div></div>
     @else
-        <section class="invoice-list" aria-label="Faturas dos cartões">
+        <section class="d-grid gap-3" aria-label="Faturas dos cartões">
         @foreach($items as $invoice)
             @php
                 $labels = ['open'=>'Aberta','closed'=>'Fechada','partial'=>'Parcialmente paga','overdue'=>'Vencida','paid'=>'Paga','carried'=>'Transportada'];
                 $classes = ['open'=>'text-bg-primary','closed'=>'text-bg-secondary','partial'=>'text-bg-warning','overdue'=>'text-bg-danger','paid'=>'text-bg-success','carried'=>'text-bg-secondary'];
                 $progress = (float)$invoice->total_amount > 0 ? min(100,(float)$invoice->paid_amount/(float)$invoice->total_amount*100) : 100;
                 $locked = in_array($invoice->status,['closed','paid','carried'],true);
+                $currency = $invoice->conta?->currency ?? auth()->user()->currency;
+                $detailModalId = 'invoiceDetails-'.$invoice->id;
             @endphp
-            <article class="card invoice-card border-0 rounded-4" data-invoice-id="{{ $invoice->id }}" data-status="{{ $invoice->display_status }}" data-remaining="{{ $invoice->remaining_amount }}" data-currency="{{ $invoice->conta?->currency ?? auth()->user()->currency }}" data-closing="{{ $invoice->closing_date->toDateString() }}">
-                <div class="card-body p-3 p-md-4">
-                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
-                        <div class="min-w-0">
-                            <div class="d-flex flex-wrap align-items-center gap-2">
-                                <h2 class="h5 fw-bold mb-0">{{ $invoice->conta?->name ?? 'Cartão' }} · {{ $invoice->reference_month->translatedFormat('F Y') }}</h2>
-                                <span class="badge {{ $classes[$invoice->display_status] ?? 'text-bg-secondary' }}">{{ $labels[$invoice->display_status] ?? $invoice->display_status }}</span>
+            <article class="card border rounded-4 shadow-sm" data-invoice-id="{{ $invoice->id }}" data-status="{{ $invoice->display_status }}" data-remaining="{{ $invoice->remaining_amount }}" data-currency="{{ $currency }}" data-closing="{{ $invoice->closing_date->toDateString() }}">
+                <div class="card-body p-0">
+                    <button type="button" class="btn btn-light text-start w-100 rounded-4 p-3 p-md-4 border-0" data-bs-toggle="modal" data-bs-target="#{{ $detailModalId }}" aria-label="Ver fatura de {{ $invoice->conta?->name ?? 'Cartão' }}, {{ $invoice->reference_month->translatedFormat('F Y') }}">
+                        <div class="d-flex justify-content-between align-items-start gap-3">
+                            <div class="min-w-0">
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <h2 class="h6 fw-bold text-body mb-0">{{ $invoice->conta?->name ?? 'Cartão' }}</h2>
+                                    <span class="badge {{ $classes[$invoice->display_status] ?? 'text-bg-secondary' }}">{{ $labels[$invoice->display_status] ?? $invoice->display_status }}</span>
+                                </div>
+                                <p class="small text-secondary mb-0 mt-1 text-capitalize">{{ $invoice->reference_month->translatedFormat('F Y') }}</p>
                             </div>
-                            <p class="small text-secondary mb-0 mt-1">Fecho: {{ $invoice->closing_date->format('d/m/Y') }} · Vencimento: {{ $invoice->due_date->format('d/m/Y') }}</p>
+                            <div class="text-end flex-shrink-0">
+                                <strong class="fs-5 text-body d-block">{{ number_format((float)$invoice->remaining_amount,2,',','.') }} {{ $currency }}</strong>
+                                <span class="small text-secondary">por pagar</span>
+                            </div>
                         </div>
-                        <div class="text-end ms-auto"><strong class="fs-5">{{ number_format((float)$invoice->remaining_amount,2,',','.') }} {{ $invoice->conta?->currency ?? auth()->user()->currency }}</strong><div class="small text-secondary">por pagar</div></div>
-                    </div>
-                    <div class="invoice-progress mt-3"><span style="width:{{ $progress }}%"></span></div>
-                    <div class="d-flex justify-content-between flex-wrap gap-2 small text-secondary mt-2">
-                        <span>Total: {{ number_format((float)$invoice->total_amount,2,',','.') }}</span>
-                        <span>Pago: {{ number_format((float)$invoice->paid_amount,2,',','.') }}</span>
-                        @if((float)$invoice->carried_balance > 0)<span>Saldo transportado: {{ number_format((float)$invoice->carried_balance,2,',','.') }}</span>@endif
-                    </div>
-                    <div class="invoice-actions d-flex flex-wrap gap-2 mt-3">
-                        <button type="button" class="btn btn-primary btn-sm js-invoice-action" data-action="pay" @disabled((float)$invoice->remaining_amount <= 0 || $invoice->status === 'carried')>Registar pagamento</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm js-invoice-action" data-action="charge" @disabled($locked)>Adicionar encargo</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm js-invoice-action" data-action="credit" @disabled($locked || $invoice->movimentos->isEmpty())>Registar crédito</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm js-invoice-action" data-action="close" @disabled($locked || $invoice->closing_date->isFuture())>Fechar e reconciliar</button>
-                    </div>
-                    <details class="invoice-details mt-3 pt-3 border-top">
-                        <summary class="fw-semibold">Ver movimentos da fatura</summary>
-                        <div class="mt-3">
-                            <h3 class="h6 fw-semibold">Compras e encargos</h3>
-                            @forelse($invoice->movimentos as $movement)
-                                <div class="invoice-line"><span>{{ $movement->description }} <small class="text-secondary">{{ $movement->movement_date->format('d/m/Y') }}</small></span><strong>{{ number_format((float)$movement->amount,2,',','.') }}</strong></div>
-                            @empty <p class="small text-secondary">Sem compras ou encargos.</p> @endforelse
-                            @if($invoice->saldosTransportados->isNotEmpty())
-                                <h3 class="h6 fw-semibold mt-3">Saldos transportados</h3>
-                                @foreach($invoice->saldosTransportados as $carried)
-                                    <div class="invoice-line"><span>Fatura {{ $carried->sourceInvoice?->reference_month?->translatedFormat('F Y') ?? 'anterior' }}</span><strong>{{ number_format((float)$carried->amount,2,',','.') }}</strong></div>
-                                @endforeach
-                            @endif
-                            <h3 class="h6 fw-semibold mt-3">Créditos</h3>
-                            @forelse($invoice->creditos as $credit)
-                                <div class="invoice-line"><span>Crédito associado a compra <small class="text-secondary">{{ $credit->movement_date?->format('d/m/Y') }}</small></span><strong>−{{ number_format((float)$credit->amount,2,',','.') }}</strong></div>
-                            @empty <p class="small text-secondary">Sem créditos registados.</p> @endforelse
-                            <h3 class="h6 fw-semibold mt-3">Pagamentos</h3>
-                            @forelse($invoice->pagamentos as $payment)
-                                <div class="invoice-line"><span>{{ $payment->reversal_of_id ? 'Correção de pagamento' : 'Pagamento' }} <small class="text-secondary">{{ $payment->movement_date?->format('d/m/Y') }} · {{ $payment->contaOrigem?->name ?? 'Conta' }}</small></span><strong>{{ number_format((float)$payment->amount,2,',','.') }}</strong></div>
-                            @empty <p class="small text-secondary">Sem pagamentos registados.</p> @endforelse
+                        <div class="progress mt-3" role="progressbar" aria-label="Percentagem paga" aria-valuenow="{{ round($progress) }}" aria-valuemin="0" aria-valuemax="100" style="height:6px">
+                            <div class="progress-bar" style="width:{{ $progress }}%"></div>
                         </div>
-                    </details>
+                        <div class="d-flex justify-content-between gap-2 mt-2 small text-secondary">
+                            <span>Total: {{ number_format((float)$invoice->total_amount,2,',','.') }} {{ $currency }}</span>
+                            <span>Pago: {{ number_format((float)$invoice->paid_amount,2,',','.') }} {{ $currency }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center border-top mt-3 pt-2">
+                            <span class="small fw-semibold text-primary">Ver detalhes</span>
+                            <i data-lucide="chevron-right" class="text-secondary" aria-hidden="true"></i>
+                        </div>
+                    </button>
                 </div>
             </article>
+
+            <div class="modal fade" id="{{ $detailModalId }}" tabindex="-1" aria-labelledby="{{ $detailModalId }}Title" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
+                    <div class="modal-content border-0 rounded-4 shadow" data-invoice-id="{{ $invoice->id }}" data-remaining="{{ $invoice->remaining_amount }}" data-currency="{{ $currency }}">
+                        <div class="modal-header border-0 pb-2">
+                            <div class="min-w-0">
+                                <h2 class="modal-title h5 fw-bold" id="{{ $detailModalId }}Title">{{ $invoice->conta?->name ?? 'Cartão' }}</h2>
+                                <p class="small text-secondary mb-0 text-capitalize">{{ $invoice->reference_month->translatedFormat('F Y') }}</p>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                        </div>
+                        <div class="modal-body pt-2">
+                            <div class="mb-3"><span class="badge {{ $classes[$invoice->display_status] ?? 'text-bg-secondary' }}">{{ $labels[$invoice->display_status] ?? $invoice->display_status }}</span></div>
+                            <div class="rounded-4 bg-body-tertiary p-3 mb-3">
+                                <div class="small text-secondary mb-1">Valor por pagar</div>
+                                <div class="display-6 fw-bold text-body">{{ number_format((float)$invoice->remaining_amount,2,',','.') }} <span class="fs-5">{{ $currency }}</span></div>
+                                <div class="progress mt-3" role="progressbar" aria-label="Percentagem paga" aria-valuenow="{{ round($progress) }}" aria-valuemin="0" aria-valuemax="100" style="height:7px">
+                                    <div class="progress-bar" style="width:{{ $progress }}%"></div>
+                                </div>
+                                <div class="row g-2 mt-2 small">
+                                    <div class="col-6"><span class="text-secondary d-block">Total</span><strong>{{ number_format((float)$invoice->total_amount,2,',','.') }} {{ $currency }}</strong></div>
+                                    <div class="col-6"><span class="text-secondary d-block">Pago</span><strong>{{ number_format((float)$invoice->paid_amount,2,',','.') }} {{ $currency }}</strong></div>
+                                    @if((float)$invoice->carried_balance > 0)
+                                        <div class="col-12"><span class="text-secondary d-block">Saldo transportado</span><strong>{{ number_format((float)$invoice->carried_balance,2,',','.') }} {{ $currency }}</strong></div>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="row g-2 small mb-4">
+                                <div class="col-6"><span class="text-secondary d-block">Fecho</span><strong>{{ $invoice->closing_date->format('d/m/Y') }}</strong></div>
+                                <div class="col-6"><span class="text-secondary d-block">Vencimento</span><strong>{{ $invoice->due_date->format('d/m/Y') }}</strong></div>
+                            </div>
+                            <h3 class="h6 fw-bold mb-2">Ações</h3>
+                            <div class="row g-2 mb-4">
+                                <div class="col-12"><button type="button" class="btn btn-primary w-100 js-invoice-action" data-action="pay" @disabled((float)$invoice->remaining_amount <= 0 || $invoice->status === 'carried')>Registar pagamento</button></div>
+                                <div class="col-6"><button type="button" class="btn btn-outline-secondary w-100 h-100 js-invoice-action" data-action="charge" @disabled($locked)>Adicionar encargo</button></div>
+                                <div class="col-6"><button type="button" class="btn btn-outline-secondary w-100 h-100 js-invoice-action" data-action="credit" @disabled($locked || $invoice->movimentos->isEmpty())>Registar crédito</button></div>
+                                <div class="col-12"><button type="button" class="btn btn-outline-secondary w-100 js-invoice-action" data-action="close" @disabled($locked || $invoice->closing_date->isFuture())>Fechar e reconciliar</button></div>
+                            </div>
+                            <h3 class="h6 fw-bold mb-2">Movimentos da fatura</h3>
+                            <div class="accordion" id="{{ $detailModalId }}Movements">
+                                <div class="accordion-item">
+                                    <h4 class="accordion-header"><button class="accordion-button py-2" type="button" data-bs-toggle="collapse" data-bs-target="#{{ $detailModalId }}Purchases" aria-expanded="true">Compras e encargos</button></h4>
+                                    <div id="{{ $detailModalId }}Purchases" class="accordion-collapse collapse show"><div class="accordion-body px-2 py-2">
+                                        @forelse($invoice->movimentos as $movement)
+                                            <div class="d-flex justify-content-between gap-3 py-2 border-bottom small"><span class="min-w-0 text-break">{{ $movement->description }}<span class="d-block text-secondary">{{ $movement->movement_date->format('d/m/Y') }}</span></span><strong class="text-nowrap">{{ number_format((float)$movement->amount,2,',','.') }} {{ $currency }}</strong></div>
+                                        @empty <p class="small text-secondary mb-0">Sem compras ou encargos.</p> @endforelse
+                                    </div></div>
+                                </div>
+                                @if($invoice->saldosTransportados->isNotEmpty())
+                                    <div class="accordion-item"><h4 class="accordion-header"><button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#{{ $detailModalId }}Carried">Saldos transportados</button></h4><div id="{{ $detailModalId }}Carried" class="accordion-collapse collapse"><div class="accordion-body px-2 py-2">
+                                        @foreach($invoice->saldosTransportados as $carried)
+                                            <div class="d-flex justify-content-between gap-3 py-2 border-bottom small"><span>Fatura {{ $carried->sourceInvoice?->reference_month?->translatedFormat('F Y') ?? 'anterior' }}</span><strong>{{ number_format((float)$carried->amount,2,',','.') }} {{ $currency }}</strong></div>
+                                        @endforeach
+                                    </div></div></div>
+                                @endif
+                                <div class="accordion-item"><h4 class="accordion-header"><button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#{{ $detailModalId }}Credits">Créditos</button></h4><div id="{{ $detailModalId }}Credits" class="accordion-collapse collapse"><div class="accordion-body px-2 py-2">
+                                    @forelse($invoice->creditos as $credit)
+                                        <div class="d-flex justify-content-between gap-3 py-2 border-bottom small"><span>Crédito associado a compra<span class="d-block text-secondary">{{ $credit->movement_date?->format('d/m/Y') }}</span></span><strong>−{{ number_format((float)$credit->amount,2,',','.') }} {{ $currency }}</strong></div>
+                                    @empty <p class="small text-secondary mb-0">Sem créditos registados.</p> @endforelse
+                                </div></div></div>
+                                <div class="accordion-item"><h4 class="accordion-header"><button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#{{ $detailModalId }}Payments">Pagamentos</button></h4><div id="{{ $detailModalId }}Payments" class="accordion-collapse collapse"><div class="accordion-body px-2 py-2">
+                                    @forelse($invoice->pagamentos as $payment)
+                                        <div class="d-flex justify-content-between gap-3 py-2 border-bottom small"><span>{{ $payment->reversal_of_id ? 'Correção de pagamento' : 'Pagamento' }}<span class="d-block text-secondary">{{ $payment->movement_date?->format('d/m/Y') }} · {{ $payment->contaOrigem?->name ?? 'Conta' }}</span></span><strong>{{ number_format((float)$payment->amount,2,',','.') }} {{ $currency }}</strong></div>
+                                    @empty <p class="small text-secondary mb-0">Sem pagamentos registados.</p> @endforelse
+                                </div></div></div>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">Fechar</button></div>
+                    </div>
+                </div>
+            </div>
         @endforeach
         </section>
         <div class="mt-3">{{ $items->links() }}</div>
@@ -113,8 +167,7 @@
 
 @push('styles')
 <style>
-.invoice-page{min-width:0}.invoice-list{display:grid;gap:1rem}.invoice-card{min-width:0;border:1px solid var(--app-border)!important;box-shadow:var(--app-shadow)}.invoice-progress{height:7px;border-radius:99px;background:var(--bs-tertiary-bg);overflow:hidden}.invoice-progress span{display:block;height:100%;background:var(--app-primary);border-radius:inherit}.invoice-details{overflow-wrap:anywhere}.invoice-details summary{cursor:pointer;min-height:36px}.invoice-line{display:flex;justify-content:space-between;gap:1rem;padding:.45rem 0;border-bottom:1px solid var(--app-border)}.invoice-line>span{min-width:0;overflow-wrap:anywhere}.invoice-line>strong{white-space:nowrap;font-variant-numeric:tabular-nums}.invoice-line:last-child{border-bottom:0}
-@media(max-width:575.98px){.invoice-card .card-body{padding:1rem!important}.invoice-actions{display:grid!important;grid-template-columns:1fr 1fr}.invoice-actions .btn{min-height:40px;white-space:normal}.invoice-line{font-size:.875rem}}
+.invoice-page{min-width:0}.invoice-page .card>div>button{white-space:normal}.invoice-page .card>div>button:hover{background:var(--bs-tertiary-bg)!important}.invoice-page .card>div>button:focus-visible{outline:2px solid var(--bs-primary);outline-offset:2px}.invoice-page .modal-content{min-width:0}.invoice-page .accordion-button{font-size:.925rem}
 </style>
 @endpush
 
@@ -145,7 +198,18 @@
         }
         modal.show();
     }
-    document.querySelectorAll('.js-invoice-action').forEach(button=>button.addEventListener('click',()=>open(button.closest('[data-invoice-id]'),button.dataset.action)));
+    let pendingAction = null;
+    document.querySelectorAll('.js-invoice-action').forEach(button=>button.addEventListener('click',()=>{
+        const detailsModal=button.closest('.modal');
+        const card=detailsModal?.querySelector('.modal-content[data-invoice-id]');
+        if(!card)return;
+        pendingAction={card,kind:button.dataset.action,detailsModal};
+        bootstrap.Modal.getOrCreateInstance(detailsModal).hide();
+    }));
+    document.querySelectorAll('[id^="invoiceDetails-"]').forEach(detailsModal=>detailsModal.addEventListener('hidden.bs.modal',()=>{
+        if(!pendingAction||pendingAction.detailsModal!==detailsModal)return;
+        const next=pendingAction;pendingAction=null;open(next.card,next.kind);
+    }));
     document.getElementById('allocationEnabled').addEventListener('change',e=>document.getElementById('allocationFields').classList.toggle('d-none',!e.target.checked));
     form.addEventListener('submit',async event=>{
         event.preventDefault();const submit=form.querySelector('[type="submit"]');submit.disabled=true;
