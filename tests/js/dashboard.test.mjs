@@ -293,11 +293,19 @@ test('movimento parcialmente pago mostra os valores liquidados e pendentes', () 
     assert.ok(row);
     assert.match(row.textContent, /Pago: 40,00/);
     assert.match(row.textContent, /Pendente: 80,00/);
+    assert.match(row.textContent, /Parcial/);
+    assert.doesNotMatch(row.textContent, /Parcialmente pago/);
     const progress = row.querySelector('[role="progressbar"]');
     assert.ok(progress);
     assert.equal(progress.getAttribute('aria-valuenow'), '33');
     assert.equal(progress.style.height, '3px');
     ui.dom.window.close();
+});
+
+test('as opções de recorrência respeitam hidden mesmo com display grid do Bootstrap', () => {
+    const blade = readFileSync(new URL('../../resources/views/movements.blade.php', import.meta.url), 'utf8');
+    assert.match(blade, /#deleteRecurringOptions\\[hidden\\]\\s*\\{\\s*display:\\s*none\\s*!important;/);
+    assert.match(blade, /id="deleteRecurringOptions"[^>]*hidden/);
 });
 
 test('despesa simples mostra confirmação única, sem opções de recorrência', () => {

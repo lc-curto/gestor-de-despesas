@@ -567,8 +567,8 @@
         statusLine.className = 'small text-secondary d-flex flex-wrap align-items-center gap-2 mt-1';
         const statusLabels = {
             settled: { text: 'Pago', className: 'text-success' },
-            partial: { text: 'Parcialmente pago', className: 'text-info-emphasis' },
-            partially_settled: { text: 'Parcialmente pago', className: 'text-info-emphasis' },
+            partial: { text: 'Parcial', className: 'text-info-emphasis' },
+            partially_settled: { text: 'Parcial', className: 'text-info-emphasis' },
             pending: { text: 'Pendente', className: 'text-secondary' }
         };
         const status = statusLabels[item.movement_status] || null;
@@ -1133,7 +1133,7 @@
 
         document.getElementById('deleteMovementDescription').textContent = row.dataset.description || '';
         document.getElementById('deleteRecurringOptions').hidden = !recurring;
-        document.getElementById('deleteSingleConfirmation').hidden = recurring;
+        document.getElementById('deleteSingleConfirmation').hidden = true;
         document.getElementById('deleteMovementTitle').textContent = recurring ? 'Excluir recorrência' : 'Excluir movimento';
 
         // Reinicia sempre a seleção: o estado anterior do modal não pode influenciar esta exclusão.

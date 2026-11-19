@@ -365,7 +365,7 @@
                                         @if ($movimento->movement_status === 'settled')
                                             <span class="text-success">Pago</span>
                                         @elseif (in_array($movimento->movement_status, ['partial', 'partially_settled'], true))
-                                            <span class="text-info-emphasis">Parcialmente pago</span>
+                                            <span class="text-info-emphasis">Parcial</span>
                                         @elseif ($movimento->movement_status === 'pending')
                                             <span class="text-secondary">Pendente</span>
                                         @endif
@@ -422,7 +422,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-secondary small mb-3" id="settleMovementDescription"></p>
+                    <p class="text-body fw-semibold small mb-3" id="settleMovementDescription"></p>
                     <div id="settleMovementError" class="alert alert-danger d-none" role="alert" tabindex="-1"></div>
                     <div class="mb-3">
                         <label for="settleMovementAmount" class="form-label fw-semibold">Valor efetivo</label>
@@ -486,9 +486,7 @@
                 <div class="modal-body">
                     <p class="text-secondary small mb-2" id="deleteMovementDescription"></p>
                     <p class="alert alert-info small py-2 mb-2" id="deleteMovementNote" hidden></p>
-                    <div id="deleteSingleConfirmation" class="small text-secondary">
-                        Saldos recalculados. Histórico preservado; exclusões inseguras são bloqueadas.
-                    </div>
+                    <div id="deleteSingleConfirmation" hidden></div>
                     <div id="deleteRecurringOptions" class="d-grid gap-2" hidden>
                         <label class="form-check border rounded-3 p-3 mb-0" for="deleteScopeOnly">
                             <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeOnly" value="only">
@@ -516,6 +514,7 @@
 
 @push('styles')
 <style>
+    #deleteRecurringOptions[hidden] { display:none !important; }
     .account-picker-native { position:absolute !important; width:1px !important; height:1px !important; padding:0 !important; margin:-1px !important; overflow:hidden !important; clip:rect(0,0,0,0) !important; white-space:nowrap !important; border:0 !important; }
     .account-picker .dropdown-menu { width:100%; max-height:min(55vh, 420px); overflow-y:auto; }
     .account-picker .dropdown-item { white-space:normal; padding:.7rem .85rem; }
