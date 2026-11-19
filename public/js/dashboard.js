@@ -139,7 +139,13 @@
             if (selectedType === 'cash') methodField.value = 'cash';
             if (selectedType === 'credit_card') methodField.value = 'credit';
         }
-        if (plannedMethod && methodField) plannedMethod.value = methodField.value || '';
+        // Um método efetivo não existe enquanto a despesa está pendente.
+        // Limpa e desativa o select oculto para não enviar uma seleção antiga.
+        if (methodField) {
+            methodField.disabled = !isPaid;
+            if (!isPaid) methodField.value = '';
+        }
+        if (plannedMethod && methodField) plannedMethod.value = isPaid ? (methodField.value || '') : '';
         if (recurrenceFields) recurrenceFields.hidden = !recurrence?.checked;
         if (installmentsFields) installmentsFields.hidden = !installmentsToggle?.checked;
         if (dueField) dueField.hidden = !dueToggle?.checked;
