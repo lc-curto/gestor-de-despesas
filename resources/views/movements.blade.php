@@ -357,8 +357,22 @@
                                 <div class="min-w-0">
                                     <h3 class="h6 fw-semibold mb-1 text-break">{{ $movimento->description }}</h3>
                                     @if (in_array($movimento->movement_status, ['partial', 'partially_settled'], true))
-                                        @php $valorPago = max(0, (float) $movimento->amount - (float) ($movimento->remaining_amount ?? $movimento->amount)); @endphp
-                                        <p class="small text-secondary mb-0">{{ number_format($valorPago, 2, ',', '.') }} {{ $moeda }} pago · {{ number_format((float) ($movimento->remaining_amount ?? 0), 2, ',', '.') }} {{ $moeda }} pendente</p>
+                                        @php
+                                            $valorPendente = max(0, (float) ($movimento->remaining_amount ?? $movimento->amount));
+                                            $valorPago = max(0, (float) $movimento->amount - $valorPendente);
+                                            $percentagemPaga = (float) $movimento->amount > 0
+                                                ? min(100, max(0, ($valorPago / (float) $movimento->amount) * 100))
+                                                : 0;
+                                        @endphp
+                                        <div class="small text-secondary d-flex flex-wrap justify-content-between gap-2">
+                                            <span class="text-success">Pago: {{ number_format($valorPago, 2, ',', '.') }} {{ $moeda }}</span>
+                                            <span>Pendente: {{ number_format($valorPendente, 2, ',', '.') }} {{ $moeda }}</span>
+                                        </div>
+                                        <div class="rounded-pill mt-1" role="progressbar" aria-label="Percentagem do movimento paga"
+                                            aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ (int) round($percentagemPaga) }}"
+                                            style="height: 4px; background: var(--bs-tertiary-bg); overflow: hidden;">
+                                            <div class="rounded-pill h-100" style="width: {{ $percentagemPaga }}%; background: var(--bs-success-border-subtle, #86b99a);"></div>
+                                        </div>
                                     @endif
                                     <p class="small text-secondary mb-0">{{ $categoriaLabel }} · {{ $dataMovimento->format('d/m/Y') }}</p>
                                     <div class="small d-flex flex-wrap align-items-center gap-2 mt-1">
