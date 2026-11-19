@@ -230,6 +230,15 @@ const existingMovement = {
     data_movimento: '2026-11-17', account_id: 'account-id', movement_status: 'pending',
 };
 
+test('modal de movimento é movido para o body e não fica limitado pela coluna da página', () => {
+    const dashboard = readFileSync(new URL('../../public/js/dashboard.js', import.meta.url), 'utf8');
+    const shell = readFileSync(new URL('../../public/css/app-shell.css', import.meta.url), 'utf8');
+    assert.match(dashboard, /document\.body\.appendChild\(editorModalElement\)/);
+    assert.match(shell, /width: min\(calc\(100vw - 1rem\), 34rem\)/);
+    assert.match(shell, /\.movement-editor-card \.record-type-buttons \.btn \{ min-width: 0; flex: 1 1 0;/);
+    assert.match(shell, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+});
+
 test('modal de novo movimento mantém largura integral no mobile para despesa e receita', () => {
     const shell = readFileSync(new URL('../../public/css/app-shell.css', import.meta.url), 'utf8');
     assert.ok(shell.includes('#movementEntryModal .movement-entry-dialog'));
