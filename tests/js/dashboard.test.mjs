@@ -242,7 +242,7 @@ test('modal de movimento é movido para o body e não fica limitado pela coluna 
 test('modal de novo movimento mantém largura integral no mobile para despesa e receita', () => {
     const shell = readFileSync(new URL('../../public/css/app-shell.css', import.meta.url), 'utf8');
     assert.ok(shell.includes('#movementEntryModal .movement-entry-dialog'));
-    assert.ok(shell.includes('width: min(calc(100% - 1rem), 34rem);'));
+    assert.ok(shell.includes('width: min(calc(100vw - 1rem), 34rem);'));
 });
 
 test('a vista usa entradas textuais com teclado decimal para todos os valores monetários de Movimentos', () => {
