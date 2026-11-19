@@ -232,7 +232,8 @@ const existingMovement = {
 
 test('modal de novo movimento mantém largura integral no mobile para despesa e receita', () => {
     const shell = readFileSync(new URL('../../public/css/app-shell.css', import.meta.url), 'utf8');
-    assert.match(shell, /#movementEntryModal\\s+\\.movement-entry-dialog\\s*\\{[^}]*width:\\s*min\\(calc\\(100%\\s*-\\s*1rem\\),\\s*34rem\\)/s);
+    assert.ok(shell.includes('#movementEntryModal .movement-entry-dialog'));
+    assert.ok(shell.includes('width: min(calc(100% - 1rem), 34rem);'));
 });
 
 test('a vista usa entradas textuais com teclado decimal para todos os valores monetários de Movimentos', () => {
