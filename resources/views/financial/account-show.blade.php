@@ -68,20 +68,24 @@
                         $isCurrentAccountSource = $isTransfer && $movement->source_account_id === $account->id;
                         $category = $isTransfer ? 'Transferência' : ($movement->categoria?->name ?? ucfirst($movement->type));
                         $sign = $isOutgoing ? '−' : '+';
-                        $editRoute = $movement->legacy_type === 'despesa'
-                            ? route('despesas.edit', $movement->legacy_id) . '?return_to=' . $account->id
-                            : ($movement->legacy_type === 'receita' ? route('receitas.edit', $movement->legacy_id) . '?return_to=' . $account->id : null);
-                        $deleteRoute = $movement->legacy_type === 'despesa'
-                            ? route('despesas.destroy', $movement->legacy_id) . '?return_to=' . $account->id
-                            : ($movement->legacy_type === 'receita'
-                                ? route('receitas.destroy', $movement->legacy_id) . '?return_to=' . $account->id
-                                : route('financial.accounts.movement.destroy', $movement->id));
+                        $canEditMovement = $movement->status === 'pending'
+                            && in_array($movement->type, ['income', 'expense'], true)
+                            && ! $movement->debt_id
+                            && ! $movement->installment_id
+                            && ! $movement->invoice_id
+                            && ! $movement->is_settlement_parent;
+                        $deleteRoute = route('financial.accounts.movement.destroy', $movement->id);
                     @endphp
                     <article class="expense-item account-movement-item d-flex justify-content-between align-items-center gap-2 py-3 border-bottom"
                         tabindex="0" role="button" aria-label="Ver detalhes de {{ $movement->description }}"
+                        data-bs-toggle="modal" data-bs-target="#accountMovementDetailsModal"
                         data-account-movement
                         data-description="{{ $movement->description }}"
+                        data-movement-id="{{ $movement->id }}"
                         data-amount="{{ number_format((float) $movement->amount, 2, '.', '') }}"
+                        data-notes="{{ $movement->notes ?? '' }}"
+                        data-date-iso="{{ $movement->movement_date->format('Y-m-d') }}"
+                        data-editable="{{ $canEditMovement ? '1' : '0' }}"
                         data-signed-amount="{{ $sign }}{{ number_format((float) $movement->amount, 2, ',', '.') }} {{ $movement->currency ?? $account->currency }}"
                         data-amount-class="{{ $isOutgoing ? 'text-danger' : 'text-success' }}"
                         data-category="{{ $category }}"
@@ -89,7 +93,7 @@
                         data-kind="{{ $isTransfer ? 'Transferência' : ($movement->type === 'adjustment' ? 'Ajuste de saldo' : ($isOutgoing ? 'Despesa' : 'Receita')) }}"
                         data-status="{{ $statusLabels[$movement->status] ?? $movement->status }}"
                         data-counterpart="{{ $isTransfer ? (($isCurrentAccountSource ? 'Para: ' : 'De: ') . ($isCurrentAccountSource ? ($movement->contaDestino?->name ?? 'Conta encerrada') : ($movement->contaOrigem?->name ?? 'Conta encerrada'))) : '' }}"
-                        data-edit-url="{{ $editRoute ?? '' }}"
+                        data-edit-url="{{ route('financial.movements.update', $movement->id) }}"
                         data-delete-url="{{ $deleteRoute }}">
                         <div class="d-flex align-items-center gap-3 min-w-0">
                             <div class="expense-icon account-movement-icon flex-shrink-0" aria-hidden="true">
@@ -136,6 +140,7 @@
     <div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow rounded-4">
         <div class="modal-header border-0 pb-0"><h2 class="modal-title h5 fw-bold" id="accountMovementDetailsTitle">Detalhes do movimento</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
         <div class="modal-body">
+            <div id="accountMovementDetailsContent">
             <div class="d-flex justify-content-between align-items-start gap-3 mb-3"><div><h3 class="h6 fw-semibold mb-1" id="accountMovementDetailsName"></h3><p class="small text-secondary mb-0" id="accountMovementDetailsCategory"></p></div><span class="badge text-bg-secondary" id="accountMovementDetailsStatus"></span></div>
             <strong class="fs-3 d-block mb-1" id="accountMovementDetailsAmount"></strong>
             <hr><h3 class="small fw-semibold mb-3">Informações</h3>
@@ -144,9 +149,38 @@
             <div class="d-flex justify-content-between gap-3" id="accountMovementDetailsCounterpartRow" hidden><span class="small text-secondary">Conta relacionada</span><span class="small fw-medium text-end" id="accountMovementDetailsCounterpart"></span></div>
             <hr><h3 class="small fw-semibold mb-3">Ações</h3>
             <div class="list-group list-group-flush border rounded-3 overflow-hidden">
-                <a class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3" id="accountMovementDetailsEdit" href="#" hidden><i data-lucide="pencil" aria-hidden="true"></i><span>Editar movimento</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i></a>
+                <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3" id="accountMovementDetailsEdit" hidden><i data-lucide="pencil" aria-hidden="true"></i><span>Editar movimento</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i></button>
+                <p class="small text-secondary mb-0 p-3" id="accountMovementEditBlocked" hidden>Este movimento já foi realizado ou está associado a uma operação que não pode ser alterada.</p>
                 <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3 text-danger" id="accountMovementDetailsDelete"><i data-lucide="trash-2" aria-hidden="true"></i><span>Eliminar movimento</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i></button>
             </div>
+            </div>
+            <form id="accountMovementEditForm" class="d-none" novalidate>
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="accountMovementEditBack">Voltar</button>
+                    <h3 class="h6 fw-bold mb-0">Editar movimento</h3>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="accountMovementEditDescription">Descrição</label>
+                    <input class="form-control" id="accountMovementEditDescription" name="description" maxlength="255" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="accountMovementEditAmount">Valor</label>
+                    <input class="form-control" id="accountMovementEditAmount" name="amount" type="number" min="0.01" step="0.01" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="accountMovementEditDate">Data</label>
+                    <input class="form-control" id="accountMovementEditDate" name="movement_date" type="date" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="accountMovementEditNotes">Observações</label>
+                    <textarea class="form-control" id="accountMovementEditNotes" name="notes" rows="2"></textarea>
+                </div>
+                <div class="small mb-3" id="accountMovementEditFeedback" role="status" aria-live="polite"></div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary flex-fill" id="accountMovementEditCancel">Cancelar</button>
+                    <button type="submit" class="btn btn-primary flex-fill" id="accountMovementEditSubmit">Guardar</button>
+                </div>
+            </form>
         </div>
     </div></div>
 </div>
@@ -187,7 +221,21 @@ if (accountDeleteModalElement && accountDetailsElement) {
     let activeAccountMovement = null;
     let returnToAccountDetails = false;
 
-    const openAccountMovementDetails = (row) => {
+    const detailsContent = document.getElementById('accountMovementDetailsContent');
+    const editForm = document.getElementById('accountMovementEditForm');
+    const editButton = document.getElementById('accountMovementDetailsEdit');
+    const editBlocked = document.getElementById('accountMovementEditBlocked');
+    const editFeedback = document.getElementById('accountMovementEditFeedback');
+    const editSubmit = document.getElementById('accountMovementEditSubmit');
+
+    const showMovementDetails = () => {
+        detailsContent.classList.remove('d-none');
+        editForm.classList.add('d-none');
+        editFeedback.textContent = '';
+        editFeedback.className = 'small mb-3';
+    };
+
+    const openAccountMovementDetails = (row, showModal = false) => {
         activeAccountMovement = row;
         document.getElementById('accountMovementDetailsName').textContent = row.dataset.description;
         document.getElementById('accountMovementDetailsCategory').textContent = row.dataset.category;
@@ -199,13 +247,14 @@ if (accountDeleteModalElement && accountDetailsElement) {
         const counterpartRow = document.getElementById('accountMovementDetailsCounterpartRow');
         counterpartRow.hidden = !row.dataset.counterpart;
         document.getElementById('accountMovementDetailsCounterpart').textContent = row.dataset.counterpart;
-        const editLink = document.getElementById('accountMovementDetailsEdit');
-        editLink.hidden = !row.dataset.editUrl;
-        editLink.href = row.dataset.editUrl || '#';
+        editButton.hidden = row.dataset.editable !== '1';
+        editBlocked.hidden = row.dataset.editable === '1';
         document.getElementById('accountDeleteForm').action = row.dataset.deleteUrl;
-        accountDetailsModal.show();
+        showMovementDetails();
+        if (showModal) accountDetailsModal.show();
     };
 
+    // Bootstrap abre o modal pelo data-bs-toggle; este listener apenas carrega os dados.
     document.querySelectorAll('[data-account-movement]').forEach((row) => {
         row.addEventListener('click', (event) => {
             if (event.target.closest('a, button, input, select, textarea, label')) return;
@@ -214,8 +263,58 @@ if (accountDeleteModalElement && accountDetailsElement) {
         row.addEventListener('keydown', (event) => {
             if (!['Enter', ' '].includes(event.key)) return;
             event.preventDefault();
-            openAccountMovementDetails(row);
+            openAccountMovementDetails(row, true);
         });
+    });
+
+    const enterMovementEditMode = () => {
+        if (!activeAccountMovement || activeAccountMovement.dataset.editable !== '1') return;
+        detailsContent.classList.add('d-none');
+        editForm.classList.remove('d-none');
+        editForm.action = activeAccountMovement.dataset.editUrl;
+        document.getElementById('accountMovementEditDescription').value = activeAccountMovement.dataset.description;
+        document.getElementById('accountMovementEditAmount').value = activeAccountMovement.dataset.amount;
+        document.getElementById('accountMovementEditDate').value = activeAccountMovement.dataset.dateIso;
+        document.getElementById('accountMovementEditNotes').value = activeAccountMovement.dataset.notes;
+        editFeedback.textContent = '';
+        editFeedback.className = 'small mb-3';
+    };
+
+    editButton.addEventListener('click', enterMovementEditMode);
+    document.getElementById('accountMovementEditBack').addEventListener('click', showMovementDetails);
+    document.getElementById('accountMovementEditCancel').addEventListener('click', showMovementDetails);
+
+    editForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!activeAccountMovement) return;
+        editSubmit.disabled = true;
+        editSubmit.textContent = 'A guardar…';
+        editFeedback.textContent = '';
+        try {
+            const payload = Object.fromEntries(new FormData(editForm).entries());
+            const response = await fetch(editForm.action, {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                },
+                body: JSON.stringify(payload),
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                const errors = Object.values(result.errors || {}).flat();
+                throw new Error(errors[0] || result.message || 'Não foi possível guardar as alterações.');
+            }
+            window.location.reload();
+        } catch (error) {
+            editFeedback.className = 'small mb-3 text-danger';
+            editFeedback.textContent = error.message;
+        } finally {
+            editSubmit.disabled = false;
+            editSubmit.textContent = 'Guardar';
+        }
     });
 
     document.getElementById('accountMovementDetailsDelete').addEventListener('click', () => {
