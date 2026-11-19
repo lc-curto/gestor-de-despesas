@@ -343,13 +343,14 @@
                             $dataMovimento = \Illuminate\Support\Carbon::parse($movimento->data_movimento);
                             $categoriaLabel = $categorias[$movimento->category] ?? $movimento->category;
                         @endphp
-                        <article class="expense-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom"
+                        <article class="expense-item d-flex flex-column align-items-stretch gap-1 py-3 border-bottom"
                             data-movement-id="{{ $movimento->id }}" data-movement-type="{{ $movimento->tipo }}"
                             data-edit-url="{{ route($isExpense ? 'despesas.update' : 'receitas.update', $movimento->id) }}"
                             data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}"
                             data-amount="{{ $movimento->amount }}" data-remaining-amount="{{ $movimento->remaining_amount ?? $movimento->amount }}" data-currency="{{ $movimento->currency }}"
                             data-category-id="{{ $movimento->category }}" data-account-id="{{ $movimento->account_id }}"
                             data-movement-status="{{ $movimento->movement_status }}" data-is-settlement-event="{{ (bool) ($movimento->is_settlement_event ?? false) ? 1 : 0 }}" data-expense-behavior="{{ $movimento->expense_behavior ?? 'variable' }}" data-recurrence-id="{{ $movimento->recurrence_id }}" data-recurrence-frequency="{{ $movimento->recurrence_frequency }}" data-financial-movement-id="{{ $movimento->financial_movement_id }}">
+                            <div class="d-flex justify-content-between align-items-center gap-3 w-100">
                             <div class="d-flex align-items-center gap-3 min-w-0">
                                 <div class="expense-icon flex-shrink-0" style="--category-color: {{ $movimento->category_color ?? '#635BFF' }}" aria-hidden="true">
                                     <i data-lucide="{{ $movimento->category_icon ?? 'tag' }}"></i>
@@ -367,11 +368,6 @@
                                         <div class="small text-secondary d-flex flex-wrap justify-content-between gap-2">
                                             <span class="text-success">Pago: {{ number_format($valorPago, 2, ',', '.') }} {{ $moeda }}</span>
                                             <span>Pendente: {{ number_format($valorPendente, 2, ',', '.') }} {{ $moeda }}</span>
-                                        </div>
-                                        <div class="rounded-pill mt-1" role="progressbar" aria-label="Percentagem do movimento paga"
-                                            aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ (int) round($percentagemPaga) }}"
-                                            style="height: 4px; background: var(--bs-tertiary-bg); overflow: hidden;">
-                                            <div class="rounded-pill h-100" style="width: {{ $percentagemPaga }}%; background: var(--bs-success-border-subtle, #86b99a);"></div>
                                         </div>
                                     @endif
                                     <p class="small text-secondary mb-0">{{ $categoriaLabel }} · {{ $dataMovimento->format('d/m/Y') }}</p>
@@ -400,6 +396,14 @@
                                     <button type="button" class="btn btn-outline-danger" data-movement-action="delete" aria-label="Excluir {{ $movimento->description }}" title="Excluir"><i data-lucide="trash-2" aria-hidden="true"></i></button>
                                 </div>
                             </div>
+                            </div>
+                            @if (in_array($movimento->movement_status, ['partial', 'partially_settled'], true))
+                                <div class="w-100 rounded-pill mt-1" role="progressbar" aria-label="Percentagem do movimento paga"
+                                    aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ (int) round($percentagemPaga) }}"
+                                    style="height: 4px; background: var(--bs-tertiary-bg); overflow: hidden;">
+                                    <div class="rounded-pill h-100" style="width: {{ $percentagemPaga }}%; background: var(--bs-success-border-subtle, #86b99a);"></div>
+                                </div>
+                            @endif
                         </article>
                     @empty
                         <div class="empty-state text-center py-4">
