@@ -457,24 +457,24 @@
                     <p class="text-secondary small mb-2" id="deleteMovementDescription"></p>
                     <p class="alert alert-info small py-2 mb-2" id="deleteMovementNote" hidden></p>
                     <div id="deleteSingleConfirmation" class="small text-secondary">
-                        Saldos e dependências atualizados. Histórico preservado. Exclusão bloqueada se insegura.
+                        Saldos recalculados. Histórico preservado; exclusões inseguras são bloqueadas.
                     </div>
                     <div id="deleteRecurringOptions" class="d-grid gap-2" hidden>
                         <label class="form-check border rounded-3 p-3 mb-0" for="deleteScopeOnly">
                             <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeOnly" value="only">
                             <span class="fw-semibold">Apenas este movimento</span>
-                            <span class="d-block small text-secondary">Anula apenas esta ocorrência.</span>
+                            <span class="d-block small text-secondary">Só esta ocorrência.</span>
                         </label>
                         <label class="form-check border rounded-3 p-3 mb-0" for="deleteScopeFuture">
                             <input class="form-check-input ms-0 me-2" type="radio" name="delete_scope" id="deleteScopeFuture" value="this_and_future">
                             <span class="fw-semibold">Este e os seguintes</span>
-                            <span class="d-block small text-secondary">Anula esta e futuras ocorrências pendentes.</span>
+                            <span class="d-block small text-secondary">Esta e futuras pendentes.</span>
                         </label>
                     </div>
                 </div>
-                <div class="modal-footer border-0 pt-0 d-grid gap-2">
-                    <button type="submit" class="btn btn-danger w-100" id="deleteMovementSubmit">Confirmar exclusão</button>
-                    <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">Cancelar</button>
+                <div class="modal-footer border-0 pt-0 d-flex flex-row gap-2">
+                    <button type="submit" class="btn btn-danger flex-fill" id="deleteMovementSubmit">Confirmar exclusão</button>
+                    <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Cancelar</button>
                 </div>
             </form>
         </div>
@@ -512,9 +512,12 @@
 @push('styles')
 
 <style>
-/* Botões do modal de exclusão ocupam toda a largura e ficam empilhados. */
-#deleteMovementModal .modal-footer{display:flex;flex-direction:column;align-items:stretch;gap:.75rem}
-#deleteMovementModal .modal-footer>.btn{display:block;width:100%;margin:0}
+/* Modal de exclusão: textos curtos e ações alinhadas. */
+#deleteMovementModal .modal-footer{display:flex;flex-direction:row;align-items:stretch;gap:.5rem}
+#deleteMovementModal .modal-footer>.btn{display:inline-flex;flex:1 1 0;min-width:0;align-items:center;justify-content:center;margin:0;padding-inline:.5rem;white-space:nowrap}
+@media(max-width:380px){
+    #deleteMovementModal .modal-footer>.btn{font-size:.82rem;padding-inline:.35rem}
+}
 .movement-entry-dialog{max-width:560px}
 .movement-editor-card .card-body{padding:24px!important}
 .movement-editor-card .form-label{font-size:.875rem;font-weight:600}
