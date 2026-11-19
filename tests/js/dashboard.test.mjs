@@ -205,6 +205,8 @@ test('método efetivo antigo é limpo quando a despesa volta a Pendente', async 
 
     ui.form.querySelector('[name="paid_now"][value="0"]').checked = true;
     ui.form.querySelector('[name="paid_now"][value="0"]').dispatchEvent(new ui.window.Event('change'));
+    ui.element('dashboardDueDateEnabled').checked = true;
+    ui.element('dashboardDueDateEnabled').dispatchEvent(new ui.window.Event('change'));
     assert.equal(ui.element('dashboardActualPaymentMethod').disabled, true);
     assert.equal(ui.element('dashboardActualPaymentMethod').value, '');
     ui.submit();
