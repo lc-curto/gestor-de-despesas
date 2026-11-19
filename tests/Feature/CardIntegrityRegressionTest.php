@@ -429,4 +429,25 @@ class CardIntegrityRegressionTest extends TestCase
         $this->assertBalance($card, '0.00');
         $this->assertSame(0, $user->movimentos()->whereNotNull('reversal_of_id')->count());
     }
+    public function test_invoice_page_lists_collapsed_cards_and_renders_details_inside_bootstrap_modals(): void
+    {
+        $user = User::factory()->create();
+        $card = $this->card($user, 'Cartão de Crédito Pessoal');
+        $this->purchase($user, $card, '12.00');
+
+        $page = $this->actingAs($user)->get(route('financial.invoices.page'));
+
+        $page->assertOk()
+            ->assertSee('Cartão de Crédito Pessoal')
+            ->assertSee('data-bs-toggle="modal"', false)
+            ->assertSee('id="invoiceDetails-', false)
+            ->assertSee('Ver detalhes')
+            ->assertSee('Movimentos da fatura')
+            ->assertSee('Registar pagamento')
+            ->assertSee('Adicionar encargo')
+            ->assertSee('Registar crédito')
+            ->assertSee('Fechar e reconciliar')
+            ->assertDontSee('<details class="invoice-details', false);
+    }
+
 }
