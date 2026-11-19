@@ -1087,7 +1087,7 @@
     }
 
     function formatMovementDate(value) {
-        const match = String(value || '').slice(0, 10).match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+        const match = String(value || '').slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
         if (!match) return 'Data não disponível';
         return new Intl.DateTimeFormat('pt-PT').format(new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
     }
@@ -1198,7 +1198,7 @@
 
         document.getElementById('deleteMovementDescription').textContent = row.dataset.description || '';
         document.getElementById('deleteRecurringOptions').hidden = !recurring;
-        document.getElementById('deleteSingleConfirmation').hidden = recurring;
+        document.getElementById('deleteSingleConfirmation').hidden = true;
         document.getElementById('deleteMovementTitle').textContent = recurring ? 'Excluir recorrência' : 'Excluir movimento';
 
         // Reinicia sempre a seleção: o estado anterior do modal não pode influenciar esta exclusão.
