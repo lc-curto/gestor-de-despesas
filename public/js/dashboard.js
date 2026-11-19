@@ -58,6 +58,7 @@
     const movementDetailsModalElement = document.getElementById('movementDetailsModal');
     const movementDetailsModal = movementDetailsModalElement ? bootstrap.Modal.getOrCreateInstance(movementDetailsModalElement) : null;
     let actionMovement = null;
+    let returnToDetailsAfterCancel = false;
 
     // O select mantém o valor submetido; o dropdown Bootstrap organiza nome e saldo.
     function enhanceAccountPicker(select) {
@@ -1070,6 +1071,7 @@
 
         // O POST já foi confirmado. Uma falha ao atualizar a lista não deve
         // apresentar o registo como falhado nem incentivar um segundo POST.
+        returnToDetailsAfterCancel = false;
         if (wasEditing) {
             const restore = typeBeforeEdit;
             editing = false;
@@ -1161,6 +1163,7 @@
         };
         const nextAction = actions[action];
         if (!nextAction) return;
+        returnToDetailsAfterCancel = true;
 
         // Regista antes de hide(): o Bootstrap emite hidden após a transição,
         // mas implementações sem transição (e os testes) podem emiti-lo imediatamente.
@@ -1299,6 +1302,7 @@
             submit.disabled = false;
             submit.textContent = original;
         }
+        returnToDetailsAfterCancel = false;
         settleModal?.hide();
         const message = isInstallment ? 'Pagamento da prestação registado.' : 'Movimento efetivado.';
         showMovementConfirmation(message, isInstallment);
@@ -1365,6 +1369,7 @@
             if (stillVisible) {
                 throw new Error('O servidor confirmou a operação, mas o movimento continua na lista. Atualiza a página; se persistir, verifica a recorrência na base de dados.');
             }
+            returnToDetailsAfterCancel = false;
             deleteModal?.hide();
         } catch (error) {
             alert(error.message);
@@ -1587,6 +1592,14 @@
     });
     settleModalElement?.addEventListener('hide.bs.modal', (event) => {
         if (settlingMovement) event.preventDefault();
+    });
+    const restoreMovementDetails = () => {
+        if (!returnToDetailsAfterCancel || !actionMovement) return;
+        returnToDetailsAfterCancel = false;
+        movementDetailsModal?.show();
+    };
+    [editorModalElement, settleModalElement, deleteModalElement].forEach((modalElement) => {
+        modalElement?.addEventListener('hidden.bs.modal', restoreMovementDetails);
     });
     editorModalElement?.addEventListener('shown.bs.modal', () => {
         expenseButton?.setAttribute('aria-expanded', 'true');
