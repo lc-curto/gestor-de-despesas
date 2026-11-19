@@ -355,11 +355,24 @@
                                     <i data-lucide="{{ $movimento->category_icon ?? 'tag' }}"></i>
                                 </div>
                                 <div class="min-w-0">
-                                    <h3 class="h6 fw-semibold mb-1 text-break">{{ $movimento->description }}</h3>@if (in_array($movimento->movement_status, ['partial', 'partially_settled'], true))
+                                    <h3 class="h6 fw-semibold mb-1 text-break">{{ $movimento->description }}</h3>
+                                    @if (in_array($movimento->movement_status, ['partial', 'partially_settled'], true))
                                         @php $valorPago = max(0, (float) $movimento->amount - (float) ($movimento->remaining_amount ?? $movimento->amount)); @endphp
                                         <p class="small text-secondary mb-0">{{ number_format($valorPago, 2, ',', '.') }} {{ $moeda }} pago · {{ number_format((float) ($movimento->remaining_amount ?? 0), 2, ',', '.') }} {{ $moeda }} pendente</p>
                                     @endif
                                     <p class="small text-secondary mb-0">{{ $categoriaLabel }} · {{ $dataMovimento->format('d/m/Y') }}</p>
+                                    <div class="small d-flex flex-wrap align-items-center gap-2 mt-1">
+                                        @if ($movimento->movement_status === 'settled')
+                                            <span class="text-success">Pago</span>
+                                        @elseif (in_array($movimento->movement_status, ['partial', 'partially_settled'], true))
+                                            <span class="text-info-emphasis">Parcialmente pago</span>
+                                        @elseif ($movimento->movement_status === 'pending')
+                                            <span class="text-secondary">Pendente</span>
+                                        @endif
+                                        @if ($movimento->recurrence_id)
+                                            <span class="text-body-tertiary d-inline-flex align-items-center gap-1"><i data-lucide="repeat" aria-hidden="true"></i> Recorrente</span>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                             <div class="expense-actions d-flex align-items-center justify-content-end gap-2">
