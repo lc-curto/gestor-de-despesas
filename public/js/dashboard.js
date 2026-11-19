@@ -480,6 +480,9 @@
 
         const article = document.createElement('article');
         article.className = 'expense-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom';
+        article.tabIndex = 0;
+        article.setAttribute('role', 'group');
+        article.setAttribute('aria-label', 'Abrir detalhes de ' + item.description);
         article.dataset.movementId = item.id;
         article.dataset.financialMovementId = item.financial_movement_id || '';
         article.dataset.movementType = item.tipo;
@@ -1539,7 +1542,18 @@
         if (editButton) {
             const row = editButton.closest('[data-movement-id]');
             if (row) startEdit(row);
+            return;
         }
+
+        // Qualquer área livre da linha abre os detalhes; controlos internos mantêm a sua ação.
+        const row = event.target.closest('[data-movement-id]');
+        const interactiveTarget = event.target.closest('button, a, input, select, textarea, label, [role="button"], [data-bs-toggle]');
+        if (row && !interactiveTarget) openMovementDetails(row);
+    });
+    list.addEventListener('keydown', (event) => {
+        if (!['Enter', ' '].includes(event.key) || event.target !== event.target.closest('[data-movement-id]')) return;
+        event.preventDefault();
+        openMovementDetails(event.target);
     });
     document.getElementById('movementDetailsSettle')?.addEventListener('click', () => runMovementDetailsAction('settle'));
     document.getElementById('movementDetailsEdit')?.addEventListener('click', () => runMovementDetailsAction('edit'));
