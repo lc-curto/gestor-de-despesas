@@ -78,8 +78,6 @@
             <div class="modal-body p-0">
                 <div class="history-card account-history-card">
                     <div class="history-list px-3 px-sm-4">
-
-            <div class="history-list px-3 px-sm-4">
                 @forelse ($movements as $movement)
                     @php
                         $isOutgoing = $movement->type === 'expense'
