@@ -110,7 +110,7 @@ test('movimento parcial aparece uma vez com valores pagos, pendentes e barra pro
     const h = setup();
     h.openDay();
     const row = h.openItem('Empréstimo');
-    assert.equal(row.lastElementChild.textContent, '−120,00 €');
+    assert.equal(row.querySelector('.route-movement-item__row').lastElementChild.textContent, '−120,00 €');
     assert.equal(row.querySelector('.route-movement-item__payment .is-paid').textContent, 'Pago: 40,00 €');
     assert.equal(row.querySelector('.route-movement-item__payment span:last-child').textContent, 'Pendente: 80,00 €');
     assert.equal(row.querySelector('[role="progressbar"]').getAttribute('aria-valuenow'), '33');
