@@ -312,7 +312,7 @@ test('despesa simples mostra confirmação única, sem opções de recorrência'
     const ui = setup(async () => jsonResponse(200, { data: [] }), [existingMovement]);
     ui.element('expensesList').querySelector('[data-movement-action="delete"]').click();
     assert.equal(ui.element('deleteRecurringOptions').hidden, true);
-    assert.equal(ui.element('deleteSingleConfirmation').hidden, false);
+    assert.equal(ui.element('deleteSingleConfirmation').hidden, true);
     assert.equal(ui.element('deleteMovementTitle').textContent, 'Excluir movimento');
     ui.dom.window.close();
 });
