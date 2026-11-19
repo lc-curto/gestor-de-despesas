@@ -187,7 +187,7 @@ class FinancialProjectionService
         if ($movement->type === 'income' && $destinationIsCash) {
             $delta += (float) $movement->amount;
         }
-        if ($movement->type === 'expense' && ($movement->status === 'pending' || $sourceIsCash)) {
+        if ($movement->type === 'expense' && $sourceIsCash) {
             $delta -= (float) $movement->amount;
         }
         if ($movement->type === 'transfer') {
