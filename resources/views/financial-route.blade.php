@@ -332,7 +332,7 @@
  const modal=id=>bootstrap.Modal.getOrCreateInstance(document.getElementById(id));
  const dayModal=modal('routeDayModal'), movementModal=modal('routeMovementModal'), detailModal=modal('routeMovementDetailModal'), confirmModal=modal('routeConfirmModal');
  const detailElement=document.getElementById('routeMovementDetailModal'), movementElement=document.getElementById('routeMovementModal'), confirmElement=document.getElementById('routeConfirmModal');
- let activeDate=root.dataset.today, activeFilter='all', activeMovement=null, editId=null, confirmCallback=null, returnToRouteDetails=false, routeDetailsNext=''; mode={{ $mode }}, month={{ Illuminate\Support\Js::from($month) }};
+ let activeDate=root.dataset.today, activeFilter='all', activeMovement=null, editId=null, confirmCallback=null, returnToRouteDetails=false, routeDetailsNext='', mode={{ $mode }}, month={{ Illuminate\Support\Js::from($month) }};
  const form=document.getElementById('routeMovementForm');
  const fmt=value=>new Intl.NumberFormat('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2}).format(value)+' '+({EUR:'€',USD:'$',GBP:'£',BRL:'R$'}[currency]||currency);
  const dateLabel=value=>new Intl.DateTimeFormat('pt-PT',{day:'2-digit',month:'long',year:'numeric'}).format(new Date(value+'T12:00:00'));
