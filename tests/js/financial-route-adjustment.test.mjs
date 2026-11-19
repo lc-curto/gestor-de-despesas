@@ -124,7 +124,8 @@ test('modal inicia em Todos, remove botão Fechar e usa Adicionar em largura tot
     const blade = readFileSync(new URL('../../resources/views/financial-route.blade.php', import.meta.url), 'utf8');
     assert.match(blade, /class="btn btn-primary w-100" id="routeAddFromDay"/);
     assert.match(blade, />Adicionar<\/button>/);
-    assert.doesNotMatch(blade, /data-bs-dismiss="modal">Fechar<\/button>/);
+    const dayModal = blade.split('<div class="modal fade" id="routeDayModal"')[1].split('<div class="modal fade" id="routeMovementModal"')[0];
+    assert.doesNotMatch(dayModal, /data-bs-dismiss="modal">Fechar<\/button>/);
 });
 
 test('transferências são identificadas pelo delta e também não abrem edição genérica', () => {
