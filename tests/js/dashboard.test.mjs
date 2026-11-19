@@ -304,7 +304,7 @@ test('movimento parcialmente pago mostra os valores liquidados e pendentes', () 
 
 test('as opções de recorrência respeitam hidden mesmo com display grid do Bootstrap', () => {
     const blade = readFileSync(new URL('../../resources/views/movements.blade.php', import.meta.url), 'utf8');
-    assert.match(blade, /#deleteRecurringOptions\\[hidden\\]\\s*\\{\\s*display:\\s*none\\s*!important;/);
+    assert.ok(blade.includes('#deleteRecurringOptions[hidden] { display:none !important; }'));
     assert.match(blade, /id="deleteRecurringOptions"[^>]*hidden/);
 });
 
