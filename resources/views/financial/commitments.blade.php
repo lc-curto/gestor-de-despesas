@@ -5,7 +5,10 @@
 @section('content')
 <div class="app-content commitments-page">
     <header class="page-heading commitments-heading mb-4">
-        <div><h1 class="h2 fw-bold mb-1">Parcelamentos</h1></div>
+        <div>
+            <h1 class="h2 fw-bold mb-1">Parcelamentos</h1>
+            <p class="text-secondary small mb-0">Aqui aparecem apenas compromissos divididos em duas ou mais prestações. Despesas a prazo com um único vencimento ficam em Movimentos.</p>
+        </div>
     </header>
 
     <div id="commitmentFeedback" class="alert d-none" role="status" aria-live="polite"></div>
