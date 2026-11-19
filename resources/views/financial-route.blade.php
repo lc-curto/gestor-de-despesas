@@ -400,7 +400,7 @@
    items.forEach(item=>{
      const b=document.createElement('button');b.type='button';b.className='route-movement-item';
      const left=document.createElement('span'),name=document.createElement('strong'),meta=document.createElement('small'),amount=document.createElement('strong');
-     name.textContent=item.description;meta.textContent=movementKind(item)+' · '+item.category;
+     name.textContent=item.description;meta.textContent=movementKind(item)+' · '+item.category;amount.textContent=signedAmount(item);
      left.append(name,meta);
      if(item.is_partial_summary){
        b.classList.add('route-movement-item--partial');
