@@ -400,7 +400,8 @@ test('liquidação pendente bloqueia repetição e fecho e mostra erro sem perde
     let resolveFetch;
     let calls = 0;
     const ui = setup(() => { calls++; return new Promise((resolve) => { resolveFetch = resolve; }); }, [existingMovement]);
-    ui.element('expensesList').querySelector('[data-movement-action="settle"]').click();
+    ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
+    ui.element('movementDetailsSettle').click();
     const modal = ui.window.bootstrap.Modal.getOrCreateInstance(ui.element('settleMovementModal'));
     const form = ui.element('settleMovementForm');
     form.dispatchEvent(new ui.window.Event('submit', { bubbles: true, cancelable: true }));
@@ -422,7 +423,8 @@ test('liquidação confirmada com falha de atualização mostra aviso para não 
         if (options.method === 'PUT') { calls++; return jsonResponse(200, { data: { id: 'movement-id' }, installment: { status: 'paid' } }); }
         throw new TypeError('falha de rede');
     }, [existingMovement]);
-    ui.element('expensesList').querySelector('[data-movement-action="settle"]').click();
+    ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
+    ui.element('movementDetailsSettle').click();
     const modal = ui.window.bootstrap.Modal.getOrCreateInstance(ui.element('settleMovementModal'));
     ui.element('settleMovementForm').dispatchEvent(new ui.window.Event('submit', { bubbles: true, cancelable: true }));
     await flush();
