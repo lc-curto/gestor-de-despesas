@@ -27,7 +27,7 @@ const markup = `<!doctype html><meta name="csrf-token" content="test-token">
  <div id="dashboardRecurrenceFields" hidden><input id="dashboardRecurrenceInterval" name="recurrence_interval" value="1"><select id="dashboardRecurrenceFrequency" name="recurrence_frequency"><option value="monthly">Mensal</option></select><input id="dashboardRecurrenceEnds" name="recurrence_ends_at"></div>
  <input type="checkbox" id="dashboardInstallmentsEnabled">
  <div id="dashboardInstallmentFields" hidden><input id="dashboardInstallments" name="installments_count" type="number" value="3"><select id="dashboardInstallmentFrequency" name="installment_frequency"><option value="monthly">Mensal</option></select><div id="dashboardInstallmentScheduleList"></div></div>
- <button type="submit" id="saveMovementButton">Guardar despesa</button>
+ <button type="submit" id="saveMovementButton">Guardar despesa</button><button type="button" id="cancelMovementEdit">Cancelar</button>
 </form></div>
 <div id="movementDetailsModal">
  <h2 id="movementDetailsTitle"></h2><span id="movementDetailsName"></span><span id="movementDetailsType"></span><span id="movementDetailsStatus"></span>
@@ -482,5 +482,34 @@ test('modal de detalhes apresenta totais pagos e pendentes e mantém as ações 
     assert.equal(ui.element('movementDetailsSettle').hidden, false);
     assert.equal(ui.element('movementDetailsEdit').hidden, false);
     assert.equal(ui.element('movementDetailsDelete').hidden, false);
+    ui.dom.window.close();
+});
+
+test('cancelar liquidação ou exclusão regressa ao modal de detalhes do movimento', () => {
+    for (const action of ['settle', 'delete']) {
+        const ui = setup(async () => jsonResponse(200, { data: [] }), [existingMovement]);
+        ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
+        const details = ui.window.bootstrap.Modal.getOrCreateInstance(ui.element('movementDetailsModal'));
+        ui.element(action === 'settle' ? 'movementDetailsSettle' : 'movementDetailsDelete').click();
+        const child = ui.window.bootstrap.Modal.getOrCreateInstance(ui.element(action === 'settle' ? 'settleMovementModal' : 'deleteMovementModal'));
+        assert.equal(child.open, true);
+        child.hide();
+        assert.equal(details.open, true, `detalhes devem reabrir após cancelar ${action}`);
+        assert.equal(ui.element('movementDetailsName').textContent, 'Despesa de teste');
+        ui.dom.window.close();
+    }
+});
+
+test('cancelar edição regressa ao modal de detalhes do movimento', () => {
+    const ui = setup(async () => jsonResponse(200, { data: [] }), [existingMovement]);
+    ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
+    const details = ui.window.bootstrap.Modal.getOrCreateInstance(ui.element('movementDetailsModal'));
+    ui.element('movementDetailsEdit').click();
+    const editor = ui.window.bootstrap.Modal.getOrCreateInstance(ui.element('movementEntryModal'));
+    assert.equal(editor.open, true);
+    ui.element('cancelMovementEdit').click();
+    assert.equal(editor.open, false);
+    assert.equal(details.open, true);
+    assert.equal(ui.element('movementDetailsName').textContent, 'Despesa de teste');
     ui.dom.window.close();
 });
