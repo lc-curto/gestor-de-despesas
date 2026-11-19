@@ -273,6 +273,11 @@ class FinancialDeletionService
 
             $invoiceParentBefore = null;
             $isInvoicePayment = $locked->type === 'transfer' && $locked->invoice_id;
+            if ($isInvoicePayment && in_array($locked->status, ['partial', 'settled'], true)) {
+                throw ValidationException::withMessages([
+                    'movement' => 'Este pagamento já foi realizado. Não pode ser eliminado diretamente; mantém-se no histórico financeiro.',
+                ]);
+            }
             if ($locked->invoice_id) {
                 $invoice ??= Fatura::query()
                     ->where('user_id', $user->id)
