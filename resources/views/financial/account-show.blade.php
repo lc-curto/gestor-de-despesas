@@ -104,14 +104,14 @@
                         </div>
                         <div class="expense-actions d-flex align-items-center justify-content-end gap-2">
                             <strong class="{{ $isOutgoing ? 'text-danger' : 'text-success' }} text-nowrap movement-value">{{ $sign }}{{ number_format((float) $movement->amount, 2, ',', '.') }} {{ $movement->currency ?? $account->currency }}</strong>
-                            <div class="btn-group btn-group-sm" role="group" aria-label="Ações de {{ $movement->description }}">
+                            <div class="d-inline-flex align-items-center gap-2" role="group" aria-label="Ações de {{ $movement->description }}">
                                 @if ($editRoute)
-                                    <a class="btn btn-outline-secondary" href="{{ $editRoute }}" aria-label="Editar {{ $movement->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                                    <a class="btn btn-sm btn-outline-secondary" href="{{ $editRoute }}" aria-label="Editar {{ $movement->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></a>
                                 @endif
                                 <form method="POST" action="{{ $deleteRoute }}" class="d-inline-flex" onsubmit="return confirm('Eliminar este movimento e atualizar todos os movimentos dependentes e saldos associados?')">
                                     @csrf
                                     @method('DELETE')
-                                    <button class="btn btn-outline-danger" type="submit" aria-label="Eliminar movimento" title="Eliminar movimento"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                                    <button class="btn btn-sm btn-outline-danger" type="submit" aria-label="Eliminar movimento" title="Eliminar movimento"><i data-lucide="trash-2" aria-hidden="true"></i></button>
                                 </form>
                             </div>
                         </div>
