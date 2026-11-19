@@ -11,11 +11,10 @@
     <div id="cardsFeedback" class="alert d-none" role="status" aria-live="polite"></div>
     <section class="cards-grid" aria-label="Os meus cartões">
         @forelse($cards as $card)
-            @php($isInactive = $card->status !== 'active' || !$card->is_operational)
             @php
                 $isInactive = $card->status !== 'active' || !$card->is_operational;
                 $detailModalId = 'cardDetails-'.$card->id;
-                $cardStatusLabel = $card->status === 'suspended' ? 'Suspenso' : ($isInactive ? 'Encerrado' : 'Ativo');
+                $cardStatusLabel = $card->status === 'suspended' ? 'Suspenso' : ($isInactive ? 'Cartão encerrado' : 'Ativo');
             @endphp
             <article class="card border rounded-4 shadow-sm {{ $isInactive ? 'credit-card-inactive' : '' }}" @if($isInactive) hidden @endif>
                 <button type="button" class="btn btn-light text-start w-100 rounded-4 border-0 p-3 p-md-4" data-bs-toggle="modal" data-bs-target="#{{ $detailModalId }}" aria-label="Ver detalhes de {{ $card->name }}">
