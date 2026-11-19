@@ -129,21 +129,24 @@
                                             @if ($accounts->where('type', 'bank')->isNotEmpty())
                                                 <optgroup label="Contas bancárias">
                                                     @foreach ($accounts->where('type', 'bank') as $account)
-                                                        <option value="{{ $account->id }}" data-account-type="bank" @selected($accounts->count() === 1)>{{ $account->name }} · {{ $account->currency }}</option>
+                                                        @php $accountBalance = $accountBalances[$account->id]['balance'] ?? null; @endphp
+                                                        <option value="{{ $account->id }}" data-account-type="bank" @selected($accounts->count() === 1) @if($accountBalance !== null) style="color:{{ $accountBalance < 0 ? '#dc3545' : 'inherit' }}" @endif>{{ $account->name }} · {{ $account->currency }} · {{ $accountBalance !== null ? number_format($accountBalance, 2, ',', '.') . ' ' . $account->currency : 'Saldo indisponível' }}</option>
                                                     @endforeach
                                                 </optgroup>
                                             @endif
                                             @if ($accounts->where('type', 'credit_card')->isNotEmpty())
                                                 <optgroup label="Cartões de crédito">
                                                     @foreach ($accounts->where('type', 'credit_card') as $account)
-                                                        <option value="{{ $account->id }}" data-account-type="credit_card">{{ $account->name }} · {{ $account->currency }}</option>
+                                                        @php $availableCredit = $accountBalances[$account->id]['available_credit'] ?? null; @endphp
+                                                        <option value="{{ $account->id }}" data-account-type="credit_card">{{ $account->name }} · {{ $account->currency }} · {{ $availableCredit !== null ? number_format($availableCredit, 2, ',', '.') . ' ' . $account->currency . ' disponível' : 'Crédito indisponível' }}</option>
                                                     @endforeach
                                                 </optgroup>
                                             @endif
                                             @if ($accounts->where('type', 'cash')->isNotEmpty())
                                                 <optgroup label="Dinheiro">
                                                     @foreach ($accounts->where('type', 'cash') as $account)
-                                                        <option value="{{ $account->id }}" data-account-type="cash">{{ $account->name }} · {{ $account->currency }}</option>
+                                                        @php $accountBalance = $accountBalances[$account->id]['balance'] ?? null; @endphp
+                                                        <option value="{{ $account->id }}" data-account-type="cash" @if($accountBalance !== null) style="color:{{ $accountBalance < 0 ? '#dc3545' : 'inherit' }}" @endif>{{ $account->name }} · {{ $account->currency }} · {{ $accountBalance !== null ? number_format($accountBalance, 2, ',', '.') . ' ' . $account->currency : 'Saldo indisponível' }}</option>
                                                     @endforeach
                                                 </optgroup>
                                             @endif
@@ -346,7 +349,7 @@
                             data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}"
                             data-amount="{{ $movimento->amount }}" data-remaining-amount="{{ $movimento->remaining_amount ?? $movimento->amount }}" data-currency="{{ $movimento->currency }}"
                             data-category-id="{{ $movimento->category }}" data-account-id="{{ $movimento->account_id }}"
-                            data-movement-status="{{ $movimento->movement_status }}" data-expense-behavior="{{ $movimento->expense_behavior ?? 'variable' }}" data-recurrence-id="{{ $movimento->recurrence_id }}" data-recurrence-frequency="{{ $movimento->recurrence_frequency }}" data-financial-movement-id="{{ $movimento->financial_movement_id }}">
+                            data-movement-status="{{ $movimento->movement_status }}" data-is-settlement-event="{{ (bool) ($movimento->is_settlement_event ?? false) ? 1 : 0 }}" data-expense-behavior="{{ $movimento->expense_behavior ?? 'variable' }}" data-recurrence-id="{{ $movimento->recurrence_id }}" data-recurrence-frequency="{{ $movimento->recurrence_frequency }}" data-financial-movement-id="{{ $movimento->financial_movement_id }}">
                             <div class="d-flex align-items-center gap-3 min-w-0">
                                 <div class="expense-icon flex-shrink-0" style="--category-color: {{ $movimento->category_color ?? '#635BFF' }}" aria-hidden="true">
                                     <i data-lucide="{{ $movimento->category_icon ?? 'tag' }}"></i>
@@ -434,8 +437,17 @@
                         <label for="settleMovementAccount" class="form-label fw-semibold" id="settleMovementAccountLabel">Conta</label>
                         <select id="settleMovementAccount" name="account_id" class="form-select" required>
                             <option value="">Selecionar conta</option>
-                            @foreach ($accounts as $account)
-                                <option value="{{ $account->id }}">{{ $account->name }} · {{ $account->currency }}</option>
+                            @foreach ($accounts->where('type', 'bank') as $account)
+                                @php $accountBalance = $accountBalances[$account->id]['balance'] ?? null; @endphp
+                                <option value="{{ $account->id }}" data-account-type="bank" @if($accountBalance !== null) style="color:{{ $accountBalance < 0 ? '#dc3545' : 'inherit' }}" @endif>{{ $account->name }} · {{ $account->currency }} · {{ $accountBalance !== null ? number_format($accountBalance, 2, ',', '.') . ' ' . $account->currency : 'Saldo indisponível' }}</option>
+                            @endforeach
+                            @foreach ($accounts->where('type', 'credit_card') as $account)
+                                @php $availableCredit = $accountBalances[$account->id]['available_credit'] ?? null; @endphp
+                                <option value="{{ $account->id }}" data-account-type="credit_card">{{ $account->name }} · {{ $account->currency }} · {{ $availableCredit !== null ? number_format($availableCredit, 2, ',', '.') . ' ' . $account->currency . ' disponível' : 'Crédito indisponível' }}</option>
+                            @endforeach
+                            @foreach ($accounts->where('type', 'cash') as $account)
+                                @php $accountBalance = $accountBalances[$account->id]['balance'] ?? null; @endphp
+                                <option value="{{ $account->id }}" data-account-type="cash" @if($accountBalance !== null) style="color:{{ $accountBalance < 0 ? '#dc3545' : 'inherit' }}" @endif>{{ $account->name }} · {{ $account->currency }} · {{ $accountBalance !== null ? number_format($accountBalance, 2, ',', '.') . ' ' . $account->currency : 'Saldo indisponível' }}</option>
                             @endforeach
                         </select>
                     </div>
