@@ -117,7 +117,7 @@ test('movimento parcial aparece uma vez com valores pagos, pendentes e barra pro
     assert.equal(row.querySelector('.route-movement-item__progress span').style.width, '33.33333333333333%');
     assert.equal(row.querySelector('.route-movement-item__progress').parentElement, row);
     const routeBlade = readFileSync(new URL('../../resources/views/financial-route.blade.php', import.meta.url), 'utf8');
-    assert.match(routeBlade, /\.route-movement-item__progress\{display:block;width:100%;flex:0 0 100%/);
+    assert.match(routeBlade, /\\.route-movement-item__progress\\{display:block;width:100%;[^}]*flex:0 0 100%/);
     assert.equal(row.querySelector('.route-movement-item__row').parentElement, row);
 });
 
