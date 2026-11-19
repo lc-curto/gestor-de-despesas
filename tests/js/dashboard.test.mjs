@@ -425,3 +425,26 @@ test('parcelamento só pode ser criado com pagamento pendente e recorrência con
     assert.match(dashboard, /paid_now: paidState/);
     assert.match(controller, /'paid_now' => \['required', Rule::in\(\['0'\]\)\]/);
 });
+
+test('cada movimento substitui os botões de ação por um único menu de detalhes', () => {
+    const ui = setup(async () => jsonResponse(200, { data: [] }), [existingMovement]);
+    const row = ui.element('expensesList').querySelector('[data-movement-id]');
+    assert.ok(row.querySelector('[data-movement-action="details"]'));
+    assert.equal(row.querySelectorAll('[data-acao="editar"], [data-movement-action="settle"], [data-movement-action="delete"]').length, 0);
+    assert.equal(row.querySelectorAll('.expense-actions button').length, 1);
+    ui.dom.window.close();
+});
+
+test('modal de detalhes apresenta totais pagos e pendentes e mantém as ações correspondentes', () => {
+    const partial = { ...existingMovement, amount: '120.00', remaining_amount: '80.00', movement_status: 'partial' };
+    const ui = setup(async () => jsonResponse(200, { data: [] }), [partial]);
+    ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
+    assert.equal(ui.element('movementDetailsName').textContent, 'Despesa de teste');
+    assert.equal(ui.element('movementDetailsAmount').textContent, '120,00 €');
+    assert.equal(ui.element('movementDetailsPaid').textContent, '40,00 €');
+    assert.equal(ui.element('movementDetailsPending').textContent, '80,00 €');
+    assert.equal(ui.element('movementDetailsSettle').hidden, false);
+    assert.equal(ui.element('movementDetailsEdit').hidden, false);
+    assert.equal(ui.element('movementDetailsDelete').hidden, false);
+    ui.dom.window.close();
+});
