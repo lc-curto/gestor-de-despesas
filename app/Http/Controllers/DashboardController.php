@@ -126,6 +126,7 @@ class DashboardController extends Controller
                 'tipo' => $item->tipo,
                 'description' => $item->description,
                 'amount' => $item->amount,
+                'remaining_amount' => $item->remaining_amount,
                 'currency' => $item->currency,
                 'category' => $item->category,
                 'category_label' => $item->category_label,
