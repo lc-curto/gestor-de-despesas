@@ -30,6 +30,7 @@ class FinancialRouteController extends Controller
         $projectionData = $projection->build($request->user(), $rangeStart, $rangeEnd);
         $openingBalance = $projectionData['openingBalance'];
         $movements = $projectionData['movements'];
+        $displayMovements = $projectionData['displayMovements'] ?? $movements;
         $overdueItems = $projectionData['overdue'] ?? collect();
 
         $days = [];
@@ -40,6 +41,7 @@ class FinancialRouteController extends Controller
             while ($cursor->lte($month->copy()->endOfMonth())) {
                 $key = $cursor->toDateString();
                 $items = $movements->filter(fn ($movement) => $movement->movement_date->toDateString() === $key);
+                $displayItems = $displayMovements->filter(fn ($movement) => $movement->movement_date->toDateString() === $key);
                 $cashIncome = $items->where('type', 'income')->sum('amount');
                 $cashExpenses = $items->where('type', 'expense');
                 $days[$monthKey][$key] = [
@@ -47,7 +49,7 @@ class FinancialRouteController extends Controller
                     'variable' => (float) $cashExpenses->where('expense_behavior', 'variable')->sum('amount'),
                     'fixed' => (float) $cashExpenses->where('expense_behavior', 'fixed')->sum('amount'),
                     'cash_delta' => (float) $items->sum(fn ($item) => (float) ($item->projection_delta ?? 0)),
-                    'items' => $items->values(),
+                    'items' => $displayItems->values(),
                 ];
                 $cursor->addDay();
             }
