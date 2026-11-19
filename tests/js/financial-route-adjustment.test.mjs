@@ -53,7 +53,7 @@ function setup(response = { ok: false, json: async () => ({ message: 'Operação
     const modals = new Map();
     window.matchMedia = () => ({ matches: false });
     window.bootstrap = { Modal: { getOrCreateInstance(element) {
-        if (!modals.has(element.id)) modals.set(element.id, { shown: 0, hidden: 0, show() { this.shown++; }, hide() { this.hidden++; } });
+        if (!modals.has(element.id)) modals.set(element.id, { shown: 0, hidden: 0, show() { this.shown++; }, hide() { this.hidden++; element.dispatchEvent(new window.Event('hidden.bs.modal')); } });
         return modals.get(element.id);
     } } };
     const requests = [];
