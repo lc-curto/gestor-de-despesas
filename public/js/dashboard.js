@@ -519,7 +519,9 @@
         const originalAmount = Number(item.amount);
         const remainingAmount = Number(item.remaining_amount ?? item.amount);
         const paidAmount = Math.max(0, originalAmount - remainingAmount);
-        if ((item.movement_status === 'partial' || item.movement_status === 'partially_settled') && paidAmount > 0) {
+        const isPartiallyPaid = ['partial', 'partially_settled'].includes(item.movement_status) && paidAmount > 0;
+        let partialProgress = null;
+        if (isPartiallyPaid) {
             const settlementSummary = document.createElement('div');
             settlementSummary.className = 'small text-body-secondary d-flex justify-content-between gap-2 mb-0';
             const paidLabel = document.createElement('span');
@@ -528,8 +530,9 @@
             pendingLabel.textContent = 'Pendente: ' + formatCurrency(remainingAmount, item.currency || cfg.currency || 'EUR');
             settlementSummary.append(paidLabel, pendingLabel);
 
-            const progress = document.createElement('div');
-            progress.className = 'settlement-progress-track rounded-pill mt-1';
+            partialProgress = document.createElement('div');
+            partialProgress.className = 'settlement-progress-track rounded-pill mt-1';
+            const progress = partialProgress;
             progress.setAttribute('role', 'progressbar');
             progress.setAttribute('aria-label', 'Percentagem do movimento paga');
             progress.setAttribute('aria-valuemin', '0');
@@ -541,6 +544,11 @@
             progress.style.height = '3px';
             progress.style.backgroundColor = 'var(--bs-secondary-bg)';
             progress.style.overflow = 'hidden';
+            // A barra passa para uma segunda linha do article, alinhada com o texto.
+            // O offset corresponde ao ícone (2rem) + gap Bootstrap (1rem).
+            progress.style.flex = '0 0 calc(100% - 3rem)';
+            progress.style.width = 'calc(100% - 3rem)';
+            progress.style.marginLeft = '3rem';
 
             const progressFill = document.createElement('div');
             progressFill.className = 'settlement-progress-fill rounded-pill h-100';
@@ -627,6 +635,12 @@
     
         }
         article.append(info, actions);
+        if (partialProgress) {
+            // Só movimentos parcialmente pagos quebram para uma segunda linha.
+            // A linha principal mantém as classes e o alinhamento originais.
+            article.classList.add('expense-item--partial', 'flex-wrap');
+            article.append(partialProgress);
+        }
         return article;
     }
 
