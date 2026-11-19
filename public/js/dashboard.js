@@ -55,6 +55,8 @@
     const deleteModalElement = document.getElementById('deleteMovementModal');
     const deleteModal = deleteModalElement ? bootstrap.Modal.getOrCreateInstance(deleteModalElement) : null;
     const deleteForm = document.getElementById('deleteMovementForm');
+    const movementDetailsModalElement = document.getElementById('movementDetailsModal');
+    const movementDetailsModal = movementDetailsModalElement ? bootstrap.Modal.getOrCreateInstance(movementDetailsModalElement) : null;
     let actionMovement = null;
 
     // O select mantém o valor submetido; o dropdown Bootstrap organiza nome e saldo.
@@ -596,36 +598,14 @@
         value.textContent = (isExpense ? '−' : '+') + formatCurrency(item.amount, item.currency);
 
         actions.append(value);
-        if (!item.is_invoice_payment) {
-            const edit = document.createElement('button');
-            edit.type = 'button';
-            edit.className = 'btn btn-outline-secondary';
-            edit.dataset.acao = 'editar';
-            edit.setAttribute('aria-label', 'Editar ' + item.description);
-            edit.title = 'Editar';
-            edit.innerHTML = '<i data-lucide="pencil" aria-hidden="true"></i>';
-            actions.append(edit);
-            if (['pending', 'partial'].includes(item.movement_status) && item.financial_movement_id) {
-                const settle = document.createElement('button');
-                settle.type = 'button';
-                settle.className = 'btn btn-outline-success';
-                settle.dataset.movementAction = 'settle';
-                settle.title = isExpense ? 'Efetivar despesa' : 'Efetivar receita';
-                settle.setAttribute('aria-label', settle.title + ': ' + item.description);
-                settle.innerHTML = '<i data-lucide="check-circle" aria-hidden="true"></i>';
-                actions.append(settle);
-            }
-    
-            const remove = document.createElement('button');
-            remove.type = 'button';
-            remove.className = 'btn btn-outline-danger';
-            remove.dataset.movementAction = 'delete';
-            remove.title = 'Excluir';
-            remove.setAttribute('aria-label', 'Excluir ' + item.description);
-            remove.innerHTML = '<i data-lucide="trash-2" aria-hidden="true"></i>';
-            actions.append(remove);
-    
-        }
+        const detailsButton = document.createElement('button');
+        detailsButton.type = 'button';
+        detailsButton.className = 'btn btn-link btn-sm text-body-secondary p-1 movement-details-trigger';
+        detailsButton.dataset.movementAction = 'details';
+        detailsButton.setAttribute('aria-label', 'Detalhes de ' + item.description);
+        detailsButton.setAttribute('title', 'Detalhes');
+        detailsButton.innerHTML = '<i data-lucide="more-vertical" aria-hidden="true"></i>';
+        actions.append(detailsButton);
         article.append(info, actions);
         return article;
     }
@@ -1106,6 +1086,91 @@
         }
     }
 
+    function formatMovementDate(value) {
+        const match = String(value || '').slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!match) return 'Data não disponível';
+        return new Intl.DateTimeFormat('pt-PT').format(new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+    }
+
+    function openMovementDetails(row) {
+        actionMovement = row;
+        const isExpense = row.dataset.movementType === 'despesa';
+        const total = Number(row.dataset.amount) || 0;
+        const remaining = Math.max(0, Number(row.dataset.remainingAmount ?? row.dataset.amount) || 0);
+        const paid = Math.max(0, total - remaining);
+        const status = row.dataset.movementStatus || 'pending';
+        const partial = ['partial', 'partially_settled'].includes(status);
+        const currency = row.dataset.currency || cfg.currency || 'EUR';
+        const symbol = new Intl.NumberFormat('pt-PT', { style: 'currency', currency }).format(total);
+        const titleEl = document.getElementById('movementDetailsName');
+        const typeEl = document.getElementById('movementDetailsType');
+        const statusEl = document.getElementById('movementDetailsStatus');
+        const amountEl = document.getElementById('movementDetailsAmount');
+        const paidEl = document.getElementById('movementDetailsPaid');
+        const pendingEl = document.getElementById('movementDetailsPending');
+        const progressWrap = document.getElementById('movementDetailsProgressWrap');
+        const progress = document.getElementById('movementDetailsProgress');
+        const progressLabel = document.getElementById('movementDetailsProgressLabel');
+        const paidLine = document.getElementById('movementDetailsPaidLine');
+        const pendingLine = document.getElementById('movementDetailsPendingLine');
+        const categoryEl = document.getElementById('movementDetailsCategory');
+        const dateEl = document.getElementById('movementDetailsDate');
+        const kindEl = document.getElementById('movementDetailsKind');
+
+        titleEl.textContent = row.dataset.description || 'Movimento';
+        typeEl.textContent = isExpense ? 'Despesa' : 'Receita';
+        statusEl.textContent = ({ settled: 'Pago', partial: 'Parcial', partially_settled: 'Parcial', pending: 'Pendente' })[status] || 'Registado';
+        statusEl.className = 'badge ' + (status === 'settled' ? 'text-bg-success' : partial ? 'text-bg-info' : 'text-bg-secondary');
+        amountEl.textContent = symbol;
+        paidEl.textContent = formatCurrency(paid, currency);
+        pendingEl.textContent = formatCurrency(remaining, currency);
+        categoryEl.textContent = row.querySelector('.expense-item__category')?.textContent || row.querySelector('.expense-item p')?.textContent?.split(' · ')[0] || '—';
+        dateEl.textContent = formatMovementDate(row.dataset.date);
+        kindEl.textContent = row.dataset.expenseBehavior === 'fixed' ? 'Despesa fixa' : (isExpense ? 'Despesa variável' : 'Receita');
+
+        const percentage = total > 0 ? Math.min(100, Math.max(0, paid / total * 100)) : 0;
+        progress.style.width = percentage + '%';
+        progressWrap.hidden = !partial;
+        paidLine.hidden = !partial;
+        pendingLine.hidden = !partial;
+        progressLabel.textContent = percentage.toLocaleString('pt-PT', { maximumFractionDigits: 1 }) + '% concluído';
+
+        const settleAction = document.getElementById('movementDetailsSettle');
+        const editAction = document.getElementById('movementDetailsEdit');
+        const deleteAction = document.getElementById('movementDetailsDelete');
+        settleAction.hidden = row.dataset.isInvoicePayment === '1' ||
+            !(['pending', 'partial', 'partially_settled'].includes(status) && Boolean(row.dataset.financialMovementId));
+        editAction.hidden = row.dataset.isInvoicePayment === '1';
+        deleteAction.hidden = row.dataset.isInvoicePayment === '1';
+
+        const progressTitle = document.getElementById('movementDetailsPaymentHeading');
+        progressTitle.hidden = !partial;
+        movementDetailsModal?.show();
+    }
+
+    function runMovementDetailsAction(action) {
+        if (!actionMovement) return;
+        const row = actionMovement;
+        const actions = {
+            settle: () => openSettleModal(row),
+            delete: () => openDeleteModal(row),
+            edit: () => startEdit(row),
+        };
+        const nextAction = actions[action];
+        if (!nextAction) return;
+
+        // Regista antes de hide(): o Bootstrap emite hidden após a transição,
+        // mas implementações sem transição (e os testes) podem emiti-lo imediatamente.
+        if (movementDetailsModalElement?.classList.contains('show')) {
+            movementDetailsModalElement.addEventListener('hidden.bs.modal', nextAction, { once: true });
+            movementDetailsModal?.hide();
+            return;
+        }
+
+        movementDetailsModal?.hide();
+        nextAction();
+    }
+
     function openSettleModal(row) {
         actionMovement = row;
         showSettleError('');
@@ -1465,6 +1530,7 @@
         const actionButton = event.target.closest('[data-movement-action]');
         if (actionButton) {
             const row = actionButton.closest('[data-movement-id]');
+            if (row && actionButton.dataset.movementAction === 'details') openMovementDetails(row);
             if (row && actionButton.dataset.movementAction === 'settle') openSettleModal(row);
             if (row && actionButton.dataset.movementAction === 'delete') openDeleteModal(row);
             return;
@@ -1475,6 +1541,9 @@
             if (row) startEdit(row);
         }
     });
+    document.getElementById('movementDetailsSettle')?.addEventListener('click', () => runMovementDetailsAction('settle'));
+    document.getElementById('movementDetailsEdit')?.addEventListener('click', () => runMovementDetailsAction('edit'));
+    document.getElementById('movementDetailsDelete')?.addEventListener('click', () => runMovementDetailsAction('delete'));
     document.querySelector('.transaction-filters')?.addEventListener('submit', applyFilters);
     document.getElementById('categoryFilter')?.addEventListener('change', () => applyFilters());
     document.getElementById('clearMovementFilters')?.addEventListener('click', () => {

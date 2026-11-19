@@ -151,6 +151,12 @@ body.sidebar-hidden .app-main { margin-left: 0; padding-top: 4.25rem; }
 .summary-card-expense .summary-icon svg,
 .summary-card-income .summary-icon svg,
 .summary-card-primary .summary-icon svg { width: 1.35rem; height: 1.35rem; }
+/* O modal deve ocupar a largura disponível independentemente do tipo selecionado. */
+#movementEntryModal .movement-entry-dialog {
+    width: min(calc(100% - 1rem), 34rem);
+    max-width: 34rem;
+    margin-inline: auto;
+}
 .movement-editor-card .card-body { min-width: 0; }
 .movement-editor-card .record-type-buttons .btn { min-height: 2.7rem; font-weight: 650; }
 .history-card .expense-item { min-width: 0; }

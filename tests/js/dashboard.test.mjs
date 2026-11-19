@@ -29,6 +29,14 @@ const markup = `<!doctype html><meta name="csrf-token" content="test-token">
  <div id="dashboardInstallmentFields" hidden><input id="dashboardInstallments" name="installments_count" type="number" value="3"><select id="dashboardInstallmentFrequency" name="installment_frequency"><option value="monthly">Mensal</option></select><div id="dashboardInstallmentScheduleList"></div></div>
  <button type="submit" id="saveMovementButton">Guardar despesa</button>
 </form></div>
+<div id="movementDetailsModal">
+ <h2 id="movementDetailsTitle"></h2><span id="movementDetailsName"></span><span id="movementDetailsType"></span><span id="movementDetailsStatus"></span>
+ <span id="movementDetailsAmount"></span><span id="movementDetailsPaid"></span><span id="movementDetailsPending"></span>
+ <div id="movementDetailsProgressWrap"><div id="movementDetailsProgress"></div></div><span id="movementDetailsProgressLabel"></span>
+ <div id="movementDetailsPaidLine"></div><div id="movementDetailsPendingLine"></div><div id="movementDetailsPaymentHeading" hidden></div>
+ <span id="movementDetailsCategory"></span><span id="movementDetailsDate"></span><span id="movementDetailsKind"></span>
+ <button id="movementDetailsSettle"></button><button id="movementDetailsEdit"></button><button id="movementDetailsDelete"></button>
+</div>
 <div id="settleMovementModal"><form id="settleMovementForm">
  <h2 id="settleMovementTitle"></h2><span id="settleMovementDescription"></span><div id="settleMovementError" class="d-none" tabindex="-1"></div>
  <input id="settleMovementAmount" name="amount" type="text" inputmode="decimal" required>
@@ -222,6 +230,12 @@ const existingMovement = {
     data_movimento: '2026-11-17', account_id: 'account-id', movement_status: 'pending',
 };
 
+test('modal de novo movimento mantém largura integral no mobile para despesa e receita', () => {
+    const shell = readFileSync(new URL('../../public/css/app-shell.css', import.meta.url), 'utf8');
+    assert.ok(shell.includes('#movementEntryModal .movement-entry-dialog'));
+    assert.ok(shell.includes('width: min(calc(100% - 1rem), 34rem);'));
+});
+
 test('a vista usa entradas textuais com teclado decimal para todos os valores monetários de Movimentos', () => {
     const blade = readFileSync(new URL('../../resources/views/movements.blade.php', import.meta.url), 'utf8');
     for (const id of ['movementAmount', 'settleMovementAmount']) {
@@ -310,7 +324,8 @@ test('as opções de recorrência respeitam hidden mesmo com display grid do Boo
 
 test('despesa simples mostra confirmação única, sem opções de recorrência', () => {
     const ui = setup(async () => jsonResponse(200, { data: [] }), [existingMovement]);
-    ui.element('expensesList').querySelector('[data-movement-action="delete"]').click();
+    ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
+    ui.element('movementDetailsDelete').click();
     assert.equal(ui.element('deleteRecurringOptions').hidden, true);
     assert.equal(ui.element('deleteSingleConfirmation').hidden, true);
     assert.equal(ui.element('deleteMovementTitle').textContent, 'Excluir movimento');
@@ -324,7 +339,8 @@ test('edição envia ao backend o valor com vírgula convertido em decimal canó
         return jsonResponse(200, { data: [] });
     }, [existingMovement]);
     ui.element('movementPaymentCondition').value = 'cash';
-    ui.element('expensesList').querySelector('[data-acao="editar"]').click();
+    ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
+    ui.element('movementDetailsEdit').click();
     assert.equal(ui.element('movementAmount').value, '90.50');
     ui.element('movementAmount').value = '90,50';
     ui.submit();
@@ -340,7 +356,8 @@ test('liquidação normaliza vírgula e rejeita valores ambíguos antes do pedid
         if (options.method === 'PUT') { sent = JSON.parse(options.body); return jsonResponse(200, { data: { id: 'movement-id' } }); }
         return jsonResponse(200, { data: [] });
     }, [existingMovement]);
-    ui.element('expensesList').querySelector('[data-movement-action="settle"]').click();
+    ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
+    ui.element('movementDetailsSettle').click();
     const field = ui.element('settleMovementAmount');
     field.value = '1.234';
     ui.element('settleMovementForm').dispatchEvent(new ui.window.Event('submit', { bubbles: true, cancelable: true }));
@@ -383,7 +400,8 @@ test('liquidação pendente bloqueia repetição e fecho e mostra erro sem perde
     let resolveFetch;
     let calls = 0;
     const ui = setup(() => { calls++; return new Promise((resolve) => { resolveFetch = resolve; }); }, [existingMovement]);
-    ui.element('expensesList').querySelector('[data-movement-action="settle"]').click();
+    ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
+    ui.element('movementDetailsSettle').click();
     const modal = ui.window.bootstrap.Modal.getOrCreateInstance(ui.element('settleMovementModal'));
     const form = ui.element('settleMovementForm');
     form.dispatchEvent(new ui.window.Event('submit', { bubbles: true, cancelable: true }));
@@ -405,7 +423,8 @@ test('liquidação confirmada com falha de atualização mostra aviso para não 
         if (options.method === 'PUT') { calls++; return jsonResponse(200, { data: { id: 'movement-id' }, installment: { status: 'paid' } }); }
         throw new TypeError('falha de rede');
     }, [existingMovement]);
-    ui.element('expensesList').querySelector('[data-movement-action="settle"]').click();
+    ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
+    ui.element('movementDetailsSettle').click();
     const modal = ui.window.bootstrap.Modal.getOrCreateInstance(ui.element('settleMovementModal'));
     ui.element('settleMovementForm').dispatchEvent(new ui.window.Event('submit', { bubbles: true, cancelable: true }));
     await flush();
@@ -424,4 +443,27 @@ test('parcelamento só pode ser criado com pagamento pendente e recorrência con
     assert.match(dashboard, /if \(isNewExpense && paidState !== '0' && \['deferred', 'installments'\]\.includes\(condition\)\)/);
     assert.match(dashboard, /paid_now: paidState/);
     assert.match(controller, /'paid_now' => \['required', Rule::in\(\['0'\]\)\]/);
+});
+
+test('cada movimento substitui os botões de ação por um único menu de detalhes', () => {
+    const ui = setup(async () => jsonResponse(200, { data: [] }), [existingMovement]);
+    const row = ui.element('expensesList').querySelector('[data-movement-id]');
+    assert.ok(row.querySelector('[data-movement-action="details"]'));
+    assert.equal(row.querySelectorAll('[data-acao="editar"], [data-movement-action="settle"], [data-movement-action="delete"]').length, 0);
+    assert.equal(row.querySelectorAll('.expense-actions button').length, 1);
+    ui.dom.window.close();
+});
+
+test('modal de detalhes apresenta totais pagos e pendentes e mantém as ações correspondentes', () => {
+    const partial = { ...existingMovement, amount: '120.00', remaining_amount: '80.00', movement_status: 'partial' };
+    const ui = setup(async () => jsonResponse(200, { data: [] }), [partial]);
+    ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
+    assert.equal(ui.element('movementDetailsName').textContent, 'Despesa de teste');
+    assert.match(ui.element('movementDetailsAmount').textContent, /120,00\s*€/);
+    assert.equal(ui.element('movementDetailsPaid').textContent, '40,00 €');
+    assert.equal(ui.element('movementDetailsPending').textContent, '80,00 €');
+    assert.equal(ui.element('movementDetailsSettle').hidden, false);
+    assert.equal(ui.element('movementDetailsEdit').hidden, false);
+    assert.equal(ui.element('movementDetailsDelete').hidden, false);
+    ui.dom.window.close();
 });
