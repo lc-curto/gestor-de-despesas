@@ -138,7 +138,17 @@
 </div>
 
 <div class="modal fade" id="routeConfirmModal" tabindex="-1" aria-labelledby="routeConfirmTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered"><div class="modal-content route-sheet-content"><div class="modal-header"><h2 class="modal-title h5 fw-bold" id="routeConfirmTitle">Confirmar ação</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body" id="routeConfirmText">Tens a certeza?</div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-danger" id="routeConfirmAction">Confirmar</button></div></div></div>
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content route-sheet-content">
+        <div class="modal-header"><h2 class="modal-title h5 fw-bold" id="routeConfirmTitle">Eliminar movimento?</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+        <div class="modal-body">
+            <p class="mb-1" id="routeConfirmText">Este movimento será eliminado e os saldos das suas contas serão atualizados.</p>
+            <small class="text-secondary" id="routeConfirmHint">Esta ação não pode ser desfeita.</small>
+        </div>
+        <div class="modal-footer d-flex flex-row gap-2">
+            <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-danger flex-fill" id="routeConfirmAction">Eliminar</button>
+        </div>
+    </div></div>
 </div>
 @endsection
 
@@ -379,12 +389,14 @@
  document.getElementById('routeEditMovement').addEventListener('click',()=>{if(!activeMovement||!canEditMovement(activeMovement))return;detailModal.hide();openForm(activeMovement.date,activeMovement)});
  document.getElementById('routeDeleteMovement').addEventListener('click',()=>{
    const item=activeMovement;const recurring=!!item.recurrence_id;
-   document.getElementById('routeConfirmTitle').textContent=recurring?'Eliminar ocorrência':'Confirmar exclusão';
-   document.getElementById('routeConfirmText').textContent='Histórico preservado. Exclusão insegura bloqueada.';
+   document.getElementById('routeConfirmTitle').textContent=recurring?'Eliminar ocorrência?':'Eliminar movimento?';
+   document.getElementById('routeConfirmText').textContent='Este movimento será eliminado e os saldos das suas contas serão atualizados.';
+   document.getElementById('routeConfirmHint').hidden=false;
+   document.getElementById('routeConfirmAction').textContent='Eliminar';
    confirmCallback=async()=>{const endpoint=urls.remove+'/'+item.id;const response=await fetch(endpoint,{method:'DELETE',headers:{'Accept':'application/json','X-CSRF-TOKEN':csrf}});const json=await response.json();if(!response.ok)throw new Error(json.message||'Não foi possível concluir a operação.');window.location.reload()};
    detailModal.hide();confirmModal.show();
  });
- document.getElementById('routeConfirmAction').addEventListener('click',async()=>{try{if(confirmCallback)await confirmCallback()}catch(e){document.getElementById('routeConfirmText').textContent=e.message} });
+ document.getElementById('routeConfirmAction').addEventListener('click',async()=>{try{if(confirmCallback)await confirmCallback()}catch(e){document.getElementById('routeConfirmText').textContent=e.message;document.getElementById('routeConfirmHint').hidden=true} });
  form.querySelectorAll('[name="route_type"]').forEach(radio=>radio.addEventListener('change',()=>{const type=radio.value==='income'?'receita':'despesa';form.querySelectorAll('#routeCategory option[data-type]').forEach(option=>{option.hidden=option.dataset.type!==type});if(document.getElementById('routeCategory').selectedOptions[0]?.hidden)document.getElementById('routeCategory').value=''}));
    form.addEventListener('submit',async e=>{
    e.preventDefault();const data=new FormData(form);const selected=form.querySelector('[name="route_type"]:checked')?.value||data.get('route_type');
