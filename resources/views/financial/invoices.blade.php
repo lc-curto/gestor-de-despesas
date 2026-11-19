@@ -25,7 +25,7 @@
                 $cycleLabels = ['open'=>'Aberta','closed'=>'Fechada'];
                 $cycleClasses = ['open'=>'text-bg-primary','closed'=>'text-bg-secondary'];
                 $paymentLabels = ['unpaid'=>'Por pagar','partial'=>'Parcialmente paga','paid'=>'Paga','overdue'=>'Em atraso','carried'=>'Saldo transportado'];
-                $paymentClasses = ['unpaid'=>'text-bg-light text-dark border','partial'=>'text-bg-warning','paid'=>'text-bg-success','overdue'=>'text-bg-danger','carried'=>'text-bg-secondary'];
+                $paymentClasses = ['unpaid'=>'bg-body-secondary text-body border','partial'=>'text-bg-warning','paid'=>'text-bg-success','overdue'=>'text-bg-danger','carried'=>'text-bg-secondary'];
                 $progress = (float)$invoice->total_amount > 0 ? min(100,(float)$invoice->paid_amount/(float)$invoice->total_amount*100) : 100;
                 $locked = in_array($invoice->status,['closed','paid','carried'],true);
                 $currency = $invoice->conta?->currency ?? auth()->user()->currency;
@@ -33,7 +33,7 @@
             @endphp
             <article class="card border rounded-4 shadow-sm" data-invoice-id="{{ $invoice->id }}" data-status="{{ $invoice->payment_status }}" data-remaining="{{ $invoice->remaining_amount }}" data-currency="{{ $currency }}" data-closing="{{ $invoice->closing_date->toDateString() }}">
                 <div class="card-body p-0">
-                    <button type="button" class="btn btn-light text-start w-100 rounded-4 p-2 p-md-3 border-0" data-bs-toggle="modal" data-bs-target="#{{ $detailModalId }}" aria-label="Ver fatura de {{ $invoice->conta?->name ?? 'Cartão' }}, {{ $invoice->reference_month->translatedFormat('F Y') }}">
+                    <button type="button" class="btn financial-summary-trigger text-start w-100 rounded-4 p-2 p-md-3 border-0" data-bs-toggle="modal" data-bs-target="#{{ $detailModalId }}" aria-label="Ver fatura de {{ $invoice->conta?->name ?? 'Cartão' }}, {{ $invoice->reference_month->translatedFormat('F Y') }}">
                         <div class="d-flex justify-content-between align-items-center gap-2">
                             <div class="min-w-0">
                                 <h2 class="h6 fw-semibold text-body mb-0 text-break">{{ $invoice->conta?->name ?? 'Cartão' }}</h2>
@@ -171,7 +171,15 @@
 
 @push('styles')
 <style>
-.invoice-page{min-width:0}.invoice-page .card>div>button{white-space:normal}.invoice-page .card>div>button:hover{background:var(--bs-tertiary-bg)!important}.invoice-page .card>div>button:focus-visible{outline:2px solid var(--bs-primary);outline-offset:2px}.invoice-page .modal-content{min-width:0}.invoice-page .accordion-button{font-size:.925rem}
+.invoice-page{min-width:0}
+.invoice-page .card>div>button{white-space:normal}
+.invoice-page .financial-summary-trigger{background-color:var(--bs-tertiary-bg)!important;color:var(--bs-body-color)!important;border:1px solid var(--bs-border-color)!important}
+.invoice-page .financial-summary-trigger:hover,.invoice-page .financial-summary-trigger:active{background-color:var(--bs-secondary-bg)!important;color:var(--bs-body-color)!important}
+.invoice-page .financial-summary-trigger:focus-visible{outline:2px solid var(--bs-primary);outline-offset:2px}
+.invoice-page .progress{background-color:var(--bs-secondary-bg)}
+.invoice-page .border-top{border-color:var(--bs-border-color)!important}
+.invoice-page .modal-content{min-width:0}
+.invoice-page .accordion-button{font-size:.925rem}
 </style>
 @endpush
 
