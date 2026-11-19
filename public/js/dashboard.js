@@ -56,6 +56,74 @@
     const deleteModal = deleteModalElement ? bootstrap.Modal.getOrCreateInstance(deleteModalElement) : null;
     const deleteForm = document.getElementById('deleteMovementForm');
     let actionMovement = null;
+
+    // O select mantém o valor submetido; o dropdown Bootstrap organiza nome e saldo.
+    function enhanceAccountPicker(select) {
+        if (!select || select.dataset.pickerEnhanced === '1') return null;
+        select.dataset.pickerEnhanced = '1';
+        const wrapper = document.createElement('div');
+        wrapper.className = 'dropdown account-picker mb-3';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-outline-secondary dropdown-toggle w-100 d-flex align-items-center justify-content-between text-start';
+        button.setAttribute('data-bs-toggle', 'dropdown');
+        button.setAttribute('aria-expanded', 'false');
+        const label = document.createElement('span');
+        label.className = 'text-truncate';
+        const menu = document.createElement('div');
+        menu.className = 'dropdown-menu shadow-sm';
+        button.append(label);
+        wrapper.append(button, menu);
+        select.insertAdjacentElement('afterend', wrapper);
+        select.classList.add('account-picker-native');
+
+        const addOption = (option) => {
+            if (!option.value) return;
+            const parts = option.textContent.split(' · ');
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'dropdown-item';
+            item.disabled = option.disabled || option.hidden;
+            const line = document.createElement('span');
+            line.className = 'account-option';
+            const name = document.createElement('span');
+            name.className = 'account-name';
+            name.textContent = [parts[0], parts[1]].filter(Boolean).join(' · ');
+            const balance = document.createElement('span');
+            balance.className = 'account-balance' + (/^-/.test(parts.slice(2).join(' · ').trim()) ? ' negative' : '');
+            balance.textContent = parts.slice(2).join(' · ');
+            line.append(name, balance);
+            item.append(line);
+            item.addEventListener('click', () => {
+                select.value = option.value;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+                render();
+            });
+            menu.append(item);
+        };
+        const render = () => {
+            menu.replaceChildren();
+            [...select.children].forEach((child) => {
+                if (child.tagName === 'OPTGROUP') {
+                    const heading = document.createElement('div');
+                    heading.className = 'account-group';
+                    heading.textContent = child.label;
+                    menu.append(heading);
+                    [...child.children].forEach(addOption);
+                } else if (child.tagName === 'OPTION') addOption(child);
+            });
+            const selected = select.selectedOptions[0];
+            label.textContent = selected?.value ? selected.textContent.split(' · ').slice(0, 2).join(' · ') : 'Selecionar conta';
+        };
+        select.addEventListener('change', render);
+        render();
+        return { refresh: render };
+    }
+    const accountPickers = [
+        enhanceAccountPicker(document.getElementById('movementAccount')),
+        enhanceAccountPicker(document.getElementById('settleMovementAccount'))
+    ].filter(Boolean);
+
     category?.addEventListener('change', syncExpenseBehaviorFromCategory);
     document.getElementById('dashboardRecurrenceEnabled')?.addEventListener('change', function () {
         const fields = document.getElementById('dashboardRecurrenceFields');
@@ -122,6 +190,7 @@
                 group.hidden = [...group.querySelectorAll('option')].every((option) => option.hidden);
             });
             if (accountField.selectedOptions[0]?.disabled) accountField.value = '';
+            accountPickers.forEach((picker) => picker.refresh());
         }
         if (methodField && accountField) {
             const selectedType = accountField.selectedOptions[0]?.dataset.accountType || '';
@@ -1039,6 +1108,7 @@
         document.getElementById('settleMovementDate').value = row.dataset.date || localDate();
         document.getElementById('settleMovementAccountLabel').textContent = isExpense ? 'Conta de saída' : 'Conta de destino';
         document.getElementById('settleMovementAccount').value = row.dataset.accountId || '';
+        accountPickers.forEach((picker) => picker.refresh());
         const submit = document.getElementById('settleMovementSubmit');
         submit.textContent = isExpense ? 'Confirmar despesa' : 'Confirmar receita';
         submit.className = 'btn w-100 ' + (isExpense ? 'btn-danger' : 'btn-success');
