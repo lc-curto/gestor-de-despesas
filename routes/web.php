@@ -77,6 +77,7 @@ Route::middleware(['auth', 'financial.review'])->group(function () {
         Route::post('/invoices/{id}/pay', [FinancialCoreController::class, 'payInvoice'])->name('invoices.pay');
         Route::post('/invoices/{id}/charges', [FinancialCoreController::class, 'addInvoiceCharge'])->name('invoices.charges.store');
         Route::post('/invoices/{id}/credits', [FinancialCoreController::class, 'addInvoiceCredit'])->name('invoices.credits.store');
+        Route::put('/invoices/{id}/movements/{movementId}', [FinancialCoreController::class, 'updateInvoiceComponent'])->name('invoices.movements.update');
         Route::get('/commitments', [FinancialCoreController::class, 'commitments'])->name('commitments.index');
         Route::post('/commitments/{id}/installments/{installmentId}/pay', [FinancialCoreController::class, 'payCommitmentInstallment'])->name('commitments.installments.pay');
         Route::put('/movements/{id}/settle', [FinancialCoreController::class, 'settleMovement'])->name('movements.settle');
