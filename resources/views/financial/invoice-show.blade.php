@@ -107,9 +107,10 @@
             <div class="modal-header border-0 pb-0"><h2 class="modal-title h5 fw-bold" id="invoiceActionTitle">Ação da fatura</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
             <div class="modal-body p-4">
                 <p id="invoiceActionContext" class="small text-secondary"></p>
+                <p class="small text-secondary d-none" data-field="chargeHelp">Regista aqui juros, comissões, impostos ou multas cobrados pelo banco.</p>
                 <div class="mb-3 d-none" data-field="description"><label class="form-label" for="invoiceDescription">Descrição</label><input class="form-control" id="invoiceDescription" maxlength="255"></div>
                 <div class="mb-3 d-none" data-field="amount"><label class="form-label" for="invoiceAmount">Valor</label><input class="form-control" id="invoiceAmount" inputmode="decimal" placeholder="0,00"></div>
-                <div class="mb-3 d-none" data-field="date"><label class="form-label" for="invoiceDate">Data efetiva</label><input class="form-control" id="invoiceDate" type="date" value="{{ today()->toDateString() }}"></div>
+                <div class="mb-3 d-none" data-field="date"><label class="form-label" for="invoiceDate">Data</label><input class="form-control" id="invoiceDate" type="date" value="{{ today()->toDateString() }}"></div>
                 <div class="mb-3 d-none" data-field="account"><label class="form-label" for="invoiceAccount">Conta de pagamento</label><select class="form-select" id="invoiceAccount"><option value="">Selecionar conta</option>@foreach($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select></div>
                 <div class="mb-3 d-none" data-field="chargeType"><label class="form-label" for="invoiceChargeType">Tipo de encargo</label><select class="form-select" id="invoiceChargeType"><option value="interest">Juros</option><option value="late_fee">Multa</option><option value="commission">Comissão</option><option value="tax">Imposto</option><option value="other">Outro</option></select></div>
                 <div class="mb-3 d-none" data-field="purchase"><label class="form-label" for="invoicePurchase">Compra a creditar</label><select class="form-select" id="invoicePurchase">@foreach($invoice->movimentos as $purchase)<option value="{{ $purchase->id }}">{{ $purchase->description }} · {{ $purchase->amount }} {{ $currency }}</option>@endforeach</select></div>
@@ -130,7 +131,7 @@
     const modal=bootstrap.Modal.getOrCreateInstance(modalEl),csrf=document.querySelector('meta[name="csrf-token"]')?.content;
     const context=document.querySelector('.invoice-detail-context');
     let invoiceId=context?.dataset.invoiceId,action=null;
-    const fieldMap={pay:['amount','date','account'],charge:['description','amount','date','chargeType'],credit:['description','amount','date','purchase'],close:['statement']};
+    const fieldMap={pay:['amount','date','account'],charge:['chargeHelp','description','amount','date','chargeType'],credit:['description','amount','date','purchase'],close:['statement']};
     const titleMap={pay:'Pagar fatura',charge:'Adicionar encargo',credit:'Registar crédito',close:'Fechar fatura'};
     const money=v=>{const s=String(v??'').trim().replace(',','.');return /^\d+(\.\d{1,2})?$/.test(s)?s:null;};
     document.querySelectorAll('.js-invoice-action').forEach(button=>button.addEventListener('click',()=>{
