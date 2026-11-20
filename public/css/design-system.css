@@ -60,7 +60,7 @@ body { color: var(--mb-text); background: var(--mb-page); -webkit-font-smoothing
 .app-main .table > :not(caption) > * > * { padding: .8rem .75rem; border-bottom-color: var(--mb-border); }
 .app-main .badge { border-radius: 999px; padding: .38rem .62rem; font-weight: 650; }
 .app-main .alert { border: 1px solid var(--mb-border); border-radius: var(--mb-radius-md); }
-.app-main .modal-content { border: 1px solid var(--mb-border) !important; border-radius: 1.15rem !important; background: var(--mb-surface); color: var(--mb-text); }
+.app-main .modal-content { border: 1px solid var(--mb-border); background: var(--mb-surface); color: var(--mb-text); }
 .app-main .modal-header, .app-main .modal-footer { border-color: var(--mb-border); }
 .app-main .dropdown-menu { border-color: var(--mb-border); border-radius: .85rem; box-shadow: var(--mb-shadow); }
 .page-heading, .credit-cards-page > header, .commitments-page > header { margin-bottom: 1.35rem; }
