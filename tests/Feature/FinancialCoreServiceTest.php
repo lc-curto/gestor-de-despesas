@@ -992,7 +992,7 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame(0.0, $dashboard->viewData('totalReceitas'));
     }
 
-    public function test_closed_invoice_reconciles_to_statement_and_accepts_payments_without_changing_closed_state(): void
+    public function test_invoice_closes_automatically_and_retroactive_charges_reopen_only_the_remaining_balance(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -1008,30 +1008,53 @@ class FinancialCoreServiceTest extends TestCase
             'movement_date' => '2026-11-12',
         ]);
         $invoice = $user->faturas()->firstOrFail();
+
+        // No manual close or bank statement reconciliation is required.
+        $this->travelTo(Carbon::parse('2026-11-25 12:00:00'));
+        $sameDay = $invoices->listInvoices($user)->items()[0];
+        $this->assertSame('open', $sameDay->cycle_status);
+        $this->assertSame('unpaid', $sameDay->payment_status);
+
         $this->travelTo(Carbon::parse('2026-11-26 12:00:00'));
-
-        $this->postJson('/api/financial/invoices/'.$invoice->id.'/close', [
-            'statement_amount' => '81.00',
-        ])->assertUnprocessable()->assertJsonValidationErrors('statement_amount');
-        $this->assertSame('open', $invoice->fresh()->status);
-
-        $this->postJson('/api/financial/invoices/'.$invoice->id.'/close', [
-            'statement_amount' => '80.00',
-        ])->assertOk()->assertJsonPath('data.status', 'closed')
-            ->assertJsonPath('data.statement_amount', '80.00');
+        $closed = $invoices->listInvoices($user)->items()[0];
+        $this->assertSame('closed', $closed->cycle_status);
+        $this->assertSame('unpaid', $closed->payment_status);
 
         $this->postJson('/api/financial/invoices/'.$invoice->id.'/charges', [
-            'charge_type' => 'late_fee', 'description' => 'Multa posterior ao fecho',
+            'charge_type' => 'late_fee', 'description' => 'Multa após o fecho',
             'amount' => '5.00', 'movement_date' => '2026-11-26',
-        ])->assertUnprocessable()->assertJsonValidationErrors('invoice');
+        ])->assertCreated();
 
-        $invoices->pay($user, $invoice, $bank->id, '2026-11-26', '30.00');
-        $this->assertSame('closed', $invoice->fresh()->status);
-        $this->assertSame('partial', $invoices->listInvoices($user)->items()[0]->display_status);
-        $invoices->pay($user, $invoice, $bank->id, '2026-11-27', '50.00');
-        $this->assertSame('paid', $invoice->fresh()->status);
-        $this->assertSame('80.00', (string) $invoice->fresh()->statement_amount);
+        $afterFirstCharge = $invoices->findInvoice($user, $invoice->id);
+        $this->assertSame('85.00', $afterFirstCharge->total_amount);
+        $this->assertSame('85.00', $afterFirstCharge->remaining_amount);
+
+        $payment = $invoices->pay($user, $invoice, $bank->id, '2026-11-26', '30.00');
+        $this->assertSame('settled', $payment->fresh()->status);
+        $afterPartial = $invoices->findInvoice($user, $invoice->id);
+        $this->assertSame('closed', $afterPartial->cycle_status);
+        $this->assertSame('partial', $afterPartial->payment_status);
+        $this->assertSame('55.00', $afterPartial->remaining_amount);
+
+        $this->postJson('/api/financial/invoices/'.$invoice->id.'/charges', [
+            'charge_type' => 'interest', 'description' => 'Juros após pagamento parcial',
+            'amount' => '2.00', 'movement_date' => '2026-11-26',
+        ])->assertCreated();
+
+        $afterSecondCharge = $invoices->findInvoice($user, $invoice->id);
+        $this->assertSame('87.00', $afterSecondCharge->total_amount);
+        $this->assertSame('30.00', $afterSecondCharge->paid_amount);
+        $this->assertSame('57.00', $afterSecondCharge->remaining_amount);
+        $this->assertSame('partial', $afterSecondCharge->payment_status);
+
+        $invoices->pay($user, $invoice, $bank->id, '2026-11-27', '57.00');
+        $paid = $invoices->findInvoice($user, $invoice->id);
+        $this->assertSame('paid', $paid->payment_status);
+        $this->assertSame('closed', $paid->cycle_status);
+        $this->assertSame('0.00', $paid->remaining_amount);
         $this->assertSame('0.00', app(AccountBalanceService::class)->balance($card->fresh()));
-        $this->assertSame('420.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+        $this->assertSame('413.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+        $this->assertSame(2, $invoice->movimentos()->where('invoice_charge_type', '!=', 'credit')->count());
+        $this->assertSame(87.00, (float) $invoice->movimentos()->where('is_settlement_parent', true)->value('amount'));
     }
 }
