@@ -11,9 +11,8 @@
 @endphp
 
 <div class="app-content accounts-rebuilt" id="accountsPage">
-    <header class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-        <h1 class="h2 fw-bold mb-0">Contas</h1>
-        <div class="d-flex flex-wrap gap-2">
+    <x-financial.page-header title="Contas">
+        <x-slot:actions>
             @if ($transferTargets->count() >= 2)
                 <button class="btn btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#accountTransferModal">
                     <i data-lucide="arrow-left-right" aria-hidden="true"></i><span class="ms-1">Transferir</span>
@@ -22,8 +21,8 @@
             <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#newAccountModal">
                 <i data-lucide="plus" aria-hidden="true"></i><span class="ms-1">Nova</span>
             </button>
-        </div>
-    </header>
+        </x-slot:actions>
+    </x-financial.page-header>
 
     <div id="accountFeedback" class="d-none" role="status" aria-live="polite"></div>
 
