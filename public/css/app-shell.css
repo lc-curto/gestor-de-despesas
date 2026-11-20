@@ -1419,6 +1419,22 @@ body.sidebar-collapsed .account-avatar {
     font-weight: 750;
 }
 
+@media (max-width: 767.98px) {
+    #dashboardMonthPicker .dashboard-month-dialog {
+        display: flex;
+        width: 100%;
+        min-height: 100%;
+        max-width: none;
+        align-items: flex-end;
+        margin: 0;
+    }
+    #dashboardMonthPicker .dashboard-month-dialog .modal-content {
+        width: 100%;
+        border-radius: 1.15rem 1.15rem 0 0 !important;
+        padding-bottom: max(.5rem, env(safe-area-inset-bottom));
+    }
+}
+
 .home-quick-action:hover { border-color: var(--app-primary); color: var(--app-primary); }
 .home-quick-action > svg { width: 1.25rem; height: 1.25rem; flex: 0 0 auto; color: var(--app-primary); }
 .home-converter-trigger { justify-content: flex-start; text-align: left; }
