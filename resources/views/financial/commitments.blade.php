@@ -91,7 +91,7 @@
                     $next = $commitment->next_installment;
                     $nextRemaining = $next ? max(0, (float) $next->amount - (float) $next->paid_amount) : 0;
                 @endphp
-                <article class="commitment-card" data-commitment-card data-commitment-id="{{ $commitment->id }}">
+                <article class="commitment-card card border-0 shadow-sm rounded-4" data-commitment-card data-commitment-id="{{ $commitment->id }}">
                     <button class="commitment-card-toggle" type="button" aria-expanded="false" aria-controls="commitment-details-{{ $commitment->id }}">
                         <span class="commitment-card-heading">
                             <span class="commitment-card-name">{{ $commitment->name }}@if ($commitment->merchant)<small class="commitment-merchant">{{ $commitment->merchant }}</small>@endif</span>
@@ -247,8 +247,8 @@
                     </div>
                 </div>
             @empty
-                <div class="commitment-empty-state">
-                    <strong>Nenhuma compra encontrada.</strong>
+                <div class="text-center p-4 rounded-4 border bg-body-tertiary">
+                    <strong class="d-block">Nenhuma compra encontrada.</strong>
                     <span class="text-secondary small">Sem resultados.</span>
                 </div>
             @endforelse
@@ -547,6 +547,54 @@
 .commitment-card-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem;padding:0;margin:0;border:0}
 .commitment-card-actions .btn{min-height:42px;white-space:normal}
 .commitment-renegotiation-preview strong{font-size:1.25rem;font-variant-numeric:tabular-nums}
+
+/* Parcelamentos: pequenos ajustes sobre os componentes Bootstrap partilhados. */
+.commitments-page .commitment-tabs .nav-link {
+    padding: .45rem .8rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 999px;
+    font-size: .8rem;
+    line-height: 1.35;
+    white-space: nowrap;
+}
+.commitments-page .commitment-tabs .nav-link.active {
+    border-color: var(--app-primary);
+    background: var(--app-primary);
+    color: #fff;
+}
+.commitments-page .commitment-modal-content {
+    overflow: hidden;
+}
+.commitments-page .commitment-modal-content .modal-header,
+.commitments-page .commitment-modal-content .modal-footer {
+    padding-right: 1.25rem;
+    padding-left: 1.25rem;
+}
+.commitments-page .commitment-modal-content .modal-body {
+    padding: 1rem 1.25rem;
+}
+.commitments-page .commitment-modal-content .form-label {
+    margin-bottom: .35rem;
+    font-size: .875rem;
+    font-weight: 600;
+}
+.commitments-page .commitment-modal-content .form-control,
+.commitments-page .commitment-modal-content .form-select {
+    min-height: 2.75rem;
+}
+.commitments-page .commitment-modal-content .modal-footer .btn {
+    min-width: 6rem;
+}
+@media (max-width: 575.98px) {
+    .commitments-page .commitment-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: .2rem;
+    }
+    .commitments-page .commitment-tabs .nav-link {
+        flex: 0 0 auto;
+    }
+}
 </style>
 @endpush
 
