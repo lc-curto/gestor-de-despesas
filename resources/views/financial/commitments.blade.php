@@ -204,7 +204,7 @@
                                 </div>
                                 <div class="modal-footer border-0 pt-2">
                                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
-                                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#commitmentHistoryModal-{{ $commitment->id }}" data-bs-dismiss="modal">Histórico completo</button>
+                                    <button type="button" class="btn btn-outline-secondary commitment-history-trigger" data-bs-toggle="modal" data-bs-target="#commitmentHistoryModal-{{ $commitment->id }}" data-bs-dismiss="modal">Histórico completo</button>
                                 </div>
                             </div>
                         </div>
