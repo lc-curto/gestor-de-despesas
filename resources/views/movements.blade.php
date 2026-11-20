@@ -665,6 +665,7 @@ window.meuBolsoDashboard = {
     name: @json(auth()->user()->name),
     currency: @json($moeda),
     initialType: @json(request()->query('tipo') === 'receita' || old('income_date') ? 'receita' : 'despesa'),
+    returnUrl: @json($returnUrl),
     autoOpenEditor: @json(request()->boolean('novo')),
     initialCategory: @json(old('category_id')),
     type: @json($filtroTipo),
