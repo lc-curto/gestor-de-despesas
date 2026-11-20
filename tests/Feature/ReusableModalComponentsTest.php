@@ -26,6 +26,7 @@ class ReusableModalComponentsTest extends TestCase
             ->assertSee('modal-dialog-centered', false)
             ->assertSee('modal-dialog-scrollable', false)
             ->assertSee('modal-lg', false)
+            ->assertSee('rounded-4', false)
             ->assertSee('modal-fullscreen-sm-down', false)
             ->assertSee('Editar conta')
             ->assertSee('Atualiza os dados.')
