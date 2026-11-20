@@ -21,7 +21,7 @@
                 </button>
             @endif
             <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#newAccountModal">
-                <i data-lucide="plus" aria-hidden="true"></i><span class="ms-1">Nova conta</span>
+                <i data-lucide="plus" aria-hidden="true"></i><span class="ms-1">Nova</span>
             </button>
         </div>
     </header>
@@ -33,7 +33,7 @@
             <div class="card-body text-center py-5">
                 <span class="accounts-empty-icon"><i data-lucide="wallet-cards" aria-hidden="true"></i></span>
                 <h2 class="h5 fw-bold mt-3">Ainda não tens contas</h2>
-                <button class="btn btn-primary mt-2" type="button" data-bs-toggle="modal" data-bs-target="#newAccountModal">Adicionar conta</button>
+                <button class="btn btn-primary mt-2" type="button" data-bs-toggle="modal" data-bs-target="#newAccountModal">Adicionar</button>
             </div>
         </section>
     @else
@@ -83,10 +83,10 @@
                                     data-name="{{ $account->name }}" data-allowed="{{ $account->allow_negative_balance ? '1' : '0' }}"
                                     data-opening="{{ $account->opening_balance !== null ? '1' : '0' }}"
                                     data-opening-value="{{ $account->opening_balance }}" data-opening-date="{{ $account->opening_balance_date?->format('d/m/Y') }}" data-opening-iso="{{ $account->opening_balance_date?->toDateString() }}" data-movements="{{ $account->movimentos_origem_count + $account->movimentos_destino_count }}"
-                                    data-type="{{ $account->type }}" data-currency="{{ $account->currency }}">Editar conta</button></li>
+                                    data-type="{{ $account->type }}" data-currency="{{ $account->currency }}">Editar</button></li>
                                 @if (in_array($account->type, ['bank', 'cash'], true) && $account->status === 'active' && $account->opening_balance !== null)
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><button class="dropdown-item text-danger js-close-account" type="button" data-bs-toggle="modal" data-bs-target="#closeAccountModal" data-endpoint="{{ route('financial.accounts.close', $account->id) }}" data-id="{{ $account->id }}" data-name="{{ $account->name }}">Encerrar conta</button></li>
+                                    <li><button class="dropdown-item text-danger js-close-account" type="button" data-bs-toggle="modal" data-bs-target="#closeAccountModal" data-endpoint="{{ route('financial.accounts.close', $account->id) }}" data-id="{{ $account->id }}" data-name="{{ $account->name }}">Encerrar</button></li>
                                 @endif
                             </ul>
                         </div>
@@ -139,7 +139,7 @@
                 </div>
                 <div class="modal-footer border-0 pt-0">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Criar conta</button>
+                    <button type="submit" class="btn btn-primary">Criar</button>
                 </div>
             </form>
         </div>
@@ -192,7 +192,7 @@
                 </div>
                 <div class="modal-footer border-0 pt-0">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Confirmar transferência</button>
+                    <button type="submit" class="btn btn-primary">Transferir</button>
                 </div>
             </form>
         </div>
