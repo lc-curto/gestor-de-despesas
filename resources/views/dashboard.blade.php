@@ -9,12 +9,6 @@
     $recentMovements = $movimentos->take(5);
     $maxCategoryTotal = max(1, (float) $expenseCategories->max('total'));
     $greeting = now()->hour < 12 ? 'Bom dia' : (now()->hour < 19 ? 'Boa tarde' : 'Boa noite');
-    $monthOptions = collect(range(0, 11))
-        ->map(fn ($offset) => now()->startOfMonth()->subMonths($offset))
-        ->push($inicio->copy()->startOfMonth())
-        ->unique(fn ($date) => $date->format('Y-m'))
-        ->sortByDesc(fn ($date) => $date->format('Y-m'))
-        ->values();
 @endphp
 
 <div class="home-dashboard">
@@ -26,16 +20,15 @@
     </header>
 
     <form id="dashboardMonthForm" class="home-month-selector mb-3" method="GET" action="{{ route('dashboard') }}">
-        <label for="dashboardMonth" class="small text-secondary">Mês de referência:</label>
-        <select id="dashboardMonth" name="mes" class="form-select form-select-sm home-month-select"
-            aria-label="Selecionar mês de referência">
-            @foreach ($monthOptions as $monthOption)
-                <option value="{{ $monthOption->format('Y-m') }}" @selected($monthOption->format('Y-m') === $mes)>
-                    {{ ucfirst($monthOption->locale('pt_PT')->translatedFormat('F Y')) }}
-                </option>
-            @endforeach
-        </select>
-        <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Aplicar</button></noscript>
+        <span class="small text-secondary">Mês de referência:</span>
+        <input type="hidden" id="dashboardMonth" name="mes" value="{{ $mes }}">
+        <button type="button" class="home-month-trigger" id="openDashboardMonthPicker"
+            data-bs-toggle="modal" data-bs-target="#dashboardMonthPicker"
+            aria-haspopup="dialog" aria-controls="dashboardMonthPicker">
+            <span id="dashboardMonthLabel">{{ ucfirst($inicio->copy()->locale('pt_PT')->translatedFormat('F Y')) }}</span>
+            <i data-lucide="chevron-down" aria-hidden="true"></i>
+        </button>
+        <noscript><input type="month" name="mes" value="{{ $mes }}" class="form-control"><button type="submit" class="btn btn-sm btn-outline-secondary">Aplicar</button></noscript>
     </form>
 
     <section class="home-financial-card mb-4" aria-label="Resumo financeiro">
@@ -66,13 +59,13 @@
         <h2 class="h6 fw-bold mb-2" id="homeQuickActionsTitle">Ações rápidas</h2>
         <div class="row g-2">
             <div class="col-4">
-                <a class="home-quick-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'despesa']) }}">
+                <a class="home-quick-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'despesa', 'mes' => $mes, 'return_to' => route('dashboard', ['mes' => $mes])]) }}">
                     <i data-lucide="minus-circle" aria-hidden="true"></i>
                     <strong>Despesa</strong>
                 </a>
             </div>
             <div class="col-4">
-                <a class="home-quick-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'receita']) }}">
+                <a class="home-quick-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'receita', 'mes' => $mes, 'return_to' => route('dashboard', ['mes' => $mes])]) }}">
                     <i data-lucide="plus-circle" aria-hidden="true"></i>
                     <strong>Receita</strong>
                 </a>
@@ -157,6 +150,29 @@
             <p class="small text-secondary mb-0">Ainda não existem movimentações neste mês.</p>
         @endforelse
     </section>
+</div>
+
+<div class="modal fade" id="dashboardMonthPicker" tabindex="-1" aria-labelledby="dashboardMonthPickerTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm dashboard-month-dialog">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pb-2">
+                <h2 class="modal-title h5 fw-bold" id="dashboardMonthPickerTitle">Escolher mês</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body pt-1">
+                <div class="dashboard-month-year d-flex align-items-center justify-content-between mb-3">
+                    <button type="button" class="btn btn-sm btn-light" id="dashboardMonthPreviousYear" aria-label="Ano anterior"><i data-lucide="chevron-left"></i></button>
+                    <strong id="dashboardMonthYear" aria-live="polite"></strong>
+                    <button type="button" class="btn btn-sm btn-light" id="dashboardMonthNextYear" aria-label="Ano seguinte"><i data-lucide="chevron-right"></i></button>
+                </div>
+                <div class="dashboard-month-grid" id="dashboardMonthGrid" aria-label="Meses do ano"></div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary flex-fill" id="applyDashboardMonth">Aplicar</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="modal fade" id="currencyConverterModal" tabindex="-1" aria-labelledby="currencyConverterTitle" aria-hidden="true">

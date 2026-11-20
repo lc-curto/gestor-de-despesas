@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\Financial\AccountBalanceService;
 use App\Services\Financial\CardInvoiceService;
+use App\Support\SafeReturnUrl;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -208,8 +209,13 @@ class DashboardController extends Controller
             return $this->movimentos($request);
         }
         $dashboard = $this->__invoke($request, $balances, $invoices);
+        $dashboardData = $dashboard->getData();
+        $returnUrl = SafeReturnUrl::resolve(
+            $request,
+            route('dashboard', ['mes' => $dashboardData['mes']])
+        );
 
-        return view('movements', $dashboard->getData());
+        return view('movements', array_merge($dashboardData, ['returnUrl' => $returnUrl]));
     }
 
     public function movimentos(Request $request)
