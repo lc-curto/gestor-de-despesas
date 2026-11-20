@@ -337,7 +337,7 @@ body { color: var(--mb-text); background: var(--mb-page); -webkit-font-smoothing
 }
 
 #categoryModal .modal-body .mb-3 {
-    margin-bottom: 1.1rem !important;
+    margin-bottom: 1.1rem;
 }
 
 #categoryModal .form-label,
@@ -441,7 +441,7 @@ body { color: var(--mb-text); background: var(--mb-page); -webkit-font-smoothing
     }
 
     #categoryModal .modal-body .mb-3 {
-        margin-bottom: .85rem !important;
+        margin-bottom: .85rem;
     }
 
     #categoryModal .form-control,
