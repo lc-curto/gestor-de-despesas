@@ -1,16 +1,6 @@
 (() => {
-    const clock = document.getElementById('currentDateTime');
-    if (clock) {
-        const formatter = new Intl.DateTimeFormat('pt-PT', { dateStyle: 'full', timeStyle: 'short' });
-        const updateClock = () => {
-            const now = new Date();
-            clock.textContent = formatter.format(now);
-            clock.dateTime = now.toISOString();
-            clock.title = 'Fuso horário: ' + (Intl.DateTimeFormat().resolvedOptions().timeZone || 'local');
-        };
-        updateClock();
-        window.setInterval(updateClock, 30000);
-    }
+    const monthSelect = document.getElementById('dashboardMonth');
+    monthSelect?.addEventListener('change', () => monthSelect.form?.requestSubmit());
 
     const amount = document.getElementById('conversionAmount');
     const from = document.getElementById('conversionFrom');
