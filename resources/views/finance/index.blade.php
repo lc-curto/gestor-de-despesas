@@ -53,7 +53,7 @@
                 <input id="endDate" type="date" name="fim" class="form-control" value="{{ request('fim') }}">
             </div>
             <div class="finance-filter-submit">
-                <button class="btn btn-primary btn-sm" type="submit">Aplicar filtros</button>
+                <button class="btn btn-primary btn-sm" type="submit">Aplicar</button>
             </div>
         </div>
     </div>
