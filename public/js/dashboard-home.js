@@ -1,16 +1,20 @@
 (() => {
-    const clock = document.getElementById('currentDateTime');
-    if (clock) {
-        const formatter = new Intl.DateTimeFormat('pt-PT', { dateStyle: 'full', timeStyle: 'short' });
-        const updateClock = () => {
-            const now = new Date();
-            clock.textContent = formatter.format(now);
-            clock.dateTime = now.toISOString();
-            clock.title = 'Fuso horário: ' + (Intl.DateTimeFormat().resolvedOptions().timeZone || 'local');
-        };
-        updateClock();
-        window.setInterval(updateClock, 30000);
-    }
+    const monthSelect = document.getElementById('dashboardMonth');
+    monthSelect?.addEventListener('change', () => monthSelect.form?.requestSubmit());
+
+    const balanceToggle = document.getElementById('toggleBalanceVisibility');
+    balanceToggle?.addEventListener('click', () => {
+        const hidden = balanceToggle.getAttribute('aria-pressed') !== 'true';
+        document.querySelectorAll('.home-sensitive-value').forEach(value => {
+            value.textContent = hidden ? value.dataset.hiddenValue : value.dataset.visibleValue;
+        });
+        balanceToggle.setAttribute('aria-pressed', String(hidden));
+        balanceToggle.setAttribute('aria-label', hidden ? 'Mostrar saldos' : 'Ocultar saldos');
+        balanceToggle.innerHTML = hidden
+            ? '<i data-lucide="eye-off" aria-hidden="true"></i>'
+            : '<i data-lucide="eye" aria-hidden="true"></i>';
+        window.lucide?.createIcons?.();
+    });
 
     const amount = document.getElementById('conversionAmount');
     const from = document.getElementById('conversionFrom');
