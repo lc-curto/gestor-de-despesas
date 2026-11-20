@@ -153,7 +153,7 @@
 </div>
 
 <div class="modal fade" id="dashboardMonthPicker" tabindex="-1" aria-labelledby="dashboardMonthPickerTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-dialog modal-dialog-centered modal-sm dashboard-month-dialog">
         <div class="modal-content border-0 shadow rounded-4">
             <div class="modal-header border-0 pb-2">
                 <h2 class="modal-title h5 fw-bold" id="dashboardMonthPickerTitle">Escolher mês</h2>
