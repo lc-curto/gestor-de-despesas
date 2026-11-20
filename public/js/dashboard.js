@@ -1628,7 +1628,17 @@
     if (cfg.initialCategory) category.value = cfg.initialCategory;
     syncExpenseBehaviorFromCategory();
 
-    if (cfg.autoOpenEditor) openEditor();
+    if (cfg.autoOpenEditor) {
+        openEditor();
+        if (typeof cfg.returnUrl === 'string' && cfg.returnUrl.startsWith('/') && !cfg.returnUrl.startsWith('//')) {
+            let returnAfterQuickAction = true;
+            editorModalElement?.addEventListener('hidden.bs.modal', () => {
+                if (!returnAfterQuickAction) return;
+                returnAfterQuickAction = false;
+                window.location.assign(cfg.returnUrl);
+            }, { once: true });
+        }
+    }
 
     updateSummary(totalExpenses, totalIncome);
     updatePeriodCaption();
