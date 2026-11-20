@@ -9,53 +9,28 @@
         <div class="d-flex flex-wrap gap-2"><button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#createCardModal"><i data-lucide="plus" aria-hidden="true"></i><span class="ms-1">Adicionar</span></button></div>
     </header>
     <div id="cardsFeedback" class="alert d-none" role="status" aria-live="polite"></div>
-    <section class="cards-grid" aria-label="Os meus cartões">
+    <section class="d-grid gap-3" aria-label="Os meus cartões">
         @forelse($cards as $card)
             @php $isInactive = $card->status !== 'active' || ! $card->is_operational; @endphp
-            <article class="card border rounded-4 shadow-sm {{ $isInactive ? 'credit-card-inactive' : '' }}" @if($isInactive) hidden @endif>
-                <a href="{{ route('financial.cards.show', ['id' => $card->id, 'return_to' => request()->getRequestUri()]) }}" class="btn financial-summary-trigger text-start w-100 rounded-4 border-0 p-2 text-decoration-none" aria-label="Abrir {{ $card->name }}">
-                    <div class="d-flex align-items-center justify-content-between gap-2">
-                        <span class="fw-semibold text-body text-break">{{ $card->name }}</span>
-                        @if($isInactive)
-                            <span class="badge text-bg-secondary">Inativo</span>
-                        @endif
+            <a href="{{ route('financial.cards.show', ['id' => $card->id, 'return_to' => request()->getRequestUri()]) }}"
+               class="card border rounded-4 text-decoration-none text-body credit-card-item {{ $isInactive ? 'credit-card-inactive' : '' }}"
+               @if($isInactive) hidden @endif aria-label="Abrir {{ $card->name }}">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                        <span class="fw-semibold text-break">{{ $card->name }}</span>
+                        <span class="badge {{ $isInactive ? 'text-bg-secondary' : 'text-bg-success' }}">{{ $isInactive ? 'Inativo' : 'Ativo' }}</span>
                     </div>
-                    <div class="d-flex justify-content-between align-items-end gap-2 mt-1">
-                        <span class="min-w-0">
-                            <span class="small text-secondary d-block">Disponível</span>
-                            <strong class="fs-4 text-body">{{ number_format($card->available_limit,2,',','.') }} {{ $card->currency }}</strong>
-                        </span>
-                        <span class="text-end flex-shrink-0">
-                            <span class="small text-secondary d-block">Utilizado</span>
-                            <strong class="small text-body">{{ number_format($card->used_limit,2,',','.') }} {{ $card->currency }}</strong>
-                        </span>
-                    </div>
-                    <div class="progress mt-1" role="progressbar" aria-label="Percentagem do limite utilizado" aria-valuenow="{{ round($card->usage_percent) }}" aria-valuemin="0" aria-valuemax="100" style="height:5px">
+                    <strong class="d-block fs-3 lh-1 mb-1 {{ $isInactive ? 'text-body' : 'text-success' }}">{{ number_format($card->available_limit,2,',','.') }} {{ $card->currency }}</strong>
+                    <span class="small text-secondary">Disponível de {{ number_format((float)$card->credit_limit,2,',','.') }} {{ $card->currency }}</span>
+                    <div class="progress mt-2" role="progressbar" aria-label="Percentagem do limite utilizado" aria-valuenow="{{ round($card->usage_percent) }}" aria-valuemin="0" aria-valuemax="100" style="height:5px">
                         <div class="progress-bar" style="width:{{ $card->usage_percent }}%"></div>
                     </div>
-                    <div class="rounded-3 bg-body-secondary p-2 mt-2 small">
-                        <div class="d-flex justify-content-between align-items-center gap-2">
-                            <span class="text-secondary">Limite total</span>
-                            <strong class="text-body text-nowrap">{{ number_format((float)$card->credit_limit,2,',','.') }} {{ $card->currency }}</strong>
-                        </div>
-                        <div class="border-top my-2" style="border-color:var(--bs-border-color)!important"></div>
-                        <div class="row g-2">
-                            <div class="col-6">
-                                <span class="text-secondary d-block">Fecho</span>
-                                <strong class="text-body">Dia {{ $card->closing_day ?? '—' }}</strong>
-                            </div>
-                            <div class="col-6">
-                                <span class="text-secondary d-block">Vencimento</span>
-                                <strong class="text-body">Dia {{ $card->due_day ?? '—' }}</strong>
-                            </div>
-                        </div>
+                    <div class="d-flex justify-content-between align-items-center gap-2 mt-2 small text-secondary">
+                        <span>Utilizado {{ number_format($card->used_limit,2,',','.') }} {{ $card->currency }}</span>
+                        <span class="text-end">Fecho {{ $card->closing_day ?? '—' }} · Vence {{ $card->due_day ?? '—' }}</span>
                     </div>
-                    <div class="d-flex justify-content-end align-items-center border-top mt-2 pt-2">
-                        <span class="small fw-semibold text-primary">Ver faturas</span>
-                        <i data-lucide="chevron-right" class="text-secondary ms-1" aria-hidden="true"></i>
-                    </div>
-                </a>
-            </article>
+                </div>
+            </a>
         @empty
             <div class="card border-0 rounded-4 text-center p-4"><div class="card-body"><i data-lucide="credit-card" class="mb-3 text-secondary" style="width:32px;height:32px"></i><h2 class="h5">Ainda não tens cartões</h2><button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCardModal">Adicionar</button></div></div>
         @endforelse
@@ -100,22 +75,10 @@
 
 @push('styles')
 <style>
-.credit-cards-page .financial-summary-trigger {
-    background-color: var(--bs-tertiary-bg) !important;
-    color: var(--bs-body-color) !important;
-    border: 1px solid var(--bs-border-color) !important;
-}
-.credit-cards-page .financial-summary-trigger:hover,
-.credit-cards-page .financial-summary-trigger:active {
-    background-color: var(--bs-secondary-bg) !important;
-    color: var(--bs-body-color) !important;
-}
-.credit-cards-page .financial-summary-trigger:focus-visible {
-    outline: 2px solid var(--bs-primary);
-    outline-offset: 2px;
-}
-.credit-cards-page .progress { background-color: var(--bs-secondary-bg); }
-.credit-cards-page .border-top { border-color: var(--bs-border-color) !important; }
+.credit-card-item { transition: border-color .15s ease, background-color .15s ease; }
+.credit-card-item:hover { border-color: var(--bs-primary) !important; background-color: var(--bs-tertiary-bg); }
+.credit-card-item:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
+.credit-card-item .progress { background-color: var(--bs-secondary-bg); }
 </style>
 @endpush
 
