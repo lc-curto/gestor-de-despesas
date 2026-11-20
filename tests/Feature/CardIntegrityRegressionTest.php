@@ -109,7 +109,7 @@ class CardIntegrityRegressionTest extends TestCase
         $this->assertEquals(100, $listed->total_amount);
         $this->assertEquals(0, $listed->paid_amount);
         $this->assertSame('100.00', $listed->remaining_amount);
-        $this->assertSame('open', $listed->payment_status);
+        $this->assertSame('unpaid', $listed->payment_status);
         $this->assertBalance($card, '-100.00');
         $this->assertBalance($bank, '500.00');
         $this->assertDatabaseHas('historico_movimentos', ['movement_id' => $partial->id, 'action' => 'deleted']);
