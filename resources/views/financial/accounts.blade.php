@@ -87,7 +87,7 @@
                                 $icon = $account->type === 'cash' ? 'wallet' : ($account->type === 'credit_card' ? 'credit-card' : 'landmark');
                             @endphp
                             <article class="account-row-v2" data-account-id="{{ $account->id }}" data-account-status="{{ $account->status }}">
-                                <a class="account-row-link-v2" href="{{ route('financial.accounts.show', $account->id) }}" aria-label="Ver histórico de {{ $account->name }}">
+                                <a class="account-row-link-v2" href="{{ route('financial.accounts.show', ['id' => $account->id, 'return_to' => request()->getRequestUri()]) }}" aria-label="Ver histórico de {{ $account->name }}">
                                     <span class="account-row-icon-v2"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></span>
                                     <div class="account-row-main-v2">
                                         <div class="account-row-title-v2">

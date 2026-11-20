@@ -13,7 +13,7 @@
         @forelse($cards as $card)
             @php $isInactive = $card->status !== 'active' || ! $card->is_operational; @endphp
             <article class="card border rounded-4 shadow-sm {{ $isInactive ? 'credit-card-inactive' : '' }}" @if($isInactive) hidden @endif>
-                <a href="{{ route('financial.cards.show', $card->id) }}" class="btn financial-summary-trigger text-start w-100 rounded-4 border-0 p-2 text-decoration-none" aria-label="Abrir {{ $card->name }}">
+                <a href="{{ route('financial.cards.show', ['id' => $card->id, 'return_to' => request()->getRequestUri()]) }}" class="btn financial-summary-trigger text-start w-100 rounded-4 border-0 p-2 text-decoration-none" aria-label="Abrir {{ $card->name }}">
                     <div class="d-flex align-items-center justify-content-between gap-2">
                         <span class="fw-semibold text-body text-break">{{ $card->name }}</span>
                         @if($isInactive)

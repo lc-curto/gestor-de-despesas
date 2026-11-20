@@ -5,7 +5,7 @@
 @section('content')
 <div class="app-content invoice-page">
     <header class="mb-3">
-        <a href="{{ route('financial.cards.show', $card->id) }}" class="small text-secondary text-decoration-none">← {{ $card->name }}</a>
+        <a href="{{ $backUrl }}" class="small text-secondary text-decoration-none">← Voltar</a>
         <h1 class="h3 fw-bold mb-0 mt-2">Faturas</h1>
         <p class="small text-secondary mb-0">Cartão · {{ $card->name }}</p>
     </header>
@@ -22,7 +22,7 @@
                     $cycleLabels = ['open' => 'Aberta', 'closed' => 'Fechada'];
                     $cycleClasses = ['open' => 'text-bg-primary', 'closed' => 'text-bg-secondary'];
                 @endphp
-                <a href="{{ route('financial.invoices.show', $invoice->id) }}" class="card border rounded-4 text-decoration-none text-body">
+                <a href="{{ route('financial.invoices.show', ['id' => $invoice->id, 'return_to' => request()->getRequestUri()]) }}" class="card border rounded-4 text-decoration-none text-body">
                     <div class="card-body p-3">
                         <div class="d-flex justify-content-between align-items-center gap-2">
                             <div class="min-w-0">

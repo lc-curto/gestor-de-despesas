@@ -12,7 +12,7 @@
 @endphp
 <div class="app-content invoice-detail-page">
     <header class="mb-3">
-        <a href="{{ $cardBackUrl }}" class="small text-secondary text-decoration-none">← Cartão</a>
+        <a href="{{ $cardBackUrl }}" class="small text-secondary text-decoration-none">← Voltar</a>
         <div class="d-flex align-items-start justify-content-between gap-2 mt-2">
             <div class="min-w-0">
                 <h1 class="h3 fw-bold mb-0 text-capitalize">Fatura de {{ $invoice->reference_month->translatedFormat('F Y') }}</h1>

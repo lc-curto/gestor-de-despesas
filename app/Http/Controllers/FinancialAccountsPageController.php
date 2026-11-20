@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ContaFinanceira;
+use App\Support\SafeReturnUrl;
 use App\Services\Financial\AccountBalanceService;
 use App\Services\Financial\FinancialMovementService;
 use Illuminate\Http\Request;
@@ -60,7 +61,9 @@ class FinancialAccountsPageController extends Controller
             ->paginate(30)
             ->withQueryString();
 
-        return view('financial.account-show', compact('account', 'movements', 'paymentAccounts', 'openingDebtRemaining'));
+        $backUrl = SafeReturnUrl::resolve($request, route('financial.accounts.page'));
+
+        return view('financial.account-show', compact('account', 'movements', 'paymentAccounts', 'openingDebtRemaining', 'backUrl'));
     }
 
     public function destroyMovement(Request $request, string $id, FinancialMovementService $service)
