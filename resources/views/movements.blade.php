@@ -172,7 +172,7 @@
                                         <div class="accordion-item border rounded-3">
                                             <h3 class="accordion-header" id="dashboardAdditionalDetailsHeading">
                                                 <button class="accordion-button collapsed py-3" type="button" data-bs-toggle="collapse" data-bs-target="#dashboardAdditionalDetailsPanel" aria-expanded="false" aria-controls="dashboardAdditionalDetailsPanel">
-                                                    <span><strong>Adicionar detalhes</strong></span>
+                                                    <span><strong>Detalhes</strong></span>
                                                 </button>
                                             </h3>
                                             <div id="dashboardAdditionalDetailsPanel" class="accordion-collapse collapse" aria-labelledby="dashboardAdditionalDetailsHeading" data-bs-parent="#dashboardAdditionalDetails">
@@ -249,7 +249,7 @@
 
                                     <div class="d-flex flex-column-reverse flex-sm-row gap-2 movement-form-actions">
                                         <button type="button" class="btn btn-outline-secondary flex-fill" id="cancelMovementEdit">Cancelar</button>
-                                        <button type="submit" class="btn btn-danger flex-fill" id="saveMovementButton">Guardar movimento</button>
+                                        <button type="submit" class="btn btn-danger flex-fill" id="saveMovementButton">Guardar</button>
                                     </div>
                                 </form>
                             </div>
@@ -325,7 +325,7 @@
                             </div>
                         </div>
                         <div class="d-flex gap-2 mt-4">
-                            <button type="button" class="btn btn-outline-secondary flex-fill" id="clearMovementFilters">Limpar filtros</button>
+                            <button type="button" class="btn btn-outline-secondary flex-fill" id="clearMovementFilters">Limpar</button>
                             <button type="button" class="btn btn-primary flex-fill" data-bs-dismiss="offcanvas">Concluir</button>
                         </div>
                     </div>
@@ -419,7 +419,7 @@
                     @endforelse
                     @if ($movimentosVisiveis->count() < $totalVisivel)
                         <div class="d-flex justify-content-center py-3">
-                            <button type="button" id="loadMoreMovements" class="btn btn-outline-primary btn-sm px-4">Ver mais movimentos</button>
+                            <button type="button" id="loadMoreMovements" class="btn btn-outline-primary btn-sm px-4">Mais</button>
                         </div>
                     @endif
                 </div>
@@ -472,13 +472,13 @@
                 <h3 class="small fw-semibold mb-3">Ações</h3>
                 <div class="list-group list-group-flush border rounded-3 overflow-hidden">
                     <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3" id="movementDetailsSettle">
-                        <i data-lucide="check-circle" class="text-success" aria-hidden="true"></i><span>Registar pagamento</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i>
+                        <i data-lucide="check-circle" class="text-success" aria-hidden="true"></i><span>Pagar</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i>
                     </button>
                     <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3" id="movementDetailsEdit">
-                        <i data-lucide="pencil" aria-hidden="true"></i><span>Editar movimento</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i>
+                        <i data-lucide="pencil" aria-hidden="true"></i><span>Editar</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i>
                     </button>
                     <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3 text-danger" id="movementDetailsDelete">
-                        <i data-lucide="trash-2" aria-hidden="true"></i><span>Excluir movimento</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i>
+                        <i data-lucide="trash-2" aria-hidden="true"></i><span>Eliminar</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i>
                     </button>
                 </div>
             </div>
@@ -541,7 +541,7 @@
                 </div>
                 <div class="modal-footer border-0 pt-0 d-flex flex-row gap-2">
                     <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success flex-fill" id="settleMovementSubmit">Confirmar movimento</button>
+                    <button type="submit" class="btn btn-success flex-fill" id="settleMovementSubmit">Confirmar</button>
                 </div>
             </form>
         </div>
@@ -574,7 +574,7 @@
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0 d-flex flex-row gap-2">
-                    <button type="submit" class="btn btn-danger flex-fill" id="deleteMovementSubmit">Confirmar exclusão</button>
+                    <button type="submit" class="btn btn-danger flex-fill" id="deleteMovementSubmit">Eliminar</button>
                     <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Cancelar</button>
                 </div>
             </form>
