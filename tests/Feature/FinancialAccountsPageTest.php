@@ -286,7 +286,10 @@ class FinancialAccountsPageTest extends TestCase
             ->assertSee('data-bs-target="#accountMovementDetailsModal"', false)
             ->assertSee('data-editable="1"', false)
             ->assertSee(route('financial.movements.update', $movement->id), false)
-            ->assertSee('Editar movimento');
+            ->assertSee('Editar')
+            ->assertSee('Cancelar')
+            ->assertDontSee('accountMovementDetailsStatus', false)
+            ->assertDontSee('Este movimento já foi realizado ou está associado', false);
     }
 
     public function test_pending_movement_can_be_edited_through_the_existing_financial_endpoint(): void
@@ -340,5 +343,48 @@ class FinancialAccountsPageTest extends TestCase
             ->assertSee('Transferir')
             ->assertSee('Banco')
             ->assertSee('Carteira');
+    
+
+public function test_invoice_payment_can_be_corrected_from_account_history_and_recalculates_balances(): void
+    {
+        $user = User::factory()->create();
+        $bank = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Banco principal', 'type' => 'bank', 'opening_balance' => '200.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+        $card = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Cartão de teste', 'type' => 'credit_card', 'opening_balance' => '0.00',
+            'opening_balance_date' => '2026-11-01', 'closing_day' => 25, 'due_day' => 5,
+            'credit_limit' => '500.00',
+        ]);
+        $invoices = app(\App\Services\Financial\CardInvoiceService::class);
+        $invoices->purchase($user, [
+            'account_id' => $card->id, 'description' => 'Compra de teste',
+            'amount' => '20.00', 'movement_date' => '2026-11-17',
+        ]);
+        $invoice = $user->faturas()->firstOrFail();
+        $payment = $invoices->pay($user, $invoice, $bank->id, '2026-11-18');
+
+        $this->actingAs($user)->get(route('financial.accounts.show', $bank->id))
+            ->assertOk()
+            ->assertSee('data-invoice-payment="1"', false)
+            ->assertSee('Editar')
+            ->assertSee('Cancelar')
+            ->assertDontSee('accountMovementDetailsStatus', false);
+
+        $this->putJson(route('financial.movements.update', $payment->id), [
+            'amount' => '15.00',
+            'movement_date' => '2026-11-19',
+            'source_account_id' => $bank->id,
+        ])->assertOk()->assertJsonPath('data.amount', '15.00');
+
+        $this->assertSame('15.00', $payment->fresh()->amount);
+        $this->assertSame('partial', $invoice->fresh()->status);
+        $this->assertSame('185.00', app(\App\Services\Financial\AccountBalanceService::class)->balance($bank->fresh()));
+        $this->assertSame('-5.00', app(\App\Services\Financial\AccountBalanceService::class)->balance($card->fresh()));
+        $this->assertDatabaseHas('historico_movimentos', [
+            'movement_id' => $payment->id,
+            'action' => 'invoice_payment_updated',
+        ]);
     }
 }
