@@ -82,6 +82,30 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
         ]);
     }
 
+    public function test_deferred_single_due_movement_deletes_its_commitment_without_affecting_installment_payment_reversal(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->bank($user);
+        $debt = app(FinancialCommitmentService::class)->create($user, [
+            'name' => 'Eletricidade',
+            'total_amount' => '120.00',
+            'start_date' => '2026-11-17',
+            'due_date' => '2026-11-25',
+            'payment_condition' => 'deferred',
+        ]);
+        $installment = $debt->parcelas->firstOrFail();
+        $forecast = $user->movimentos()->where('debt_id', $debt->id)->firstOrFail();
+
+        $this->actingAs($user)
+            ->deleteJson(route('financial.movements.destroy', $forecast->id))
+            ->assertOk();
+
+        $this->assertSoftDeleted('dividas', ['id' => $debt->id]);
+        $this->assertSame('void', $forecast->fresh()->status);
+        $this->assertDatabaseHas('parcelas_divida', ['id' => $installment->id, 'status' => 'cancelled']);
+        $this->assertSame('200.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+    }
+
     public function test_another_user_cannot_delete_commitment_or_linked_movement(): void
     {
         $owner = User::factory()->create();
