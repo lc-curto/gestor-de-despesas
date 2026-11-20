@@ -38,7 +38,11 @@ class FinancialCommitmentsPageController extends Controller
             ->get();
 
         $eligibleDebts = fn () => $user->dividas()->withTrashed()
-            ->where('payment_condition', 'installments')
+            // Toda compra tem uma prestação associada, mesmo quando é 1/1.
+            // Não filtrar apenas payment_condition=installments: isso escondia
+            // compras a pronto/a prazo que continuam ligadas ao núcleo financeiro.
+            ->where('type', 'purchase')
+            ->whereHas('parcelas')
             ->where(fn ($query) => $query->whereNull('payment_method')->orWhereNotIn('payment_method', ['credit', 'card']));
 
         $visibleDebts = fn () => $eligibleDebts()->whereNull('archived_at')->whereNull('deleted_at')->where('status', '!=', 'cancelled');
@@ -46,7 +50,7 @@ class FinancialCommitmentsPageController extends Controller
         $openInstallments = $user->parcelasDivida()
             ->whereHas('divida', fn ($query) => $query
                 ->whereNull('archived_at')
-                ->where('payment_condition', 'installments')
+                ->where('type', 'purchase')
                 ->where(fn ($query) => $query->whereNull('payment_method')->orWhereNotIn('payment_method', ['credit', 'card']))
                 ->where('status', '!=', 'cancelled'))
             ->whereColumn('amount', '>', 'paid_amount')

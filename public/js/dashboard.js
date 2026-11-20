@@ -1150,7 +1150,8 @@
         settleAction.hidden = row.dataset.isInvoicePayment === '1' ||
             !(['pending', 'partial', 'partially_settled'].includes(status) && Boolean(row.dataset.financialMovementId));
         editAction.hidden = row.dataset.isInvoicePayment === '1';
-        deleteAction.hidden = row.dataset.isInvoicePayment === '1';
+        deleteAction.hidden = row.dataset.isInvoicePayment === '1' || Boolean(row.dataset.debtId || row.dataset.installmentId);
+        editAction.hidden = row.dataset.isInvoicePayment === '1' || Boolean(row.dataset.debtId || row.dataset.installmentId);
 
         const progressTitle = document.getElementById('movementDetailsPaymentHeading');
         progressTitle.hidden = !partial;

@@ -349,7 +349,7 @@
                             data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}"
                             data-amount="{{ $movimento->amount }}" data-remaining-amount="{{ $movimento->remaining_amount ?? $movimento->amount }}" data-currency="{{ $movimento->currency }}"
                             data-category-id="{{ $movimento->category }}" data-account-id="{{ $movimento->account_id }}"
-                            data-movement-status="{{ $movimento->movement_status }}" data-is-settlement-event="{{ (bool) ($movimento->is_settlement_event ?? false) ? 1 : 0 }}" data-expense-behavior="{{ $movimento->expense_behavior ?? 'variable' }}" data-recurrence-id="{{ $movimento->recurrence_id }}" data-recurrence-frequency="{{ $movimento->recurrence_frequency }}" data-financial-movement-id="{{ $movimento->financial_movement_id }}">
+                            data-movement-status="{{ $movimento->movement_status }}" data-debt-id="{{ $movimento->debt_id ?? '' }}" data-installment-id="{{ $movimento->installment_id ?? '' }}" data-is-settlement-event="{{ (bool) ($movimento->is_settlement_event ?? false) ? 1 : 0 }}" data-expense-behavior="{{ $movimento->expense_behavior ?? 'variable' }}" data-recurrence-id="{{ $movimento->recurrence_id }}" data-recurrence-frequency="{{ $movimento->recurrence_frequency }}" data-financial-movement-id="{{ $movimento->financial_movement_id }}">
                             <div class="d-flex justify-content-between align-items-center gap-3 w-100">
                             <div class="d-flex align-items-center gap-3 min-w-0">
                                 <div class="expense-icon flex-shrink-0" style="--category-color: {{ $movimento->category_color ?? '#635BFF' }}" aria-hidden="true">
@@ -389,11 +389,11 @@
                                 <strong class="{{ $isExpense ? 'text-danger' : 'text-success' }} text-nowrap movement-value"
                                     data-value="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}">{{ $isExpense ? '−' : '+' }}{{ number_format((float) $movimento->amount, 2, ',', '.') }}</strong>
                                 <div class="btn-group btn-group-sm" role="group" aria-label="Ações de {{ $movimento->description }}">
-                                    <button type="button" class="btn btn-outline-secondary edit-movement" data-acao="editar" aria-label="Editar {{ $movimento->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></button>
+                                    @if (empty($movimento->debt_id) && empty($movimento->installment_id))<button type="button" class="btn btn-outline-secondary edit-movement" data-acao="editar" aria-label="Editar {{ $movimento->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></button>@endif
                                     @if ($movimento->movement_status === 'pending' && $movimento->financial_movement_id)
                                         <button type="button" class="btn btn-outline-success" data-movement-action="settle" title="Efetivar" aria-label="Efetivar {{ $movimento->description }}"><i data-lucide="check-circle" aria-hidden="true"></i></button>
                                     @endif
-                                    <button type="button" class="btn btn-outline-danger" data-movement-action="delete" aria-label="Excluir {{ $movimento->description }}" title="Excluir"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                                    @if (empty($movimento->debt_id) && empty($movimento->installment_id))<button type="button" class="btn btn-outline-danger" data-movement-action="delete" aria-label="Excluir {{ $movimento->description }}" title="Excluir"><i data-lucide="trash-2" aria-hidden="true"></i></button>@else<a class="btn btn-outline-primary" href="{{ route('financial.commitments.page') }}" title="Gerir compra" aria-label="Gerir compra"><i data-lucide="wallet" aria-hidden="true"></i></a>@endif
                                 </div>
                             </div>
                             </div>
