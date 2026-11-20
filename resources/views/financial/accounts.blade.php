@@ -203,14 +203,12 @@
 {{-- Edição de conta: utiliza a estrutura de modal reutilizável do sistema. --}}
 <x-modal id="renameAccountModal" aria-labelledby="editAccountTitle">
     <form id="accountNameForm">
-        <div class="modal-header border-0 pb-0">
-            <div>
-                <h2 class="modal-title h5 fw-bold" id="editAccountTitle">Editar conta</h2>
-                <p class="small text-secondary mb-0" id="editAccountDescription">Atualiza os dados da tua conta.</p>
-            </div>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-        </div>
-        <div class="modal-body">
+        <x-modal-header
+            title="Editar conta"
+            title-id="editAccountTitle"
+            description="Atualiza os dados da tua conta."
+        />
+        <x-modal-body>
             <div class="mb-3">
                 <label for="editAccountName" class="form-label">Nome da conta</label>
                 <input id="editAccountName" name="name" class="form-control" maxlength="120" required>
@@ -242,11 +240,11 @@
             </div>
 
             <div class="account-form-feedback small text-danger mt-3" role="alert" aria-live="polite"></div>
-        </div>
-        <div class="modal-footer border-0 pt-0">
+        </x-modal-body>
+        <x-modal-footer>
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
             <button type="submit" class="btn btn-primary">Guardar</button>
-        </div>
+        </x-modal-footer>
     </form>
 </x-modal>
 
