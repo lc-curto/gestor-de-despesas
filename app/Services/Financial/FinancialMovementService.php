@@ -663,6 +663,103 @@ class FinancialMovementService
         });
     }
 
+
+    /**
+     * Corrige movimentos operacionais já liquidados sem apagar o lançamento original.
+     * A validação de saldo considera primeiro a reversão lógica do movimento atual
+     * e só depois aplica o novo débito, inclusive quando as contas trocam de lado.
+     */
+    public function updateOperationalMovement(User $user, Movimento $movement, array $data): Movimento
+    {
+        return DB::transaction(function () use ($user, $movement, $data): Movimento {
+            $locked = Movimento::query()->where('user_id', $user->id)
+                ->whereKey($movement->id)->lockForUpdate()->firstOrFail();
+
+            if (! in_array($locked->type, ['transfer', 'adjustment'], true)
+                || $locked->status !== 'settled'
+                || $locked->is_historical
+                || $locked->is_settlement_parent
+                || $locked->invoice_id
+                || $locked->settles_movement_id
+                || $locked->reversal_of_id
+                || $locked->debt_id
+                || $locked->installment_id
+                || $locked->recurrence_id) {
+                throw ValidationException::withMessages([
+                    'movement' => 'Este movimento deve ser corrigido na sua área de origem ou não admite edição direta.',
+                ]);
+            }
+
+            $direction = $locked->type === 'adjustment'
+                ? ($data['adjustment_direction'] ?? $locked->adjustment_direction)
+                : null;
+            $sourceId = $locked->type === 'transfer'
+                ? ($data['source_account_id'] ?? $locked->source_account_id)
+                : ($direction === 'decrease' ? ($data['source_account_id'] ?? $locked->source_account_id) : null);
+            $destinationId = $locked->type === 'transfer'
+                ? ($data['destination_account_id'] ?? $locked->destination_account_id)
+                : ($direction === 'increase' ? ($data['destination_account_id'] ?? $locked->destination_account_id) : null);
+
+            [$source, $destination] = $this->accountsInLockOrder($user, $sourceId, $destinationId);
+            $this->assertShape($locked->type, $source, $destination, $direction);
+            $this->assertNoGenericCardMovement($locked->type, $source, $destination);
+
+            foreach ([$source, $destination] as $account) {
+                if ($account && ! in_array($account->type, ['bank', 'cash'], true)) {
+                    throw ValidationException::withMessages([
+                        'account_id' => 'Seleciona contas bancárias ou de dinheiro ativas.',
+                    ]);
+                }
+            }
+            if ($source && $destination && $source->currency !== $destination->currency) {
+                throw ValidationException::withMessages(['destination_account_id' => 'As duas contas têm de usar a mesma moeda.']);
+            }
+
+            $oldAmount = $this->balances->toCents((string) $locked->amount);
+            $newAmount = array_key_exists('amount', $data)
+                ? $this->balances->toCents((string) $data['amount'])
+                : $oldAmount;
+            if ($newAmount <= 0) {
+                throw ValidationException::withMessages(['amount' => 'O valor deve ser superior a zero.']);
+            }
+
+            $oldDebitId = $locked->type === 'transfer' || $locked->adjustment_direction === 'decrease'
+                ? $locked->source_account_id : null;
+            $newDebit = $locked->type === 'transfer' || $direction === 'decrease' ? $source : null;
+            if ($newDebit) {
+                $available = $this->balances->toCents($this->balances->balance($newDebit));
+                // Retira do saldo atual o efeito antigo: débito na origem ou crédito no destino.
+                if ($locked->source_account_id === $newDebit->id) {
+                    $available += $oldAmount;
+                } elseif ($locked->destination_account_id === $newDebit->id) {
+                    $available -= $oldAmount;
+                }
+                if (! $newDebit->allow_negative_balance && $newAmount > $available) {
+                    $missing = $newAmount - $available;
+                    throw ValidationException::withMessages([
+                        'amount' => 'Saldo insuficiente após a correção. Faltam '.number_format($missing / 100, 2, ',', '.').' '.$newDebit->currency.'.',
+                    ]);
+                }
+            }
+
+            $before = $locked->getAttributes();
+            $locked->update([
+                'description' => $data['description'] ?? $locked->description,
+                'notes' => $data['notes'] ?? $locked->notes,
+                'amount' => number_format($newAmount / 100, 2, '.', ''),
+                'movement_date' => $data['movement_date'] ?? $locked->movement_date->toDateString(),
+                'source_account_id' => $source?->id,
+                'destination_account_id' => $destination?->id,
+                'adjustment_direction' => $direction,
+                'category_id' => array_key_exists('category_id', $data) ? $data['category_id'] : $locked->category_id,
+            ]);
+            $this->audit($user, $locked, 'operational_movement_corrected', $before, $locked->getAttributes(),
+                'Movimento liquidado corrigido com validação das contas e recálculo por projeção.');
+
+            return $locked->refresh();
+        });
+    }
+
     public function updatePending(User $user, Movimento $movement, array $data): Movimento
     {
         return DB::transaction(function () use ($user, $movement, $data) {
