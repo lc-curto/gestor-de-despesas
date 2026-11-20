@@ -39,7 +39,7 @@
                     <div class="col-6"><span class="text-secondary d-block">Fecho</span><strong>{{ $invoice->closing_date->format('d/m/Y') }}</strong></div>
                     <div class="col-6"><span class="text-secondary d-block">Vencimento</span><strong>{{ $invoice->due_date->format('d/m/Y') }}</strong></div>
                 </div>
-                <button type="button" class="btn btn-primary w-100 mt-3 js-invoice-action" data-action="pay" @disabled((float)$invoice->remaining_amount <= 0 || $invoice->status === 'carried')>Pagar fatura</button>
+                <button type="button" class="btn btn-primary w-100 mt-3 js-invoice-action" data-action="pay" @disabled((float)$invoice->remaining_amount <= 0 || $invoice->status === 'carried')>Pagar</button>
             </div>
         </div>
 
