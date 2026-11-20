@@ -109,6 +109,15 @@
         </form>
     </div></div>
 </div>
+
+<div class="modal fade" id="cardStatusConfirmModal" tabindex="-1" aria-labelledby="cardStatusConfirmTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow rounded-4">
+        <div class="modal-header border-0 pb-0"><h2 class="modal-title h5 fw-bold" id="cardStatusConfirmTitle">Suspender cartão</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+        <div class="modal-body"><p class="mb-0" id="cardStatusConfirmMessage"></p><div class="small text-danger mt-3 d-none" id="cardStatusConfirmError" role="alert"></div></div>
+        <div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="cardStatusConfirmSubmit">Confirmar</button></div>
+    </div></div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -139,13 +148,30 @@
             window.location.reload();
         }catch(error){document.getElementById('editCardError').textContent=error.message;button.disabled=false;}
     });
-    document.querySelectorAll('.js-card-status').forEach(button=>button.addEventListener('click',async()=>{
-        const active=button.dataset.status==='active';
-        if(!confirm((active?'Reativar':'Suspender')+' este cartão?'))return;
-        const response=await fetch(button.dataset.statusUrl,{method:'POST',credentials:'same-origin',headers,body:JSON.stringify({status:button.dataset.status})});
-        if(!response.ok){const result=await response.json().catch(()=>({}));fail(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível alterar o cartão.');return;}
-        window.location.reload();
+    const statusModalElement=document.getElementById('cardStatusConfirmModal');
+    const statusModal=statusModalElement?bootstrap.Modal.getOrCreateInstance(statusModalElement):null;
+    let pendingStatusButton=null;
+    document.querySelectorAll('.js-card-status').forEach(button=>button.addEventListener('click',()=>{
+        pendingStatusButton=button;
+        const activating=button.dataset.status==='active';
+        document.getElementById('cardStatusConfirmTitle').textContent=activating?'Reativar cartão':'Suspender cartão';
+        document.getElementById('cardStatusConfirmMessage').textContent=activating
+            ?'Queres reativar o cartão '+button.dataset.name+'?'
+            :'Queres suspender o cartão '+button.dataset.name+'? Não será possível registar novas compras enquanto estiver suspenso.';
+        document.getElementById('cardStatusConfirmError').classList.add('d-none');
+        statusModal?.show();
     }));
+    document.getElementById('cardStatusConfirmSubmit')?.addEventListener('click',async()=>{
+        if(!pendingStatusButton)return;
+        const submit=document.getElementById('cardStatusConfirmSubmit');submit.disabled=true;
+        try{
+            const response=await fetch(pendingStatusButton.dataset.statusUrl,{method:'POST',credentials:'same-origin',headers,body:JSON.stringify({status:pendingStatusButton.dataset.status})});
+            const result=await response.json().catch(()=>({}));
+            if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível alterar o cartão.');
+            window.location.reload();
+        }catch(error){const el=document.getElementById('cardStatusConfirmError');el.textContent=error.message;el.classList.remove('d-none');}
+        finally{submit.disabled=false;}
+    });
     document.querySelectorAll('.js-reopen-card').forEach(button=>button.addEventListener('click',async()=>{
         if(!confirm('Reabrir este cartão?'))return;
         const response=await fetch(button.dataset.url,{method:'POST',credentials:'same-origin',headers,body:JSON.stringify({})});
