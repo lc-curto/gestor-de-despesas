@@ -131,9 +131,7 @@
                     <div class="d-flex align-items-center justify-content-between gap-2 px-3 py-2 border-top">
                         <span class="small text-secondary">Ver detalhes</span>
                         <div class="d-flex align-items-center gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-secondary commitment-history-trigger" data-bs-toggle="modal" data-bs-target="#commitmentHistoryModal-{{ $commitment->id }}">
-                                Histórico <span class="commitment-history-count">({{ $history->total() }})</span>
-                            </button>
+
                             <x-financial.action-menu label="Ações da compra">
                                 <li><button type="button" class="dropdown-item js-edit-commitment" @disabled($isCompleted)
                                     data-url="{{ route('financial.commitments.update', $commitment->id) }}"
