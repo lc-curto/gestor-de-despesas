@@ -44,6 +44,33 @@ class FinancialAccountsPageTest extends TestCase
             ->assertDontSee('Conta privada de outro utilizador');
     }
 
+    public function test_accounts_page_renders_the_close_account_modal_and_form(): void
+    {
+        $user = User::factory()->create();
+        $service = app(FinancialAccountService::class);
+
+        $account = $service->create($user, [
+            'name' => 'Conta a encerrar',
+            'type' => 'bank',
+            'opening_balance' => '75.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+        $service->create($user, [
+            'name' => 'Conta de destino',
+            'type' => 'bank',
+            'opening_balance' => '10.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+
+        $this->actingAs($user)
+            ->get('/contas')
+            ->assertOk()
+            ->assertSee('id="closeAccountModal"', false)
+            ->assertSee('id="closeAccountForm"', false)
+            ->assertSee('id="closeTransferTarget"', false)
+            ->assertSee(route('financial.accounts.close', $account->id), false);
+    }
+
     public function test_owner_can_rename_and_close_an_account_without_deleting_it(): void
     {
         $user = User::factory()->create();
