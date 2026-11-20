@@ -38,34 +38,25 @@
     </header>
 
     <div id="cardFeedback" class="alert d-none" role="status" aria-live="polite"></div>
-    <section class="card border rounded-4 shadow-sm mb-4">
+    <section class="card border rounded-4 mb-3">
         <div class="card-body p-3">
-            <div class="d-flex justify-content-between align-items-end gap-2">
-                <div>
-                    <span class="small text-secondary d-block">Disponível</span>
-                    <strong class="fs-2 text-body">{{ number_format($card->available_limit,2,',','.') }} <span class="fs-6">{{ $card->currency }}</span></strong>
-                </div>
-                <div class="text-end">
-                    <span class="small text-secondary d-block">Limite total</span>
-                    <strong>{{ number_format((float)$card->credit_limit,2,',','.') }} {{ $card->currency }}</strong>
-                </div>
-            </div>
-            <div class="progress mt-2" role="progressbar" aria-label="Limite utilizado" aria-valuenow="{{ round($card->usage_percent) }}" aria-valuemin="0" aria-valuemax="100" style="height:7px">
+            <strong class="d-block fs-2 lh-1 text-success">{{ number_format($card->available_limit,2,',','.') }} {{ $card->currency }}</strong>
+            <span class="small text-secondary">Disponível · Limite {{ number_format((float)$card->credit_limit,2,',','.') }} {{ $card->currency }}</span>
+            <div class="progress mt-2" role="progressbar" aria-label="Limite utilizado" aria-valuenow="{{ round($card->usage_percent) }}" aria-valuemin="0" aria-valuemax="100" style="height:5px">
                 <div class="progress-bar" style="width:{{ $card->usage_percent }}%"></div>
             </div>
-            <div class="d-flex justify-content-between small text-secondary mt-1">
-                <span>Utilizado: {{ number_format($card->used_limit,2,',','.') }} {{ $card->currency }}</span>
-                <span>{{ number_format($card->usage_percent,0) }}%</span>
-            </div>
-            <div class="row g-2 border-top mt-3 pt-3 small">
-                <div class="col-6"><span class="text-secondary d-block">Fecho</span><strong>Dia {{ $card->closing_day ?? '—' }}</strong></div>
-                <div class="col-6"><span class="text-secondary d-block">Vencimento</span><strong>Dia {{ $card->due_day ?? '—' }}</strong></div>
+            <div class="d-flex justify-content-between gap-2 mt-2 small text-secondary">
+                <span>Utilizado {{ number_format($card->used_limit,2,',','.') }} {{ $card->currency }}</span>
+                <span class="text-end">Fecho {{ $card->closing_day ?? '—' }} · Vence {{ $card->due_day ?? '—' }}</span>
             </div>
         </div>
     </section>
 
     <div class="d-flex justify-content-between align-items-center mb-2">
         <h2 class="h5 fw-bold mb-0">Faturas</h2>
+        @if($invoices->total() > $invoices->perPage())
+            <a href="{{ route('financial.invoices.page', ['account_id' => $card->id, 'return_to' => request()->getRequestUri()]) }}" class="small text-decoration-none">Ver todas</a>
+        @endif
     </div>
     @if($invoices->isEmpty())
         <div class="card border rounded-4"><div class="card-body text-center p-4">
@@ -85,16 +76,12 @@
                         <div class="d-flex justify-content-between align-items-center gap-2">
                             <div class="min-w-0">
                                 <h3 class="h6 fw-semibold mb-1 text-capitalize">{{ $invoice->reference_month->translatedFormat('F Y') }}</h3>
-                                <span class="small text-secondary">Total: {{ number_format((float)$invoice->total_amount,2,',','.') }} {{ $currency }}</span>
+                                <span class="small text-secondary">Vence {{ $invoice->due_date->format('d/m/Y') }}</span>
                             </div>
                             <div class="text-end flex-shrink-0">
-                                <span class="badge {{ $cycleClasses[$invoice->cycle_status] ?? 'text-bg-secondary' }}">{{ $cycleLabels[$invoice->cycle_status] ?? 'Fechada' }}</span>
-                                <div class="small text-secondary mt-1">Ver fatura <i data-lucide="chevron-right" class="ms-1" style="width:14px;height:14px"></i></div>
+                                <strong class="d-block">{{ number_format((float)$invoice->total_amount,2,',','.') }} {{ $currency }}</strong>
+                                <span class="badge mt-1 {{ $cycleClasses[$invoice->cycle_status] ?? 'text-bg-secondary' }}">{{ $cycleLabels[$invoice->cycle_status] ?? 'Fechada' }}</span>
                             </div>
-                        </div>
-                        <div class="d-flex justify-content-between small text-secondary mt-2">
-                            <span>Fecho: {{ $invoice->closing_date->format('d/m/Y') }}</span>
-                            <span>Vencimento: {{ $invoice->due_date->format('d/m/Y') }}</span>
                         </div>
                     </div>
                 </a>
