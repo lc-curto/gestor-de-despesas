@@ -4,10 +4,13 @@
 
 @section('content')
 <div class="app-content credit-cards-page">
-    <header class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-        <div><h1 class="h2 fw-bold mb-1">Meus cartões</h1></div>
-        <div class="d-flex flex-wrap gap-2"><button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#createCardModal"><i data-lucide="plus" aria-hidden="true"></i><span class="ms-1">Adicionar</span></button></div>
-    </header>
+    <x-financial.page-header title="Meus cartões">
+        <x-slot:actions>
+            <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#createCardModal">
+                <i data-lucide="plus" aria-hidden="true"></i><span class="ms-1">Adicionar</span>
+            </button>
+        </x-slot:actions>
+    </x-financial.page-header>
     <div id="cardsFeedback" class="alert d-none" role="status" aria-live="polite"></div>
     <section class="d-grid gap-3" aria-label="Os meus cartões">
         @forelse($cards as $card)
