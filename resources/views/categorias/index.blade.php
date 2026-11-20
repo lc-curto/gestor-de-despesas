@@ -101,7 +101,6 @@
     id="categoryModal"
     aria-labelledby="categoryModalTitle"
     :scrollable="true"
-    :fullscreen-on-mobile="true"
     content-class="category-modal-content"
 >
     <form method="POST" action="{{ route('categorias.store') }}" id="categoryForm">
@@ -142,6 +141,9 @@
                     <input type="search" class="form-control" id="categoryIconSearch" placeholder="Pesquisar ícone..." autocomplete="off">
                 </div>
                 <div class="category-icon-picker" id="categoryIconPicker" role="group" aria-label="Escolher ícone da categoria"></div>
+                <button type="button" class="btn btn-link btn-sm p-0 mt-2 text-decoration-none" id="categoryIconToggle" aria-expanded="false">
+                    Ver todos os ícones
+                </button>
             </div>
 
             <fieldset>
@@ -181,6 +183,7 @@
     const iconSearch = document.getElementById('categoryIconSearch');
     const iconGrid = document.getElementById('categoryIconPicker');
     const iconPreview = document.getElementById('categoryIconPreview');
+    const iconToggle = document.getElementById('categoryIconToggle');
     const colorInputs = [...form.querySelectorAll('input[name="color"]')];
     const iconCatalog = ['tag','tags','house','building-2','bed-double','sofa','lamp','key-round','utensils','chef-hat','coffee','pizza','sandwich','apple','milk','shopping-basket','car-front','bus-front','train-front','plane','bike','fuel','map-pin','ticket','heart-pulse','pill','stethoscope','dumbbell','activity','shield-check','paw-print','baby','gamepad-2','clapperboard','music','headphones','book-open','graduation-cap','school','laptop','smartphone','monitor','wifi','briefcase-business','factory','store','shopping-bag','shirt','wallet','credit-card','banknote','coins','piggy-bank','chart-no-axes-combined','trending-up','receipt','badge-euro','hand-coins','handshake','gift','calendar-days','plane-takeoff','church','leaf','sprout','droplets','zap','sun','moon','cloud','umbrella','wrench','hammer','package','truck','recycle','ellipsis','circle-help','landmark','globe'];
     const iconKeywords = {'house':'casa lar moradia','building-2':'edificio apartamento','bed-double':'quarto hotel','sofa':'mobilia','utensils':'alimentacao comida restaurante','chef-hat':'cozinha','coffee':'cafe','pizza':'comida','apple':'fruta','shopping-basket':'supermercado','car-front':'carro transporte','bus-front':'autocarro','train-front':'comboio','plane':'aviao viagem','bike':'bicicleta','fuel':'combustivel gasolina','heart-pulse':'saude','pill':'medicamento farmacia','stethoscope':'medico','dumbbell':'ginasio desporto','paw-print':'animal estimacao','baby':'bebe crianca','gamepad-2':'jogos lazer','music':'musica','headphones':'audio','book-open':'livro leitura','graduation-cap':'educacao estudo','laptop':'computador tecnologia','smartphone':'telemovel telefone','briefcase-business':'trabalho emprego','store':'vendas negocio','shopping-bag':'compras loja','shirt':'roupa vestuario','wallet':'carteira dinheiro','credit-card':'cartao banco','banknote':'dinheiro notas','coins':'moedas poupanca','piggy-bank':'poupanca','trending-up':'investimento crescimento','receipt':'fatura recibo','hand-coins':'pagamento','gift':'presente oferta','calendar-days':'calendario','leaf':'natureza','sprout':'plantas jardim','droplets':'agua','wrench':'reparacao','hammer':'construcao','package':'encomenda','truck':'entrega','landmark':'banco instituicao'};
@@ -198,6 +201,7 @@
         window.lucide?.createIcons();
     }
     iconGrid.addEventListener('click',event=>{const button=event.target.closest('[data-icon-name]');if(button)selectIcon(button.dataset.iconName);});
+    iconToggle.addEventListener('click',()=>{iconsExpanded=!iconsExpanded;renderIconCatalog(iconSearch.value);});
     iconSearch.addEventListener('input',()=>renderIconCatalog(iconSearch.value));
     colorInputs.forEach(input=>input.addEventListener('change',()=>iconPreview.style.setProperty('--category-color',input.value)));
     modal.addEventListener('show.bs.modal',event=>{
@@ -214,7 +218,7 @@
         if(behaviorField)behaviorField.hidden=categoryType.value!=='despesa';
         const color=edit?trigger.dataset.color:'#635BFF';
         const selected=colorInputs.find(input=>input.value.toUpperCase()===color.toUpperCase());if(selected)selected.checked=true;
-        iconSearch.value='';selectIcon(edit?trigger.dataset.icon:'tag');renderIconCatalog();
+        iconsExpanded=false;iconSearch.value='';selectIcon(edit?trigger.dataset.icon:'tag');renderIconCatalog();
     });
     document.getElementById('categoryType')?.addEventListener('change',event=>{
         const field=document.getElementById('categoryExpenseBehaviorField');
@@ -235,7 +239,7 @@
         document.getElementById('categoryExpenseBehaviorField').hidden=categoryType.value!=='despesa';
         const oldColor=@json(old('color','#635BFF'));
         const selected=colorInputs.find(input=>input.value.toUpperCase()===oldColor.toUpperCase());if(selected)selected.checked=true;
-        iconInput.value=@json(old('icon','tag'));renderIconCatalog();selectIcon(iconInput.value);
+        iconsExpanded=false;iconInput.value=@json(old('icon','tag'));renderIconCatalog();selectIcon(iconInput.value);
         bootstrap.Modal.getOrCreateInstance(modal).show();
     });
     @endif
