@@ -11,12 +11,9 @@
 @endphp
 
 <div class="app-content accounts-rebuilt" id="accountsPage">
-    <header class="accounts-header-v2">
-        <div>
-            <h1 class="h2 fw-bold mb-0">Contas</h1>
-            <span class="small text-secondary">{{ $activeAccounts->count() }} {{ $activeAccounts->count() === 1 ? 'conta ativa' : 'contas ativas' }}</span>
-        </div>
-        <div class="d-flex gap-2">
+    <header class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <h1 class="h2 fw-bold mb-0">Contas</h1>
+        <div class="d-flex flex-wrap gap-2">
             @if ($transferTargets->count() >= 2)
                 <button class="btn btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#accountTransferModal">
                     <i data-lucide="arrow-left-right" aria-hidden="true"></i><span class="ms-1">Transferir</span>
@@ -465,9 +462,6 @@
 .accounts-rebuilt .accounts-empty-icon { display: inline-grid; place-items: center; width: 3.4rem; height: 3.4rem; border-radius: 1rem; background: rgba(99,91,255,.1); color: var(--mb-primary); }
 .accounts-rebuilt .accounts-empty-icon svg { width: 1.5rem; height: 1.5rem; }
 @media (max-width: 767.98px) {
-    .accounts-rebuilt .accounts-header-v2 { align-items: flex-start; flex-direction: column; }
-    .accounts-rebuilt .accounts-header-v2 > :last-child { width: 100%; }
-    .accounts-rebuilt .accounts-header-v2 > :last-child .btn { flex: 1 1 auto; }
     .accounts-rebuilt .account-row-v2 { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; gap: .6rem .7rem; min-height: 0; padding: .9rem; }
     .accounts-rebuilt .account-row-link-v2 { grid-column: 1; grid-row: 1; }
     .accounts-rebuilt .account-row-menu-v2 { grid-column: 2; grid-row: 1; align-self: start; }
