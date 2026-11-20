@@ -819,7 +819,7 @@ class FinancialCoreServiceTest extends TestCase
         $this->deleteJson('/api/financial/movements/'.$payment->id)->assertOk();
 
         $parent = $invoice->movimentos()->where('is_settlement_parent', true)->firstOrFail();
-        $this->assertSame('open', $parent->fresh()->status);
+        $this->assertSame('pending', $parent->fresh()->status);
         $this->assertSame('open', $invoice->fresh()->status);
         $this->assertSame('60.00', $this->getJson('/api/financial/invoices')->assertOk()->json('data.data.0.remaining_amount'));
         $this->assertSame('100.00', app(AccountBalanceService::class)->balance($bank->fresh()));
