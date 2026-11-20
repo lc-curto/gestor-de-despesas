@@ -141,7 +141,7 @@
     }));
     document.getElementById('editCardForm')?.addEventListener('submit',async event=>{
         event.preventDefault();const form=event.currentTarget,button=form.querySelector('[type="submit"]');button.disabled=true;
-        const normalize=value=>{const raw=String(value).trim();let parts;if(/^[0-9]{1,3}(?:\\.[0-9]{3})+,[0-9]{1,2}$/.test(raw)){parts=raw.replace(/\\./g,'').split(',');}else if(/^[0-9]+(?:[.,][0-9]{1,2})?$/.test(raw)){parts=raw.split(/[.,]/);}else{return null;}return parts[0]+'.'+(parts[1]||'').padEnd(2,'0');};return /^\d+(\.\d{1,2})?$/.test(raw)?raw:null;};
+                const normalize=value=>{const raw=String(value).trim();let parts;if(/^[0-9]{1,3}(?:\\.[0-9]{3})+,[0-9]{1,2}$/.test(raw)){parts=raw.replace(/\\./g,'').split(',');}else if(/^[0-9]+(?:[.,][0-9]{1,2})?$/.test(raw)){parts=raw.split(/[.,]/);}else{return null;}return parts[0]+'.'+(parts[1]||'').padEnd(2,'0');};
         const limit=normalize(form.elements.credit_limit.value),debt=normalize(form.elements.opening_debt_amount.value);
         if(!limit||!debt){document.getElementById('editCardError').textContent='Indica valores monetários válidos.';button.disabled=false;return;}
         try{
