@@ -430,69 +430,67 @@ class CardIntegrityRegressionTest extends TestCase
         $this->assertBalance($card, '0.00');
         $this->assertSame(0, $user->movimentos()->whereNotNull('reversal_of_id')->count());
     }
-    public function test_invoice_page_lists_collapsed_cards_and_renders_details_inside_bootstrap_modals(): void
+    public function test_card_navigation_is_scoped_and_invoice_details_have_contextual_back_links(): void
     {
         $user = User::factory()->create();
         $card = $this->card($user, 'Cartão de Crédito Pessoal');
-        $this->purchase($user, $card, '12.00');
-
-        $page = $this->actingAs($user)->get(route('financial.invoices.page'));
-
-        $page->assertOk()
-            ->assertSee('Cartão de Crédito Pessoal')
-            ->assertSee('data-bs-toggle="modal"', false)
-            ->assertSee('id="invoiceDetails-', false)
-            ->assertSee('Ver detalhes')
-            ->assertSee('Movimentos da fatura')
-            ->assertSee('Registar pagamento')
-            ->assertSee('Adicionar encargo')
-            ->assertSee('Registar crédito')
-            ->assertSee('Fechar e reconciliar')
-            ->assertDontSee('<details class="invoice-details', false);
-    }
-
-    public function test_invoice_page_exposes_cycle_and_payment_statuses_independently(): void
-    {
-        $user = User::factory()->create();
-        $bank = $this->bank($user);
-        $card = $this->card($user, 'Cartão com fatura');
-        $this->purchase($user, $card, '100.00');
+        $this->purchase($user, $card, '120.00');
         $invoice = $user->faturas()->firstOrFail();
+        $this->actingAs($user);
 
-        $open = app(CardInvoiceService::class)->listInvoices($user)->items()[0];
-        $this->assertSame('open', $open->cycle_status);
-        $this->assertSame('unpaid', $open->payment_status);
+        $cardsPage = $this->get(route('financial.cards.page'));
+        $cardsPage->assertOk()
+            ->assertSee(route('financial.cards.show', $card->id), false)
+            ->assertSee('Disponível')
+            ->assertSee('Fecho: dia')
+            ->assertSee('Vencimento: dia')
+            ->assertDontSee('cardDetails-', false)
+            ->assertDontSee('Movimentos');
 
-        app(CardInvoiceService::class)->pay($user, $invoice, $bank->id, '2026-11-17', '25.00');
-        $partial = app(CardInvoiceService::class)->listInvoices($user)->items()[0];
-        $this->assertSame('open', $partial->cycle_status);
-        $this->assertSame('partial', $partial->payment_status);
-
-        $invoice->update(['status' => 'closed', 'closed_at' => now()]);
-        $closed = app(CardInvoiceService::class)->listInvoices($user)->items()[0];
-        $this->assertSame('closed', $closed->cycle_status);
-        $this->assertSame('partial', $closed->payment_status);
-
-        $this->assertSame('partial', $closed->display_status);
-    }
-
-    public function test_cards_page_renders_compact_cards_and_bootstrap_details_without_summary_kpis(): void
-    {
-        $user = User::factory()->create();
-        $card = $this->card($user, 'Cartão Pessoal', '0.00', '500.00');
-
-        $response = $this->actingAs($user)->get(route('financial.cards.page'));
-
-        $response->assertOk()
-            ->assertSee('cardDetails-'.$card->id)
-            ->assertSee('Ver detalhes')
-            ->assertSee('Crédito disponível')
+        $cardPage = $this->get(route('financial.cards.show', $card->id));
+        $cardPage->assertOk()
+            ->assertSee('← Cartões')
             ->assertSee('Faturas')
-            ->assertSee('Movimentos')
-            ->assertSee('Editar cartão')
-            ->assertDontSee('cards-kpi-grid')
-            ->assertDontSee('Limite utilizado</span>');
+            ->assertSee(route('financial.invoices.show', $invoice->id), false)
+            ->assertSee('Aberta')
+            ->assertSee('120,00 €');
+
+        $invoiceList = $this->get(route('financial.invoices.page', ['account_id' => $card->id]));
+        $invoiceList->assertOk()
+            ->assertSee('← '.$card->name)
+            ->assertSee('Faturas')
+            ->assertSee(route('financial.invoices.show', $invoice->id), false)
+            ->assertSee('Novembro 2026')
+            ->assertSee('Fecho:')
+            ->assertSee('Vencimento:');
+
+        $invoiceDetail = $this->get(route('financial.invoices.show', $invoice->id));
+        $invoiceDetail->assertOk()
+            ->assertSee('← Faturas')
+            ->assertSee(route('financial.invoices.page', ['account_id' => $card->id]), false)
+            ->assertSee('Fatura de novembro 2026')
+            ->assertSee('Aberta')
+            ->assertSee('Total')
+            ->assertSee('Pago')
+            ->assertSee('Em falta')
+            ->assertSee('Compras')
+            ->assertSee('Compra')
+            ->assertSee('Pagamentos')
+            ->assertSee('Ainda não existem pagamentos.')
+            ->assertSee('Pagar fatura')
+            ->assertDontSee('Por pagar');
     }
 
+    public function test_invoice_detail_route_does_not_expose_another_users_invoice(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $card = $this->card($owner, 'Cartão privado');
+        $purchase = $this->purchase($owner, $card);
+        $this->actingAs($other);
+
+        $this->get(route('financial.invoices.show', $purchase->invoice_id))->assertNotFound();
+        $this->get(route('financial.cards.show', $card->id))->assertNotFound();
+    }
 
 }
