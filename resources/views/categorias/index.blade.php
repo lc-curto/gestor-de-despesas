@@ -45,7 +45,7 @@
                     <i class="bi bi-tags fs-2 text-secondary mb-2" aria-hidden="true"></i>
                     <h2 class="h5">Ainda não existem categorias</h2>
                     
-                    <div><button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#categoryModal" data-mode="create" data-type="{{ $type }}">Criar categoria</button></div>
+                    <div><button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#categoryModal" data-mode="create" data-type="{{ $type }}">Criar</button></div>
                 </div>
             @else
                 <div class="row g-3 category-grid">
@@ -100,9 +100,7 @@
 <x-modal
     id="categoryModal"
     aria-labelledby="categoryModalTitle"
-    :scrollable="true"
     content-class="category-modal-content"
-    :rounded="false"
 >
     <form method="POST" action="{{ route('categorias.store') }}" id="categoryForm">
         @csrf
@@ -143,7 +141,7 @@
                 </div>
                 <div class="category-icon-picker" id="categoryIconPicker" role="group" aria-label="Escolher ícone da categoria"></div>
                 <button type="button" class="btn btn-link btn-sm p-0 mt-2 text-decoration-none" id="categoryIconToggle" aria-expanded="false">
-                    Ver todos os ícones
+                    Mais
                 </button>
             </div>
 
@@ -162,7 +160,7 @@
 
         <x-modal-footer>
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" class="btn btn-primary" id="categorySubmitButton">Guardar categoria</button>
+            <button type="submit" class="btn btn-primary" id="categorySubmitButton">Guardar</button>
         </x-modal-footer>
     </form>
 </x-modal>
@@ -198,7 +196,7 @@
         iconGrid.classList.toggle('is-scrollable',showAll);
         iconGrid.innerHTML=displayed.map(name=>`<button type="button" class="category-icon-option ${name===iconInput.value?'is-selected':''}" data-icon-name="${name}" aria-label="Selecionar ícone ${name}" title="${name}"><i data-lucide="${name}" aria-hidden="true"></i></button>`).join('') || '<p class="small text-secondary mb-0">Nenhum ícone encontrado.</p>';
         iconToggle.hidden=query.length>0;
-        iconToggle.textContent=iconsExpanded?'Ver menos ícones':'Ver todos os ícones';
+        iconToggle.textContent=iconsExpanded?'Menos':'Mais';
         iconToggle.setAttribute('aria-expanded',String(iconsExpanded));
         window.lucide?.createIcons();
     }
