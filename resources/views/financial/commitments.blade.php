@@ -92,7 +92,7 @@
                     $nextRemaining = $next ? max(0, (float) $next->amount - (float) $next->paid_amount) : 0;
                 @endphp
                 <article class="commitment-card card border-0 shadow-sm rounded-4" data-commitment-card data-commitment-id="{{ $commitment->id }}">
-                    <button class="commitment-card-toggle" type="button" aria-expanded="false" aria-controls="commitment-details-{{ $commitment->id }}">
+                    <button class="commitment-card-toggle" type="button" data-bs-toggle="modal" data-bs-target="#commitmentDetailsModal-{{ $commitment->id }}" aria-haspopup="dialog">
                         <span class="commitment-card-heading">
                             <span class="commitment-card-name">{{ $commitment->name }}@if ($commitment->merchant)<small class="commitment-merchant">{{ $commitment->merchant }}</small>@endif</span>
                             <span class="badge {{ $isCancelled ? 'text-bg-secondary' : ($isCompleted ? 'text-bg-success' : ($commitment->has_overdue_installment ? 'text-bg-danger' : 'text-bg-success')) }}">{{ $isCancelled ? 'Cancelado' : ($isCompleted ? 'Concluído' : ($commitment->has_overdue_installment ? 'Em atraso' : 'Em dia')) }}</span>
@@ -129,9 +129,7 @@
                     </button>
 
                     <div class="d-flex align-items-center justify-content-between gap-2 px-3 py-2 border-top">
-                        <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 commitment-card-details-label" aria-controls="commitment-details-{{ $commitment->id }}">
-                            Detalhes <i data-lucide="chevron-down" class="ms-1" aria-hidden="true"></i>
-                        </button>
+                        <span class="small text-secondary">Ver detalhes</span>
                         <div class="d-flex align-items-center gap-2">
                             <button type="button" class="btn btn-sm btn-outline-secondary commitment-history-trigger" data-bs-toggle="modal" data-bs-target="#commitmentHistoryModal-{{ $commitment->id }}">
                                 Histórico <span class="commitment-history-count">({{ $history->total() }})</span>
@@ -165,7 +163,18 @@
                         </div>
                     </div>
 
-                    <div class="commitment-details" id="commitment-details-{{ $commitment->id }}" hidden>
+                    <div class="modal fade commitment-details-modal" id="commitmentDetailsModal-{{ $commitment->id }}" tabindex="-1" aria-labelledby="commitmentDetailsTitle-{{ $commitment->id }}" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable commitment-modal-dialog">
+                            <div class="modal-content rounded-4 border-0 shadow-sm commitment-modal-content">
+                                <div class="modal-header">
+                                    <div>
+                                        <h2 class="modal-title h5 fw-bold mb-1" id="commitmentDetailsTitle-{{ $commitment->id }}">{{ $commitment->name }}</h2>
+                                        @if ($commitment->merchant)<small class="text-secondary">{{ $commitment->merchant }}</small>@endif
+                                    </div>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="commitment-details">
                         <div class="commitment-detail-summary">
                             <div><small>Valor total</small><strong>{{ auth()->user()->currency }} {{ number_format((float) $commitment->total_amount, 2, ',', '.') }}</strong></div>
                             <div><small>Valor pago</small><strong>{{ auth()->user()->currency }} {{ number_format((float) $commitment->paid_amount_total, 2, ',', '.') }}</strong></div>
@@ -191,6 +200,14 @@
 
 
 
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-0 pt-2">
+                                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+                                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#commitmentHistoryModal-{{ $commitment->id }}" data-bs-dismiss="modal">Histórico completo</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </article>
 
@@ -642,23 +659,12 @@
         if (historyModalElement) bootstrap.Modal.getOrCreateInstance(historyModalElement).show();
     }
 
+    // Cada compra abre o seu próprio modal de detalhe.
     cards.forEach(card => {
+        const detailsModal = card.querySelector('.commitment-details-modal');
         const toggle = card.querySelector('.commitment-card-toggle');
-        const details = card.querySelector('.commitment-details');
-        toggle.addEventListener('click', () => {
-            const opening = toggle.getAttribute('aria-expanded') !== 'true';
-            if (window.matchMedia('(max-width: 767.98px)').matches && opening) {
-                cards.forEach(other => {
-                    if (other !== card) {
-                        other.querySelector('.commitment-card-toggle').setAttribute('aria-expanded','false');
-                        other.querySelector('.commitment-details').hidden = true;
-                    }
-                });
-            }
-            toggle.setAttribute('aria-expanded', String(opening));
-            details.hidden = !opening;
-        });
-        card.querySelector('.commitment-card-details-label')?.addEventListener('click', () => toggle.click());
+        detailsModal?.addEventListener('shown.bs.modal', () => toggle.setAttribute('aria-expanded', 'true'));
+        detailsModal?.addEventListener('hidden.bs.modal', () => toggle.setAttribute('aria-expanded', 'false'));
     });
 
     document.getElementById('createCommitmentForm')?.addEventListener('submit', async event => {
@@ -837,7 +843,13 @@
         document.getElementById('commitmentPaymentAmount').value=button.dataset.remaining.replace('.',',');
         document.getElementById('commitmentPaymentAmount').dataset.maxAmount=button.dataset.remaining;
         document.getElementById('commitmentPaymentError').textContent='';
-        paymentModal.show();
+        const detailsModalElement = button.closest('.commitment-details-modal');
+        if (detailsModalElement) {
+            detailsModalElement.addEventListener('hidden.bs.modal', () => paymentModal.show(), { once: true });
+            bootstrap.Modal.getOrCreateInstance(detailsModalElement).hide();
+        } else {
+            paymentModal.show();
+        }
     }));
     if (!window.CommitmentPayment || !window.CommitmentPayment.bind(paymentForm, token, feedback, showError)) {
         showError(feedback, 'Não foi possível carregar a validação de valores. Atualiza a página antes de pagar.');
