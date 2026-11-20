@@ -102,12 +102,35 @@
                             <span class="commitment-card-balance-secondary"><small>Prestações pagas</small><strong>{{ $partsPaid }}/{{ $partsTotal }}</strong></span>
                         </span>
                         <span class="commitment-progress-block">
-                            <span class="progress commitment-progress" role="progressbar" aria-label="Valor pago" aria-valuenow="{{ $commitment->progress_percent }}" aria-valuemin="0" aria-valuemax="100">
-                                <span class="progress-bar" style="width: {{ $commitment->progress_percent }}%"></span>
+                            <span class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                <small class="text-secondary fw-semibold">Progresso do pagamento</small>
+                                <strong class="small text-success">{{ number_format($commitment->progress_percent, 0, ',', '.') }}%</strong>
                             </span>
-                            <span class="commitment-card-foot">
-                                <small>{{ number_format($commitment->progress_percent, 1, ',', '.') }}% pago</small>
-                                <small>{{ $next ? 'Próxima prestação: '.$next->due_date->format('d/m/Y') : 'Plano concluído' }}</small>
+                            <span class="progress commitment-progress" role="progressbar"
+                                aria-label="Percentagem do valor pago"
+                                aria-valuenow="{{ $commitment->progress_percent }}"
+                                aria-valuemin="0" aria-valuemax="100">
+                                <span class="progress-bar bg-success" style="width: {{ $commitment->progress_percent }}%"></span>
+                            </span>
+                            <span class="row g-2 mt-2 commitment-progress-values">
+                                <span class="col-6">
+                                    <span class="commitment-progress-value-label">
+                                        <span class="commitment-progress-dot bg-success"></span>
+                                        <small class="text-secondary">Pago</small>
+                                    </span>
+                                    <strong>{{ auth()->user()->currency }} {{ number_format((float) $commitment->paid_amount_total, 2, ',', '.') }}</strong>
+                                </span>
+                                <span class="col-6 text-end">
+                                    <span class="commitment-progress-value-label justify-content-end">
+                                        <span class="commitment-progress-dot bg-secondary-subtle"></span>
+                                        <small class="text-secondary">Por pagar</small>
+                                    </span>
+                                    <strong>{{ auth()->user()->currency }} {{ number_format((float) $commitment->remaining_amount, 2, ',', '.') }}</strong>
+                                </span>
+                            </span>
+                            <span class="commitment-card-foot mt-2">
+                                <small>{{ $partsPaid }}/{{ $partsTotal }} prestações pagas</small>
+                                <small>{{ $next ? 'Próxima: '.$next->due_date->format('d/m/Y') : 'Plano concluído' }}</small>
                             </span>
                         </span>
                     </button>
