@@ -12,6 +12,7 @@
 
 <div class="app-content accounts-rebuilt" id="accountsPage">
     <x-financial.page-header title="Contas">
+        <x-slot:subtitle>{{ $activeAccounts->count() }} {{ $activeAccounts->count() === 1 ? 'conta ativa' : 'contas ativas' }}</x-slot:subtitle>
         <x-slot:actions>
             @if ($transferTargets->count() >= 2)
                 <button class="btn btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#accountTransferModal">
