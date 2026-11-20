@@ -621,6 +621,9 @@ class FinancialCoreController extends Controller
         if ($movement->type === 'transfer' && $movement->invoice_id) {
             return response()->json(['data' => $service->updateInvoicePayment($request->user(), $movement, $data)]);
         }
+        if ($movement->is_settlement_parent) {
+            return response()->json(['data' => $service->updateSettlementParent($request->user(), $movement, $data)]);
+        }
         $updated = DB::transaction(function () use ($request, $service, $movement, $data) {
             $updated = $service->updatePending($request->user(), $movement, $data);
             if ($updated->recurrence_id && $updated->legacy_type && $updated->legacy_id) {
