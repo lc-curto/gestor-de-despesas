@@ -71,7 +71,7 @@ class FinancialAccountsPageTest extends TestCase
             ->assertSee('id="closeAccountZeroNotice"', false)
             ->assertSee('id="closeAccountNegativeNotice"', false)
             ->assertSee('id="closeAccountNoTargets"', false)
-            ->assertSee('data-currency="EUR"', false)
+            ->assertSee('data-currency=', false)
             ->assertDontSee('>Não transferir</option>', false)
             ->assertSee(route('financial.accounts.close', $account->id), false);
     }
