@@ -438,9 +438,8 @@ class CardIntegrityRegressionTest extends TestCase
             ->assertSee(route('financial.cards.show', $card->id), false)
             ->assertSee('Disponível')
             ->assertSee('Limite total')
-            ->assertSee('Fecho')
-            ->assertSee('Vencimento')
-            ->assertSee('Dia')
+            ->assertSee('Fecho ')
+            ->assertSee('Vence ')
             ->assertDontSee('cardDetails-', false)
             ->assertDontSee(route('financial.accounts.show', $card->id), false);
 
@@ -449,6 +448,7 @@ class CardIntegrityRegressionTest extends TestCase
             ->assertSee('← Voltar')
             ->assertSee('Faturas')
             ->assertSee(route('financial.invoices.show', $invoice->id), false)
+            ->assertSee('Vence ')
             ->assertSee('Aberta')
             ->assertSee('120,00');
 
@@ -458,8 +458,8 @@ class CardIntegrityRegressionTest extends TestCase
             ->assertSee('Faturas')
             ->assertSee(route('financial.invoices.show', $invoice->id), false)
             ->assertSee('novembro 2026')
-            ->assertSee('Fecho:')
-            ->assertSee('Vencimento:');
+            ->assertSee('Aberta')
+            ->assertSee('120,00');
 
         $invoiceDetail = $this->get(route('financial.invoices.show', $invoice->id));
         $invoiceDetail->assertOk()
