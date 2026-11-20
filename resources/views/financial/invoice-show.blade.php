@@ -219,17 +219,21 @@
     };
     document.querySelectorAll('[data-invoice-movement]').forEach(row=>row.addEventListener('click',()=>{
         state.movement=row.dataset;
-        byId('invoiceMovementDetailsKind').textContent=({purchase:'Compra',charge:'Encargo',credit:'Crédito',payment:'Pagamento'})[row.dataset.kind]||'Movimento';
-        byId('invoiceMovementDetailsAmount').textContent=(row.dataset.kind==='credit'?'−':'')+row.dataset.amount+' '+context.dataset.currency;
+        const movementType=({purchase:'Compra',charge:'Encargo',credit:'Crédito',payment:'Pagamento'})[row.dataset.kind]||'Movimento';
+        byId('invoiceMovementDetailsKind').textContent=movementType;
+        byId('invoiceMovementDetailsCategory').textContent=row.dataset.category||movementType;
+        const currencyFormatter=new Intl.NumberFormat('pt-PT',{style:'currency',currency:context.dataset.currency});
+        byId('invoiceMovementDetailsAmount').textContent=(row.dataset.kind==='credit'?'−':'')+currencyFormatter.format(Number(row.dataset.amount));
         byId('invoiceMovementDetailsName').textContent=row.dataset.description||'—';
-        byId('invoiceMovementDetailsDate').textContent=row.dataset.date||'—';
+        byId('invoiceMovementDetailsDate').textContent=row.dataset.date ? new Intl.DateTimeFormat('pt-PT').format(new Date(row.dataset.date+'T00:00:00')) : '—';
+        byId('invoiceMovementDetailsRelatedRow').hidden=true;
         byId('invoiceMovementEditDescription').value=row.dataset.description||'';
         byId('invoiceMovementEditAmount').value=row.dataset.amount||'';
         byId('invoiceMovementEditDate').value=row.dataset.date||'';
         byId('invoiceMovementDetailsEdit').disabled=row.dataset.kind==='payment' ? false : false;
         showMode('view');modal.show();
     }));
-    byId('invoiceMovementEdit').addEventListener('click',()=>showMode('edit'));
+    byId('invoiceMovementDetailsEdit').addEventListener('click',()=>showMode('edit'));
     byId('invoiceMovementCancelEdit').addEventListener('click',()=>showMode('view'));
     byId('invoiceMovementDetailsDelete').addEventListener('click',()=>showMode('delete'));
     byId('invoiceMovementCancelDelete').addEventListener('click',()=>showMode('view'));
