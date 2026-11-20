@@ -32,6 +32,9 @@ class FinancialInvoicesPageController extends Controller
             ->where('status', 'active')->where('is_operational', true)
             ->orderBy('name')->get(['id', 'name', 'type', 'currency']);
 
-        return view('financial.invoice-show', compact('invoice', 'card', 'accounts'));
+        $cardPage = max(1, (int) $request->query('card_page', 1));
+        $cardBackUrl = route('financial.cards.show', $card->id).'?page='.$cardPage;
+
+        return view('financial.invoice-show', compact('invoice', 'card', 'accounts', 'cardBackUrl'));
     }
 }
