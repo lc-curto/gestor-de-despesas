@@ -225,19 +225,6 @@ class FinancialCoreController extends Controller
         ], 201);
     }
 
-    public function closeInvoice(Request $request, string $id, CardInvoiceService $service): JsonResponse
-    {
-        $data = $request->validate([
-            'statement_amount' => 'required|numeric|gte:0|decimal:0,2|max:9999999999.99',
-        ]);
-        $invoice = $request->user()->faturas()->whereKey($id)->firstOrFail();
-
-        return response()->json([
-            'data' => $service->closeInvoice($request->user(), $invoice, (string) $data['statement_amount']),
-            'message' => 'Fatura fechada e reconciliada com o extrato.',
-        ]);
-    }
-
     public function addInvoiceCredit(Request $request, string $id, CardInvoiceService $service): JsonResponse
     {
         $data = $request->validate([

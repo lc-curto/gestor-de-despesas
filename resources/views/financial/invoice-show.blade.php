@@ -8,7 +8,7 @@
     $cycleLabels = ['open' => 'Aberta', 'closed' => 'Fechada'];
     $cycleClasses = ['open' => 'text-bg-primary', 'closed' => 'text-bg-secondary'];
     $progress = (float) $invoice->total_amount > 0 ? min(100, (float) $invoice->paid_amount / (float) $invoice->total_amount * 100) : 100;
-    $locked = in_array($invoice->status, ['closed', 'paid', 'carried'], true);
+    $locked = $invoice->status === 'carried';
 @endphp
 <div class="app-content invoice-detail-page">
     <header class="mb-3">
@@ -48,13 +48,8 @@
                 <button type="button" class="btn btn-outline-secondary btn-sm w-100 h-100 js-invoice-action" data-action="charge" aria-label="Adicionar encargo" title="Adicionar encargo" @disabled($locked)>Encargo</button>
             </div>
             <div class="col-4">
-                <button type="button" class="btn btn-outline-secondary btn-sm w-100 h-100 js-invoice-action" data-action="credit" aria-label="Registar crédito" title="Registar crédito" @disabled($locked || $invoice->movimentos->isEmpty())>Crédito</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm w-100 h-100 js-invoice-action" data-action="credit" aria-label="Registar crédito" title="Registar crédito" @disabled($locked || $invoice->movimentos->isEmpty() || (float)$invoice->remaining_amount <= 0)>Crédito</button>
             </div>
-            @if(! $locked)
-                <div class="col-4">
-                    <button type="button" class="btn btn-outline-secondary btn-sm w-100 h-100 js-invoice-action" data-action="close" aria-label="Fechar fatura" title="Fechar fatura" @disabled($invoice->closing_date->greaterThanOrEqualTo(today()))>Fechar</button>
-                </div>
-            @endif
         </div>
 
         <section class="card border rounded-4 mb-3">
@@ -114,7 +109,6 @@
                 <div class="mb-3 d-none" data-field="account"><label class="form-label" for="invoiceAccount">Conta de pagamento</label><select class="form-select" id="invoiceAccount"><option value="">Selecionar conta</option>@foreach($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select></div>
                 <div class="mb-3 d-none" data-field="chargeType"><label class="form-label" for="invoiceChargeType">Tipo de encargo</label><select class="form-select" id="invoiceChargeType"><option value="interest">Juros</option><option value="late_fee">Multa</option><option value="commission">Comissão</option><option value="tax">Imposto</option><option value="other">Outro</option></select></div>
                 <div class="mb-3 d-none" data-field="purchase"><label class="form-label" for="invoicePurchase">Compra a creditar</label><select class="form-select" id="invoicePurchase">@foreach($invoice->movimentos as $purchase)<option value="{{ $purchase->id }}">{{ $purchase->description }} · {{ $purchase->amount }} {{ $currency }}</option>@endforeach</select></div>
-                <div class="mb-3 d-none" data-field="statement"><label class="form-label" for="invoiceStatement">Total do extrato</label><input class="form-control" id="invoiceStatement" inputmode="decimal" placeholder="0,00"></div>
                 <div class="alert alert-danger d-none mb-0" id="invoiceActionError" role="alert"></div>
             </div>
             <div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar</button></div>
@@ -131,8 +125,8 @@
     const modal=bootstrap.Modal.getOrCreateInstance(modalEl),csrf=document.querySelector('meta[name="csrf-token"]')?.content;
     const context=document.querySelector('.invoice-detail-context');
     let invoiceId=context?.dataset.invoiceId,action=null;
-    const fieldMap={pay:['amount','date','account'],charge:['chargeHelp','description','amount','date','chargeType'],credit:['description','amount','date','purchase'],close:['statement']};
-    const titleMap={pay:'Pagar fatura',charge:'Adicionar encargo',credit:'Registar crédito',close:'Fechar fatura'};
+    const fieldMap={pay:['amount','date','account'],charge:['chargeHelp','description','amount','date','chargeType'],credit:['description','amount','date','purchase']};
+    const titleMap={pay:'Pagar fatura',charge:'Adicionar encargo',credit:'Registar crédito'};
     const money=v=>{const s=String(v??'').trim().replace(',','.');return /^\d+(\.\d{1,2})?$/.test(s)?s:null;};
     document.querySelectorAll('.js-invoice-action').forEach(button=>button.addEventListener('click',()=>{
         action=button.dataset.action;form.reset();
@@ -153,8 +147,8 @@
             payload.description=value('invoiceDescription');payload.amount=money(value('invoiceAmount'));payload.movement_date=value('invoiceDate');payload.charge_type=value('invoiceChargeType');suffix='charges';
         }else if(action==='credit'){
             payload.description=value('invoiceDescription')||'Crédito de compra';payload.amount=money(value('invoiceAmount'));payload.movement_date=value('invoiceDate');payload.purchase_movement_id=value('invoicePurchase');suffix='credits';
-        }else{payload.statement_amount=money(value('invoiceStatement'));suffix='close';}
-        const amount=action==='close'?payload.statement_amount:payload.amount;
+        }
+        const amount=payload.amount;
         if(amount===null||amount===undefined||(action==='pay'&&(!payload.account_id||!payload.payment_date))||(action==='charge'&&!payload.description)||(action==='credit'&&!payload.purchase_movement_id)){
             const error=document.getElementById('invoiceActionError');error.textContent='Preenche os campos obrigatórios com valores válidos.';error.classList.remove('d-none');submit.disabled=false;return;
         }

@@ -481,6 +481,8 @@ class CardIntegrityRegressionTest extends TestCase
             ->assertSee('Ainda não existem pagamentos.')
             ->assertSee('Pagar fatura')
             ->assertSee('Encargo')
+            ->assertDontSee('data-action="close"', false)
+            ->assertDontSee('Fechar fatura')
             ->assertDontSee('O banco informou a decomposição')
             ->assertDontSee('allocationEnabled')
             ->assertDontSee('Por pagar');
