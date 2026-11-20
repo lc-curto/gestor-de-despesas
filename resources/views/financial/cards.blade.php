@@ -12,25 +12,56 @@
     <section class="d-grid gap-3" aria-label="Os meus cartões">
         @forelse($cards as $card)
             @php $isInactive = $card->status !== 'active' || ! $card->is_operational; @endphp
-            <a href="{{ route('financial.cards.show', ['id' => $card->id, 'return_to' => request()->getRequestUri()]) }}"
-               class="card border rounded-4 text-decoration-none text-body credit-card-item {{ $isInactive ? 'credit-card-inactive' : '' }}"
-               @if($isInactive) hidden @endif aria-label="Abrir {{ $card->name }}">
+            <article class="card border rounded-4 credit-card-item {{ $isInactive ? 'credit-card-inactive' : '' }}" @if($isInactive) hidden @endif>
                 <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                        <span class="fw-semibold text-break">{{ $card->name }}</span>
-                        <span class="badge {{ $isInactive ? 'text-bg-secondary' : 'text-bg-success' }}">{{ $isInactive ? 'Inativo' : 'Ativo' }}</span>
+                    <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                        <a href="{{ route('financial.cards.show', ['id' => $card->id, 'return_to' => request()->getRequestUri()]) }}" class="text-decoration-none text-body flex-grow-1 min-w-0" aria-label="Abrir {{ $card->name }}">
+                            <span class="fw-semibold text-break">{{ $card->name }}</span>
+                        </a>
+                        <div class="dropdown flex-shrink-0">
+                            <button class="btn btn-sm card-actions-trigger" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações de {{ $card->name }}">
+                                <i data-lucide="ellipsis" aria-hidden="true"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                @if($card->status !== 'closed' && $card->is_operational)
+                                    <li><button class="dropdown-item js-edit-card" type="button"
+                                        data-name="{{ $card->name }}" data-update-url="{{ route('financial.accounts.update',$card->id) }}"
+                                        data-settings-url="{{ route('financial.cards.settings',$card->id) }}"
+                                        data-limit="{{ $card->credit_limit }}" data-closing="{{ $card->closing_day }}"
+                                        data-due="{{ $card->due_day }}" data-opening-debt="{{ $card->opening_debt_amount }}">Editar</button></li>
+                                @endif
+                                @if($card->status === 'active' && $card->is_operational)
+                                    <li><button class="dropdown-item js-card-status" type="button" data-status="suspended" data-status-url="{{ route('financial.cards.status',$card->id) }}" data-name="{{ $card->name }}">Suspender</button></li>
+                                @elseif($card->status === 'suspended' && $card->is_operational)
+                                    <li><button class="dropdown-item js-card-status" type="button" data-status="active" data-status-url="{{ route('financial.cards.status',$card->id) }}" data-name="{{ $card->name }}">Reativar</button></li>
+                                @endif
+                                @if($card->status === 'closed' || ! $card->is_operational)
+                                    <li><button class="dropdown-item js-reopen-card" type="button" data-url="{{ route('financial.cards.reopen',$card->id) }}">Reabrir</button></li>
+                                @endif
+                                @if($card->status === 'active' && $card->is_operational && $card->used_limit <= 0.00001)
+                                    <li><button class="dropdown-item js-close-card text-danger" type="button" data-close-url="{{ route('financial.accounts.close',$card->id) }}">Encerrar</button></li>
+                                @endif
+                                @if($card->can_delete)
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><button class="dropdown-item js-delete-card text-danger" type="button" data-url="{{ route('financial.cards.destroy',$card->id) }}">Eliminar</button></li>
+                                @endif
+                            </ul>
+                        </div>
                     </div>
-                    <strong class="d-block fs-3 lh-1 mb-1 {{ $isInactive ? 'text-body' : 'text-success' }}">{{ number_format($card->available_limit,2,',','.') }} {{ $card->currency }}</strong>
-                    <span class="small text-secondary">Disponível de {{ number_format((float)$card->credit_limit,2,',','.') }} {{ $card->currency }}</span>
-                    <div class="progress mt-2" role="progressbar" aria-label="Percentagem do limite utilizado" aria-valuenow="{{ round($card->usage_percent) }}" aria-valuemin="0" aria-valuemax="100" style="height:5px">
-                        <div class="progress-bar" style="width:{{ $card->usage_percent }}%"></div>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center gap-2 mt-2 small text-secondary">
-                        <span>Utilizado {{ number_format($card->used_limit,2,',','.') }} {{ $card->currency }}</span>
-                        <span class="text-end">Fecho {{ $card->closing_day ?? '—' }} · Vence {{ $card->due_day ?? '—' }}</span>
-                    </div>
+                    <a href="{{ route('financial.cards.show', ['id' => $card->id, 'return_to' => request()->getRequestUri()]) }}" class="text-decoration-none text-body d-block">
+                        <span class="badge {{ $isInactive ? 'text-bg-secondary' : 'text-bg-success' }} mb-2">{{ $isInactive ? 'Suspenso' : 'Ativo' }}</span>
+                        <strong class="d-block fs-3 lh-1 mb-1 {{ $isInactive ? 'text-body' : 'text-success' }}">{{ number_format($card->available_limit,2,',','.') }} {{ $card->currency }}</strong>
+                        <span class="small text-secondary">Disponível de {{ number_format((float)$card->credit_limit,2,',','.') }} {{ $card->currency }}</span>
+                        <div class="progress mt-2" role="progressbar" aria-label="Percentagem do limite utilizado" aria-valuenow="{{ round($card->usage_percent) }}" aria-valuemin="0" aria-valuemax="100" style="height:5px">
+                            <div class="progress-bar" style="width:{{ $card->usage_percent }}%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center gap-2 mt-2 small text-secondary">
+                            <span>Utilizado {{ number_format($card->used_limit,2,',','.') }} {{ $card->currency }}</span>
+                            <span class="text-end">Fecho {{ $card->closing_day ?? '—' }} · Vence {{ $card->due_day ?? '—' }}</span>
+                        </div>
+                    </a>
                 </div>
-            </a>
+            </article>
         @empty
             <div class="card border-0 rounded-4 text-center p-4"><div class="card-body"><i data-lucide="credit-card" class="mb-3 text-secondary" style="width:32px;height:32px"></i><h2 class="h5">Ainda não tens cartões</h2><button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCardModal">Adicionar</button></div></div>
         @endforelse
@@ -85,6 +116,8 @@
 @push('styles')
 <style>
 .credit-card-item { transition: border-color .15s ease, background-color .15s ease; }
+.card-actions-trigger { width: 40px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--bs-border-color); border-radius: .65rem; color: var(--bs-secondary-color); background: var(--bs-body-bg); }
+.card-actions-trigger:hover, .card-actions-trigger:focus-visible { color: var(--bs-body-color); border-color: var(--bs-secondary-color); }
 .credit-card-item:hover { border-color: var(--bs-primary); background-color: var(--bs-tertiary-bg); }
 .credit-card-item:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
 .credit-card-item .progress { background-color: var(--bs-secondary-bg); }
@@ -150,6 +183,8 @@
         if(detailsModal){
             detailsModal.addEventListener('hidden.bs.modal',()=>bootstrap.Modal.getOrCreateInstance(document.getElementById('editCardModal')).show(),{once:true});
             bootstrap.Modal.getOrCreateInstance(detailsModal).hide();
+        } else {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('editCardModal')).show();
         }
     }));
     document.getElementById('editCardForm')?.addEventListener('submit',async(event)=>{
