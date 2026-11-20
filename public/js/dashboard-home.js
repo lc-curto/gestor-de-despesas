@@ -86,6 +86,26 @@
     const rateLabel = document.getElementById('conversionRate');
     const currency = window.meuBolsoHome?.currency || 'EUR';
 
+    document.querySelectorAll('[data-dashboard-new-movement]').forEach(action => {
+        action.addEventListener('click', event => {
+            const modal = document.getElementById('movementEntryModal');
+            if (!modal) return;
+            event.preventDefault();
+            const type = action.dataset.dashboardNewMovement;
+            const openEditor = () => {
+                const trigger = document.getElementById(type === 'receita' ? 'quickIncomeButton' : 'quickExpenseButton');
+                trigger?.click();
+            };
+            const menu = document.getElementById('mobileNewMenu');
+            if (menu?.classList.contains('show')) {
+                menu.addEventListener('hidden.bs.offcanvas', openEditor, { once: true });
+                window.bootstrap.Offcanvas.getOrCreateInstance(menu).hide();
+            } else {
+                openEditor();
+            }
+        });
+    });
+
     if (!amount || !from || !to || !button || !output || !rateLabel) return;
 
     to.value = currency;

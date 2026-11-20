@@ -6,6 +6,7 @@
 @php
     $currencySymbols = ['EUR' => '€', 'USD' => '$', 'GBP' => '£', 'BRL' => 'R$'];
     $currencySymbol = $currencySymbols[$moeda] ?? $moeda;
+    $simbolos = $currencySymbols;
     $recentMovements = $movimentos->take(5);
     $maxCategoryTotal = max(1, (float) $expenseCategories->max('total'));
     $greeting = now()->hour < 12 ? 'Bom dia' : (now()->hour < 19 ? 'Boa tarde' : 'Boa noite');
@@ -59,16 +60,16 @@
         <h2 class="h6 fw-bold mb-2" id="homeQuickActionsTitle">Ações rápidas</h2>
         <div class="row g-2">
             <div class="col-4">
-                <a class="home-quick-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'despesa', 'mes' => $mes, 'return_to' => route('dashboard', ['mes' => $mes], false)]) }}">
+                <button type="button" class="home-quick-action" id="quickExpenseButton">
                     <i data-lucide="minus-circle" aria-hidden="true"></i>
                     <strong>Despesa</strong>
-                </a>
+                </button>
             </div>
             <div class="col-4">
-                <a class="home-quick-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'receita', 'mes' => $mes, 'return_to' => route('dashboard', ['mes' => $mes], false)]) }}">
+                <button type="button" class="home-quick-action" id="quickIncomeButton">
                     <i data-lucide="plus-circle" aria-hidden="true"></i>
                     <strong>Receita</strong>
-                </a>
+                </button>
             </div>
             <div class="col-4">
                 <button type="button" class="home-quick-action" data-bs-toggle="modal" data-bs-target="#currencyConverterModal">
@@ -152,6 +153,17 @@
     </section>
 </div>
 
+<div class="visually-hidden" aria-hidden="true">
+    <input id="periodMonth" value="{{ $mes }}">
+    <span id="totalAmount" data-total="{{ $totalDespesas }}">{{ $totalDespesas }}</span>
+    <span id="totalIncome" data-total="{{ $totalReceitas }}">{{ $totalReceitas }}</span>
+    <span id="balanceAmount">{{ $result }}</span>
+    <span id="periodCaption">{{ $mes }}</span>
+    <div id="expensesList"></div>
+</div>
+
+@include('partials.movement-editor-modal')
+
 <div class="modal fade" id="dashboardMonthPicker" tabindex="-1" aria-labelledby="dashboardMonthPickerTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-sm dashboard-month-dialog">
         <div class="modal-content border-0 shadow rounded-4">
@@ -221,6 +233,22 @@
 @endsection
 
 @push('scripts')
-<script>window.meuBolsoHome = { currency: @json($moeda) };</script>
+<script>
+window.meuBolsoHome = { currency: @json($moeda) };
+window.meuBolsoDashboard = {
+    userId: @json(auth()->id()), name: @json(auth()->user()->name), currency: @json($moeda),
+    initialType: 'despesa', initialCategory: null, dashboardHome: true, type: @json($filtroTipo), category: @json($filtroCategoria),
+    hasMore: @json($totalMovimentos > $limit), initialExpenseCount: @json($totalDespesasFiltradas),
+    initialIncomeCount: @json($totalReceitasFiltradas), initialMovements: @json($movimentosIniciais),
+    movementsUrl: @json(route('dashboard.movimentos.data')),
+    expenseStore: @json(route('despesas.store')), incomeStore: @json(route('receitas.store')),
+    commitmentStore: @json(route('financial.commitments.store')), commitmentBase: @json(url('/api/financial/commitments')),
+    expenseUpdateBase: @json(url('/despesas')), incomeUpdateBase: @json(url('/receitas')),
+    expenseCategories: @json($categoriasDespesa), expenseCategoryBehaviors: @json($expenseCategoryBehaviors),
+    incomeCategories: @json($categoriasReceita), categories: @json($categorias),
+    financialMovementBase: @json(url('/api/financial/movements'))
+};
+</script>
+<script src="{{ asset('js/dashboard.js') }}?v={{ filemtime(public_path('js/dashboard.js')) }}" defer></script>
 <script src="{{ asset('js/dashboard-home.js') }}?v={{ filemtime(public_path('js/dashboard-home.js')) }}" defer></script>
 @endpush

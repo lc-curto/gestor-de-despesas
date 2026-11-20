@@ -1087,6 +1087,12 @@
             setMovementType(movementType);
             closeEditor();
         }
+        if (cfg.dashboardHome) {
+            const dashboardUrl = new URL(window.location.href);
+            dashboardUrl.searchParams.set('mes', monthInput.value);
+            window.location.assign(dashboardUrl);
+            return;
+        }
         showMovementConfirmation(confirmation.message, confirmation.isInstallment);
         try {
             await refreshDashboard();

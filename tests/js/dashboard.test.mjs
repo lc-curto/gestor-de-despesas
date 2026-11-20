@@ -246,15 +246,20 @@ test('modal de novo movimento mantém largura integral no mobile para despesa e 
 });
 
 test('a vista usa entradas textuais com teclado decimal para todos os valores monetários de Movimentos', () => {
-    const blade = readFileSync(new URL('../../resources/views/movements.blade.php', import.meta.url), 'utf8');
-    for (const id of ['movementAmount', 'settleMovementAmount']) {
-        const tag = blade.match(new RegExp(`<input\\b[^>]*\\bid="${id}"[^>]*>`))?.[0];
+    const editor = readFileSync(new URL('../../resources/views/partials/movement-editor-modal.blade.php', import.meta.url), 'utf8');
+    const movements = readFileSync(new URL('../../resources/views/movements.blade.php', import.meta.url), 'utf8');
+    const fields = [
+        { id: 'movementAmount', source: editor },
+        { id: 'settleMovementAmount', source: movements },
+    ];
+
+    for (const { id, source } of fields) {
+        const tag = source.match(new RegExp(`<input\\b[^>]*\\bid="${id}"[^>]*>`))?.[0];
         assert.ok(tag, `campo ${id} presente`);
         assert.match(tag, /type="text"/);
         assert.match(tag, /inputmode="decimal"/);
     }
 });
-
 test('vírgula e ponto são interpretados como cêntimos em vez de multiplicar o valor por 100', async (t) => {
     for (const [input, expected] of [
         ['90,50', '90.50'], ['90.50', '90.50'], ['90,5', '90.50'],
