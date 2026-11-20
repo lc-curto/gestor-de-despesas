@@ -92,7 +92,7 @@
                     $nextRemaining = $next ? max(0, (float) $next->amount - (float) $next->paid_amount) : 0;
                 @endphp
                 <article class="commitment-card card border-0 shadow-sm rounded-4" data-commitment-card data-commitment-id="{{ $commitment->id }}">
-                    <button class="commitment-card-toggle" type="button" aria-expanded="false" aria-controls="commitment-details-{{ $commitment->id }}">
+                    <button class="commitment-card-toggle" type="button" data-bs-toggle="modal" data-bs-target="#commitmentDetailsModal-{{ $commitment->id }}" aria-haspopup="dialog">
                         <span class="commitment-card-heading">
                             <span class="commitment-card-name">{{ $commitment->name }}@if ($commitment->merchant)<small class="commitment-merchant">{{ $commitment->merchant }}</small>@endif</span>
                             <span class="badge {{ $isCancelled ? 'text-bg-secondary' : ($isCompleted ? 'text-bg-success' : ($commitment->has_overdue_installment ? 'text-bg-danger' : 'text-bg-success')) }}">{{ $isCancelled ? 'Cancelado' : ($isCompleted ? 'Concluído' : ($commitment->has_overdue_installment ? 'Em atraso' : 'Em dia')) }}</span>
@@ -102,24 +102,36 @@
                             <span class="commitment-card-balance-secondary"><small>Prestações pagas</small><strong>{{ $partsPaid }}/{{ $partsTotal }}</strong></span>
                         </span>
                         <span class="commitment-progress-block">
-                            <span class="progress commitment-progress" role="progressbar" aria-label="Valor pago" aria-valuenow="{{ $commitment->progress_percent }}" aria-valuemin="0" aria-valuemax="100">
-                                <span class="progress-bar" style="width: {{ $commitment->progress_percent }}%"></span>
+                            <span class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                                <small class="text-secondary">Pago</small>
+                                <strong class="small text-success">{{ number_format($commitment->progress_percent, 0, ',', '.') }}%</strong>
                             </span>
-                            <span class="commitment-card-foot">
-                                <small>{{ number_format($commitment->progress_percent, 1, ',', '.') }}% pago</small>
-                                <small>{{ $next ? 'Próxima prestação: '.$next->due_date->format('d/m/Y') : 'Plano concluído' }}</small>
+                            <span class="progress commitment-progress" role="progressbar"
+                                aria-label="Percentagem do valor pago"
+                                aria-valuenow="{{ $commitment->progress_percent }}"
+                                aria-valuemin="0" aria-valuemax="100">
+                                <span class="progress-bar bg-success" style="width: {{ $commitment->progress_percent }}%"></span>
+                            </span>
+                            <span class="d-flex justify-content-between align-items-center gap-2 mt-2 commitment-progress-values">
+                                <span class="commitment-progress-amount">
+                                    <small class="text-secondary">Pago</small>
+                                    <strong>{{ auth()->user()->currency }} {{ number_format((float) $commitment->paid_amount_total, 2, ',', '.') }}</strong>
+                                </span>
+                                <span class="commitment-progress-amount text-end">
+                                    <small class="text-secondary">Por pagar</small>
+                                    <strong>{{ auth()->user()->currency }} {{ number_format((float) $commitment->remaining_amount, 2, ',', '.') }}</strong>
+                                </span>
+                            </span>
+                            <span class="commitment-card-foot mt-1">
+                                <small>{{ $next ? 'Próxima: '.$next->due_date->format('d/m/Y') : 'Plano concluído' }}</small>
                             </span>
                         </span>
                     </button>
 
                     <div class="d-flex align-items-center justify-content-between gap-2 px-3 py-2 border-top">
-                        <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 commitment-card-details-label" aria-controls="commitment-details-{{ $commitment->id }}">
-                            Detalhes <i data-lucide="chevron-down" class="ms-1" aria-hidden="true"></i>
-                        </button>
+                        <span class="small text-secondary">Ver detalhes</span>
                         <div class="d-flex align-items-center gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-secondary commitment-history-trigger" data-bs-toggle="modal" data-bs-target="#commitmentHistoryModal-{{ $commitment->id }}">
-                                Histórico <span class="commitment-history-count">({{ $history->total() }})</span>
-                            </button>
+
                             <x-financial.action-menu label="Ações da compra">
                                 <li><button type="button" class="dropdown-item js-edit-commitment" @disabled($isCompleted)
                                     data-url="{{ route('financial.commitments.update', $commitment->id) }}"
@@ -149,7 +161,20 @@
                         </div>
                     </div>
 
-                    <div class="commitment-details" id="commitment-details-{{ $commitment->id }}" hidden>
+                </article>
+
+                    <div class="modal fade commitment-details-modal" id="commitmentDetailsModal-{{ $commitment->id }}" tabindex="-1" aria-labelledby="commitmentDetailsTitle-{{ $commitment->id }}" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable commitment-modal-dialog">
+                            <div class="modal-content rounded-4 border-0 shadow-sm commitment-modal-content">
+                                <div class="modal-header">
+                                    <div>
+                                        <h2 class="modal-title h5 fw-bold mb-1" id="commitmentDetailsTitle-{{ $commitment->id }}">{{ $commitment->name }}</h2>
+                                        @if ($commitment->merchant)<small class="text-secondary">{{ $commitment->merchant }}</small>@endif
+                                    </div>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="commitment-details">
                         <div class="commitment-detail-summary">
                             <div><small>Valor total</small><strong>{{ auth()->user()->currency }} {{ number_format((float) $commitment->total_amount, 2, ',', '.') }}</strong></div>
                             <div><small>Valor pago</small><strong>{{ auth()->user()->currency }} {{ number_format((float) $commitment->paid_amount_total, 2, ',', '.') }}</strong></div>
@@ -175,8 +200,15 @@
 
 
 
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-0 pt-2">
+                                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+                                    <button type="button" class="btn btn-outline-secondary commitment-history-trigger" data-bs-toggle="modal" data-bs-target="#commitmentHistoryModal-{{ $commitment->id }}" data-bs-dismiss="modal">Histórico completo</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </article>
 
                 <div class="modal fade commitment-history-modal" id="commitmentHistoryModal-{{ $commitment->id }}" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg commitment-modal-dialog">
@@ -595,6 +627,17 @@
         flex: 0 0 auto;
     }
 }
+
+.commitment-details-modal .modal-dialog { max-width: 560px; }
+.commitment-details-modal .commitment-details { padding: 0; border: 0; }
+.commitment-details-modal .commitment-detail-summary { margin-bottom: .9rem; }
+.commitment-details-modal .commitment-next-payment { margin-bottom: 0; }
+.commitment-card-toggle { cursor: pointer; }
+.commitment-card-toggle:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: -3px; }
+@media (max-width: 575.98px) {
+    .commitment-details-modal .modal-dialog { margin: .5rem; min-height: calc(100% - 1rem); }
+    .commitment-details-modal .modal-content { max-height: calc(100dvh - 1rem); border-radius: 1.1rem; }
+}
 </style>
 @endpush
 
@@ -626,23 +669,12 @@
         if (historyModalElement) bootstrap.Modal.getOrCreateInstance(historyModalElement).show();
     }
 
+    // Cada compra abre o seu próprio modal de detalhe.
     cards.forEach(card => {
+        const detailsModal = card.querySelector('.commitment-details-modal');
         const toggle = card.querySelector('.commitment-card-toggle');
-        const details = card.querySelector('.commitment-details');
-        toggle.addEventListener('click', () => {
-            const opening = toggle.getAttribute('aria-expanded') !== 'true';
-            if (window.matchMedia('(max-width: 767.98px)').matches && opening) {
-                cards.forEach(other => {
-                    if (other !== card) {
-                        other.querySelector('.commitment-card-toggle').setAttribute('aria-expanded','false');
-                        other.querySelector('.commitment-details').hidden = true;
-                    }
-                });
-            }
-            toggle.setAttribute('aria-expanded', String(opening));
-            details.hidden = !opening;
-        });
-        card.querySelector('.commitment-card-details-label')?.addEventListener('click', () => toggle.click());
+        detailsModal?.addEventListener('shown.bs.modal', () => toggle.setAttribute('aria-expanded', 'true'));
+        detailsModal?.addEventListener('hidden.bs.modal', () => toggle.setAttribute('aria-expanded', 'false'));
     });
 
     document.getElementById('createCommitmentForm')?.addEventListener('submit', async event => {
@@ -821,7 +853,13 @@
         document.getElementById('commitmentPaymentAmount').value=button.dataset.remaining.replace('.',',');
         document.getElementById('commitmentPaymentAmount').dataset.maxAmount=button.dataset.remaining;
         document.getElementById('commitmentPaymentError').textContent='';
-        paymentModal.show();
+        const detailsModalElement = button.closest('.commitment-details-modal');
+        if (detailsModalElement) {
+            detailsModalElement.addEventListener('hidden.bs.modal', () => paymentModal.show(), { once: true });
+            bootstrap.Modal.getOrCreateInstance(detailsModalElement).hide();
+        } else {
+            paymentModal.show();
+        }
     }));
     if (!window.CommitmentPayment || !window.CommitmentPayment.bind(paymentForm, token, feedback, showError)) {
         showError(feedback, 'Não foi possível carregar a validação de valores. Atualiza a página antes de pagar.');
