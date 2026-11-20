@@ -246,7 +246,7 @@ test('modal de novo movimento mantém largura integral no mobile para despesa e 
 });
 
 test('a vista usa entradas textuais com teclado decimal para todos os valores monetários de Movimentos', () => {
-    const blade = readFileSync(new URL('../../resources/views/movements.blade.php', import.meta.url), 'utf8');
+    const blade = readFileSync(new URL('../../resources/views/partials/movement-editor-modal.blade.php', import.meta.url), 'utf8');
     for (const id of ['movementAmount', 'settleMovementAmount']) {
         const tag = blade.match(new RegExp(`<input\\b[^>]*\\bid="${id}"[^>]*>`))?.[0];
         assert.ok(tag, `campo ${id} presente`);
