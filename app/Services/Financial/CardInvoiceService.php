@@ -46,8 +46,8 @@ class CardInvoiceService
             $invoice = $this->invoiceForCycle($user, $card->id, $reference, $closing, $due);
             $this->movements->assertInvoiceReconciled($user, $invoice);
             $this->carryOverdueInvoices($user, $invoice);
-            if (in_array($invoice->status, ['paid', 'carried', 'closed'], true) || ($invoice->closing_date && $invoice->closing_date->lt(today()))) {
-                throw ValidationException::withMessages(['invoice' => 'A fatura deste ciclo já foi fechada. A compra deve entrar no ciclo seguinte.']);
+            if ($invoice->status === 'carried') {
+                throw ValidationException::withMessages(['invoice' => 'O saldo deste ciclo já foi transportado. Regista a compra no ciclo atual.']);
             }
 
             $purchase = $this->movements->createCardPurchase($user, [
@@ -105,8 +105,8 @@ class CardInvoiceService
             $invoice = $this->invoiceForCycle($user, $card->id, $reference, $closing, $due);
             $this->movements->assertInvoiceReconciled($user, $invoice);
             $this->carryOverdueInvoices($user, $invoice);
-            if (in_array($invoice->status, ['paid', 'carried', 'closed'], true) || ($invoice->closing_date && $invoice->closing_date->lt(today()))) {
-                throw ValidationException::withMessages(['invoice' => 'A fatura deste ciclo já foi fechada. A compra deve entrar no ciclo seguinte.']);
+            if ($invoice->status === 'carried') {
+                throw ValidationException::withMessages(['invoice' => 'O saldo deste ciclo já foi transportado. Regista a compra no ciclo atual.']);
             }
 
             $settled = $this->movements->settle($user, $locked, [
@@ -189,7 +189,12 @@ class CardInvoiceService
         $invoice->setAttribute('total_amount', number_format($total, 2, '.', ''));
         $invoice->setAttribute('paid_amount', number_format($paid, 2, '.', ''));
         $invoice->setAttribute('remaining_amount', number_format($remaining, 2, '.', ''));
-        $cycleStatus = $invoice->closed_at || in_array($invoice->status, ['closed', 'paid', 'carried'], true) ? 'closed' : 'open';
+        $cycleStatus = $invoice->status === 'carried'
+            || $invoice->status === 'closed'
+            || $invoice->closed_at !== null
+            || ($invoice->closing_date && $invoice->closing_date->lt(today()))
+                ? 'closed'
+                : 'open';
         $paymentStatus = $invoice->status === 'carried' ? 'carried'
             : ($remaining <= 0 ? 'paid'
                 : ($invoice->due_date->lt(today()) ? 'overdue'
@@ -215,8 +220,8 @@ class CardInvoiceService
             if ($locked->account_id !== $card->id) {
                 throw ValidationException::withMessages(['invoice' => 'O cartão associado à fatura foi alterado. Atualiza a página e tenta novamente.']);
             }
-            if (in_array($locked->status, ['paid', 'carried', 'closed'], true)) {
-                throw ValidationException::withMessages(['invoice' => 'A fatura está fechada, paga ou já foi transportada. Regista o encargo no ciclo seguinte.']);
+            if ($locked->status === 'carried') {
+                throw ValidationException::withMessages(['invoice' => 'O saldo desta fatura já foi transportado. Regista o encargo na fatura atual.']);
             }
             $this->carryOverdueInvoices($user, $locked);
             $this->movements->assertInvoiceReconciled($user, $locked);
@@ -353,40 +358,6 @@ class CardInvoiceService
         return $paid;
     }
 
-    public function closeInvoice(User $user, Fatura $invoice, string $statementAmount): Fatura
-    {
-        return DB::transaction(function () use ($user, $invoice, $statementAmount): Fatura {
-            $locked = Fatura::query()->where('user_id', $user->id)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
-            if (in_array($locked->status, ['paid', 'carried', 'closed'], true)) {
-                throw ValidationException::withMessages(['invoice' => 'Esta fatura já está fechada, paga ou transportada.']);
-            }
-            if ($locked->closing_date && $locked->closing_date->greaterThanOrEqualTo(today())) {
-                throw ValidationException::withMessages(['invoice' => 'A fatura só pode ser fechada no dia seguinte à data de fecho.']);
-            }
-            $this->carryOverdueInvoices($user, $locked);
-            $this->movements->assertInvoiceReconciled($user, $locked);
-            $expectedCents = $this->invoiceTotalCents($locked);
-            $statementCents = (int) round((float) $statementAmount * 100);
-            if ($statementCents !== $expectedCents) {
-                throw ValidationException::withMessages([
-                    'statement_amount' => 'O extrato difere dos lançamentos registados. Regista primeiro os encargos, créditos ou correções em falta.',
-                ]);
-            }
-            if ($this->invoicePaidCents($locked) > $statementCents) {
-                throw ValidationException::withMessages(['statement_amount' => 'O valor do extrato não pode ser inferior aos pagamentos já imputados.']);
-            }
-
-            $locked->update([
-                'statement_amount' => number_format($statementCents / 100, 2, '.', ''),
-                'closed_at' => now(),
-                'status' => 'closed',
-            ]);
-            $this->movements->syncInvoiceSettlementParent($user, $locked);
-
-            return $locked->refresh();
-        });
-    }
-
     public function addCredit(User $user, Fatura $invoice, array $data): Movimento
     {
         return DB::transaction(function () use ($user, $invoice, $data): Movimento {
@@ -413,8 +384,8 @@ class CardInvoiceService
             if ($purchase->invoice_id !== $originInvoice->id) {
                 throw ValidationException::withMessages(['purchase_movement_id' => 'A associação da compra foi alterada. Atualiza a página e tenta novamente.']);
             }
-            if (in_array($locked->status, ['paid', 'carried', 'closed'], true)) {
-                throw ValidationException::withMessages(['invoice' => 'A fatura está fechada, paga ou já foi transportada. Regista o crédito no ciclo seguinte.']);
+            if ($locked->status === 'carried') {
+                throw ValidationException::withMessages(['invoice' => 'O saldo desta fatura já foi transportado. Regista o crédito na fatura atual.']);
             }
             if ($card->type !== 'credit_card' || ! $card->is_operational || $card->status !== 'active') {
                 throw ValidationException::withMessages(['invoice' => 'O cartão associado a esta fatura não está ativo.']);
