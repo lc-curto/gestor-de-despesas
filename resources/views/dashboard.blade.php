@@ -50,12 +50,12 @@
 
         </div>
         <div class="row g-2">
-            <div class="col-6"><a class="home-quick-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'despesa']) }}"><i data-lucide="plus-circle" aria-hidden="true"></i><strong>Nova despesa</strong></a></div>
-            <div class="col-6"><a class="home-quick-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'receita']) }}"><i data-lucide="trending-up" aria-hidden="true"></i><strong>Nova receita</strong></a></div>
+            <div class="col-6"><a class="home-quick-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'despesa']) }}"><i data-lucide="plus-circle" aria-hidden="true"></i><strong>Despesa</strong></a></div>
+            <div class="col-6"><a class="home-quick-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'receita']) }}"><i data-lucide="trending-up" aria-hidden="true"></i><strong>Receita</strong></a></div>
             <div class="col-12">
                 <button type="button" class="home-quick-action home-converter-trigger" data-bs-toggle="modal" data-bs-target="#currencyConverterModal">
                     <i data-lucide="arrow-left-right" aria-hidden="true"></i>
-                    <span><strong>API de conversão de moedas</strong><small>Consultar taxas de câmbio e converter valores</small></span>
+                    <span><strong>Câmbio</strong></span>
                     <i data-lucide="chevron-right" class="ms-auto" aria-hidden="true"></i>
                 </button>
             </div>
