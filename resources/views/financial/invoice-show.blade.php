@@ -40,10 +40,10 @@
         </div>
 
         <div class="row g-2 mb-3 invoice-secondary-actions">
-            <div class="col-4">
+            <div class="col-6">
                 <button type="button" class="btn btn-outline-secondary btn-sm w-100 h-100 js-invoice-action" data-action="charge" aria-label="Adicionar encargo" title="Adicionar encargo" @disabled($locked)>Encargo</button>
             </div>
-            <div class="col-4">
+            <div class="col-6">
                 <button type="button" class="btn btn-outline-secondary btn-sm w-100 h-100 js-invoice-action" data-action="credit" aria-label="Registar crédito" title="Registar crédito" @disabled($locked || $invoice->movimentos->isEmpty() || (float)$invoice->remaining_amount <= 0)>Crédito</button>
             </div>
         </div>
