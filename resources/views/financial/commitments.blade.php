@@ -95,7 +95,7 @@
                     </button>
 
                     <div class="commitment-card-utility">
-                        <button type="button" class="commitment-card-details-label" aria-controls="commitment-details-{{ $commitment->id }}">Ver detalhes <span aria-hidden="true">⌄</span></button>
+                        <button type="button" class="commitment-card-details-label" aria-controls="commitment-details-{{ $commitment->id }}">Detalhes <span aria-hidden="true">⌄</span></button>
                         <button type="button" class="btn btn-outline-primary btn-sm commitment-history-trigger" data-bs-toggle="modal" data-bs-target="#commitmentHistoryModal-{{ $commitment->id }}">
                             Histórico <span class="commitment-history-count">({{ $history->total() }})</span>
                         </button>
@@ -118,7 +118,7 @@
                                         data-pay-url="{{ route('financial.commitments.installments.pay', [$commitment->id, $next->id]) }}"
                                         data-debt-name="{{ $commitment->name }}"
                                         data-installment-label="{{ $next->installment_number }}/{{ $partsTotal }}"
-                                        data-remaining="{{ number_format($nextRemaining, 2, '.', '') }}">Pagar próxima prestação</button>
+                                        data-remaining="{{ number_format($nextRemaining, 2, '.', '') }}">Pagar</button>
                                 @else
                                     <p class="small text-secondary mb-0"><a href="{{ route('financial.accounts.page') }}">Criar conta</a></p>
                                 @endif
@@ -134,7 +134,7 @@
                                     data-url="{{ route('financial.commitments.update', $commitment->id) }}"
                                     data-name="{{ $commitment->name }}"
                                     data-merchant="{{ $commitment->merchant }}"
-                                    data-total="{{ number_format((float) $commitment->total_amount, 2, '.', '') }}">Editar compra</button>
+                                    data-total="{{ number_format((float) $commitment->total_amount, 2, '.', '') }}">Editar</button>
                                 <button type="button" class="btn btn-outline-primary js-renegotiate-commitment" @disabled($isCompleted)
                                     data-url="{{ route('financial.commitments.renegotiate', $commitment->id) }}"
                                     data-name="{{ $commitment->name }}"
@@ -145,7 +145,7 @@
                                 @if ($isArchived)
                                     @if ($isSoftDeleted)
                                         <button type="button" class="btn btn-outline-primary js-restore-commitment"
-                                            data-url="{{ route('financial.commitments.restore', $commitment->id) }}">Recuperar para revisão</button>
+                                            data-url="{{ route('financial.commitments.restore', $commitment->id) }}">Recuperar</button>
                                     @elseif (!$isCancelled)
                                         <button type="button" class="btn btn-outline-primary js-restore-commitment"
                                             data-url="{{ route('financial.commitments.restore', $commitment->id) }}">Restaurar</button>
@@ -153,7 +153,7 @@
                                     <button type="button" class="btn btn-outline-danger js-archive-commitment"
                                         data-archived="true"
                                         data-name="{{ $commitment->name }}"
-                                        data-delete-url="{{ route('financial.commitments.destroy', $commitment->id) }}">Gerir / eliminar</button>
+                                        data-delete-url="{{ route('financial.commitments.destroy', $commitment->id) }}">Gerir</button>
                                 @else
                                     <button type="button" class="btn btn-outline-secondary js-archive-commitment"
                                         data-url="{{ route('financial.commitments.archive', $commitment->id) }}"
@@ -269,7 +269,7 @@
                     <label class="form-label" for="newCommitmentAccount">Conta associada (opcional)</label><select class="form-select" id="newCommitmentAccount" name="account_id"><option value="">Sem conta associada</option>@foreach ($paymentAccounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select>
                     <div class="small text-danger mt-2" id="createCommitmentError" role="alert"></div>
                 </div>
-                <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Criar compra</button></div>
+                <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Criar</button></div>
             </form>
         </div>
     </div>
@@ -301,7 +301,7 @@
                 </div>
                 <div class="modal-footer border-0">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Confirmar pagamento</button>
+                    <button type="submit" class="btn btn-primary">Pagar</button>
                 </div>
             </form>
         </div>
@@ -335,7 +335,7 @@
                 <div class="commitment-renegotiation-preview mt-3 p-3 rounded-3 bg-body-tertiary"><small class="text-secondary d-block">Valor por prestação</small><strong id="renegotiatePreview">—</strong><small class="text-secondary d-block mt-1" id="renegotiatePreviewNote"></small></div>
                 <div id="renegotiateCommitmentError" class="small text-danger mt-2" role="alert"></div>
             </div>
-            <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button><button type="submit" class="btn btn-primary">Confirmar renegociação</button></div>
+            <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button><button type="submit" class="btn btn-primary">Renegociar</button></div>
         </form>
     </div></div>
 </div>
@@ -344,7 +344,7 @@
     <div class="modal-dialog modal-dialog-centered"><div class="modal-content rounded-4 border-0">
         <div class="modal-header border-0"><h2 class="modal-title h5 fw-bold">Cancelar compra</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
         <div class="modal-body"><p id="cancelCommitmentMessage" class="mb-2"></p><p class="small text-secondary">Pagamentos anteriores não serão reembolsados.</p><div id="cancelCommitmentError" class="small text-danger mt-2" role="alert"></div></div>
-        <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button><button type="button" class="btn btn-danger" id="confirmCancelCommitment">Confirmar cancelamento</button></div>
+        <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button><button type="button" class="btn btn-danger" id="confirmCancelCommitment">Cancelar</button></div>
     </div></div>
 </div>
 <div class="modal fade" id="archiveCommitmentModal" tabindex="-1" aria-hidden="true">
@@ -353,8 +353,8 @@
         <div class="modal-body"><p id="archiveCommitmentMessage" class="mb-2"></p><p class="small text-secondary">Histórico e pagamentos serão preservados.</p><div id="archiveCommitmentError" class="small text-danger mt-2" role="alert"></div></div>
         <div class="modal-footer border-0">
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button>
-            <button type="button" class="btn btn-primary" id="confirmArchiveCommitment">Arquivar compra</button>
-            <button type="button" class="btn btn-outline-danger" id="deleteCommitmentButton">Eliminar compra</button>
+            <button type="button" class="btn btn-primary" id="confirmArchiveCommitment">Arquivar</button>
+            <button type="button" class="btn btn-outline-danger" id="deleteCommitmentButton">Eliminar</button>
         </div>
     </div></div>
 </div>
