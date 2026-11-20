@@ -71,20 +71,27 @@
                             && $movement->status === 'settled'
                             && $movement->invoice_id !== null
                             && $movement->settles_movement_id !== null;
+                        $canEditSettlementParent = $movement->is_settlement_parent
+                            && in_array($movement->status, ['partial', 'settled'], true)
+                            && in_array($movement->type, ['income', 'expense'], true)
+                            && ! $movement->debt_id && ! $movement->installment_id
+                            && ! $movement->invoice_id && ! $movement->recurrence_id;
                         $canEditMovement = ($movement->status === 'pending'
                             && in_array($movement->type, ['income', 'expense'], true)
                             && ! $movement->debt_id && ! $movement->installment_id
                             && ! $movement->invoice_id && ! $movement->is_settlement_parent)
-                            || $isInvoicePayment;
+                            || $isInvoicePayment || $canEditSettlementParent;
                         $requiresOriginManagement = (bool) ($movement->debt_id || $movement->installment_id
-                            || $movement->recurrence_id || $movement->is_settlement_parent
+                            || $movement->recurrence_id
                             || ($movement->status === 'partial' && ! $movement->is_settlement_parent));
                         $actionNote = $movement->debt_id || $movement->installment_id
                             ? 'Este movimento pertence a um parcelamento. Gere-o na área Parcelamentos.'
                             : ($movement->recurrence_id
                                 ? 'Este movimento pertence a uma recorrência. Gere-o na área de Recorrências.'
                                 : ($movement->is_settlement_parent
-                                    ? 'Este valor é calculado automaticamente a partir dos movimentos associados.'
+                                    ? ($canEditSettlementParent
+                                        ? 'Podes corrigir os dados. Os pagamentos já registados serão preservados e os saldos recalculados.'
+                                        : 'Este valor é gerido automaticamente a partir dos movimentos associados.')
                                     : ($movement->status === 'partial'
                                         ? 'Este movimento tem um pagamento parcial e precisa de reconciliação antes de ser alterado.'
                                         : '')));
