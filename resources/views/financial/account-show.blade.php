@@ -256,7 +256,7 @@
                     <button type="button" class="btn btn-outline-secondary flex-fill" id="accountMovementEditCancel">Cancelar</button>
                     <button type="submit" class="btn btn-primary flex-fill" id="accountMovementEditSubmit">Guardar</button>
                 </div>
-       
+            </form>
     </x-modal-body>
 </x-modal>
 
