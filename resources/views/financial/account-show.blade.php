@@ -258,7 +258,7 @@
                 </div>
                 <div class="modal-footer border-0 d-flex flex-row gap-2">
                     <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-danger flex-fill" id="accountDeleteSubmit">Cancelar movimento</button>
+                    <button type="submit" class="btn btn-danger flex-fill" id="accountDeleteSubmit">Cancelar</button>
                 </div>
             </form>
         </div>
