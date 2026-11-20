@@ -305,6 +305,47 @@ class FinancialAccountsPageTest extends TestCase
         $this->assertDatabaseHas('contas_financeiras', ['id' => $target->id, 'status' => 'active']);
     }
 
+    public function test_closed_account_history_shows_ledger_balance_and_is_read_only(): void
+    {
+        $user = User::factory()->create();
+        $service = app(FinancialAccountService::class);
+
+        $source = $service->create($user, [
+            'name' => 'Conta encerrada',
+            'type' => 'bank',
+            'opening_balance' => '75.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+        $destination = $service->create($user, [
+            'name' => 'Conta de destino',
+            'type' => 'bank',
+            'opening_balance' => '10.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+
+        $service->close($user, $source, $destination->id);
+
+        $this->assertSame(
+            '0.00',
+            app(\\App\\Services\\Financial\\AccountBalanceService::class)->balanceForHistory($source->fresh())
+        );
+
+        $this->actingAs($user)
+            ->get(route('financial.accounts.show', $source->id))
+            ->assertOk()
+            ->assertSee('Saldo no encerramento')
+            ->assertSee('0,00 EUR')
+            ->assertSee('Encerrada')
+            ->assertSee('data-editable="0"', false)
+            ->assertSee('data-cancelable="0"', false)
+            ->assertSee('id="accountMovementDetailsModal"', false)
+            ->assertSee('id="accountDeleteModal"', false)
+            ->assertSee('modal-header', false)
+            ->assertSee('modal-body', false)
+            ->assertSee('modal-footer', false)
+            ->assertSee('apenas para consulta');
+    }
+
     public function test_credit_cards_are_not_displayed_on_accounts_page(): void
     {
         $user = User::factory()->create();
