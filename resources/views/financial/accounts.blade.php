@@ -30,7 +30,7 @@
 
     <div id="accountFeedback" class="d-none" role="status" aria-live="polite"></div>
 
-    <div class="accounts-tabs nav nav-pills nav-fill" id="accountsTabs" role="tablist" aria-label="Tipo de conta">
+    <div class="accounts-tabs nav nav-fill" id="accountsTabs" role="tablist" aria-label="Tipo de conta">
         <button
             class="nav-link active"
             id="activeAccountsTab"
@@ -357,54 +357,55 @@
 .accounts-rebuilt { width: 100%; min-width: 0; }
 .accounts-rebuilt .accounts-tabs {
     display: flex;
-    gap: .25rem;
-    padding: .25rem;
+    gap: 1.5rem;
     margin-bottom: 1rem;
-    border: 1px solid var(--mb-border);
-    border-radius: .85rem;
-    background: var(--mb-page);
+    border-bottom: 1px solid var(--mb-border);
 }
 .accounts-rebuilt .accounts-tabs .nav-link {
+    position: relative;
     display: inline-flex;
     flex: 1 1 50%;
     align-items: center;
     justify-content: center;
     gap: .45rem;
-    min-height: 2.75rem;
-    padding: .55rem .75rem;
+    min-height: 2.7rem;
+    padding: .5rem .25rem .7rem;
     border: 0;
-    border-radius: .65rem;
+    border-radius: 0;
     background: transparent;
     color: var(--mb-muted);
-    font-size: .9rem;
-    font-weight: 650;
+    font-size: .88rem;
+    font-weight: 600;
+    box-shadow: none;
 }
 .accounts-rebuilt .accounts-tabs .nav-link.active {
-    background: var(--mb-surface);
+    background: transparent;
     color: var(--mb-primary);
-    box-shadow: var(--mb-shadow);
+    box-shadow: none;
+}
+.accounts-rebuilt .accounts-tabs .nav-link.active::after {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    background: var(--mb-primary);
+    content: "";
 }
 .accounts-rebuilt .accounts-tab-count {
-    display: inline-flex;
-    min-width: 1.4rem;
-    height: 1.4rem;
-    align-items: center;
-    justify-content: center;
-    padding: 0 .35rem;
-    border-radius: 999px;
-    background: var(--mb-page);
-    color: inherit;
-    font-size: .72rem;
-    font-weight: 700;
+    color: var(--mb-muted);
+    font-size: .76rem;
+    font-weight: 500;
+    line-height: 1;
 }
 .accounts-rebuilt .accounts-tabs .nav-link.active .accounts-tab-count {
-    background: rgba(99,91,255,.1);
+    color: var(--mb-primary);
 }
 .accounts-rebuilt .accounts-tab-content { min-width: 0; }
 .accounts-rebuilt .accounts-header-v2 { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 0 0 1.25rem; }
 .accounts-rebuilt .accounts-header-v2 > :first-child { min-width: 0; flex: 1 1 auto; }
 .accounts-rebuilt .accounts-header-v2 h1 { display: block; margin: 0 0 .25rem; color: var(--mb-text); font-size: clamp(1.45rem, 2.2vw, 1.9rem); line-height: 1.2; }
-.accounts-rebuilt .accounts-header-v2 .small { display: block; color: var(--mb-muted) !important; }
+.accounts-rebuilt .accounts-header-v2 .small { display: block; color: var(--mb-muted); }
 .accounts-rebuilt .accounts-header-v2 > :last-child { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: .5rem; }
 .accounts-rebuilt .accounts-list-v2 { display: grid; gap: .85rem; min-width: 0; }
 .accounts-rebuilt .account-row-v2 { display: flex; align-items: center; gap: 1rem; min-width: 0; min-height: 6.25rem; padding: 1.1rem 1.25rem; border: 1px solid var(--mb-border); border-radius: var(--mb-radius-lg); background: var(--mb-surface); box-shadow: var(--mb-shadow); }
