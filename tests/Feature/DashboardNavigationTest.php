@@ -14,7 +14,7 @@ class DashboardNavigationTest extends TestCase
     {
         $user = User::factory()->create();
         $month = '2026-10';
-        $dashboardUrl = route('dashboard', ['mes' => $month]);
+        $dashboardUrl = route('dashboard', ['mes' => $month], false);
 
         $dashboard = $this->actingAs($user)->get($dashboardUrl);
 

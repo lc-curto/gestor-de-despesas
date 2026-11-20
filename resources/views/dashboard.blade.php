@@ -59,13 +59,13 @@
         <h2 class="h6 fw-bold mb-2" id="homeQuickActionsTitle">Ações rápidas</h2>
         <div class="row g-2">
             <div class="col-4">
-                <a class="home-quick-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'despesa', 'mes' => $mes, 'return_to' => route('dashboard', ['mes' => $mes])]) }}">
+                <a class="home-quick-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'despesa', 'mes' => $mes, 'return_to' => route('dashboard', ['mes' => $mes], false)]) }}">
                     <i data-lucide="minus-circle" aria-hidden="true"></i>
                     <strong>Despesa</strong>
                 </a>
             </div>
             <div class="col-4">
-                <a class="home-quick-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'receita', 'mes' => $mes, 'return_to' => route('dashboard', ['mes' => $mes])]) }}">
+                <a class="home-quick-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'receita', 'mes' => $mes, 'return_to' => route('dashboard', ['mes' => $mes], false)]) }}">
                     <i data-lucide="plus-circle" aria-hidden="true"></i>
                     <strong>Receita</strong>
                 </a>
