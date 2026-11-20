@@ -8,6 +8,8 @@
     $isClosedAccount = $account->status === 'closed';
     $accountStatusLabel = $isClosedAccount ? 'Encerrada' : ($account->status === 'active' ? 'Ativa' : 'Por configurar');
     $movementCount = $movements->total();
+    $accountCurrency = $account->currency;
+    $accountCurrencySymbol = ['EUR' => '€', 'USD' => '$', 'GBP' => '£', 'BRL' => 'R$', 'CHF' => 'CHF', 'CAD' => 'CA$', 'AUD' => 'A$'][$accountCurrency] ?? $accountCurrency;
 @endphp
 
 <div class="account-history-page">
@@ -149,7 +151,7 @@
                         $canCancelMovement = ! $isClosedAccount && ! $requiresOriginManagement && $movement->status !== 'void';
                         $deleteRoute = route('financial.accounts.movement.destroy', $movement->id);
                     @endphp
-                    <article class="list-group-item list-group-item-action account-movement-item py-2 px-3 border-bottom"
+                    <article class="list-group-item list-group-item-action account-movement-item financial-history-item"
                         tabindex="0" role="button" aria-label="Ver detalhes de {{ $movement->description }}"
                         data-bs-toggle="modal" data-bs-target="#accountMovementDetailsModal"
                         data-account-movement
@@ -166,7 +168,7 @@
                         data-destination-account-id="{{ $movement->destination_account_id }}"
                         data-movement-type="{{ $movement->type }}"
                         data-adjustment-direction="{{ $movement->adjustment_direction }}"
-                        data-signed-amount="{{ $sign }}{{ number_format((float) $movement->amount, 2, ',', '.') }} {{ $movement->currency ?? $account->currency }}"
+                        data-signed-amount="{{ $sign }}{{ number_format((float) $movement->amount, 2, ',', '.') }} {{ $accountCurrencySymbol }}"
                         data-amount-class="{{ $isOutgoing ? 'text-danger' : 'text-success' }}"
                         data-category="{{ $category }}"
                         data-date="{{ $movement->movement_date->format('d/m/Y') }}"
@@ -179,7 +181,7 @@
                             icon-class="{{ $isTransfer ? 'bg-primary-subtle text-primary' : ($isOutgoing ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success') }}"
                             :title="$movement->description"
                             :subtitle="$category . ' · ' . $movement->movement_date->format('d/m/Y')"
-                            :amount="$sign . number_format((float) $movement->amount, 2, ',', '.') . ' ' . ($movement->currency ?? $account->currency)"
+                            :amount="$sign . number_format((float) $movement->amount, 2, ',', '.') . ' ' . $accountCurrencySymbol"
                             :amount-class="$isOutgoing ? 'text-danger' : 'text-success'"
                             :status="$movement->status === 'pending' ? 'Pendente' : ($movement->status === 'void' ? 'Anulado' : null)"
                             :status-class="$movement->status === 'pending' ? 'text-bg-warning' : 'text-bg-secondary'"

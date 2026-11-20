@@ -5,6 +5,7 @@
 @section('content')
 @php
     $currency = $card->currency;
+    $currencySymbol = ['EUR' => '€', 'USD' => '$', 'GBP' => '£', 'BRL' => 'R$', 'CHF' => 'CHF', 'CAD' => 'CA$', 'AUD' => 'A$'][$currency] ?? $currency;
     $cycleLabels = ['open' => 'Aberta', 'closed' => 'Fechada'];
     $cycleClasses = ['open' => 'text-bg-primary', 'closed' => 'text-bg-secondary'];
     $progress = (float) $invoice->total_amount > 0 ? min(100, (float) $invoice->paid_amount / (float) $invoice->total_amount * 100) : 100;
@@ -26,17 +27,17 @@
     <section class="invoice-detail-context" data-invoice-id="{{ $invoice->id }}" data-remaining="{{ $invoice->remaining_amount }}" data-currency="{{ $currency }}">
         <div class="mb-3">
             <div class="d-flex align-items-baseline gap-2 mb-1">
-                <strong class="fs-2">{{ number_format((float)$invoice->total_amount,2,',','.') }} {{ $currency }}</strong>
+                <strong class="fs-2">{{ number_format((float)$invoice->total_amount,2,',','.') }} {{ $currencySymbol }}</strong>
             </div>
             <div class="d-flex justify-content-between small text-secondary">
-                <span>Pago {{ number_format((float)$invoice->paid_amount,2,',','.') }} {{ $currency }}</span>
-                <span>Em falta {{ number_format((float)$invoice->remaining_amount,2,',','.') }} {{ $currency }}</span>
+                <span>Pago {{ number_format((float)$invoice->paid_amount,2,',','.') }} {{ $currencySymbol }}</span>
+                <span>Em falta {{ number_format((float)$invoice->remaining_amount,2,',','.') }} {{ $currencySymbol }}</span>
             </div>
             <div class="progress mt-2" role="progressbar" aria-label="Percentagem paga" aria-valuenow="{{ round($progress) }}" aria-valuemin="0" aria-valuemax="100" style="height:5px">
                 <div class="progress-bar" style="width:{{ $progress }}%"></div>
             </div>
             <div class="small text-secondary mt-2">Vencimento {{ $invoice->due_date->format('d/m/Y') }}</div>
-            <button type="button" class="btn btn-primary w-100 mt-3 js-invoice-action" data-action="pay" @disabled((float)$invoice->remaining_amount <= 0 || $invoice->status === 'carried')>Pagar {{ number_format((float)$invoice->remaining_amount,2,',','.') }} {{ $currency }}</button>
+            <button type="button" class="btn btn-primary w-100 mt-3 js-invoice-action" data-action="pay" @disabled((float)$invoice->remaining_amount <= 0 || $invoice->status === 'carried')>Pagar {{ number_format((float)$invoice->remaining_amount,2,',','.') }} {{ $currencySymbol }}</button>
         </div>
 
         <div class="row g-2 mb-3 invoice-secondary-actions">
@@ -48,11 +49,11 @@
             </div>
         </div>
 
-        <section class="mb-3">
-            <h2 class="h6 fw-bold mb-2">Movimentos</h2>
+        <section class="card border-0 shadow-sm rounded-4 mb-3 financial-history-card"><div class="card-body p-0">
+            <div class="p-3 border-bottom"><h2 class="h6 fw-bold mb-0">Movimentos</h2></div><div class="list-group list-group-flush">
                 @forelse($invoice->movimentos as $movement)
                     @php $movementKind = $movement->invoice_charge_type ? 'charge' : 'purchase'; @endphp
-                    <button type="button" class="btn btn-link text-body text-decoration-none text-start w-100 d-flex justify-content-between align-items-center gap-3 px-0 py-2 border-bottom rounded-0 invoice-movement-row"
+                    <button type="button" class="list-group-item list-group-item-action financial-history-item invoice-movement-row"
                         data-invoice-movement
                         data-id="{{ $movement->id }}"
                         data-kind="{{ $movementKind }}"
@@ -61,8 +62,7 @@
                         data-date="{{ $movement->movement_date->toDateString() }}"
                         data-edit-url="{{ route('financial.invoices.movements.update', ['id' => $invoice->id, 'movementId' => $movement->id]) }}"
                         data-delete-url="{{ route('financial.movements.destroy', $movement->id) }}">
-                        <span class="min-w-0 text-break">{{ $movement->description }}<span class="d-block small text-secondary">{{ $movement->movement_date->format('d/m/Y') }} · {{ $movementKind === 'charge' ? 'Encargo' : 'Compra' }}</span></span>
-                        <strong class="text-nowrap">{{ number_format((float)$movement->amount,2,',','.') }} {{ $currency }}</strong>
+                        <x-financial.history-row :icon="$movementKind === 'charge' ? 'receipt' : 'shopping-bag'" :icon-class="$movementKind === 'charge' ? 'bg-danger-subtle text-danger' : 'bg-primary-subtle text-primary'" :title="$movement->description" :subtitle="$movement->movement_date->format('d/m/Y') . ' · ' . ($movementKind === 'charge' ? 'Encargo' : 'Compra')" :amount="number_format((float)$movement->amount, 2, ',', '.') . ' ' . $currencySymbol" amount-class="text-body" />
                     </button>
                 @empty
                     <p class="small text-secondary mb-0">Ainda não existem movimentos nesta fatura.</p>
@@ -76,17 +76,16 @@
                     @endforeach
                 @endif
                 @foreach($invoice->creditos as $credit)
-                    <button type="button" class="btn btn-link text-body text-decoration-none text-start w-100 d-flex justify-content-between align-items-center gap-3 px-0 py-2 border-bottom rounded-0 invoice-movement-row"
+                    <button type="button" class="list-group-item list-group-item-action financial-history-item invoice-movement-row"
                         data-invoice-movement data-id="{{ $credit->id }}" data-kind="credit"
                         data-description="{{ $credit->description }}" data-amount="{{ $credit->amount }}"
                         data-date="{{ $credit->movement_date?->toDateString() }}"
                         data-edit-url="{{ route('financial.invoices.movements.update', ['id' => $invoice->id, 'movementId' => $credit->id]) }}"
                         data-delete-url="{{ route('financial.movements.destroy', $credit->id) }}">
-                        <span>Crédito de compra<span class="d-block small text-secondary">{{ $credit->movement_date?->format('d/m/Y') }}</span></span>
-                        <strong class="text-success">−{{ number_format((float)$credit->amount,2,',','.') }} {{ $currency }}</strong>
+                        <x-financial.history-row icon="credit-card" icon-class="bg-success-subtle text-success" title="Crédito de compra" :subtitle="$credit->movement_date?->format('d/m/Y') . ' · Crédito'" :amount="'−' . number_format((float)$credit->amount, 2, ',', '.') . ' ' . $currencySymbol" amount-class="text-success" />
                     </button>
                 @endforeach
-        </section>
+        </div></div></section>
 
         <section class="border-top pt-3">
                 <h2 class="h6 fw-bold mb-2">Pagamentos</h2>
@@ -220,17 +219,21 @@
     };
     document.querySelectorAll('[data-invoice-movement]').forEach(row=>row.addEventListener('click',()=>{
         state.movement=row.dataset;
-        byId('invoiceMovementDetailsKind').textContent=({purchase:'Compra',charge:'Encargo',credit:'Crédito',payment:'Pagamento'})[row.dataset.kind]||'Movimento';
-        byId('invoiceMovementDetailsAmount').textContent=(row.dataset.kind==='credit'?'−':'')+row.dataset.amount+' '+context.dataset.currency;
+        const movementType=({purchase:'Compra',charge:'Encargo',credit:'Crédito',payment:'Pagamento'})[row.dataset.kind]||'Movimento';
+        byId('invoiceMovementDetailsKind').textContent=movementType;
+        byId('invoiceMovementDetailsCategory').textContent=row.dataset.category||movementType;
+        const currencyFormatter=new Intl.NumberFormat('pt-PT',{style:'currency',currency:context.dataset.currency});
+        byId('invoiceMovementDetailsAmount').textContent=(row.dataset.kind==='credit'?'−':'')+currencyFormatter.format(Number(row.dataset.amount));
         byId('invoiceMovementDetailsName').textContent=row.dataset.description||'—';
-        byId('invoiceMovementDetailsDate').textContent=row.dataset.date||'—';
+        byId('invoiceMovementDetailsDate').textContent=row.dataset.date ? new Intl.DateTimeFormat('pt-PT').format(new Date(row.dataset.date+'T00:00:00')) : '—';
+        byId('invoiceMovementDetailsRelatedRow').hidden=true;
         byId('invoiceMovementEditDescription').value=row.dataset.description||'';
         byId('invoiceMovementEditAmount').value=row.dataset.amount||'';
         byId('invoiceMovementEditDate').value=row.dataset.date||'';
         byId('invoiceMovementDetailsEdit').disabled=row.dataset.kind==='payment' ? false : false;
         showMode('view');modal.show();
     }));
-    byId('invoiceMovementEdit').addEventListener('click',()=>showMode('edit'));
+    byId('invoiceMovementDetailsEdit').addEventListener('click',()=>showMode('edit'));
     byId('invoiceMovementCancelEdit').addEventListener('click',()=>showMode('view'));
     byId('invoiceMovementDetailsDelete').addEventListener('click',()=>showMode('delete'));
     byId('invoiceMovementCancelDelete').addEventListener('click',()=>showMode('view'));

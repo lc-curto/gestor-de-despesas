@@ -10,15 +10,15 @@
     'counterpart' => null,
 ])
 
-<div class="financial-history-row d-flex align-items-center gap-2 w-100">
+<div class="financial-history-row d-flex align-items-center gap-3 w-100 py-1">
     <span class="financial-history-row-icon rounded-3 flex-shrink-0 d-inline-flex align-items-center justify-content-center {{ $iconClass }}" aria-hidden="true">
         <i data-lucide="{{ $icon }}"></i>
     </span>
     <span class="min-w-0 flex-grow-1">
-        <span class="d-block small fw-semibold text-body text-truncate">{{ $title }}</span>
-        <span class="d-block small text-secondary text-truncate">{{ $subtitle }}</span>
+        <span class="d-block small fw-semibold text-body text-break">{{ $title }}</span>
+        <span class="d-block small text-secondary text-break">{{ $subtitle }}</span>
         @if ($counterpart)
-            <span class="d-block small text-secondary text-truncate">{{ $counterpart }}</span>
+            <span class="d-block small text-secondary text-break">{{ $counterpart }}</span>
         @endif
         @if ($status)
             <span class="badge rounded-pill {{ $statusClass }} mt-1">{{ $status }}</span>

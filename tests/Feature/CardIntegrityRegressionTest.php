@@ -467,7 +467,7 @@ class CardIntegrityRegressionTest extends TestCase
             ->assertSee(route('financial.cards.show', $card->id), false)
             ->assertSee('Fatura de novembro 2026')
             ->assertSee('Aberta')
-            ->assertSee('120,00 EUR')
+            ->assertSee('120,00 €')
             ->assertSee('Vencimento ')
             ->assertSee('Pago')
             ->assertSee('Em falta')
