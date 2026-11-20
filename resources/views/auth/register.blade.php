@@ -54,7 +54,7 @@
                    name="password_confirmation" autocomplete="new-password" minlength="8" required>
         </div>
 
-        <button type="submit" class="btn btn-primary btn-lg w-100">Criar conta</button>
+        <button type="submit" class="btn btn-primary btn-lg w-100">Criar</button>
     </form>
 
     <p class="text-center text-secondary mt-4 mb-0">
