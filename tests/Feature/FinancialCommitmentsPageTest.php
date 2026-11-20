@@ -445,7 +445,9 @@ class FinancialCommitmentsPageTest extends TestCase
         ]);
         $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
         $xpath = $this->document($this->actingAs($user)->get(route('financial.commitments.page'))->assertOk()->getContent());
-        $this->assertCount(4, $xpath->query('//div[contains(@class,"commitment-card-actions")]/button'));
+        $this->assertCount(4, $xpath->query('//button[contains(@class,"dropdown-item") and (contains(@class,"js-edit-commitment") or contains(@class,"js-renegotiate-commitment") or contains(@class,"js-archive-commitment") or contains(@class,"js-cancel-commitment"))]'));
+        $this->assertCount(1, $xpath->query('//header[contains(@class,"page-header")]'));
+        $this->assertCount(1, $xpath->query('//button[@data-bs-target="#createCommitmentModal"]'));
         foreach (['editCommitmentModal', 'renegotiateCommitmentModal', 'archiveCommitmentModal', 'cancelCommitmentModal'] as $modalId) {
             $this->assertCount(1, $xpath->query('//*[@id="'.$modalId.'"]'));
         }
