@@ -4,6 +4,7 @@ namespace App\Services\Financial;
 
 use App\Models\Fatura;
 use App\Models\FaturaSaldoTransportado;
+use App\Models\HistoricoMovimento;
 use App\Models\Movimento;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -465,8 +466,16 @@ class CardInvoiceService
                 throw ValidationException::withMessages(['movement' => 'Este registo não pode ser editado nesta área.']);
             }
 
-            if ($isCredit && array_key_exists('movement_date', $data)) {
-                // A data do crédito é independente da data da compra original.
+            if ($isPurchaseOrCharge && array_key_exists('movement_date', $data)) {
+                $date = Carbon::parse($data['movement_date'])->startOfDay();
+                if ($date->greaterThan(today())) {
+                    throw ValidationException::withMessages(['movement_date' => 'A data do movimento não pode ser futura.']);
+                }
+                $reference = $date->day > $card->closing_day ? $date->copy()->addMonthNoOverflow() : $date->copy();
+                $reference->day = 1;
+                if (! $reference->equalTo($lockedInvoice->reference_month->copy()->startOfMonth())) {
+                    throw ValidationException::withMessages(['movement_date' => 'A data deve permanecer no ciclo de faturação original. Para mudar de ciclo, regista o movimento no ciclo correto.']);
+                }
             }
             if ($isPurchaseOrCharge && Movimento::query()->where('user_id', $user->id)
                 ->where('invoice_credit_for_movement_id', $movement->id)
