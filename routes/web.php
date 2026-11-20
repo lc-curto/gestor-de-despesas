@@ -38,6 +38,8 @@ Route::middleware(['auth', 'financial.review'])->group(function () {
     Route::get('/contas', FinancialAccountsPageController::class)->name('financial.accounts.page');
     Route::get('/cartoes', [FinancialCardsPageController::class, '__invoke'])->name('financial.cards.page');
     Route::get('/cartoes/faturas', FinancialInvoicesPageController::class)->name('financial.invoices.page');
+    Route::get('/cartoes/{id}', [FinancialCardsPageController::class, 'show'])->name('financial.cards.show');
+    Route::get('/faturas/{id}', [FinancialInvoicesPageController::class, 'show'])->name('financial.invoices.show');
     Route::get('/parcelamentos', FinancialCommitmentsPageController::class)->name('financial.commitments.page');
     Route::redirect('/compromissos', '/parcelamentos', 301);
     Route::delete('/contas/movimentos/{id}', [FinancialAccountsPageController::class, 'destroyMovement'])->name('financial.accounts.movement.destroy');
