@@ -5,35 +5,77 @@
 @section('content')
 @php
     $typeLabels = ['bank' => 'Banco', 'cash' => 'Dinheiro', 'credit_card' => 'Cartão'];
+    $isClosedAccount = $account->status === 'closed';
+    $accountStatusLabel = $isClosedAccount ? 'Encerrada' : ($account->status === 'active' ? 'Ativa' : 'Por configurar');
+    $movementCount = $movements->total();
 @endphp
 
 <div class="account-history-page">
-    <header class="page-heading account-history-heading">
-        <a class="small text-decoration-none" href="{{ route('financial.accounts.page') }}">
-            <i data-lucide="arrow-left" class="me-1" aria-hidden="true"></i> Voltar às contas
+    <header class="account-history-heading mb-4">
+        <a class="btn btn-link p-0 text-decoration-none d-inline-flex align-items-center gap-2" href="{{ route('financial.accounts.page') }}">
+            <i data-lucide="arrow-left" aria-hidden="true"></i>
+            <span>Contas</span>
         </a>
-        <div class="mt-3">
-            <div class="mb-3">
-                <p class="eyebrow mb-1">Histórico da conta</p>
-                <h1 class="h2 fw-bold mb-1">{{ $account->name }}</h1>
-                <p class="text-secondary mb-0">{{ $typeLabels[$account->type] ?? $account->type }} · {{ $account->currency }}</p>
-            </div>
-            <div class="account-history-balance rounded-4 bg-body-tertiary p-3">
-                @if ($account->type === 'credit_card')
-                    <span>Crédito disponível</span>
-                    <strong>{{ $account->credit_limit !== null && $account->current_balance !== null ? number_format(max(0, (float) $account->credit_limit - abs((float) $account->current_balance)), 2, ',', '.') . ' ' . $account->currency : '—' }}</strong>
-                    <small class="text-secondary">Dívida utilizada: {{ number_format(abs((float) ($account->current_balance ?? 0)), 2, ',', '.') }} {{ $account->currency }}</small>
+
+        <div class="mt-4">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                <span class="small fw-bold text-uppercase text-primary">Histórico da conta</span>
+                @if ($isClosedAccount)
+                    <span class="badge text-bg-secondary">Encerrada</span>
+                @elseif ($account->status === 'active')
+                    <span class="badge text-bg-success">Ativa</span>
                 @else
-                    <span>Saldo atual</span>
-                    <strong class="{{ (float) ($account->current_balance ?? 0) < 0 ? 'text-danger' : 'text-body' }}">{{ $account->current_balance !== null ? number_format((float) $account->current_balance, 2, ',', '.') . ' ' . $account->currency : '—' }}</strong>
+                    <span class="badge text-bg-warning">Por configurar</span>
                 @endif
-                <small class="d-block text-secondary mt-1">{{ $movements->total() }} {{ $movements->total() === 1 ? 'movimento registado' : 'movimentos registados' }}</small>
             </div>
+            <h1 class="h2 fw-bold mb-1">{{ $account->name }}</h1>
+            <p class="text-secondary mb-0">{{ $typeLabels[$account->type] ?? $account->type }} · {{ $account->currency }}</p>
         </div>
     </header>
 
+    <section class="card border-0 shadow-sm rounded-4 account-history-summary mb-4" aria-label="Resumo da conta">
+        <div class="card-body p-3 p-sm-4">
+            <div class="mb-3">
+                @if ($account->type === 'credit_card')
+                    @if ($isClosedAccount)
+                        <span class="small text-secondary">Dívida no encerramento</span>
+                        <strong class="account-history-primary-value {{ (float) ($account->current_balance ?? 0) < 0 ? 'text-danger' : 'text-body' }}">
+                            {{ $account->current_balance !== null ? number_format(abs((float) $account->current_balance), 2, ',', '.') . ' ' . $account->currency : '—' }}
+                        </strong>
+                    @else
+                        <span class="small text-secondary">Crédito disponível</span>
+                        <strong class="account-history-primary-value">
+                            {{ $account->credit_limit !== null && $account->current_balance !== null ? number_format(max(0, (float) $account->credit_limit - abs((float) $account->current_balance)), 2, ',', '.') . ' ' . $account->currency : '—' }}
+                        </strong>
+                        <small class="d-block text-secondary mt-1">Dívida utilizada: {{ number_format(abs((float) ($account->current_balance ?? 0)), 2, ',', '.') }} {{ $account->currency }}</small>
+                    @endif
+                @else
+                    <span class="small text-secondary">{{ $isClosedAccount ? 'Saldo no encerramento' : 'Saldo atual' }}</span>
+                    <strong class="account-history-primary-value {{ (float) ($account->current_balance ?? 0) < 0 ? 'text-danger' : 'text-body' }}">
+                        {{ $account->current_balance !== null ? number_format((float) $account->current_balance, 2, ',', '.') . ' ' . $account->currency : '—' }}
+                    </strong>
+                @endif
+            </div>
+
+            <div class="row g-3 pt-3 border-top">
+                <div class="col-4">
+                    <span class="d-block small text-secondary">Movimentos</span>
+                    <strong class="fs-6">{{ $movementCount }}</strong>
+                </div>
+                <div class="col-4">
+                    <span class="d-block small text-secondary">Estado</span>
+                    <strong class="fs-6">{{ $accountStatusLabel }}</strong>
+                </div>
+                <div class="col-4">
+                    <span class="d-block small text-secondary">Moeda</span>
+                    <strong class="fs-6">{{ $account->currency }}</strong>
+                </div>
+            </div>
+        </div>
+    </section>
+
     @if ($account->type === 'credit_card' && $openingDebtRemaining > 0)
-    <section class="card border-0 shadow-sm rounded-4 mb-4">
+    <section class="card border rounded-4 mb-4">
         <div class="card-body p-3 p-sm-4">
             <h2 class="h5 fw-bold mb-1">Dívida anterior à aplicação</h2>
             <p class="small text-secondary mb-3">Por pagar: <strong>{{ number_format($openingDebtRemaining, 2, ',', '.') }} {{ $account->currency }}</strong></p>
@@ -50,13 +92,13 @@
     </section>
     @endif
 
-    <section class="card border-0 shadow-sm rounded-4 history-card account-history-card mt-3" aria-labelledby="accountMovementsTitle">
-        <div class="card-body p-0 history-card-body">
-            <div class="px-3 px-sm-4 py-3 border-bottom d-flex justify-content-between align-items-center gap-2">
+    <section class="card border-0 shadow-sm rounded-4 account-history-card" aria-labelledby="accountMovementsTitle">
+        <div class="card-body p-0">
+            <div class="d-flex align-items-center justify-content-between gap-2 p-3 p-sm-4 border-bottom">
                 <h2 id="accountMovementsTitle" class="h5 fw-bold mb-0">Movimentos</h2>
-                <span class="small text-secondary">{{ $movements->total() }} {{ $movements->total() === 1 ? 'registo' : 'registos' }}</span>
+                <span class="small text-secondary">{{ $movementCount }} {{ $movementCount === 1 ? 'registo' : 'registos' }}</span>
             </div>
-            <div class="history-list px-3 px-sm-4">
+            <div class="list-group list-group-flush">
                 @forelse ($movements as $movement)
                     @php
                         $isOutgoing = $movement->type === 'expense'
@@ -90,21 +132,24 @@
                         $requiresOriginManagement = (bool) ($movement->debt_id || $movement->installment_id
                             || $movement->recurrence_id
                             || ($movement->status === 'partial' && ! $movement->is_settlement_parent));
-                        $actionNote = $movement->debt_id || $movement->installment_id
-                            ? 'Este movimento pertence a um parcelamento. Faça alterações na área Parcelamentos.'
-                            : ($movement->recurrence_id
-                                ? 'Este movimento pertence a uma recorrência. Faça alterações na área de Recorrências.'
-                                : ($movement->is_settlement_parent
-                                    ? ($canEditSettlementParent
-                                        ? 'Podes corrigir os dados. Os pagamentos já registados serão preservados e os saldos recalculados.'
-                                        : 'Este valor é gerido automaticamente a partir dos movimentos associados.')
-                                    : ($movement->status === 'partial'
-                                        ? 'Este movimento tem um pagamento parcial e precisa de reconciliação antes de ser alterado.'
-                                        : '')));
-                        $canCancelMovement = ! $requiresOriginManagement && $movement->status !== 'void';
+                        $actionNote = $isClosedAccount
+                            ? 'Esta conta está encerrada. O histórico está disponível apenas para consulta.'
+                            : ($movement->debt_id || $movement->installment_id
+                                ? 'Este movimento pertence a um parcelamento. Faça alterações na área Parcelamentos.'
+                                : ($movement->recurrence_id
+                                    ? 'Este movimento pertence a uma recorrência. Faça alterações na área de Recorrências.'
+                                    : ($movement->is_settlement_parent
+                                        ? ($canEditSettlementParent
+                                            ? 'Podes corrigir os dados. Os pagamentos já registados serão preservados e os saldos recalculados.'
+                                            : 'Este valor é gerido automaticamente a partir dos movimentos associados.')
+                                        : ($movement->status === 'partial'
+                                            ? 'Este movimento tem um pagamento parcial e precisa de reconciliação antes de ser alterado.'
+                                            : ''))));
+                        $canEditMovement = ! $isClosedAccount && $canEditMovement;
+                        $canCancelMovement = ! $isClosedAccount && ! $requiresOriginManagement && $movement->status !== 'void';
                         $deleteRoute = route('financial.accounts.movement.destroy', $movement->id);
                     @endphp
-                    <article class="expense-item account-movement-item d-flex justify-content-between align-items-center gap-2 py-3 border-bottom"
+                    <article class="list-group-item list-group-item-action account-movement-item d-flex justify-content-between align-items-center gap-3 py-3 px-3 px-sm-4 border-bottom"
                         tabindex="0" role="button" aria-label="Ver detalhes de {{ $movement->description }}"
                         data-bs-toggle="modal" data-bs-target="#accountMovementDetailsModal"
                         data-account-movement
@@ -130,7 +175,7 @@
                         data-edit-url="{{ route('financial.movements.update', $movement->id) }}"
                         data-delete-url="{{ $deleteRoute }}">
                         <div class="d-flex align-items-center gap-3 min-w-0">
-                            <div class="expense-icon account-movement-icon flex-shrink-0" aria-hidden="true">
+                            <div class="account-movement-icon rounded-3 flex-shrink-0 d-inline-flex align-items-center justify-content-center {{ $isTransfer ? 'bg-primary-subtle text-primary' : ($isOutgoing ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success') }}" aria-hidden="true">
                                 <i data-lucide="{{ $isTransfer ? 'arrow-left-right' : ($isOutgoing ? 'arrow-down-left' : 'arrow-up-right') }}"></i>
                             </div>
                             <div class="min-w-0 flex-grow-1">
@@ -170,10 +215,9 @@
     </section>
 </div>
 
-<div class="modal fade" id="accountMovementDetailsModal" tabindex="-1" aria-labelledby="accountMovementDetailsTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow rounded-4">
-        <div class="modal-header border-0 pb-0"><h2 class="modal-title h5 fw-bold" id="accountMovementDetailsTitle">Detalhes do movimento</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
-        <div class="modal-body">
+<x-modal id="accountMovementDetailsModal" aria-labelledby="accountMovementDetailsTitle">
+    <x-modal-header title="Detalhes do movimento" title-id="accountMovementDetailsTitle" />
+    <x-modal-body>
             <div id="accountMovementDetailsContent">
             <div class="mb-3"><h3 class="h6 fw-semibold mb-1" id="accountMovementDetailsName"></h3><p class="small text-secondary mb-0" id="accountMovementDetailsCategory"></p></div>
             <strong class="fs-3 d-block mb-1" id="accountMovementDetailsAmount"></strong>
@@ -238,32 +282,24 @@
                     <button type="submit" class="btn btn-primary flex-fill" id="accountMovementEditSubmit">Guardar</button>
                 </div>
             </form>
-        </div>
-    </div></div>
-</div>
+    </x-modal-body>
+</x-modal>
 
-<div class="modal fade" id="accountDeleteModal" tabindex="-1" aria-labelledby="accountDeleteTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow rounded-4">
-            <form id="accountDeleteForm" method="POST">
+<x-modal id="accountDeleteModal" aria-labelledby="accountDeleteTitle">
+    <form id="accountDeleteForm" method="POST">
                 @csrf
                 @method('DELETE')
-                <div class="modal-header border-0 pb-0">
-                    <h2 class="modal-title h5 fw-bold" id="accountDeleteTitle">Cancelar movimento?</h2>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                </div>
-                <div class="modal-body">
+                <x-modal-header title="Cancelar movimento?" title-id="accountDeleteTitle" />
+                <x-modal-body>
                     <p class="mb-1" id="accountDeleteDescription">Este movimento será cancelado e os saldos relacionados serão atualizados.</p>
                     <small class="text-secondary" id="accountDeleteHint">O histórico será preservado para manter o registo da operação.</small>
-                </div>
-                <div class="modal-footer border-0 d-flex flex-row gap-2">
+                </x-modal-body>
+                <x-modal-footer>
                     <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-danger flex-fill" id="accountDeleteSubmit">Cancelar</button>
-                </div>
+                </x-modal-footer>
             </form>
-        </div>
-    </div>
-</div>
+</x-modal>
 @endsection
 
 @push('scripts')
@@ -369,7 +405,7 @@ if (accountDeleteModalElement && accountDetailsElement) {
         event.preventDefault();
         if (!activeAccountMovement) return;
         editSubmit.disabled = true;
-        editSubmit.textContent = 'A guardar…';
+        editSubmit.textContent = 'Aguardar';
         editFeedback.textContent = '';
         try {
             const payload = Object.fromEntries(new FormData(editForm).entries());
@@ -407,7 +443,7 @@ if (accountDeleteModalElement && accountDetailsElement) {
     accountDetailsElement.addEventListener('hidden.bs.modal', () => {
         if (!returnToAccountDetails || !activeAccountMovement) return;
         accountDeleteSubmit.disabled = false;
-        accountDeleteSubmit.textContent = 'Cancelar movimento';
+        accountDeleteSubmit.textContent = 'Cancelar';
         document.getElementById('accountDeleteDescription').textContent = 'Este movimento será cancelado e os saldos relacionados serão atualizados.';
         document.getElementById('accountDeleteHint').textContent = 'O histórico será preservado para manter o registo da operação.';
         document.getElementById('accountDeleteHint').hidden = false;
@@ -423,7 +459,7 @@ if (accountDeleteModalElement && accountDetailsElement) {
     accountDeleteForm.addEventListener('submit', () => {
         returnToAccountDetails = false;
         accountDeleteSubmit.disabled = true;
-        accountDeleteSubmit.textContent = 'A cancelar…';
+        accountDeleteSubmit.textContent = 'Aguardar';
     });
 }
 
@@ -454,48 +490,53 @@ document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', as
 
 @push('styles')
 <style>
-.account-history-page { width:100%; max-width:none; }
-.account-history-heading { margin-bottom:1.25rem; }
-.account-history-balance { text-align:left; }
-.account-history-balance span { display:block; color:var(--bs-secondary-color); font-size:.8rem; }
-.account-history-balance strong { display:block; font-size:1.65rem; letter-spacing:-.04em; line-height:1.2; }
-.account-history-card { overflow:hidden; }
-.account-history-card .history-list { background:var(--bs-body-bg); }
-.account-history-card .border-bottom { border-color:var(--bs-border-color) !important; }
-.account-history-card .pagination { margin-bottom:0; }
+.account-history-page { width: 100%; min-width: 0; }
+.account-history-summary .account-history-primary-value {
+    display: block;
+    margin-top: .2rem;
+    font-size: clamp(1.75rem, 5vw, 2.1rem);
+    font-weight: 800;
+    letter-spacing: -.04em;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+.account-history-summary .row > div + div {
+    border-left: 1px solid var(--mb-border);
+}
+.account-movement-item { cursor: pointer; }
+.account-movement-item:hover { background: var(--bs-tertiary-bg); }
+.account-movement-item:focus-visible {
+    position: relative;
+    z-index: 1;
+    outline: 2px solid var(--mb-primary);
+    outline-offset: -2px;
+}
+.account-movement-icon { width: 2.65rem; height: 2.65rem; }
+.account-movement-description { overflow-wrap: anywhere; }
+.account-movement-actions { max-width: 48%; }
+.account-movement-item .movement-value { font-size: .9rem; }
+.account-history-card .pagination { margin-bottom: 0; }
 .account-history-card .page-link {
-    background:var(--bs-body-bg);
-    border-color:var(--bs-border-color);
-    color:var(--bs-body-color);
+    background: var(--bs-body-bg);
+    border-color: var(--bs-border-color);
+    color: var(--bs-body-color);
 }
 .account-history-card .page-item.active .page-link {
-    background:var(--bs-primary);
-    border-color:var(--bs-primary);
-    color:var(--bs-white);
+    background: var(--bs-primary);
+    border-color: var(--bs-primary);
+    color: var(--bs-white);
 }
 .account-history-card .page-item.disabled .page-link {
-    background:var(--bs-tertiary-bg);
-    color:var(--bs-secondary-color);
+    background: var(--bs-tertiary-bg);
+    color: var(--bs-secondary-color);
 }
-.account-movement-item:last-child { border-bottom:0 !important; }
-.account-movement-item[data-account-movement] { cursor:pointer; transition:background-color .15s ease; }
-.account-movement-item[data-account-movement]:hover { background:var(--bs-tertiary-bg); }
-.account-movement-item[data-account-movement]:focus-visible { outline:2px solid var(--bs-primary); outline-offset:-2px; }
-.account-movement-item .expense-icon { width:2.5rem; height:2.5rem; display:flex; align-items:center; justify-content:center; border-radius:.8rem; background:rgba(220,53,69,.1); color:var(--bs-danger); }
-.account-movement-item .movement-value { font-size:.9rem; }
-.account-movement-description { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.account-movement-actions { max-width:58%; }
-.account-action-button { width:2.25rem; height:2.25rem; display:inline-flex; align-items:center; justify-content:center; border-radius:.65rem; }
-.movement-transfer-counterpart { max-width:100%; font-size:.78rem; }
-@media (max-width:640px) {
-    .account-history-heading { margin-bottom:1rem; }
-    .account-history-balance strong { font-size:1.55rem; }
-    .account-movement-item { gap:.5rem !important; }
-    .account-movement-item > .d-flex:first-child { flex:1 1 0; min-width:0; gap:.6rem !important; }
-    .account-movement-actions { flex-direction:column; align-items:flex-end !important; gap:.35rem !important; }
-    .account-movement-actions > div { justify-content:flex-end; }
-    .account-movement-description { font-size:.9rem; }
-    .account-movement-item .movement-value { font-size:.82rem; }
+@media (max-width: 575.98px) {
+    .account-history-summary .row > div + div { border-left: 0; }
+    .account-history-summary .row > div:not(:first-child) { border-left: 1px solid var(--mb-border); }
+    .account-movement-item { gap: .6rem; }
+    .account-movement-item > .d-flex:first-child { flex: 1 1 0; min-width: 0; gap: .6rem; }
+    .account-movement-actions { max-width: 42%; gap: .25rem; }
+    .account-movement-item .movement-value { font-size: .8rem; }
 }
 </style>
 @endpush
