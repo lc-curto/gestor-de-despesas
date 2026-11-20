@@ -21,7 +21,7 @@
     <header class="home-dashboard-intro mb-3">
         <h1 class="h2 fw-bold mb-1">{{ $greeting }}, {{ auth()->user()->name }}!</h1>
         <p class="small text-secondary mb-0">
-            <time datetime="{{ now()->toDateString() }}">{{ ucfirst(now()->locale('pt_PT')->translatedFormat('l, d \\d\\e F')) }}</time>
+            <time datetime="{{ now()->toDateString() }}">{{ ucfirst(now()->locale('pt_PT')->translatedFormat('l, d')) }} de {{ now()->locale('pt_PT')->translatedFormat('F') }}</time>
         </p>
     </header>
 
@@ -41,23 +41,23 @@
     <section class="home-financial-card mb-4" aria-label="Resumo financeiro">
         <div class="d-flex align-items-center justify-content-between gap-2">
             <span class="home-financial-label">Saldo disponível</span>
-            <span class="home-financial-eye" aria-hidden="true"><i data-lucide="eye"></i></span>
+            <button type="button" class="home-financial-eye" id="toggleBalanceVisibility" aria-label="Ocultar saldos" aria-pressed="false"><i data-lucide="eye" aria-hidden="true"></i></button>
         </div>
-        <p class="home-financial-balance mb-1">{{ number_format($availableBalance, 2, ',', '.') }} {{ $currencySymbol }}</p>
+        <p class="home-financial-balance mb-1 home-sensitive-value" data-visible-value="{{ number_format($availableBalance, 2, ',', '.') }} {{ $currencySymbol }}" data-hidden-value="••••••">{{ number_format($availableBalance, 2, ',', '.') }} {{ $currencySymbol }}</p>
         <p class="home-financial-caption mb-0">Contas bancárias e dinheiro</p>
         <div class="home-financial-divider"></div>
         <div class="home-financial-metrics">
             <div class="home-financial-metric">
                 <span>Receitas</span>
-                <strong>{{ number_format($totalReceitas, 2, ',', '.') }} {{ $currencySymbol }}</strong>
+                <strong class="home-sensitive-value" data-visible-value="{{ number_format($totalReceitas, 2, ',', '.') }} {{ $currencySymbol }}" data-hidden-value="••••••">{{ number_format($totalReceitas, 2, ',', '.') }} {{ $currencySymbol }}</strong>
             </div>
             <div class="home-financial-metric">
                 <span>Despesas</span>
-                <strong>{{ number_format($totalDespesas, 2, ',', '.') }} {{ $currencySymbol }}</strong>
+                <strong class="home-sensitive-value" data-visible-value="{{ number_format($totalDespesas, 2, ',', '.') }} {{ $currencySymbol }}" data-hidden-value="••••••">{{ number_format($totalDespesas, 2, ',', '.') }} {{ $currencySymbol }}</strong>
             </div>
             <div class="home-financial-metric">
                 <span>Resultado</span>
-                <strong>{{ $result > 0 ? '+' : ($result < 0 ? '−' : '') }}{{ number_format(abs($result), 2, ',', '.') }} {{ $currencySymbol }}</strong>
+                <strong class="home-sensitive-value" data-visible-value="{{ $result > 0 ? '+' : ($result < 0 ? '−' : '') }}{{ number_format(abs($result), 2, ',', '.') }} {{ $currencySymbol }}" data-hidden-value="••••••">{{ $result > 0 ? '+' : ($result < 0 ? '−' : '') }}{{ number_format(abs($result), 2, ',', '.') }} {{ $currencySymbol }}</strong>
             </div>
         </div>
     </section>
