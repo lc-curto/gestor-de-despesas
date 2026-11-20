@@ -162,6 +162,45 @@ class FinancialDeletionService
                 return $snapshot;
             }
 
+            // Compras com uma única prestação (a pronto ou a prazo) não aparecem
+            // na área de Parcelamentos. A exclusão deve atuar sobre a dívida inteira,
+            // e não rejeitar o movimento isolado depois de abrir o modal.
+            $linkedParent = $snapshot->settles_movement_id
+                ? Movimento::query()->where('user_id', $user->id)->whereKey($snapshot->settles_movement_id)->first()
+                : null;
+            $linkedDebtId = $snapshot->debt_id
+                ?? $linkedParent?->debt_id;
+            $linkedInstallmentId = $snapshot->installment_id
+                ?? $linkedParent?->installment_id;
+
+            if (! $linkedDebtId && $linkedInstallmentId) {
+                $linkedDebtId = ParcelaDivida::query()
+                    ->where('user_id', $user->id)
+                    ->whereKey($linkedInstallmentId)
+                    ->value('debt_id');
+            }
+
+            if ($linkedDebtId) {
+                $linkedDebt = Divida::query()
+                    ->where('user_id', $user->id)
+                    ->whereKey($linkedDebtId)
+                    ->first();
+
+                if ($linkedDebt && $linkedDebt->payment_condition !== 'installments') {
+                    $this->deleteCommitment(
+                        $user,
+                        $linkedDebt,
+                        $reason ?? 'Despesa de prestação única eliminada pelo utilizador.'
+                    );
+
+                    return $snapshot->fresh();
+                }
+
+                throw ValidationException::withMessages([
+                    'movement' => 'Esta compra tem várias prestações. Gere-a na área de Parcelamentos para resolver todas as prestações e pagamentos.',
+                ]);
+            }
+
             // Operações ligadas a faturas usam a ordem cartão -> fatura ->
             // conta de origem -> obrigação -> evento, igual ao pagamento da fatura.
             // A leitura inicial da fatura serve apenas para descobrir o cartão.
