@@ -52,7 +52,7 @@
             </div>
             @if(! $locked)
                 <div class="col-4">
-                    <button type="button" class="btn btn-outline-secondary btn-sm w-100 h-100 js-invoice-action" data-action="close" aria-label="Fechar fatura" title="Fechar fatura" @disabled($invoice->closing_date->isFuture())>Fechar</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm w-100 h-100 js-invoice-action" data-action="close" aria-label="Fechar fatura" title="Fechar fatura" @disabled($invoice->closing_date->greaterThanOrEqualTo(today()))>Fechar</button>
                 </div>
             @endif
         </div>
