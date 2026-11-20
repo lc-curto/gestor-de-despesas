@@ -62,7 +62,7 @@
                 <button type="button" class="home-quick-action" id="quickExpenseButton">
                     <i data-lucide="minus-circle" aria-hidden="true"></i>
                     <strong>Despesa</strong>
-                </a>
+                </button>
             </div>
             <div class="col-4">
                 <button type="button" class="home-quick-action" id="quickIncomeButton">
