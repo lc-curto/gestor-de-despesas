@@ -138,11 +138,11 @@
                                     @endif
                                 </div>
                                 @if ($accountGroup === 'active' && $account->is_operational && $account->status !== 'closed')
-                                    <div class="dropdown account-row-menu-v2">
-                                        <button class="btn btn-sm account-row-menu-v2-button" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações para {{ $account->name }}">
-                                            <i data-lucide="ellipsis" aria-hidden="true"></i>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                    <x-financial.action-menu
+                                        wrapper-class="account-row-menu-v2"
+                                        button-class="account-row-menu-v2-button"
+                                        :label="'Ações para ' . $account->name"
+                                    >
                                             <li><button class="dropdown-item js-edit-account" type="button" data-bs-toggle="modal" data-bs-target="#renameAccountModal"
                                                 data-endpoint="{{ route('financial.accounts.update', $account->id) }}"
                                                 data-settings-endpoint="{{ route('financial.accounts.settings', $account->id) }}"
@@ -155,8 +155,7 @@
                                                 <li><hr class="dropdown-divider"></li>
                                                 <li><button class="dropdown-item text-danger js-close-account" type="button" data-bs-toggle="modal" data-bs-target="#closeAccountModal" data-endpoint="{{ route('financial.accounts.close', $account->id) }}" data-id="{{ $account->id }}" data-name="{{ $account->name }}" data-balance="{{ number_format((float) ($account->current_balance ?? 0), 2, '.', '') }}" data-currency="{{ $account->currency }}">Encerrar</button></li>
                                             @endif
-                                        </ul>
-                                    </div>
+                                    </x-financial.action-menu>
                                 @endif
                             </article>
                         @endforeach
