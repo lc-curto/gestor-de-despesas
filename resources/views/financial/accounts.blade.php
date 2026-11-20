@@ -143,8 +143,8 @@
                                 </div>
                                 @if ($accountGroup === 'active' && $account->is_operational && $account->status !== 'closed')
                                     <div class="dropdown account-row-menu-v2">
-                                        <button class="account-row-menu-v2-button" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações para {{ $account->name }}">
-                                            <span>Ações</span><i data-lucide="chevron-down" aria-hidden="true"></i>
+                                        <button class="btn btn-sm account-row-menu-v2-button" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações para {{ $account->name }}">
+                                            <i data-lucide="ellipsis" aria-hidden="true"></i>
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end shadow-sm">
                                             <li><button class="dropdown-item js-edit-account" type="button" data-bs-toggle="modal" data-bs-target="#renameAccountModal"
@@ -375,6 +375,28 @@
 @endsection
 
 
+
+@push('styles')
+<style>
+.account-row-menu-v2-button {
+    width: 40px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--bs-border-color);
+    border-radius: .65rem;
+    color: var(--bs-secondary-color);
+    background: var(--bs-body-bg);
+}
+.account-row-menu-v2-button:hover,
+.account-row-menu-v2-button:focus-visible {
+    color: var(--bs-body-color);
+    border-color: var(--bs-secondary-color);
+}
+</style>
+@endpush
 
 @push('styles')
 <style>
