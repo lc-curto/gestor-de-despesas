@@ -14,7 +14,7 @@
     <header class="accounts-header-v2">
         <div>
             <h1 class="h2 fw-bold mb-0">Contas</h1>
-            <span class="small text-secondary">{{ $accounts->count() }} {{ $accounts->count() === 1 ? 'conta' : 'contas' }}</span>
+            <span class="small text-secondary">{{ $activeAccounts->count() }} {{ $activeAccounts->count() === 1 ? 'conta ativa' : 'contas ativas' }}</span>
         </div>
         <div class="d-flex gap-2">
             @if ($transferTargets->count() >= 2)
