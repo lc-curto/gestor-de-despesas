@@ -2021,27 +2021,27 @@ document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', as
     $compactMovementTitle = static function (string $description): string {
         $description = trim($description);
 
-        if (preg_match('/^Transferência de encerramento(?:\\s*:.*)?$/iu', $description)) {
+        if (preg_match('/^Transferência de encerramento(?:\s*:.*)?$/iu', $description)) {
             return 'Encerramento de conta';
         }
 
-        if (preg_match('/^Pagamento da fatura\\b/iu', $description)) {
+        if (preg_match('/^Pagamento da fatura\b/iu', $description)) {
             return 'Pagamento de fatura';
         }
 
-        if (preg_match('/^Pagamento de dívida inicial\\b/iu', $description)) {
+        if (preg_match('/^Pagamento de dívida inicial\b/iu', $description)) {
             return 'Pagamento de dívida inicial';
         }
 
-        if (preg_match('/^Liquidação\\s*:/iu', $description)) {
+        if (preg_match('/^Liquidação\s*:/iu', $description)) {
             return 'Liquidação';
         }
 
-        if (preg_match('/^.+?\\s+·\\s+Parcela\\s+(\\d+\\/\\d+)$/iu', $description, $matches)) {
+        if (preg_match('/^.+?\s+·\s+Parcela\s+(\d+\/\d+)$/iu', $description, $matches)) {
             return 'Parcela ' . $matches[1];
         }
 
-        if (preg_match('/^Fatura\\s+.+?\\s+·\\s+(\\d{2}\\/\\d{4})$/iu', $description, $matches)) {
+        if (preg_match('/^Fatura\s+.+?\s+·\s+(\d{2}\/\d{4})$/iu', $description, $matches)) {
             return 'Fatura · ' . $matches[1];
         }
 
