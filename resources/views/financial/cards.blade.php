@@ -193,7 +193,7 @@
         const button=event.currentTarget, show=button.getAttribute('aria-expanded')!=='true';
         document.querySelectorAll('.credit-card-inactive').forEach(card=>card.hidden=!show);
         button.setAttribute('aria-expanded',String(show));
-        button.querySelector('span').textContent=(show?'Ocultar':'Mostrar')+' cartões inativos ({{ $inactiveCards->count() }})';
+        button.querySelector('span').textContent=(show?'Ocultar':'Inativos')+' ({{ $inactiveCards->count() }})';
     });
     document.querySelectorAll('.js-card-status').forEach(button=>button.addEventListener('click',async()=>{
         const next=button.dataset.status, verb=next==='active'?'reativar':'suspender';
