@@ -76,6 +76,19 @@
                             && ! $movement->debt_id && ! $movement->installment_id
                             && ! $movement->invoice_id && ! $movement->is_settlement_parent)
                             || $isInvoicePayment;
+                        $requiresOriginManagement = (bool) ($movement->debt_id || $movement->installment_id
+                            || $movement->recurrence_id || $movement->is_settlement_parent
+                            || ($movement->status === 'partial' && ! $movement->is_settlement_parent));
+                        $actionNote = $movement->debt_id || $movement->installment_id
+                            ? 'Este movimento pertence a um parcelamento. Gere-o na área Parcelamentos.'
+                            : ($movement->recurrence_id
+                                ? 'Este movimento pertence a uma recorrência. Gere-o na área de Recorrências.'
+                                : ($movement->is_settlement_parent
+                                    ? 'Este valor é calculado automaticamente a partir dos movimentos associados.'
+                                    : ($movement->status === 'partial'
+                                        ? 'Este movimento tem um pagamento parcial e precisa de reconciliação antes de ser alterado.'
+                                        : '')));
+                        $canCancelMovement = ! $requiresOriginManagement && $movement->status !== 'void';
                         $deleteRoute = route('financial.accounts.movement.destroy', $movement->id);
                     @endphp
                     <article class="expense-item account-movement-item d-flex justify-content-between align-items-center gap-2 py-3 border-bottom"
@@ -88,6 +101,8 @@
                         data-notes="{{ $movement->notes ?? '' }}"
                         data-date-iso="{{ $movement->movement_date->format('Y-m-d') }}"
                         data-editable="{{ $canEditMovement ? '1' : '0' }}"
+                        data-cancelable="{{ $canCancelMovement ? '1' : '0' }}"
+                        data-action-note="{{ $actionNote }}"
                         data-invoice-payment="{{ $isInvoicePayment ? '1' : '0' }}"
                         data-source-account-id="{{ $movement->source_account_id }}"
                         data-signed-amount="{{ $sign }}{{ number_format((float) $movement->amount, 2, ',', '.') }} {{ $movement->currency ?? $account->currency }}"
@@ -155,6 +170,7 @@
                 <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3" id="accountMovementDetailsEdit"><i data-lucide="pencil" aria-hidden="true"></i><span>Editar</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i></button>
                 <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3 text-danger" id="accountMovementDetailsDelete"><i data-lucide="x-circle" aria-hidden="true"></i><span>Cancelar</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i></button>
             </div>
+            <p class="small text-secondary mt-3 mb-0" id="accountMovementActionNote" hidden></p>
             </div>
             <form id="accountMovementEditForm" class="d-none" novalidate>
                 <div class="d-flex align-items-center gap-2 mb-3">
@@ -256,6 +272,11 @@ if (accountDeleteModalElement && accountDetailsElement) {
         counterpartRow.hidden = !row.dataset.counterpart;
         document.getElementById('accountMovementDetailsCounterpart').textContent = row.dataset.counterpart;
         document.getElementById('accountDeleteForm').action = row.dataset.deleteUrl;
+        editButton.hidden = row.dataset.editable !== '1';
+        document.getElementById('accountMovementDetailsDelete').hidden = row.dataset.cancelable !== '1';
+        const actionNote = document.getElementById('accountMovementActionNote');
+        actionNote.textContent = row.dataset.actionNote || '';
+        actionNote.hidden = !row.dataset.actionNote;
         showMovementDetails();
         if (showModal) accountDetailsModal.show();
     };
