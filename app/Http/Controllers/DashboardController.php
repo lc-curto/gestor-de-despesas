@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\Financial\AccountBalanceService;
 use App\Services\Financial\CardInvoiceService;
+use App\Support\SafeReturnUrl;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
