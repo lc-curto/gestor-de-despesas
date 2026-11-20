@@ -97,67 +97,72 @@
     @endforeach
 </div>
 
-<div class="modal fade" id="categoryModal" tabindex="-1" aria-labelledby="categoryModalTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content category-modal-content">
-            <form method="POST" action="{{ route('categorias.store') }}" id="categoryForm">
-                @csrf
-                <input type="hidden" name="_method" id="categoryMethod" value="POST">
-                <input type="hidden" name="category_id" id="categoryId" value="">
-                <div class="modal-header">
-                    <div><h2 class="modal-title h5 fw-bold" id="categoryModalTitle">Nova categoria</h2></div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+<x-modal
+    id="categoryModal"
+    aria-labelledby="categoryModalTitle"
+    :scrollable="true"
+    :fullscreen-on-mobile="true"
+    content-class="category-modal-content"
+>
+    <form method="POST" action="{{ route('categorias.store') }}" id="categoryForm">
+        @csrf
+        <input type="hidden" name="_method" id="categoryMethod" value="POST">
+        <input type="hidden" name="category_id" id="categoryId" value="">
+
+        <x-modal-header title="Nova categoria" title-id="categoryModalTitle" />
+
+        <x-modal-body>
+            <div class="mb-3">
+                <label for="categoryName" class="form-label">Nome <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="categoryName" name="name" maxlength="100" required placeholder="Ex.: Alimentação">
+                @error('name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+            </div>
+
+            <div class="mb-3">
+                <label for="categoryType" class="form-label">Tipo <span class="text-danger">*</span></label>
+                <select class="form-select" id="categoryType" name="type" required>
+                    <option value="despesa">Despesa</option>
+                    <option value="receita">Receita</option>
+                </select>
+            </div>
+
+            <div class="mb-3" id="categoryExpenseBehaviorField">
+                <label for="categoryExpenseBehavior" class="form-label">Comportamento da despesa</label>
+                <select class="form-select" id="categoryExpenseBehavior" name="expense_behavior">
+                    <option value="variable">Variável</option>
+                    <option value="fixed">Fixa</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="categoryIconSearch" class="form-label">Ícone</label>
+                <input type="hidden" id="categoryIcon" name="icon" value="tag" required>
+                <div class="d-flex align-items-center gap-3 mb-2">
+                    <span class="category-icon-preview" id="categoryIconPreview" style="--category-color:#635BFF"><i data-lucide="tag"></i></span>
+                    <input type="search" class="form-control" id="categoryIconSearch" placeholder="Pesquisar ícone..." autocomplete="off">
                 </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="categoryName" class="form-label">Nome <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="categoryName" name="name" maxlength="100" required placeholder="Ex.: Alimentação">
-                        @error('name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="mb-3">
-                        <label for="categoryType" class="form-label">Tipo <span class="text-danger">*</span></label>
-                        <select class="form-select" id="categoryType" name="type" required>
-                            <option value="despesa">Despesa</option><option value="receita">Receita</option>
-                        </select>
-                    </div>
-                    <div class="mb-3" id="categoryExpenseBehaviorField">
-                        <label for="categoryExpenseBehavior" class="form-label">Comportamento da despesa</label>
-                        <select class="form-select" id="categoryExpenseBehavior" name="expense_behavior">
-                            <option value="variable">Variável</option>
-                            <option value="fixed">Fixa</option>
-                        </select>
-                        
-                    </div>
-                    <div class="mb-3">
-                        <label for="categoryIconSearch" class="form-label">Ícone</label>
-                        <input type="hidden" id="categoryIcon" name="icon" value="tag" required>
-                        <div class="d-flex align-items-center gap-3 mb-2">
-                            <span class="category-icon-preview" id="categoryIconPreview" style="--category-color:#635BFF"><i data-lucide="tag"></i></span>
-                            <input type="search" class="form-control" id="categoryIconSearch" placeholder="Pesquisar ícone..." autocomplete="off">
-                        </div>
-                        <div class="category-icon-picker" id="categoryIconPicker" role="group" aria-label="Escolher ícone da categoria"></div>
-                        
-                    </div>
-                    <fieldset>
-                        <legend class="form-label">Cor</legend>
-                        <div class="category-color-options">
-                            @foreach (['#635BFF','#2563EB','#0D9488','#16A34A','#D97706','#DC2626','#9333EA','#64748B'] as $color)
-                                <label class="category-color-choice" style="--choice-color: {{ $color }}">
-                                    <input type="radio" name="color" value="{{ $color }}" required {{ $loop->first ? 'checked' : '' }}>
-                                    <span aria-label="Cor {{ $color }}"></span>
-                                </label>
-                            @endforeach
-                        </div>
-                    </fieldset>
+                <div class="category-icon-picker" id="categoryIconPicker" role="group" aria-label="Escolher ícone da categoria"></div>
+            </div>
+
+            <fieldset>
+                <legend class="form-label">Cor</legend>
+                <div class="category-color-options">
+                    @foreach (['#635BFF','#2563EB','#0D9488','#16A34A','#D97706','#DC2626','#9333EA','#64748B'] as $color)
+                        <label class="category-color-choice" style="--choice-color: {{ $color }}">
+                            <input type="radio" name="color" value="{{ $color }}" required {{ $loop->first ? 'checked' : '' }}>
+                            <span aria-label="Cor {{ $color }}"></span>
+                        </label>
+                    @endforeach
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary" id="categorySubmitButton">Guardar categoria</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+            </fieldset>
+        </x-modal-body>
+
+        <x-modal-footer>
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="categorySubmitButton">Guardar categoria</button>
+        </x-modal-footer>
+    </form>
+</x-modal>
 @endsection
 
 @push('scripts')
