@@ -5,22 +5,20 @@
 @section('content')
 <div class="app-content credit-cards-page">
     <header class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-        <div><h1 class="h2 fw-bold mb-1">Cartões</h1></div>
-        <div class="d-flex flex-wrap gap-2"><button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#createCardModal"><i data-lucide="plus" aria-hidden="true"></i><span class="ms-1">Novo cartão</span></button></div>
+        <div><h1 class="h2 fw-bold mb-1">Meus cartões</h1></div>
+        <div class="d-flex flex-wrap gap-2"><button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#createCardModal"><i data-lucide="plus" aria-hidden="true"></i><span class="ms-1">Adicionar</span></button></div>
     </header>
     <div id="cardsFeedback" class="alert d-none" role="status" aria-live="polite"></div>
     <section class="cards-grid" aria-label="Os meus cartões">
         @forelse($cards as $card)
-            @php
-                $isInactive = $card->status !== 'active' || !$card->is_operational;
-                $detailModalId = 'cardDetails-'.$card->id;
-                $cardStatusLabel = $card->status === 'suspended' ? 'Suspenso' : ($isInactive ? 'Cartão encerrado' : 'Ativo');
-            @endphp
+            @php $isInactive = $card->status !== 'active' || ! $card->is_operational; @endphp
             <article class="card border rounded-4 shadow-sm {{ $isInactive ? 'credit-card-inactive' : '' }}" @if($isInactive) hidden @endif>
-                <button type="button" class="btn financial-summary-trigger text-start w-100 rounded-4 border-0 p-2 p-md-3" data-bs-toggle="modal" data-bs-target="#{{ $detailModalId }}" aria-label="Ver detalhes de {{ $card->name }}">
+                <a href="{{ route('financial.cards.show', $card->id) }}" class="btn financial-summary-trigger text-start w-100 rounded-4 border-0 p-2 text-decoration-none" aria-label="Abrir {{ $card->name }}">
                     <div class="d-flex align-items-center justify-content-between gap-2">
                         <span class="fw-semibold text-body text-break">{{ $card->name }}</span>
-                        <span class="badge flex-shrink-0 {{ $card->status === 'active' && $card->is_operational ? 'text-bg-success' : ($card->status === 'suspended' ? 'text-bg-warning' : 'text-bg-secondary') }}">{{ $cardStatusLabel }}</span>
+                        @if($isInactive)
+                            <span class="badge text-bg-secondary">Inativo</span>
+                        @endif
                     </div>
                     <div class="d-flex justify-content-between align-items-end gap-2 mt-1">
                         <span class="min-w-0">
@@ -29,91 +27,22 @@
                         </span>
                         <span class="text-end flex-shrink-0">
                             <span class="small text-secondary d-block">Utilizado</span>
-                            <strong class="small text-body">{{ number_format($card->used_limit,2,',','.') }} {{ $card->currency }} · {{ number_format($card->usage_percent,0) }}%</strong>
+                            <strong class="small text-body">{{ number_format($card->used_limit,2,',','.') }} {{ $card->currency }}</strong>
                         </span>
                     </div>
-                    <div class="progress mt-1" role="progressbar" aria-label="Percentagem do limite utilizado" aria-valuenow="{{ round($card->usage_percent) }}" aria-valuemin="0" aria-valuemax="100" style="height:4px">
+                    <div class="progress mt-1" role="progressbar" aria-label="Percentagem do limite utilizado" aria-valuenow="{{ round($card->usage_percent) }}" aria-valuemin="0" aria-valuemax="100" style="height:5px">
                         <div class="progress-bar" style="width:{{ $card->usage_percent }}%"></div>
                     </div>
                     <div class="d-flex justify-content-between gap-2 mt-1 small text-secondary">
                         <span>Limite: {{ number_format((float)$card->credit_limit,2,',','.') }} {{ $card->currency }}</span>
-                        <span class="text-end">Fecho {{ $card->closing_day ?? '—' }} · Venc. {{ $card->due_day ?? '—' }}</span>
+                        <span class="text-end">Fecho: dia {{ $card->closing_day ?? '—' }} · Vencimento: dia {{ $card->due_day ?? '—' }}</span>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center border-top mt-2 pt-2">
-                        <span class="small fw-semibold text-primary">Ver detalhes</span>
-                        <i data-lucide="chevron-right" class="text-secondary" aria-hidden="true"></i>
+                    <div class="d-flex justify-content-end align-items-center border-top mt-2 pt-2">
+                        <span class="small fw-semibold text-primary">Ver faturas</span>
+                        <i data-lucide="chevron-right" class="text-secondary ms-1" aria-hidden="true"></i>
                     </div>
-                </button>
+                </a>
             </article>
-
-            <div class="modal fade" id="{{ $detailModalId }}" tabindex="-1" aria-labelledby="{{ $detailModalId }}Title" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
-                    <div class="modal-content border-0 rounded-4 shadow">
-                        <div class="modal-header border-0 pb-2">
-                            <div class="min-w-0">
-                                <h2 class="modal-title h5 fw-bold" id="{{ $detailModalId }}Title">{{ $card->name }}</h2>
-                                <p class="small text-secondary mb-0">Cartão de crédito · {{ $card->currency }}</p>
-                            </div>
-                            <span class="badge {{ $card->status === 'active' && $card->is_operational ? 'text-bg-success' : ($card->status === 'suspended' ? 'text-bg-warning' : 'text-bg-secondary') }}">{{ $cardStatusLabel }}</span>
-                            <button type="button" class="btn-close ms-2" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                        </div>
-                        <div class="modal-body pt-2">
-                            <div class="rounded-4 bg-body-tertiary p-3 mb-3">
-                                <span class="small text-secondary d-block mb-1">Crédito disponível</span>
-                                <strong class="display-6 fw-bold d-block">{{ number_format($card->available_limit,2,',','.') }} <span class="fs-5">{{ $card->currency }}</span></strong>
-                                <div class="progress mt-3" role="progressbar" aria-label="Percentagem do limite utilizado" aria-valuenow="{{ round($card->usage_percent) }}" aria-valuemin="0" aria-valuemax="100" style="height:8px">
-                                    <div class="progress-bar" style="width:{{ $card->usage_percent }}%"></div>
-                                </div>
-                                <div class="row g-2 mt-2 small">
-                                    <div class="col-6"><span class="text-secondary d-block">Limite total</span><strong>{{ number_format((float)$card->credit_limit,2,',','.') }} {{ $card->currency }}</strong></div>
-                                    <div class="col-6"><span class="text-secondary d-block">Utilizado</span><strong>{{ number_format($card->used_limit,2,',','.') }} {{ $card->currency }}</strong></div>
-                                </div>
-                            </div>
-                            <h3 class="h6 fw-bold mb-3">Configuração</h3>
-                            <div class="row g-3 small mb-4">
-                                <div class="col-6"><span class="text-secondary d-block">Fecho</span><strong>Dia {{ $card->closing_day ?? '—' }}</strong></div>
-                                <div class="col-6"><span class="text-secondary d-block">Vencimento</span><strong>Dia {{ $card->due_day ?? '—' }}</strong></div>
-                            </div>
-                            <h3 class="h6 fw-bold mb-2">Funcionalidades</h3>
-                            <div class="list-group mb-4">
-                                <a href="{{ route('financial.invoices.page', ['account_id' => $card->id]) }}" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3">
-                                    <i data-lucide="receipt" aria-hidden="true"></i><span class="flex-grow-1">Faturas</span><i data-lucide="chevron-right" class="text-secondary" aria-hidden="true"></i>
-                                </a>
-                                <a href="{{ route('financial.accounts.show',$card->id) }}" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3">
-                                    <i data-lucide="history" aria-hidden="true"></i><span class="flex-grow-1">Movimentos</span><i data-lucide="chevron-right" class="text-secondary" aria-hidden="true"></i>
-                                </a>
-                            </div>
-                            <h3 class="h6 fw-bold mb-2">Gestão do cartão</h3>
-                            <div class="list-group">
-                                @if($card->status !== 'closed' && $card->is_operational)
-                                    <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3 js-edit-card"
-                                        data-name="{{ $card->name }}" data-update-url="{{ route('financial.accounts.update',$card->id) }}"
-                                        data-settings-url="{{ route('financial.cards.settings',$card->id) }}"
-                                        data-limit="{{ $card->credit_limit }}" data-closing="{{ $card->closing_day }}"
-                                        data-due="{{ $card->due_day }}" data-opening-debt="{{ $card->opening_debt_amount }}"
-                                        data-bs-target="#editCardModal"><i data-lucide="pencil" aria-hidden="true"></i>Editar cartão
-                                    </button>
-                                @endif
-                                @if($card->status === 'active' && $card->is_operational)
-                                    <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3 js-card-status" data-status="suspended" data-status-url="{{ route('financial.cards.status',$card->id) }}" data-name="{{ $card->name }}"><i data-lucide="pause-circle" aria-hidden="true"></i>Suspender cartão</button>
-                                @elseif($card->status === 'suspended' && $card->is_operational)
-                                    <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3 js-card-status" data-status="active" data-status-url="{{ route('financial.cards.status',$card->id) }}" data-name="{{ $card->name }}"><i data-lucide="play-circle" aria-hidden="true"></i>Reativar cartão</button>
-                                @endif
-                                @if($card->status === 'closed' || !$card->is_operational)
-                                    <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3 js-reopen-card" data-url="{{ route('financial.cards.reopen',$card->id) }}" data-name="{{ $card->name }}"><i data-lucide="rotate-ccw" aria-hidden="true"></i>Reabrir cartão</button>
-                                @endif
-                                @if($card->status === 'active' && $card->is_operational && $card->used_limit <= 0.00001)
-                                    <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3 js-close-card text-danger" data-close-url="{{ route('financial.accounts.close',$card->id) }}" data-name="{{ $card->name }}"><i data-lucide="archive" aria-hidden="true"></i>Encerrar cartão</button>
-                                @endif
-                                @if($card->can_delete)
-                                    <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3 js-delete-card text-danger" data-url="{{ route('financial.cards.destroy',$card->id) }}" data-name="{{ $card->name }}"><i data-lucide="trash-2" aria-hidden="true"></i>Excluir definitivamente</button>
-                                @endif
-                            </div>
-                        </div>
-                        <div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">Fechar</button></div>
-                    </div>
-                </div>
-            </div>
         @empty
             <div class="card border-0 rounded-4 text-center p-4"><div class="card-body"><i data-lucide="credit-card" class="mb-3 text-secondary" style="width:32px;height:32px"></i><h2 class="h5">Ainda não tens cartões</h2><button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCardModal">Adicionar cartão</button></div></div>
         @endforelse
