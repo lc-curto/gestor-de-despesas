@@ -2,6 +2,21 @@
     const monthSelect = document.getElementById('dashboardMonth');
     monthSelect?.addEventListener('change', () => monthSelect.form?.requestSubmit());
 
+    const balanceToggle = document.getElementById('toggleBalanceVisibility');
+    balanceToggle?.addEventListener('click', () => {
+        const hidden = balanceToggle.getAttribute('aria-pressed') !== 'true';
+        document.querySelectorAll('.home-sensitive-value').forEach(value => {
+            value.textContent = hidden ? value.dataset.hiddenValue : value.dataset.visibleValue;
+        });
+        balanceToggle.setAttribute('aria-pressed', String(hidden));
+        balanceToggle.setAttribute('aria-label', hidden ? 'Mostrar saldos' : 'Ocultar saldos');
+        const icon = balanceToggle.querySelector('[data-lucide]');
+        if (icon) {
+            icon.setAttribute('data-lucide', hidden ? 'eye-off' : 'eye');
+            window.lucide?.createIcons?.({ nodes: [icon] });
+        }
+    });
+
     const amount = document.getElementById('conversionAmount');
     const from = document.getElementById('conversionFrom');
     const to = document.getElementById('conversionTo');
