@@ -163,6 +163,8 @@
                         </div>
                     </div>
 
+                </article>
+
                     <div class="modal fade commitment-details-modal" id="commitmentDetailsModal-{{ $commitment->id }}" tabindex="-1" aria-labelledby="commitmentDetailsTitle-{{ $commitment->id }}" aria-hidden="true">
                         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable commitment-modal-dialog">
                             <div class="modal-content rounded-4 border-0 shadow-sm commitment-modal-content">
@@ -209,7 +211,6 @@
                             </div>
                         </div>
                     </div>
-                </article>
 
                 <div class="modal fade commitment-history-modal" id="commitmentHistoryModal-{{ $commitment->id }}" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg commitment-modal-dialog">
