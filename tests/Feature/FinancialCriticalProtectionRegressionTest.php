@@ -102,7 +102,7 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
 
         $this->assertSoftDeleted('dividas', ['id' => $debt->id]);
         $this->assertSame('void', $forecast->fresh()->status);
-        $this->assertSoftDeleted('parcelas_dividas', ['id' => $installment->id]);
+        $this->assertDatabaseHas('parcelas_divida', ['id' => $installment->id, 'status' => 'cancelled']);
         $this->assertSame('200.00', app(AccountBalanceService::class)->balance($bank->fresh()));
     }
 
