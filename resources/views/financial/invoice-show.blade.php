@@ -69,9 +69,15 @@
                 @endforelse
                 @if($invoice->saldosTransportados->isNotEmpty())
                     @foreach($invoice->saldosTransportados as $carried)
-                        <div class="d-flex justify-content-between gap-3 py-2 border-bottom">
-                            <span>Saldo da fatura {{ $carried->sourceInvoice?->reference_month?->translatedFormat('F Y') ?? 'anterior' }}</span>
-                            <strong>{{ number_format((float)$carried->amount,2,',','.') }} {{ $currency }}</strong>
+                        <div class="list-group-item financial-history-item">
+                            <x-financial.history-row
+                                icon="wallet"
+                                icon-class="bg-secondary-subtle text-secondary"
+                                :title="'Saldo anterior · ' . ($carried->sourceInvoice?->reference_month?->translatedFormat('m/Y') ?? 'fatura')"
+                                subtitle="Saldo transportado"
+                                :amount="number_format((float)$carried->amount, 2, ',', '.') . ' ' . $currencySymbol"
+                                amount-class="text-body"
+                            />
                         </div>
                     @endforeach
                 @endif
@@ -90,14 +96,20 @@
         <section class="border-top pt-3">
                 <h2 class="h6 fw-bold mb-2">Pagamentos</h2>
                 @forelse($invoice->pagamentos as $payment)
-                    <button type="button" class="btn btn-link text-body text-decoration-none text-start w-100 d-flex justify-content-between align-items-center gap-3 px-0 py-2 border-bottom rounded-0 invoice-movement-row"
+                    <button type="button" class="list-group-item list-group-item-action financial-history-item invoice-movement-row"
                         data-invoice-movement data-id="{{ $payment->id }}" data-kind="payment"
                         data-description="{{ $payment->description }}" data-amount="{{ $payment->amount }}"
                         data-date="{{ $payment->movement_date?->toDateString() }}"
                         data-edit-url="{{ route('financial.movements.update', $payment->id) }}"
                         data-delete-url="{{ route('financial.movements.destroy', $payment->id) }}">
-                        <span class="min-w-0">Pagamento<span class="d-block small text-secondary">{{ $payment->movement_date?->format('d/m/Y') }} · {{ $payment->contaOrigem?->name ?? 'Conta' }}</span></span>
-                        <strong class="text-success text-nowrap">{{ number_format((float)$payment->amount,2,',','.') }} {{ $currency }}</strong>
+                        <x-financial.history-row
+                            icon="wallet"
+                            icon-class="bg-success-subtle text-success"
+                            title="Pagamento"
+                            :subtitle="$payment->movement_date?->format('d/m/Y') . ' · ' . ($payment->contaOrigem?->name ?? 'Conta')"
+                            :amount="number_format((float)$payment->amount, 2, ',', '.') . ' ' . $currencySymbol"
+                            amount-class="text-success"
+                        />
                     </button>
                 @empty
                     <p class="small text-secondary mb-0">Ainda não existem pagamentos.</p>
