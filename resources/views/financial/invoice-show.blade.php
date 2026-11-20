@@ -27,9 +27,9 @@
         <div class="card border rounded-4 mb-3">
             <div class="card-body p-3">
                 <div class="row g-3">
-                    <div class="col-4"><span class="small text-secondary d-block">Total</span><strong class="fs-5">{{ number_format((float)$invoice->total_amount,2,',','.') }} €</strong></div>
-                    <div class="col-4"><span class="small text-secondary d-block">Pago</span><strong class="fs-5 text-success">{{ number_format((float)$invoice->paid_amount,2,',','.') }} €</strong></div>
-                    <div class="col-4"><span class="small text-secondary d-block">Em falta</span><strong class="fs-5 {{ (float)$invoice->remaining_amount > 0 ? 'text-warning' : 'text-success' }}">{{ number_format((float)$invoice->remaining_amount,2,',','.') }} €</strong></div>
+                    <div class="col-4"><span class="small text-secondary d-block">Total</span><strong class="fs-5">{{ number_format((float)$invoice->total_amount,2,',','.') }} {{ $currency }}</strong></div>
+                    <div class="col-4"><span class="small text-secondary d-block">Pago</span><strong class="fs-5 text-success">{{ number_format((float)$invoice->paid_amount,2,',','.') }} {{ $currency }}</strong></div>
+                    <div class="col-4"><span class="small text-secondary d-block">Em falta</span><strong class="fs-5 {{ (float)$invoice->remaining_amount > 0 ? 'text-warning' : 'text-success' }}">{{ number_format((float)$invoice->remaining_amount,2,',','.') }} {{ $currency }}</strong></div>
                 </div>
                 <div class="progress mt-3" role="progressbar" aria-label="Percentagem paga" aria-valuenow="{{ round($progress) }}" aria-valuemin="0" aria-valuemax="100" style="height:7px">
                     <div class="progress-bar" style="width:{{ $progress }}%"></div>
@@ -141,6 +141,7 @@
         (fieldMap[action]||[]).forEach(key=>document.querySelector('[data-field="'+key+'"]').classList.remove('d-none'));
         document.getElementById('invoiceActionTitle').textContent=titleMap[action];
         document.getElementById('invoiceActionContext').textContent='Em falta: '+context.dataset.remaining+' '+context.dataset.currency;
+        if(action==='pay')document.getElementById('invoiceAmount').value=context.dataset.remaining;
         document.getElementById('invoiceActionError').classList.add('d-none');
         if(action==='credit'){
             const select=document.getElementById('invoicePurchase');select.replaceChildren();
