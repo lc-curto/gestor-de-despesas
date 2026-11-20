@@ -45,15 +45,15 @@
                 <span class="accounts-filter-count" id="accountsFilterCount">({{ $activeAccounts->count() }})</span>
                 <i data-lucide="chevron-down" aria-hidden="true"></i>
             </button>
-            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="accountsFilterDropdown">
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="accountsFilterDropdown" role="tablist" aria-label="Tipo de conta">
                 <li>
                     <button
                         class="dropdown-item active d-flex align-items-center gap-3"
                         id="activeAccountsTab"
+                        data-account-filter="active"
+                        data-filter-target="activeAccountsPanel"
                         type="button"
                         role="tab"
-                        data-bs-toggle="tab"
-                        data-bs-target="#activeAccountsPanel"
                         data-filter-label="Ativas"
                         data-filter-count="{{ $activeAccounts->count() }}"
                         aria-controls="activeAccountsPanel"
@@ -67,10 +67,10 @@
                     <button
                         class="dropdown-item d-flex align-items-center gap-3"
                         id="closedAccountsTab"
+                        data-account-filter="closed"
+                        data-filter-target="closedAccountsPanel"
                         type="button"
                         role="tab"
-                        data-bs-toggle="tab"
-                        data-bs-target="#closedAccountsPanel"
                         data-filter-label="Encerradas"
                         data-filter-count="{{ $closedAccounts->count() }}"
                         aria-controls="closedAccountsPanel"
@@ -462,11 +462,25 @@
 
     const filterCurrent = document.getElementById('accountsFilterCurrent');
     const filterCount = document.getElementById('accountsFilterCount');
-    document.querySelectorAll('#accountsFilterDropdown ~ .dropdown-menu [data-bs-toggle="tab"]').forEach((item) => {
-        item.addEventListener('shown.bs.tab', (event) => {
-            const selected = event.target;
-            if (filterCurrent) filterCurrent.textContent = selected.dataset.filterLabel || '';
-            if (filterCount) filterCount.textContent = `(${selected.dataset.filterCount || 0})`;
+    const accountFilterItems = document.querySelectorAll('[data-account-filter]');
+    const accountPanels = document.querySelectorAll('#accountsTabContent .tab-pane');
+
+    accountFilterItems.forEach((item) => {
+        item.addEventListener('click', () => {
+            const selectedPanel = document.getElementById(item.dataset.filterTarget);
+            if (!selectedPanel) return;
+
+            accountPanels.forEach((panel) => panel.classList.remove('show', 'active'));
+            selectedPanel.classList.add('show', 'active');
+
+            accountFilterItems.forEach((option) => {
+                const isSelected = option === item;
+                option.classList.toggle('active', isSelected);
+                option.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+            });
+
+            if (filterCurrent) filterCurrent.textContent = item.dataset.filterLabel || '';
+            if (filterCount) filterCount.textContent = `(${item.dataset.filterCount || 0})`;
         });
     });
 
