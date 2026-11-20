@@ -165,13 +165,11 @@ class FinancialDeletionService
             // Compras com uma única prestação (a pronto ou a prazo) não aparecem
             // na área de Parcelamentos. A exclusão deve atuar sobre a dívida inteira,
             // e não rejeitar o movimento isolado depois de abrir o modal.
-            $linkedParent = $snapshot->settles_movement_id
-                ? Movimento::query()->where('user_id', $user->id)->whereKey($snapshot->settles_movement_id)->first()
-                : null;
-            $linkedDebtId = $snapshot->debt_id
-                ?? $linkedParent?->debt_id;
-            $linkedInstallmentId = $snapshot->installment_id
-                ?? $linkedParent?->installment_id;
+            // Só a previsão diretamente ligada à dívida é a raiz do compromisso.
+            // Um evento de pagamento aponta para essa previsão por settles_movement_id
+            // e deve seguir o fluxo normal de reversão, nunca eliminar a dívida inteira.
+            $linkedDebtId = $snapshot->debt_id;
+            $linkedInstallmentId = $snapshot->installment_id;
 
             if (! $linkedDebtId && $linkedInstallmentId) {
                 $linkedDebtId = ParcelaDivida::query()
@@ -190,7 +188,7 @@ class FinancialDeletionService
                     $this->deleteCommitment(
                         $user,
                         $linkedDebt,
-                        $reason ?? 'Despesa de prestação única eliminada pelo utilizador.'
+                        $reason ?? 'Despesa a prazo com vencimento único eliminada pelo utilizador.'
                     );
 
                     return $snapshot->fresh();
