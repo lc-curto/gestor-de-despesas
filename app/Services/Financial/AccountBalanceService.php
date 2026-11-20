@@ -19,6 +19,28 @@ class AccountBalanceService
             throw new RuntimeException('A conta ainda não está configurada para cálculo de saldo.');
         }
 
+        return $this->calculateBalance($account);
+    }
+
+    /**
+     * Calcula o saldo contabilístico para consulta, incluindo contas encerradas.
+     * Não torna a conta operacional nem permite novos movimentos.
+     */
+    public function balanceForHistory(ContaFinanceira $account): ?string
+    {
+        if (
+            (! $account->is_operational && $account->status !== 'closed')
+            || $account->opening_balance === null
+            || ! $account->opening_balance_date
+        ) {
+            return null;
+        }
+
+        return $this->calculateBalance($account);
+    }
+
+    private function calculateBalance(ContaFinanceira $account): string
+    {
         $movementDelta = DB::table('movimentos')
             ->where('user_id', $account->user_id)
             ->where('status', 'settled')
