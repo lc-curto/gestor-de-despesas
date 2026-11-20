@@ -224,7 +224,7 @@
     const hideError=()=>byId('invoiceMovementError').classList.add('d-none');
     const showMode=mode=>{
         state.mode=mode;
-        byId('invoiceMovementDetails').classList.toggle('d-none',mode!=='view');
+        byId('invoiceMovementDetailsContent').classList.toggle('d-none',mode!=='view');
         byId('invoiceMovementEditForm').classList.toggle('d-none',mode!=='edit');
         byId('invoiceMovementDeleteConfirm').classList.toggle('d-none',mode!=='delete');
         byId('invoiceMovementActions').classList.toggle('d-none',mode!=='view');
@@ -235,19 +235,25 @@
     };
     document.querySelectorAll('[data-invoice-movement]').forEach(row=>row.addEventListener('click',()=>{
         state.movement=row.dataset;
-        byId('invoiceMovementKind').textContent=({purchase:'Compra',charge:'Encargo',credit:'Crédito',payment:'Pagamento'})[row.dataset.kind]||'Movimento';
-        byId('invoiceMovementAmount').textContent=(row.dataset.kind==='credit'?'−':'')+row.dataset.amount+' '+context.dataset.currency;
-        byId('invoiceMovementDescription').textContent=row.dataset.description||'—';
-        byId('invoiceMovementDate').textContent=row.dataset.date||'—';
+        byId('invoiceMovementDetailsCategory').textContent=row.dataset.category||({purchase:'Compra',charge:'Encargo',credit:'Crédito',payment:'Pagamento'})[row.dataset.kind]||'Movimento';
+        byId('invoiceMovementDetailsKind').textContent=({purchase:'Compra',charge:'Encargo',credit:'Crédito',payment:'Pagamento'})[row.dataset.kind]||'Movimento';
+        const currencyFormatter=new Intl.NumberFormat('pt-PT',{style:'currency',currency:context.dataset.currency});
+        byId('invoiceMovementDetailsAmount').textContent=(row.dataset.kind==='credit'?'−':'')+currencyFormatter.format(Number(row.dataset.amount));
+        byId('invoiceMovementDetailsName').textContent=row.dataset.description||'—';
+        byId('invoiceMovementDetailsDate').textContent=row.dataset.date?new Intl.DateTimeFormat('pt-PT').format(new Date(row.dataset.date+'T00:00:00')):'—';
+        const relatedRow=byId('invoiceMovementDetailsRelatedRow');
+        relatedRow.hidden=!row.dataset.related;
+        byId('invoiceMovementDetailsRelated').textContent=row.dataset.related||'';
         byId('invoiceMovementEditDescription').value=row.dataset.description||'';
         byId('invoiceMovementEditAmount').value=row.dataset.amount||'';
         byId('invoiceMovementEditDate').value=row.dataset.date||'';
-        byId('invoiceMovementEdit').disabled=row.dataset.kind==='payment' ? false : false;
+        byId('invoiceMovementDetailsEdit').hidden=false;
+        byId('invoiceMovementDetailsDelete').hidden=row.dataset.kind==='payment';
         showMode('view');modal.show();
     }));
-    byId('invoiceMovementEdit').addEventListener('click',()=>showMode('edit'));
+    byId('invoiceMovementDetailsEdit').addEventListener('click',()=>showMode('edit'));
     byId('invoiceMovementCancelEdit').addEventListener('click',()=>showMode('view'));
-    byId('invoiceMovementDelete').addEventListener('click',()=>showMode('delete'));
+    byId('invoiceMovementDetailsDelete').addEventListener('click',()=>showMode('delete'));
     byId('invoiceMovementCancelDelete').addEventListener('click',()=>showMode('view'));
     byId('invoiceMovementSave').addEventListener('click',async()=>{
         if(!state.movement)return;
