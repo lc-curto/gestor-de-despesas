@@ -441,6 +441,40 @@ class FinancialAccountsPageTest extends TestCase
             ->assertDontSee('Este movimento já foi realizado ou está associado', false);
     }
 
+    public function test_account_history_shortens_system_generated_titles_without_changing_original_description(): void
+    {
+        $user = User::factory()->create();
+        $accounts = app(FinancialAccountService::class);
+        $source = $accounts->create($user, [
+            'name' => 'Conta principal',
+            'type' => 'bank',
+            'opening_balance' => '100.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+        $destination = $accounts->create($user, [
+            'name' => 'Conta à Ordem',
+            'type' => 'bank',
+            'opening_balance' => '0.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+        $description = 'Transferência de encerramento: Conta à Ordem';
+
+        app(FinancialMovementService::class)->transfer($user, [
+            'description' => $description,
+            'amount' => '10.00',
+            'movement_date' => '2026-11-20',
+            'source_account_id' => $source->id,
+            'destination_account_id' => $destination->id,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('financial.accounts.show', $source->id))
+            ->assertOk()
+            ->assertSee('Encerramento de conta')
+            ->assertSee('data-description="' . $description . '"', false)
+            ->assertSee('Para: Conta à Ordem');
+    }
+
     public function test_pending_movement_can_be_edited_through_the_existing_financial_endpoint(): void
     {
         $user = User::factory()->create();
