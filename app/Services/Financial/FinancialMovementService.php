@@ -782,9 +782,9 @@ class FinancialMovementService
      * Atualiza os termos do movimento original sem alterar os eventos de liquidação.
      * O novo valor nunca pode ficar abaixo do total líquido já pago/recebido.
      */
-    public function updateSettlementParent(User $user, Movimento $movement, array $data): Movimento
+    public function updateSettlementParent(User $user, Movimento $movement, array $data, bool $allowRecurringOccurrence = false): Movimento
     {
-        return DB::transaction(function () use ($user, $movement, $data): Movimento {
+        return DB::transaction(function () use ($user, $movement, $data, $allowRecurringOccurrence): Movimento {
             $locked = Movimento::query()
                 ->where('user_id', $user->id)
                 ->whereKey($movement->id)
@@ -796,6 +796,7 @@ class FinancialMovementService
                 || $locked->installment_id
                 || $locked->debt_id
                 || $locked->invoice_id
+                || ($locked->recurrence_id && ! $allowRecurringOccurrence)
                 || ! in_array($locked->type, ['expense', 'income'], true)) {
                 throw ValidationException::withMessages([
                     'movement' => 'Este movimento não pode ser ajustado por esta operação. Revê a origem da obrigação.',

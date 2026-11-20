@@ -628,7 +628,7 @@ class FinancialCoreController extends Controller
             return response()->json(['data' => $service->updateOperationalMovement($request->user(), $movement, $data)]);
         }
         if ($movement->is_settlement_parent) {
-            return response()->json(['data' => $service->updateSettlementParent($request->user(), $movement, $data)]);
+            return response()->json(['data' => $service->updateSettlementParent($request->user(), $movement, $data, (bool) $movement->recurrence_id)]);
         }
         $updated = DB::transaction(function () use ($request, $service, $movement, $data) {
             $updated = $service->updatePending($request->user(), $movement, $data);
