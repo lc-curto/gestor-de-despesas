@@ -17,14 +17,30 @@ function setup() {
         <button id="dashboardMonthPreviousYear"></button>
         <button id="dashboardMonthNextYear"></button>
         <button id="applyDashboardMonth"></button>
-        <span id="dashboardMonthLabel">Novembro 2026</span>`, {
+        <span id="dashboardMonthLabel">Novembro 2026</span>
+        <div id="mobileNewMenu" class="show"></div>
+        <a id="mobileExpenseAction" data-dashboard-new-movement="despesa" href="/dashboard/movimentos"></a>
+        <a id="mobileIncomeAction" data-dashboard-new-movement="receita" href="/dashboard/movimentos"></a>
+        <button id="quickExpenseButton"></button>
+        <button id="quickIncomeButton"></button>
+        <div id="movementEntryModal"></div>`, {
         url: 'https://example.test/dashboard?mes=2026-11',
         runScripts: 'outside-only',
     });
     const { window } = dom;
     let hidden = 0;
     let submitted = false;
+    let offcanvasHidden = 0;
     window.bootstrap = {
+        Offcanvas: {
+            getOrCreateInstance() {
+                return { hide() {
+                    offcanvasHidden++;
+                    window.document.getElementById('mobileNewMenu').classList.remove('show');
+                    window.document.getElementById('mobileNewMenu').dispatchEvent(new window.Event('hidden.bs.offcanvas'));
+                } };
+            },
+        },
         Modal: {
             getOrCreateInstance() {
                 return { hide() { hidden++; } };
@@ -38,6 +54,7 @@ function setup() {
         dom,
         window,
         hidden: () => hidden,
+        offcanvasHidden: () => offcanvasHidden,
         submitted: () => submitted,
         element: (id) => window.document.getElementById(id),
     };
@@ -89,5 +106,18 @@ test('next-year navigation allows selecting a month in a future year', () => {
 
     assert.equal(ui.element('dashboardMonth').value, '2027-01');
     assert.equal(ui.submitted(), true);
+    ui.dom.window.close();
+});
+
+test('mobile bottom-bar menu opens the movement modal without navigating away', () => {
+    const ui = setup();
+    let expenseOpened = 0;
+    ui.element('quickExpenseButton').addEventListener('click', () => { expenseOpened++; });
+    const event = new ui.window.MouseEvent('click', { bubbles: true, cancelable: true });
+    ui.element('mobileExpenseAction').dispatchEvent(event);
+    assert.equal(event.defaultPrevented, true);
+    assert.equal(ui.offcanvasHidden(), 1);
+    assert.equal(expenseOpened, 1);
+    assert.equal(ui.window.location.pathname, '/dashboard');
     ui.dom.window.close();
 });
