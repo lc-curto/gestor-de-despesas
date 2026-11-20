@@ -30,33 +30,58 @@
 
     <div id="accountFeedback" class="d-none" role="status" aria-live="polite"></div>
 
-    <div class="accounts-tabs nav nav-fill" id="accountsTabs" role="tablist" aria-label="Tipo de conta">
-        <button
-            class="nav-link active"
-            id="activeAccountsTab"
-            type="button"
-            role="tab"
-            data-bs-toggle="tab"
-            data-bs-target="#activeAccountsPanel"
-            aria-controls="activeAccountsPanel"
-            aria-selected="true"
-        >
-            <span>Ativas</span>
-            <span class="accounts-tab-count">{{ $activeAccounts->count() }}</span>
-        </button>
-        <button
-            class="nav-link"
-            id="closedAccountsTab"
-            type="button"
-            role="tab"
-            data-bs-toggle="tab"
-            data-bs-target="#closedAccountsPanel"
-            aria-controls="closedAccountsPanel"
-            aria-selected="false"
-        >
-            <span>Encerradas</span>
-            <span class="accounts-tab-count">{{ $closedAccounts->count() }}</span>
-        </button>
+    <div class="accounts-filter d-flex justify-content-end mb-3">
+        <div class="dropdown">
+            <button
+                class="btn btn-sm btn-link text-decoration-none accounts-filter-trigger d-inline-flex align-items-center gap-1"
+                id="accountsFilterDropdown"
+                type="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+                aria-label="Filtrar contas"
+            >
+                <span class="text-secondary">Mostrar:</span>
+                <span id="accountsFilterCurrent">Ativas</span>
+                <span class="accounts-filter-count" id="accountsFilterCount">({{ $activeAccounts->count() }})</span>
+                <i data-lucide="chevron-down" aria-hidden="true"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="accountsFilterDropdown">
+                <li>
+                    <button
+                        class="dropdown-item active d-flex align-items-center gap-3"
+                        id="activeAccountsTab"
+                        type="button"
+                        role="tab"
+                        data-bs-toggle="tab"
+                        data-bs-target="#activeAccountsPanel"
+                        data-filter-label="Ativas"
+                        data-filter-count="{{ $activeAccounts->count() }}"
+                        aria-controls="activeAccountsPanel"
+                        aria-selected="true"
+                    >
+                        <span>Ativas</span>
+                        <span class="small text-secondary ms-auto">{{ $activeAccounts->count() }}</span>
+                    </button>
+                </li>
+                <li>
+                    <button
+                        class="dropdown-item d-flex align-items-center gap-3"
+                        id="closedAccountsTab"
+                        type="button"
+                        role="tab"
+                        data-bs-toggle="tab"
+                        data-bs-target="#closedAccountsPanel"
+                        data-filter-label="Encerradas"
+                        data-filter-count="{{ $closedAccounts->count() }}"
+                        aria-controls="closedAccountsPanel"
+                        aria-selected="false"
+                    >
+                        <span>Encerradas</span>
+                        <span class="small text-secondary ms-auto">{{ $closedAccounts->count() }}</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
     </div>
 
     <div class="tab-content accounts-tab-content" id="accountsTabContent">
@@ -355,50 +380,36 @@
 <style>
 /* A página segue a mesma hierarquia de Cartões, sem depender de regras globais. */
 .accounts-rebuilt { width: 100%; min-width: 0; }
-.accounts-rebuilt .accounts-tabs {
-    display: flex;
-    gap: 1.5rem;
-    margin-bottom: 1rem;
-    border-bottom: 1px solid var(--mb-border);
-}
-.accounts-rebuilt .accounts-tabs .nav-link {
-    position: relative;
-    display: inline-flex;
-    flex: 1 1 50%;
-    align-items: center;
-    justify-content: center;
-    gap: .45rem;
-    min-height: 2.7rem;
-    padding: .5rem .25rem .7rem;
+.accounts-rebuilt .accounts-filter { min-height: 1.75rem; }
+.accounts-rebuilt .accounts-filter-trigger {
+    padding: .2rem 0;
     border: 0;
-    border-radius: 0;
-    background: transparent;
-    color: var(--mb-muted);
-    font-size: .88rem;
+    color: var(--mb-text);
+    font-size: .82rem;
     font-weight: 600;
     box-shadow: none;
 }
-.accounts-rebuilt .accounts-tabs .nav-link.active {
-    background: transparent;
+.accounts-rebuilt .accounts-filter-trigger:hover,
+.accounts-rebuilt .accounts-filter-trigger:focus {
     color: var(--mb-primary);
-    box-shadow: none;
 }
-.accounts-rebuilt .accounts-tabs .nav-link.active::after {
-    position: absolute;
-    right: 0;
-    bottom: -1px;
-    left: 0;
-    height: 2px;
-    background: var(--mb-primary);
-    content: "";
+.accounts-rebuilt .accounts-filter-trigger svg {
+    width: .9rem;
+    height: .9rem;
 }
-.accounts-rebuilt .accounts-tab-count {
+.accounts-rebuilt .accounts-filter-count {
     color: var(--mb-muted);
-    font-size: .76rem;
+    font-size: .78rem;
     font-weight: 500;
-    line-height: 1;
 }
-.accounts-rebuilt .accounts-tabs .nav-link.active .accounts-tab-count {
+.accounts-rebuilt .accounts-filter .dropdown-menu {
+    min-width: 10.5rem;
+}
+.accounts-rebuilt .accounts-filter .dropdown-item {
+    font-size: .875rem;
+}
+.accounts-rebuilt .accounts-filter .dropdown-item.active {
+    background: var(--bs-primary-bg-subtle);
     color: var(--mb-primary);
 }
 .accounts-rebuilt .accounts-tab-content { min-width: 0; }
@@ -448,6 +459,16 @@
 (() => {
     const feedback = document.getElementById('accountFeedback');
     const token = document.querySelector('meta[name="csrf-token"]')?.content;
+
+    const filterCurrent = document.getElementById('accountsFilterCurrent');
+    const filterCount = document.getElementById('accountsFilterCount');
+    document.querySelectorAll('#accountsFilterDropdown ~ .dropdown-menu [data-bs-toggle="tab"]').forEach((item) => {
+        item.addEventListener('shown.bs.tab', (event) => {
+            const selected = event.target;
+            if (filterCurrent) filterCurrent.textContent = selected.dataset.filterLabel || '';
+            if (filterCount) filterCount.textContent = `(${selected.dataset.filterCount || 0})`;
+        });
+    });
 
     function showFeedback(message, isError = false, form = null) {
         const modalBody = form?.querySelector('.modal-body');
