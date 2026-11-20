@@ -64,13 +64,20 @@ class FinancialAccountsPageTest extends TestCase
         $service->close($user, $closed);
 
         $response = $this->actingAs($user)->get('/contas')->assertOk()
+            ->assertSee('id="accountsFilterDropdown"', false)
+            ->assertSee('id="accountsFilterCurrent"', false)
+            ->assertSee('Mostrar:')
             ->assertSee('id="activeAccountsTab"', false)
             ->assertSee('id="closedAccountsTab"', false)
+            ->assertSee('data-bs-toggle="tab"', false)
+            ->assertSee('data-filter-label="Ativas"', false)
+            ->assertSee('data-filter-label="Encerradas"', false)
             ->assertSee('id="activeAccountsPanel"', false)
             ->assertSee('id="closedAccountsPanel"', false)
             ->assertSee('aria-selected="true"', false)
             ->assertSee('1 conta ativa')
-            ->assertSee('Histórico preservado');
+            ->assertSee('Histórico preservado')
+            ->assertDontSee('accounts-tabs', false);
 
         $html = $response->getContent();
         $activePanelPosition = strpos($html, 'id="activeAccountsPanel"');
