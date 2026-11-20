@@ -424,6 +424,100 @@ class CardInvoiceService
         });
     }
 
+
+    /**
+     * Corrige uma compra, encargo ou crédito individual da fatura.
+     * Pagamentos, saldo transportado e agregados técnicos não são editáveis aqui.
+     */
+    public function updateInvoiceComponent(User $user, Fatura $invoice, string $movementId, array $data): Movimento
+    {
+        return DB::transaction(function () use ($user, $invoice, $movementId, $data): Movimento {
+            $snapshot = Movimento::query()->where('user_id', $user->id)
+                ->whereKey($movementId)->where('invoice_id', $invoice->id)->firstOrFail();
+            $invoiceSnapshot = Fatura::query()->where('user_id', $user->id)
+                ->whereKey($invoice->id)->firstOrFail();
+            $card = $user->contasFinanceiras()->whereKey($invoiceSnapshot->account_id)
+                ->where('type', 'credit_card')->lockForUpdate()->firstOrFail();
+            $lockedInvoice = Fatura::query()->where('user_id', $user->id)
+                ->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+
+            if ($lockedInvoice->status === 'carried') {
+                throw ValidationException::withMessages(['movement' => 'Esta fatura já foi transportada e não pode ser alterada.']);
+            }
+
+            $movement = Movimento::query()->where('user_id', $user->id)
+                ->whereKey($snapshot->id)->where('invoice_id', $lockedInvoice->id)
+                ->lockForUpdate()->firstOrFail();
+
+            $isPurchaseOrCharge = $movement->type === 'expense'
+                && $movement->status === 'settled'
+                && ! $movement->is_settlement_parent
+                && ! $movement->debt_id
+                && ! $movement->installment_id
+                && ! $movement->reversal_of_id;
+            $isCredit = $movement->type === 'adjustment'
+                && $movement->status === 'settled'
+                && $movement->invoice_charge_type === 'credit'
+                && $movement->invoice_credit_for_movement_id
+                && ! $movement->reversal_of_id;
+
+            if (! $isPurchaseOrCharge && ! $isCredit) {
+                throw ValidationException::withMessages(['movement' => 'Este registo não pode ser editado nesta área.']);
+            }
+
+            if ($isCredit && array_key_exists('movement_date', $data)) {
+                // A data do crédito é independente da data da compra original.
+            }
+            if ($isPurchaseOrCharge && Movimento::query()->where('user_id', $user->id)
+                ->where('invoice_credit_for_movement_id', $movement->id)
+                ->where('status', 'settled')->exists()) {
+                throw ValidationException::withMessages(['movement' => 'Esta compra já tem créditos associados. Corrige primeiro os créditos existentes.']);
+            }
+
+            $before = $movement->getAttributes();
+            $newAmount = array_key_exists('amount', $data)
+                ? app(AccountBalanceService::class)->toCents((string) $data['amount'])
+                : app(AccountBalanceService::class)->toCents((string) $movement->amount);
+            if ($newAmount <= 0) {
+                throw ValidationException::withMessages(['amount' => 'O valor deve ser superior a zero.']);
+            }
+
+            if ($isCredit) {
+                $purchase = Movimento::query()->where('user_id', $user->id)
+                    ->whereKey($movement->invoice_credit_for_movement_id)
+                    ->where('type', 'expense')->where('status', 'settled')->firstOrFail();
+                $otherCredits = Movimento::query()->where('user_id', $user->id)
+                    ->where('invoice_credit_for_movement_id', $purchase->id)
+                    ->where('status', 'settled')->whereKeyNot($movement->id)
+                    ->get(['amount'])->sum(fn (Movimento $item) => (int) round((float) $item->amount * 100));
+                $purchaseCents = (int) round((float) $purchase->amount * 100);
+                if ($newAmount + $otherCredits > $purchaseCents) {
+                    throw ValidationException::withMessages(['amount' => 'O crédito não pode ultrapassar o valor ainda não creditado da compra.']);
+                }
+            }
+
+            $movement->update([
+                'description' => $data['description'] ?? $movement->description,
+                'amount' => number_format($newAmount / 100, 2, '.', ''),
+                'movement_date' => $data['movement_date'] ?? $movement->movement_date->toDateString(),
+            ]);
+
+            HistoricoMovimento::query()->create([
+                'user_id' => $user->id,
+                'movement_id' => $movement->id,
+                'changed_by' => $user->id,
+                'action' => 'invoice_component_updated',
+                'before_data' => $before,
+                'after_data' => $movement->fresh()->getAttributes(),
+                'reason' => 'Movimento da fatura corrigido pelo utilizador.',
+            ]);
+
+            $this->movements->syncInvoiceSettlementParent($user, $lockedInvoice);
+
+            return $movement->refresh();
+        });
+    }
+
     public function pay(User $user, Fatura $invoice, string $sourceAccountId, string $date, ?string $requestedAmount = null, ?array $allocation = null): Movimento
     {
         return $this->movements->payCardInvoice($user, $invoice, $sourceAccountId, $date, $requestedAmount, $allocation);
