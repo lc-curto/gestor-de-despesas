@@ -286,205 +286,112 @@ body { color: var(--mb-text); background: var(--mb-page); -webkit-font-smoothing
 .accounts-page .account-card-link .account-subtitle { display: block !important; }
 
 
-/* Modal de categorias: mesma linguagem visual em todos os ecrãs. */
-#categoryModal .modal-dialog {
-    width: min(calc(100% - 2rem), 42rem);
-    margin-inline: auto;
+/* Modais — padrão global, mobile-first, compatível com os componentes Blade e Bootstrap. */
+.app-main .modal {
+    --bs-modal-border-radius: 1rem;
+    --bs-modal-border-color: var(--mb-border);
+    --bs-modal-box-shadow: var(--mb-shadow);
+    --bs-modal-margin: .75rem;
 }
 
-#categoryModal .modal-content {
-    display: flex;
-    max-height: calc(100vh - 3rem);
-    flex-direction: column;
-    overflow: hidden;
-    border: 0;
-    border-radius: 0;
-    background: var(--bs-body-bg);
-    box-shadow: var(--app-shadow);
+.app-main .modal-content:not(.bg-transparent) {
+    border: 1px solid var(--mb-border);
+    border-radius: 1rem;
+    background: var(--mb-surface);
+    color: var(--mb-text);
+    box-shadow: var(--mb-shadow);
 }
 
-#categoryModal #categoryForm {
-    display: flex;
-    min-height: 0;
-    max-height: 100%;
-    flex: 1 1 auto;
-    flex-direction: column;
-    overflow: hidden;
+.app-main .modal-header {
+    padding: 1rem 1rem 0;
+    border-bottom: 0;
 }
 
-#categoryModal .modal-header,
-#categoryModal .modal-footer {
-    flex: 0 0 auto;
-    padding: 1.25rem 1.5rem;
-    border-color: var(--app-border);
-    background: var(--bs-body-bg);
-}
-
-#categoryModal .modal-header .modal-title {
-    font-size: 1.35rem;
-    line-height: 1.25;
+.app-main .modal-header .modal-title {
+    margin-bottom: 0;
+    color: var(--mb-text);
+    font-size: 1.15rem;
     font-weight: 750;
+    line-height: 1.3;
 }
 
-#categoryModal .modal-body {
-    min-height: 0;
-    flex: 1 1 auto;
-    overflow-x: hidden;
-    overflow-y: auto;
-    padding: 1.5rem;
-    overscroll-behavior-y: contain;
-    -webkit-overflow-scrolling: touch;
+.app-main .modal-body {
+    padding: 1rem;
 }
 
-#categoryModal .modal-body .mb-3 {
-    margin-bottom: 1.1rem;
-}
-
-#categoryModal .form-label,
-#categoryModal fieldset legend {
-    margin-bottom: .45rem;
-    color: var(--bs-emphasis-color);
-    font-size: .875rem;
-    font-weight: 650;
-}
-
-#categoryModal .form-control,
-#categoryModal .form-select {
-    min-height: 2.75rem;
-    border-color: var(--app-border);
-    border-radius: .7rem;
-    font-size: .95rem;
-}
-
-#categoryModal .category-icon-preview {
-    display: inline-flex;
-    width: 2.75rem;
-    height: 2.75rem;
-    flex: 0 0 2.75rem;
-    align-items: center;
-    justify-content: center;
-    border-radius: .7rem;
-    font-size: 1.35rem;
-}
-
-#categoryModal .category-icon-picker {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: .45rem;
-}
-
-#categoryModal .category-icon-picker.is-scrollable {
-    max-height: 12rem;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-}
-
-#categoryModal .category-icon-option {
-    min-height: 2.75rem;
-    border-radius: .55rem;
-}
-
-#categoryModal #categoryIconToggle {
-    min-height: 2rem;
-    font-weight: 650;
-}
-
-#categoryModal .category-color-options {
-    gap: .75rem;
-}
-
-#categoryModal .category-color-choice span {
-    width: 1.85rem;
-    height: 1.85rem;
-}
-
-#categoryModal .modal-footer {
+.app-main .modal-footer {
     display: flex;
-    justify-content: flex-end;
-    gap: .65rem;
+    flex-wrap: wrap;
+    gap: .5rem;
+    padding: 0 1rem 1rem;
+    border-top: 0;
 }
 
-#categoryModal .modal-footer .btn {
-    min-height: 2.75rem;
-    padding-inline: 1.1rem;
-    border-radius: .65rem;
-    font-size: .9rem;
+.app-main .modal .form-label,
+.app-main .modal fieldset legend {
+    display: block;
+    margin-bottom: .4rem;
+    color: var(--mb-text);
+    font-size: .85rem;
     font-weight: 650;
 }
 
-@supports (height: 100dvh) {
-    #categoryModal .modal-content {
-        max-height: calc(100dvh - 3rem);
+.app-main .modal .form-control,
+.app-main .modal .form-select,
+.app-main .modal .input-group-text {
+    min-height: 2.7rem;
+    border-color: var(--mb-border);
+    border-radius: .75rem;
+    background-color: var(--mb-surface);
+    color: var(--mb-text);
+}
+
+.app-main .modal textarea.form-control {
+    min-height: 6rem;
+}
+
+.app-main .modal .btn {
+    min-height: 2.6rem;
+    border-radius: .65rem;
+    font-weight: 650;
+}
+
+.app-main .modal-footer > .btn {
+    flex: 1 1 calc(50% - .5rem);
+}
+
+@media (min-width: 576px) {
+    .app-main .modal-header {
+        padding: 1.25rem 1.5rem 0;
+    }
+
+    .app-main .modal-header .modal-title {
+        font-size: 1.25rem;
+    }
+
+    .app-main .modal-body {
+        padding: 1.5rem;
+    }
+
+    .app-main .modal-footer {
+        padding: 0 1.5rem 1.5rem;
+    }
+
+    .app-main .modal-footer > .btn {
+        flex: 0 0 auto;
     }
 }
 
-@media (max-width: 575.98px) {
-    #categoryModal .modal-dialog {
-        width: calc(100% - 2rem);
-        max-width: 32rem;
+@media (min-width: 992px) {
+    .app-main .modal-header {
+        padding-top: 1.5rem;
     }
 
-    #categoryModal .modal-content {
-        max-height: calc(100vh - 2rem);
+    .app-main .modal-body {
+        padding: 1.75rem;
     }
 
-    #categoryModal .modal-header,
-    #categoryModal .modal-footer {
-        padding: .9rem 1rem;
-    }
-
-    #categoryModal .modal-header .modal-title {
-        font-size: 1.15rem;
-    }
-
-    #categoryModal .modal-body {
-        padding: 1rem;
-    }
-
-    #categoryModal .modal-body .mb-3 {
-        margin-bottom: .85rem;
-    }
-
-    #categoryModal .form-control,
-    #categoryModal .form-select {
-        min-height: 2.6rem;
-        font-size: .9rem;
-    }
-
-    #categoryModal .category-icon-picker {
-        gap: .35rem;
-    }
-
-    #categoryModal .category-icon-option {
-        min-height: 2.45rem;
-    }
-
-    #categoryModal .category-icon-picker.is-scrollable {
-        max-height: 10rem;
-    }
-
-    #categoryModal .category-color-options {
-        gap: .6rem;
-    }
-
-    #categoryModal .category-color-choice span {
-        width: 1.65rem;
-        height: 1.65rem;
-    }
-
-    #categoryModal .modal-footer {
-        padding-bottom: max(.9rem, env(safe-area-inset-bottom));
-    }
-
-    #categoryModal .modal-footer .btn {
-        min-height: 2.6rem;
-        padding-inline: .85rem;
-        font-size: .85rem;
-    }
-}
-
-@media (max-width: 359.98px) {
-    #categoryModal .modal-footer .btn {
-        padding-inline: .6rem;
-        font-size: .8rem;
+    .app-main .modal-footer {
+        padding: 0 1.75rem 1.5rem;
     }
 }
