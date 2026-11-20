@@ -418,7 +418,7 @@ body { color: var(--mb-text); background: var(--mb-page); -webkit-font-smoothing
     box-shadow: 0 .65rem 1.5rem rgba(98,87,245,.16);
 }
 .home-financial-label { color: rgba(255,255,255,.92); font-size: .75rem; font-weight: 600; text-transform: uppercase; }
-.home-financial-eye { display: inline-flex; color: #fff; }
+.home-financial-eye { display: inline-flex; align-items: center; justify-content: center; padding: .15rem; border: 0; background: transparent; color: #fff; cursor: pointer; }
 .home-financial-eye svg { width: 1rem; height: 1rem; }
 .home-financial-balance { margin-top: 1.05rem; color: #fff; font-size: clamp(1.85rem, 4vw, 2.45rem); font-weight: 800; letter-spacing: -.04em; line-height: 1.15; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .home-financial-caption { color: rgba(255,255,255,.9); font-size: .78rem; }
