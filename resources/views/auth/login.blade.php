@@ -55,7 +55,7 @@
     <p class="text-center text-secondary mt-4 mb-0">
         <span id="authToggleText"></span>
         <button type="button" class="btn btn-link p-0 text-decoration-none fw-semibold" id="authToggleButton">
-            Criar conta
+            Criar
         </button>
     </p>
 
