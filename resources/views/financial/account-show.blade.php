@@ -74,7 +74,7 @@
         </div>
     </section>
 
-    @if ($account->type === 'credit_card' && $openingDebtRemaining > 0)
+    @if (! $isClosedAccount && $account->type === 'credit_card' && $openingDebtRemaining > 0)
     <section class="card border rounded-4 mb-4">
         <div class="card-body p-3 p-sm-4">
             <h2 class="h5 fw-bold mb-1">Dívida anterior à aplicação</h2>
@@ -215,7 +215,7 @@
     </section>
 </div>
 
-<x-modal id="accountMovementDetailsModal" aria-labelledby="accountMovementDetailsTitle">
+<x-modal id="accountMovementDetailsModal" aria-labelledby="accountMovementDetailsTitle" :scrollable="true">
     <x-modal-header title="Detalhes do movimento" title-id="accountMovementDetailsTitle" />
     <x-modal-body>
             <div id="accountMovementDetailsContent">
@@ -225,8 +225,8 @@
             <div class="d-flex justify-content-between gap-3 mb-2"><span class="small text-secondary">Data</span><span class="small fw-medium" id="accountMovementDetailsDate"></span></div>
             <div class="d-flex justify-content-between gap-3 mb-2"><span class="small text-secondary">Tipo</span><span class="small fw-medium" id="accountMovementDetailsKind"></span></div>
             <div class="d-flex justify-content-between gap-3" id="accountMovementDetailsCounterpartRow" hidden><span class="small text-secondary">Conta relacionada</span><span class="small fw-medium text-end" id="accountMovementDetailsCounterpart"></span></div>
-            <hr><h3 class="small fw-semibold mb-3">Ações</h3>
-            <div class="list-group list-group-flush border rounded-3 overflow-hidden">
+            <hr class="{{ $isClosedAccount ? 'd-none' : '' }}"><h3 class="small fw-semibold mb-3 {{ $isClosedAccount ? 'd-none' : '' }}">Ações</h3>
+            <div class="list-group list-group-flush border rounded-3 overflow-hidden {{ $isClosedAccount ? 'd-none' : '' }}">
                 <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3" id="accountMovementDetailsEdit"><i data-lucide="pencil" aria-hidden="true"></i><span>Editar</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i></button>
                 <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3 text-danger" id="accountMovementDetailsDelete"><i data-lucide="x-circle" aria-hidden="true"></i><span>Cancelar</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i></button>
             </div>
