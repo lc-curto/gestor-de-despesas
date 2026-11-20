@@ -197,7 +197,7 @@
                                     $overdue = $installment->status !== 'cancelled' && !$paid && $installment->due_date->lt(today());
                                     $label = $paid ? 'Paga' : ($installment->status === 'cancelled' ? 'Substituída' : ($overdue ? 'Atrasada' : ($installment->id === $next?->id ? 'Próxima' : 'Pendente')));
                                 @endphp
-                                <div class="border-bottom py-2">
+                                <div class="commitment-installment border-bottom py-2">
                                     <x-financial.history-row
                                         :icon="$paid ? 'check-circle' : ($overdue ? 'alert-circle' : 'calendar-clock')"
                                         :icon-class="$paid ? 'bg-success-subtle text-success' : ($overdue ? 'bg-danger-subtle text-danger' : 'bg-body-secondary text-secondary')"
