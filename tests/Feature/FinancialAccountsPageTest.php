@@ -327,7 +327,7 @@ class FinancialAccountsPageTest extends TestCase
 
         $this->assertSame(
             '0.00',
-            app(\\App\\Services\\Financial\\AccountBalanceService::class)->balanceForHistory($source->fresh())
+            app(\App\Services\Financial\AccountBalanceService::class)->balanceForHistory($source->fresh())
         );
 
         $this->actingAs($user)
