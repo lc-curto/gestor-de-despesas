@@ -343,9 +343,9 @@ class FinancialAccountsPageTest extends TestCase
             ->assertSee('Transferir')
             ->assertSee('Banco')
             ->assertSee('Carteira');
-    
+    }
 
-public function test_invoice_payment_can_be_corrected_from_account_history_and_recalculates_balances(): void
+    public function test_invoice_payment_can_be_corrected_from_account_history_and_recalculates_balances(): void
     {
         $user = User::factory()->create();
         $bank = app(FinancialAccountService::class)->create($user, [

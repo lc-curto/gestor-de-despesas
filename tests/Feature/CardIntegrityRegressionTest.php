@@ -92,7 +92,7 @@ class CardIntegrityRegressionTest extends TestCase
         $this->assertBalance($card, '-25.00');
     }
 
-    public function test_invoice_purchase_and_realized_payment_events_cannot_be_deleted_directly(): void
+    public function test_invoice_purchase_is_protected_and_realized_payments_can_be_cancelled_safely(): void
     {
         $user = User::factory()->create();
         $bank = $this->bank($user);
@@ -103,38 +103,33 @@ class CardIntegrityRegressionTest extends TestCase
         $partial = $invoices->pay($user, $invoice, $bank->id, '2026-11-17', '35.25');
 
         $this->actingAs($user)->deleteJson('/api/financial/movements/'.$purchase->id)->assertUnprocessable();
-        $this->deleteJson('/api/financial/movements/'.$partial->id)
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('movement');
-        $this->assertSame('settled', $partial->fresh()->status);
-
+        $this->deleteJson('/api/financial/movements/'.$partial->id)->assertOk();
+        $this->assertSame('void', $partial->fresh()->status);
         $listed = $invoices->listInvoices($user)->items()[0];
         $this->assertEquals(100, $listed->total_amount);
-        $this->assertEquals(35.25, $listed->paid_amount);
-        $this->assertSame('64.75', $listed->remaining_amount);
-        $this->assertSame('partial', $listed->payment_status);
-        $this->assertBalance($card, '-64.75');
-        $this->assertBalance($bank, '464.75');
+        $this->assertEquals(0, $listed->paid_amount);
+        $this->assertSame('100.00', $listed->remaining_amount);
+        $this->assertSame('unpaid', $listed->payment_status);
+        $this->assertBalance($card, '-100.00');
+        $this->assertBalance($bank, '500.00');
+        $this->assertDatabaseHas('historico_movimentos', ['movement_id' => $partial->id, 'action' => 'deleted']);
 
         $this->assertRejected(fn () => $invoices->pay($user, $invoice, $bank->id, '2026-11-17', '100.01'), 'amount', 'pendente');
         $final = $invoices->pay($user, $invoice, $bank->id, '2026-11-17');
-        $this->assertSame('64.75', (string) $final->amount);
+        $this->assertSame('100.00', (string) $final->amount);
         $this->assertSame('paid', $invoice->fresh()->status);
 
-        $this->deleteJson('/api/financial/movements/'.$final->id)
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('movement');
-        $this->assertSame('settled', $final->fresh()->status);
-        $this->assertSame('paid', $invoice->fresh()->status);
-
-        $this->assertRejected(fn () => $invoices->pay($user, $invoice, $bank->id, '2026-11-17'), 'invoice', 'totalmente paga');
+        $this->deleteJson('/api/financial/movements/'.$final->id)->assertOk();
+        $this->assertSame('void', $final->fresh()->status);
+        $this->assertSame('open', $invoice->fresh()->status);
+        $this->assertRejected(fn () => $invoices->pay($user, $invoice, $bank->id, '2026-11-17', '100.01'), 'amount', 'pendente');
         $listed = $invoices->listInvoices($user)->items()[0];
         $this->assertEquals(100, $listed->total_amount);
-        $this->assertEquals(100, $listed->paid_amount);
-        $this->assertSame('0.00', $listed->remaining_amount);
-        $this->assertSame('paid', $listed->display_status);
-        $this->assertBalance($bank, '400.00');
-        $this->assertBalance($card, '0.00');
+        $this->assertEquals(0, $listed->paid_amount);
+        $this->assertSame('100.00', $listed->remaining_amount);
+        $this->assertSame('open', $listed->display_status);
+        $this->assertBalance($bank, '500.00');
+        $this->assertBalance($card, '-100.00');
         $this->assertSame(0, $user->movimentos()->whereNotNull('reversal_of_id')->count());
     }
 

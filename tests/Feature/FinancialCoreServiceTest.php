@@ -797,7 +797,7 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame(-60.0, (float) $items->sum('projection_delta'));
     }
 
-    public function test_realized_invoice_payment_cannot_be_deleted_and_remaining_balance_stays_consistent(): void
+    public function test_realized_invoice_payment_can_be_cancelled_and_remaining_balance_is_recalculated(): void
     {
         $user = User::factory()->create();
         $bank = $this->account($user, 'Conta principal', '100.00');
@@ -816,20 +816,18 @@ class FinancialCoreServiceTest extends TestCase
         ])->assertOk();
         $payment = $user->movimentos()->whereKey($response->json('data.id'))->firstOrFail();
 
-        $this->deleteJson('/api/financial/movements/'.$payment->id)
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('movement');
+        $this->deleteJson('/api/financial/movements/'.$payment->id)->assertOk();
 
         $parent = $invoice->movimentos()->where('is_settlement_parent', true)->firstOrFail();
-        $this->assertSame('partial', $parent->fresh()->status);
-        $this->assertSame('partial', $invoice->fresh()->status);
-        $this->assertSame('40.00', $this->getJson('/api/financial/invoices')->assertOk()->json('data.data.0.remaining_amount'));
-        $this->assertSame('80.00', app(AccountBalanceService::class)->balance($bank->fresh()));
-        $this->assertSame('-40.00', app(AccountBalanceService::class)->balance($card->fresh()));
-        $this->assertSame('settled', $payment->fresh()->status);
+        $this->assertSame('pending', $parent->fresh()->status);
+        $this->assertSame('open', $invoice->fresh()->status);
+        $this->assertSame('60.00', $this->getJson('/api/financial/invoices')->assertOk()->json('data.data.0.remaining_amount'));
+        $this->assertSame('100.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+        $this->assertSame('-60.00', app(AccountBalanceService::class)->balance($card->fresh()));
+        $this->assertSame('void', $payment->fresh()->status);
 
         $finalResponse = $this->postJson('/api/financial/invoices/'.$invoice->id.'/pay', [
-            'account_id' => $bank->id, 'amount' => '40.00', 'payment_date' => '2026-12-02',
+            'account_id' => $bank->id, 'amount' => '60.00', 'payment_date' => '2026-12-02',
         ])->assertOk();
         $finalPayment = $user->movimentos()->whereKey($finalResponse->json('data.id'))->firstOrFail();
 
@@ -837,14 +835,12 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('0.00', app(AccountBalanceService::class)->balance($card->fresh()));
         $this->assertSame('40.00', app(AccountBalanceService::class)->balance($bank->fresh()));
 
-        $this->deleteJson('/api/financial/movements/'.$finalPayment->id)
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('movement');
-
-        $this->assertSame('paid', $invoice->fresh()->status);
-        $this->assertSame('settled', $finalPayment->fresh()->status);
-        $this->assertSame('40.00', app(AccountBalanceService::class)->balance($bank->fresh()));
-        $this->assertSame('0.00', app(AccountBalanceService::class)->balance($card->fresh()));
+        $this->deleteJson('/api/financial/movements/'.$finalPayment->id)->assertOk();
+        $this->assertSame('open', $invoice->fresh()->status);
+        $this->assertSame('void', $finalPayment->fresh()->status);
+        $this->assertSame('60.00', $this->getJson('/api/financial/invoices')->assertOk()->json('data.data.0.remaining_amount'));
+        $this->assertSame('100.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+        $this->assertSame('-60.00', app(AccountBalanceService::class)->balance($card->fresh()));
     }
 
     public function test_actual_invoice_interest_is_recognized_as_expense_and_increases_invoice_balance(): void
