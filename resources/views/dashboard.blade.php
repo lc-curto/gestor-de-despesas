@@ -140,7 +140,7 @@
         @forelse ($recentMovements as $movement)
             @php
                 $isExpense = $movement->tipo === 'despesa';
-                $movementDate = \\Illuminate\\Support\\Carbon::parse($movement->data_movimento);
+                $movementDate = \Illuminate\\Support\\Carbon::parse($movement->data_movimento);
                 $movementIcon = $movement->category_icon ?: ($isExpense ? 'arrow-down-right' : 'arrow-up-right');
             @endphp
             <div class="home-recent-item">
@@ -175,7 +175,7 @@
                     <div class="col-5">
                         <label for="conversionFrom" class="form-label">De</label>
                         <select class="form-select" id="conversionFrom">
-                            @foreach (\\App\\Support\\Categorias::MOEDAS as $currency)
+                            @foreach (\App\\Support\\Categorias::MOEDAS as $currency)
                                 <option value="{{ $currency }}">{{ $currency }} ({{ $currencySymbols[$currency] ?? $currency }})</option>
                             @endforeach
                         </select>
@@ -186,7 +186,7 @@
                     <div class="col-5">
                         <label for="conversionTo" class="form-label">Para</label>
                         <select class="form-select" id="conversionTo">
-                            @foreach (\\App\\Support\\Categorias::MOEDAS as $currency)
+                            @foreach (\App\\Support\\Categorias::MOEDAS as $currency)
                                 <option value="{{ $currency }}">{{ $currency }} ({{ $currencySymbols[$currency] ?? $currency }})</option>
                             @endforeach
                         </select>
