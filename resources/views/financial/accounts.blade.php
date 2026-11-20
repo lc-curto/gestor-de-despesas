@@ -86,7 +86,7 @@
                                     data-type="{{ $account->type }}" data-currency="{{ $account->currency }}">Editar</button></li>
                                 @if (in_array($account->type, ['bank', 'cash'], true) && $account->status === 'active' && $account->opening_balance !== null)
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><button class="dropdown-item text-danger js-close-account" type="button" data-bs-toggle="modal" data-bs-target="#closeAccountModal" data-endpoint="{{ route('financial.accounts.close', $account->id) }}" data-id="{{ $account->id }}" data-name="{{ $account->name }}" data-balance="{{ number_format((float) ($account->current_balance ?? 0), 2, '.', '') }}">Encerrar</button></li>
+                                    <li><button class="dropdown-item text-danger js-close-account" type="button" data-bs-toggle="modal" data-bs-target="#closeAccountModal" data-endpoint="{{ route('financial.accounts.close', $account->id) }}" data-id="{{ $account->id }}" data-name="{{ $account->name }}" data-balance="{{ number_format((float) ($account->current_balance ?? 0), 2, '.', '') }}" data-currency="{{ $account->currency }}">Encerrar</button></li>
                                 @endif
                             </ul>
                         </div>
@@ -261,24 +261,39 @@
                 Confirmas o encerramento de <strong id="closeAccountName"></strong>?
             </p>
 
-            <div class="mb-3">
-                <label for="closeTransferTarget" class="form-label">Conta de destino</label>
-                <select id="closeTransferTarget" name="transfer_to_account_id" class="form-select">
-                    <option value="">Não transferir</option>
-                    @foreach ($transferTargets as $target)
-                        <option value="{{ $target->id }}">{{ $target->name }}</option>
-                    @endforeach
-                </select>
-                <div id="closeAccountBalanceHelp" class="form-text">
-                    Se existir saldo positivo, seleciona a conta que vai recebê-lo.
-                </div>
+            <div id="closeAccountPositiveNotice" class="alert alert-info d-none mb-3" role="status">
+                O saldo de <strong id="closeAccountPositiveAmount"></strong> será transferido para a conta selecionada.
             </div>
 
-            <div class="account-form-feedback small text-danger mt-3" role="alert" aria-live="polite"></div>
+            <div id="closeAccountTransferGroup" class="mb-3 d-none">
+                <label for="closeTransferTarget" class="form-label">Conta de destino</label>
+                <select id="closeTransferTarget" name="transfer_to_account_id" class="form-select">
+                    <option value="" disabled selected>Selecionar</option>
+                    @foreach ($transferTargets as $target)
+                        <option value="{{ $target->id }}" data-currency="{{ $target->currency }}">{{ $target->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div id="closeAccountNoTargets" class="alert alert-warning d-none mb-3" role="alert">
+                Não existe outra conta ativa, configurada e na mesma moeda para receber o saldo. Cria ou configura uma conta de destino antes de encerrar.
+            </div>
+
+            <div id="closeAccountZeroNotice" class="alert alert-success d-none mb-3" role="status">
+                O saldo está a zero. Podes encerrar sem transferência.
+            </div>
+
+            <div id="closeAccountNegativeNotice" class="alert alert-warning d-none mb-3" role="alert">
+                <p class="mb-2">Saldo atual: <strong id="closeAccountNegativeAmount"></strong></p>
+                <p class="mb-2">Não é possível encerrar enquanto o saldo estiver negativo.</p>
+                <p class="mb-0">Confere o saldo inicial e os movimentos liquidados. Corrige os registos incorretos. Se o descoberto for real, regista uma entrada verdadeira ou transfere dinheiro de outra conta para cobrir a diferença.</p>
+            </div>
+
+            <div id="closeAccountFeedback" class="small text-danger mt-3" role="alert" aria-live="polite"></div>
         </x-modal-body>
         <x-modal-footer>
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" class="btn btn-danger">Encerrar</button>
+            <button id="closeAccountSubmit" type="submit" class="btn btn-danger">Encerrar</button>
         </x-modal-footer>
     </form>
 </x-modal>
@@ -559,34 +574,110 @@
         catch (error) { showFeedback(error.message, true, event.currentTarget); }
     });
 
-    document.querySelectorAll('.js-close-account').forEach((button) => {
-        button.addEventListener('click', () => {
-            const form = document.getElementById('closeAccountForm');
-            const target = document.getElementById('closeTransferTarget');
-            if (!form || !target) return;
+    const closeAccountModal = document.getElementById('closeAccountModal');
+    const closeAccountForm = document.getElementById('closeAccountForm');
+    const closeTransferTarget = document.getElementById('closeTransferTarget');
+    const closeAccountSubmit = document.getElementById('closeAccountSubmit');
+    const closeAccountFeedback = document.getElementById('closeAccountFeedback');
 
-            const balance = Number(button.dataset.balance || 0);
-            const balanceHelp = document.getElementById('closeAccountBalanceHelp');
+    function formatCloseAccountAmount(cents, currency) {
+        try {
+            return new Intl.NumberFormat('pt-PT', {
+                style: 'currency',
+                currency,
+            }).format(cents / 100);
+        } catch {
+            return (cents / 100).toFixed(2).replace('.', ',') + ' ' + currency;
+        }
+    }
 
-            form.dataset.endpoint = button.dataset.endpoint;
-            document.getElementById('closeAccountName').textContent = button.dataset.name;
-            target.value = '';
-            target.required = balance > 0;
-            [...target.options].forEach((option) => { option.disabled = option.value === button.dataset.id; });
+    function clearCloseAccountFeedback() {
+        if (closeAccountFeedback) closeAccountFeedback.textContent = '';
+        if (feedback) {
+            feedback.className = 'd-none';
+            feedback.textContent = '';
+        }
+    }
 
-            if (balance > 0) {
-                balanceHelp.textContent = 'Esta conta tem saldo positivo. Seleciona a conta que vai receber o valor.';
-            } else if (balance < 0) {
-                balanceHelp.textContent = 'O saldo é negativo. Regulariza-o antes de encerrar a conta.';
-            } else {
-                balanceHelp.textContent = 'O saldo está a zero. Não precisas de selecionar outra conta.';
-            }
+    function setCloseAccountState(button) {
+        if (!closeAccountForm || !closeTransferTarget || !closeAccountSubmit) return;
+
+        const balance = Number(button.dataset.balance);
+        const balanceCents = Number.isFinite(balance) ? Math.round(balance * 100) : null;
+        const currency = button.dataset.currency || 'EUR';
+        const sourceId = button.dataset.id;
+        const positive = balanceCents !== null && balanceCents > 0;
+        const negative = balanceCents === null || balanceCents < 0;
+        const zero = balanceCents === 0;
+        const options = Array.from(closeTransferTarget.options).filter((option) => {
+            if (!option.value) return false;
+
+            const compatible = option.value !== sourceId && option.dataset.currency === currency;
+            option.disabled = !compatible;
+            option.hidden = !compatible;
+
+            return compatible;
         });
+
+        closeAccountForm.dataset.endpoint = button.dataset.endpoint;
+        closeAccountForm.dataset.balanceCents = balanceCents === null ? '' : String(balanceCents);
+        closeAccountForm.dataset.sourceId = sourceId;
+        closeAccountForm.dataset.currency = currency;
+        document.getElementById('closeAccountName').textContent = button.dataset.name;
+        closeTransferTarget.value = '';
+        closeTransferTarget.required = positive && options.length > 0;
+
+        document.getElementById('closeAccountPositiveNotice').classList.toggle('d-none', !positive || options.length === 0);
+        document.getElementById('closeAccountPositiveAmount').textContent = positive
+            ? formatCloseAccountAmount(balanceCents, currency)
+            : '';
+
+        document.getElementById('closeAccountTransferGroup').classList.toggle('d-none', !positive || options.length === 0);
+        document.getElementById('closeAccountNoTargets').classList.toggle('d-none', !positive || options.length > 0);
+        document.getElementById('closeAccountZeroNotice').classList.toggle('d-none', !zero);
+        document.getElementById('closeAccountNegativeNotice').classList.toggle('d-none', !negative);
+        document.getElementById('closeAccountNegativeAmount').textContent = negative && balanceCents !== null
+            ? formatCloseAccountAmount(balanceCents, currency)
+            : '';
+
+        closeAccountSubmit.disabled = negative || (positive && options.length === 0);
+        clearCloseAccountFeedback();
+    }
+
+    document.querySelectorAll('.js-close-account').forEach((button) => {
+        button.addEventListener('click', () => setCloseAccountState(button));
     });
-    document.getElementById('closeAccountForm')?.addEventListener('submit', async (event) => {
+
+    closeAccountModal?.addEventListener('show.bs.modal', clearCloseAccountFeedback);
+    closeAccountModal?.addEventListener('hidden.bs.modal', () => {
+        closeAccountForm?.reset();
+        closeAccountForm?.removeAttribute('data-endpoint');
+        closeAccountForm?.removeAttribute('data-balance-cents');
+        closeTransferTarget.required = false;
+        closeAccountSubmit.disabled = false;
+        clearCloseAccountFeedback();
+    });
+
+    closeAccountForm?.addEventListener('submit', async (event) => {
         event.preventDefault();
-        try { await submitJsonForm(event.currentTarget); }
-        catch (error) { showFeedback(error.message, true, event.currentTarget); }
+        const balanceCents = Number(closeAccountForm.dataset.balanceCents);
+
+        if (!Number.isFinite(balanceCents) || balanceCents < 0) {
+            closeAccountFeedback.textContent = 'Regulariza o saldo antes de encerrar a conta.';
+            return;
+        }
+        if (balanceCents > 0 && !closeTransferTarget.value) {
+            closeAccountFeedback.textContent = 'Seleciona a conta que vai receber o saldo.';
+            return;
+        }
+
+        try {
+            await submitJsonForm(closeAccountForm);
+        } catch (error) {
+            closeAccountFeedback.textContent = error.message;
+            closeAccountSubmit.disabled = balanceCents > 0
+                && !Array.from(closeTransferTarget.options).some((option) => option.value === closeTransferTarget.value && !option.disabled);
+        }
     });
 
     document.querySelectorAll('.js-account-transfer').forEach((button) => {
