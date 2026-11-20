@@ -24,7 +24,7 @@
     </header>
 
     <div id="invoiceFeedback" class="alert d-none" role="status" aria-live="polite"></div>
-    <section class="invoice-detail-context" data-invoice-id="{{ $invoice->id }}" data-remaining="{{ $invoice->remaining_amount }}" data-currency="{{ $currency }}">
+    <section class="invoice-detail-context" data-invoice-id="{{ $invoice->id }}" data-remaining="{{ $invoice->remaining_amount }}" data-currency="{{ $currency }}" data-currency-symbol="{{ $currencySymbol }}">
         <div class="mb-3">
             <div class="d-flex align-items-baseline gap-2 mb-1">
                 <strong class="fs-2">{{ $formatInvoiceMoney($invoice->total_amount) }}</strong>
@@ -109,7 +109,7 @@
                         data-edit-url="{{ route('financial.movements.update', $payment->id) }}"
                         data-delete-url="{{ route('financial.movements.destroy', $payment->id) }}">
                         <span class="min-w-0">Pagamento<span class="d-block small text-secondary">{{ $payment->movement_date?->format('d/m/Y') }} · {{ $payment->contaOrigem?->name ?? 'Conta' }}</span></span>
-                        <strong class="text-success text-nowrap">{{ number_format((float)$payment->amount,2,',','.') }} {{ $currency }}</strong>
+                        <strong class="text-success text-nowrap">{{ $formatInvoiceMoney($payment->amount) }}</strong>
                     </button>
                 @empty
                     <p class="small text-secondary mb-0">Ainda não existem pagamentos.</p>
@@ -130,7 +130,7 @@
                 <div class="mb-3 d-none" data-field="date"><label class="form-label" for="invoiceDate">Data</label><input class="form-control" id="invoiceDate" type="date" value="{{ today()->toDateString() }}"></div>
                 <div class="mb-3 d-none" data-field="account"><label class="form-label" for="invoiceAccount">Conta de pagamento</label><select class="form-select" id="invoiceAccount"><option value="">Selecionar conta</option>@foreach($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select></div>
                 <div class="mb-3 d-none" data-field="chargeType"><label class="form-label" for="invoiceChargeType">Tipo de encargo</label><select class="form-select" id="invoiceChargeType"><option value="interest">Juros</option><option value="late_fee">Multa</option><option value="commission">Comissão</option><option value="tax">Imposto</option><option value="other">Outro</option></select></div>
-                <div class="mb-3 d-none" data-field="purchase"><label class="form-label" for="invoicePurchase">Compra a creditar</label><select class="form-select" id="invoicePurchase">@foreach($invoice->movimentos as $purchase)<option value="{{ $purchase->id }}">{{ $purchase->description }} · {{ $purchase->amount }} {{ $currency }}</option>@endforeach</select></div>
+                <div class="mb-3 d-none" data-field="purchase"><label class="form-label" for="invoicePurchase">Compra a creditar</label><select class="form-select" id="invoicePurchase">@foreach($invoice->movimentos as $purchase)<option value="{{ $purchase->id }}">{{ $purchase->description }} · {{ $formatInvoiceMoney($purchase->amount) }}</option>@endforeach</select></div>
                 <div class="alert alert-danger d-none mb-0" id="invoiceActionError" role="alert"></div>
             </div>
             <div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar</button></div>
@@ -150,9 +150,6 @@
         <div id="invoiceMovementDeleteConfirm" class="alert alert-warning d-none mb-0">Queres excluir este movimento? O sistema registará a correção e recalculará os saldos. Esta ação não pode ser desfeita pela interface.</div>
         <div id="invoiceMovementError" class="alert alert-danger d-none mt-3 mb-0" role="alert"></div>
     </x-modal-body>
-    <x-modal-footer id="invoiceMovementActions">
-        <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Fechar</button>
-    </x-modal-footer>
     <x-modal-footer id="invoiceMovementEditActions" class="d-none">
         <button type="button" class="btn btn-outline-secondary flex-fill" id="invoiceMovementCancelEdit">Cancelar</button>
         <button type="button" class="btn btn-primary flex-fill" id="invoiceMovementSave">Guardar alterações</button>
@@ -181,7 +178,8 @@
         document.querySelectorAll('[data-field]').forEach(el=>el.classList.add('d-none'));
         (fieldMap[action]||[]).forEach(key=>document.querySelector('[data-field="'+key+'"]').classList.remove('d-none'));
         document.getElementById('invoiceActionTitle').textContent=titleMap[action];
-        document.getElementById('invoiceActionContext').textContent='Em falta: '+context.dataset.remaining+' '+context.dataset.currency;
+        const remainingFormatter=new Intl.NumberFormat('pt-PT',{style:'currency',currency:context.dataset.currency});
+        document.getElementById('invoiceActionContext').textContent='Em falta: '+remainingFormatter.format(Number(context.dataset.remaining));
         if(action==='pay')document.getElementById('invoiceAmount').value=context.dataset.remaining;
         document.getElementById('invoiceActionError').classList.add('d-none');
         modal.show();
@@ -227,7 +225,6 @@
         byId('invoiceMovementDetailsContent').classList.toggle('d-none',mode!=='view');
         byId('invoiceMovementEditForm').classList.toggle('d-none',mode!=='edit');
         byId('invoiceMovementDeleteConfirm').classList.toggle('d-none',mode!=='delete');
-        byId('invoiceMovementActions').classList.toggle('d-none',mode!=='view');
         byId('invoiceMovementEditActions').classList.toggle('d-none',mode!=='edit');
         byId('invoiceMovementDeleteActions').classList.toggle('d-none',mode!=='delete');
         byId('invoiceMovementTitle').textContent=mode==='edit'?'Editar movimento':mode==='delete'?'Excluir movimento':'Detalhes do movimento';
