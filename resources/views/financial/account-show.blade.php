@@ -9,7 +9,7 @@
     $accountStatusLabel = $isClosedAccount ? 'Encerrada' : ($account->status === 'active' ? 'Ativa' : 'Por configurar');
     $movementCount = $movements->total();
     $accountCurrency = $account->currency;
-    $accountCurrencySymbol = ['EUR' => '€', 'USD' => '
+    $accountCurrencySymbol = ['EUR' => '€', 'USD' => '@endphp
 
 <div class="account-history-page">
     <header class="account-history-heading mb-3">
@@ -511,7 +511,7 @@ document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', as
     .account-history-summary .row > div:not(:first-child) { border-left: 1px solid var(--mb-border); }
 }
 </style>
-@endpush, 'GBP' => '£', 'BRL' => 'R
+@endpush, 'GBP' => '£', 'BRL' => 'R@endphp
 
 <div class="account-history-page">
     <header class="account-history-heading mb-3">
@@ -1013,7 +1013,7 @@ document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', as
     .account-history-summary .row > div:not(:first-child) { border-left: 1px solid var(--mb-border); }
 }
 </style>
-@endpush, 'CHF' => 'CHF', 'CAD' => 'CA
+@endpush, 'CHF' => 'CHF', 'CAD' => 'CA@endphp
 
 <div class="account-history-page">
     <header class="account-history-heading mb-3">
@@ -1515,7 +1515,7 @@ document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', as
     .account-history-summary .row > div:not(:first-child) { border-left: 1px solid var(--mb-border); }
 }
 </style>
-@endpush, 'AUD' => 'A
+@endpush, 'AUD' => 'A@endphp
 
 <div class="account-history-page">
     <header class="account-history-heading mb-3">
