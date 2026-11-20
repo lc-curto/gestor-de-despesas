@@ -343,10 +343,9 @@ class FinancialAccountsPageTest extends TestCase
             ->assertSee('Transferir')
             ->assertSee('Banco')
             ->assertSee('Carteira');
-    }
-}
+    
 
-    public function test_invoice_payment_can_be_corrected_from_account_history_and_recalculates_balances(): void
+public function test_invoice_payment_can_be_corrected_from_account_history_and_recalculates_balances(): void
     {
         $user = User::factory()->create();
         $bank = app(FinancialAccountService::class)->create($user, [
@@ -366,7 +365,14 @@ class FinancialAccountsPageTest extends TestCase
         $invoice = $user->faturas()->firstOrFail();
         $payment = $invoices->pay($user, $invoice, $bank->id, '2026-11-18');
 
-        $this->actingAs($user)->putJson(route('financial.movements.update', $payment->id), [
+        $this->actingAs($user)->get(route('financial.accounts.show', $bank->id))
+            ->assertOk()
+            ->assertSee('data-invoice-payment="1"', false)
+            ->assertSee('Editar')
+            ->assertSee('Cancelar')
+            ->assertDontSee('accountMovementDetailsStatus', false);
+
+        $this->putJson(route('financial.movements.update', $payment->id), [
             'amount' => '15.00',
             'movement_date' => '2026-11-19',
             'source_account_id' => $bank->id,
@@ -381,5 +387,4 @@ class FinancialAccountsPageTest extends TestCase
             'action' => 'invoice_payment_updated',
         ]);
     }
-
-
+}
