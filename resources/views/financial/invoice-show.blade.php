@@ -24,23 +24,19 @@
 
     <div id="invoiceFeedback" class="alert d-none" role="status" aria-live="polite"></div>
     <section class="invoice-detail-context" data-invoice-id="{{ $invoice->id }}" data-remaining="{{ $invoice->remaining_amount }}" data-currency="{{ $currency }}">
-        <div class="card border rounded-4 mb-3">
-            <div class="card-body p-3">
-                <div class="row g-3">
-                    <div class="col-4"><span class="small text-secondary d-block">Total</span><strong class="fs-5">{{ number_format((float)$invoice->total_amount,2,',','.') }} {{ $currency }}</strong></div>
-                    <div class="col-4"><span class="small text-secondary d-block">Pago</span><strong class="fs-5 text-success">{{ number_format((float)$invoice->paid_amount,2,',','.') }} {{ $currency }}</strong></div>
-                    <div class="col-4"><span class="small text-secondary d-block">Em falta</span><strong class="fs-5 {{ (float)$invoice->remaining_amount > 0 ? 'text-warning' : 'text-success' }}">{{ number_format((float)$invoice->remaining_amount,2,',','.') }} {{ $currency }}</strong></div>
-                </div>
-                <div class="progress mt-3" role="progressbar" aria-label="Percentagem paga" aria-valuenow="{{ round($progress) }}" aria-valuemin="0" aria-valuemax="100" style="height:7px">
-                    <div class="progress-bar" style="width:{{ $progress }}%"></div>
-                </div>
-                <div class="small text-secondary mt-1">{{ number_format($progress,0) }}% pago</div>
-                <div class="row g-2 border-top mt-3 pt-3 small">
-                    <div class="col-6"><span class="text-secondary d-block">Fecho</span><strong>{{ $invoice->closing_date->format('d/m/Y') }}</strong></div>
-                    <div class="col-6"><span class="text-secondary d-block">Vencimento</span><strong>{{ $invoice->due_date->format('d/m/Y') }}</strong></div>
-                </div>
-                <button type="button" class="btn btn-primary w-100 mt-3 js-invoice-action" data-action="pay" @disabled((float)$invoice->remaining_amount <= 0 || $invoice->status === 'carried')>Pagar</button>
+        <div class="mb-3">
+            <div class="d-flex align-items-baseline gap-2 mb-1">
+                <strong class="fs-2">{{ number_format((float)$invoice->total_amount,2,',','.') }} {{ $currency }}</strong>
             </div>
+            <div class="d-flex justify-content-between small text-secondary">
+                <span>Pago {{ number_format((float)$invoice->paid_amount,2,',','.') }} {{ $currency }}</span>
+                <span>Em falta {{ number_format((float)$invoice->remaining_amount,2,',','.') }} {{ $currency }}</span>
+            </div>
+            <div class="progress mt-2" role="progressbar" aria-label="Percentagem paga" aria-valuenow="{{ round($progress) }}" aria-valuemin="0" aria-valuemax="100" style="height:5px">
+                <div class="progress-bar" style="width:{{ $progress }}%"></div>
+            </div>
+            <div class="small text-secondary mt-2">Vencimento {{ $invoice->due_date->format('d/m/Y') }}</div>
+            <button type="button" class="btn btn-primary w-100 mt-3 js-invoice-action" data-action="pay" @disabled((float)$invoice->remaining_amount <= 0 || $invoice->status === 'carried')>Pagar {{ number_format((float)$invoice->remaining_amount,2,',','.') }} {{ $currency }}</button>
         </div>
 
         <div class="row g-2 mb-3 invoice-secondary-actions">
@@ -52,9 +48,8 @@
             </div>
         </div>
 
-        <section class="card border rounded-4 mb-3">
-            <div class="card-body p-3">
-                <h2 class="h6 fw-bold mb-2">Compras</h2>
+        <section class="mb-3">
+            <h2 class="h6 fw-bold mb-2">Movimentos</h2>
                 @forelse($invoice->movimentos as $movement)
                     <div class="d-flex justify-content-between gap-3 py-2 border-bottom">
                         <span class="min-w-0 text-break">{{ $movement->description }}<span class="d-block small text-secondary">{{ $movement->movement_date->format('d/m/Y') }}</span></span>
@@ -77,10 +72,9 @@
                         <strong class="text-success">−{{ number_format((float)$credit->amount,2,',','.') }} {{ $currency }}</strong>
                     </div>
                 @endforeach
-            </div>
         </section>
 
-        <section class="card border rounded-4">
+        <section class="border-top pt-3">
             <div class="card-body p-3">
                 <h2 class="h6 fw-bold mb-2">Pagamentos</h2>
                 @forelse($invoice->pagamentos as $payment)
