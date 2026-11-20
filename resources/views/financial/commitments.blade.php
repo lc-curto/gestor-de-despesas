@@ -628,6 +628,17 @@
         flex: 0 0 auto;
     }
 }
+
+.commitment-details-modal .modal-dialog { max-width: 560px; }
+.commitment-details-modal .commitment-details { padding: 0; border: 0; }
+.commitment-details-modal .commitment-detail-summary { margin-bottom: .9rem; }
+.commitment-details-modal .commitment-next-payment { margin-bottom: 0; }
+.commitment-card-toggle { cursor: pointer; }
+.commitment-card-toggle:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: -3px; }
+@media (max-width: 575.98px) {
+    .commitment-details-modal .modal-dialog { margin: .5rem; min-height: calc(100% - 1rem); }
+    .commitment-details-modal .modal-content { max-height: calc(100dvh - 1rem); border-radius: 1.1rem; }
+}
 </style>
 @endpush
 
