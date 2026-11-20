@@ -660,7 +660,10 @@
 
     closeAccountForm?.addEventListener('submit', async (event) => {
         event.preventDefault();
-        const balanceCents = Number(closeAccountForm.dataset.balanceCents);
+        const rawBalanceCents = closeAccountForm.dataset.balanceCents;
+        const balanceCents = rawBalanceCents === undefined || rawBalanceCents === ''
+            ? null
+            : Number(rawBalanceCents);
 
         if (!Number.isFinite(balanceCents) || balanceCents < 0) {
             closeAccountFeedback.textContent = 'Regulariza o saldo antes de encerrar a conta.';
