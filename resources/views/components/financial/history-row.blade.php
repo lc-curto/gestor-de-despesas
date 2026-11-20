@@ -15,10 +15,10 @@
         <i data-lucide="{{ $icon }}"></i>
     </span>
     <span class="min-w-0 flex-grow-1">
-        <span class="d-block small fw-semibold text-body text-break">{{ $title }}</span>
-        <span class="d-block small text-secondary text-break">{{ $subtitle }}</span>
+        <span class="d-block small fw-semibold text-body text-truncate" title="{{ $title }}">{{ $title }}</span>
+        <span class="d-block small text-secondary text-truncate">{{ $subtitle }}</span>
         @if ($counterpart)
-            <span class="d-block small text-secondary text-break">{{ $counterpart }}</span>
+            <span class="d-block small text-secondary text-truncate">{{ $counterpart }}</span>
         @endif
         @if ($status)
             <span class="badge rounded-pill {{ $statusClass }} mt-1">{{ $status }}</span>
