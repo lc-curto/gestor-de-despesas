@@ -33,9 +33,22 @@
                     <div class="progress mt-1" role="progressbar" aria-label="Percentagem do limite utilizado" aria-valuenow="{{ round($card->usage_percent) }}" aria-valuemin="0" aria-valuemax="100" style="height:5px">
                         <div class="progress-bar" style="width:{{ $card->usage_percent }}%"></div>
                     </div>
-                    <div class="d-flex justify-content-between gap-2 mt-1 small text-secondary">
-                        <span>Limite: {{ number_format((float)$card->credit_limit,2,',','.') }} {{ $card->currency }}</span>
-                        <span class="text-end">Fecho: dia {{ $card->closing_day ?? '—' }} · Vencimento: dia {{ $card->due_day ?? '—' }}</span>
+                    <div class="rounded-3 bg-body-secondary p-2 mt-2 small">
+                        <div class="d-flex justify-content-between align-items-center gap-2">
+                            <span class="text-secondary">Limite total</span>
+                            <strong class="text-body text-nowrap">{{ number_format((float)$card->credit_limit,2,',','.') }} {{ $card->currency }}</strong>
+                        </div>
+                        <div class="border-top my-2" style="border-color:var(--bs-border-color)!important"></div>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <span class="text-secondary d-block">Fecho</span>
+                                <strong class="text-body">Dia {{ $card->closing_day ?? '—' }}</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-secondary d-block">Vencimento</span>
+                                <strong class="text-body">Dia {{ $card->due_day ?? '—' }}</strong>
+                            </div>
+                        </div>
                     </div>
                     <div class="d-flex justify-content-end align-items-center border-top mt-2 pt-2">
                         <span class="small fw-semibold text-primary">Ver faturas</span>
