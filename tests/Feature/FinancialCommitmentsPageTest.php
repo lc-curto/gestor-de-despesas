@@ -124,7 +124,7 @@ class FinancialCommitmentsPageTest extends TestCase
         $response->assertDontSee('Despesa única futura');
         $xpath = $this->document($response->getContent());
         foreach (['Ontem' => ['16/11/2026', 'Atrasada'], 'Hoje' => ['17/11/2026', 'Próxima'], 'Amanhã' => ['18/11/2026', 'Próxima']] as $name => [$dueDate, $status]) {
-            $badges = $xpath->query('//div[contains(@class,"commitment-history-modal")]//div[contains(@class,"commitment-installment") and .//small[normalize-space(.)="'.$dueDate.'"]]//span[contains(concat(" ", normalize-space(@class), " "), " badge ")]');
+            $badges = $xpath->query('//div[contains(@class,"commitment-history-modal")]//div[contains(@class,"commitment-installment") and .//span[contains(@class,"text-secondary") and normalize-space(.)="'.$dueDate.'"]]//span[contains(concat(" ", normalize-space(@class), " "), " badge ")]');
             $this->assertCount(1, $badges, $name);
             $this->assertSame($status, trim($badges->item(0)->textContent), $name);
         }
@@ -242,7 +242,7 @@ class FinancialCommitmentsPageTest extends TestCase
         $secondXPath = $this->document($secondHistoryPage->getContent());
         $this->assertCount(6, $secondXPath->query('//div[contains(concat(" ", normalize-space(@class), " "), " commitment-installment ")]'));
         $this->assertSame('2', (string) $secondHistoryPage->viewData('commitments')->first()->installmentsPage->currentPage());
-        $this->assertSame('7/120', trim($secondXPath->query('//div[contains(@class,"commitment-installment")]/div/strong')->item(0)->textContent));
+        $this->assertSame('Prestação 7/120', trim($secondXPath->query('//div[contains(@class,"commitment-installment")]//span[contains(@class,"fw-semibold")]')->item(0)->textContent));
     }
 
     public function test_purchase_pagination_is_server_side_and_summary_uses_all_commitments(): void
@@ -445,7 +445,9 @@ class FinancialCommitmentsPageTest extends TestCase
         ]);
         $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
         $xpath = $this->document($this->actingAs($user)->get(route('financial.commitments.page'))->assertOk()->getContent());
-        $this->assertCount(4, $xpath->query('//div[contains(@class,"commitment-card-actions")]/button'));
+        $this->assertCount(4, $xpath->query('//button[contains(@class,"dropdown-item") and (contains(@class,"js-edit-commitment") or contains(@class,"js-renegotiate-commitment") or contains(@class,"js-archive-commitment") or contains(@class,"js-cancel-commitment"))]'));
+        $this->assertCount(1, $xpath->query('//header[.//h1[normalize-space()="Parcelamentos"]]'));
+        $this->assertCount(1, $xpath->query('//button[@data-bs-target="#createCommitmentModal"]'));
         foreach (['editCommitmentModal', 'renegotiateCommitmentModal', 'archiveCommitmentModal', 'cancelCommitmentModal'] as $modalId) {
             $this->assertCount(1, $xpath->query('//*[@id="'.$modalId.'"]'));
         }

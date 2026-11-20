@@ -4,53 +4,71 @@
 
 @section('content')
 <div class="app-content commitments-page">
-    <header class="page-heading commitments-heading mb-4">
-        <div>
-            <h1 class="h2 fw-bold mb-1">Parcelamentos</h1>
-            <p class="text-secondary small mb-0">Aqui aparecem apenas compromissos divididos em duas ou mais prestações. Despesas a prazo com um único vencimento ficam em Movimentos.</p>
-        </div>
-    </header>
+    <x-financial.page-header title="Parcelamentos">
+        <x-slot:subtitle>Compras divididas em duas ou mais prestações.</x-slot:subtitle>
+        <x-slot:actions>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createCommitmentModal">
+                <i data-lucide="plus" aria-hidden="true"></i>
+                <span class="d-none d-sm-inline">Nova compra</span>
+            </button>
+        </x-slot:actions>
+    </x-financial.page-header>
 
     <div id="commitmentFeedback" class="alert d-none" role="status" aria-live="polite"></div>
 
-    <section class="commitment-summary mb-4" aria-label="Resumo financeiro">
-        <article class="commitment-metric commitment-metric-primary">
-            <span>Total em aberto</span>
-            <strong>{{ auth()->user()->currency }} {{ number_format($summary['open'], 2, ',', '.') }}</strong>
-            <small>{{ $summary['active_count'] }} compras ativas</small>
-        </article>
-        <article class="commitment-metric">
-            <span>Próxima prestação</span>
-            @if ($summary['next_installment'])
-                <strong>{{ auth()->user()->currency }} {{ number_format(max(0, (float) $summary['next_installment']->amount - (float) $summary['next_installment']->paid_amount), 2, ',', '.') }}</strong>
-                <small>{{ $summary['next_installment']->divida?->name }} · {{ $summary['next_installment']->due_date->lt(today()) ? 'vencida' : $summary['next_installment']->due_date->format('d/m/Y') }}</small>
-            @else
-                <strong>—</strong><small>Sem prestações pendentes</small>
-            @endif
-        </article>
-        <article class="commitment-metric">
-            <span>Prestações em atraso</span>
-            <strong class="{{ $summary['overdue'] > 0 ? 'text-danger' : '' }}">{{ auth()->user()->currency }} {{ number_format($summary['overdue'], 2, ',', '.') }}</strong>
-            <small>{{ $summary['overdue_commitments'] }} compras com prestações vencidas</small>
-        </article>
+    <section class="row g-2 g-md-3 mb-4" aria-label="Resumo financeiro">
+        <div class="col-12">
+            <article class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-3 p-md-4">
+                    <span class="small text-secondary">Total em aberto</span>
+                    <strong class="d-block fs-3 mt-2">{{ auth()->user()->currency }} {{ number_format($summary['open'], 2, ',', '.') }}</strong>
+                    <small class="text-secondary">{{ $summary['active_count'] }} compras ativas</small>
+                </div>
+            </article>
+        </div>
+        <div class="col-6">
+            <article class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-3">
+                    <span class="small text-secondary">Próxima prestação</span>
+                    @if ($summary['next_installment'])
+                        <strong class="d-block fs-5 mt-2">{{ auth()->user()->currency }} {{ number_format(max(0, (float) $summary['next_installment']->amount - (float) $summary['next_installment']->paid_amount), 2, ',', '.') }}</strong>
+                        <small class="text-secondary">{{ $summary['next_installment']->due_date->lt(today()) ? 'Vencida' : $summary['next_installment']->due_date->format('d/m/Y') }}</small>
+                    @else
+                        <strong class="d-block fs-5 mt-2">—</strong>
+                        <small class="text-secondary">Sem pendências</small>
+                    @endif
+                </div>
+            </article>
+        </div>
+        <div class="col-6">
+            <article class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-3">
+                    <span class="small text-secondary">Em atraso</span>
+                    <strong class="d-block fs-5 mt-2 {{ $summary['overdue'] > 0 ? 'text-danger' : '' }}">{{ auth()->user()->currency }} {{ number_format($summary['overdue'], 2, ',', '.') }}</strong>
+                    <small class="text-secondary">{{ $summary['overdue_commitments'] }} compras</small>
+                </div>
+            </article>
+        </div>
     </section>
 
     <section class="commitment-list-panel" aria-labelledby="commitmentsTitle">
-        <nav class="commitment-tabs" aria-label="Estado das compras">
+        <nav class="nav nav-pills gap-2 mb-3 commitment-tabs" aria-label="Estado das compras">
             @foreach (['active' => ['Ativos', $summary['active_count']], 'completed' => ['Concluídos', $summary['completed_count']], 'archived' => ['Arquivados', $summary['archived_count']], 'all' => ['Todos', $summary['total_count']]] as $key => [$label, $count])
                 <a href="{{ route('financial.commitments.page', array_merge(request()->except('purchases'), ['status' => $key])) }}"
-                   class="btn btn-sm {{ $status === $key ? 'btn-primary' : 'btn-outline-secondary' }}"
+                   class="nav-link btn-sm {{ $status === $key ? 'active' : 'text-body-secondary' }}"
                    @if ($status === $key) aria-current="page" @endif>{{ $label }} ({{ $count }})</a>
             @endforeach
         </nav>
 
-        <form class="commitment-search" method="GET" action="{{ route('financial.commitments.page') }}" role="search">
+        <form class="mb-3" method="GET" action="{{ route('financial.commitments.page') }}" role="search">
             <input type="hidden" name="status" value="{{ $status }}">
             <input type="hidden" name="per_page" value="{{ $perPage }}">
-            <label class="visually-hidden" for="commitmentSearch">Pesquisar compra ou comerciante</label>
-            <span aria-hidden="true">⌕</span>
-            <input id="commitmentSearch" type="search" name="q" value="{{ $search }}" placeholder="Pesquisar compra ou comerciante..." autocomplete="off">
-            @if ($search !== '')<a href="{{ route('financial.commitments.page', ['status' => $status, 'per_page' => $perPage]) }}" class="commitment-clear-search" aria-label="Limpar pesquisa">×</a>@endif
+            <div class="input-group">
+                <span class="input-group-text bg-body"><i data-lucide="search" aria-hidden="true"></i></span>
+                <label class="visually-hidden" for="commitmentSearch">Pesquisar compra ou comerciante</label>
+                <input class="form-control" id="commitmentSearch" type="search" name="q" value="{{ $search }}" placeholder="Pesquisar compra ou comerciante..." autocomplete="off">
+                @if ($search !== '')<a href="{{ route('financial.commitments.page', ['status' => $status, 'per_page' => $perPage]) }}" class="btn btn-outline-secondary" aria-label="Limpar pesquisa"><i data-lucide="x" aria-hidden="true"></i></a>@endif
+            </div>
         </form>
 
         <div class="commitment-list-heading">
@@ -73,7 +91,7 @@
                     $next = $commitment->next_installment;
                     $nextRemaining = $next ? max(0, (float) $next->amount - (float) $next->paid_amount) : 0;
                 @endphp
-                <article class="commitment-card" data-commitment-card data-commitment-id="{{ $commitment->id }}">
+                <article class="commitment-card card border-0 shadow-sm rounded-4" data-commitment-card data-commitment-id="{{ $commitment->id }}">
                     <button class="commitment-card-toggle" type="button" aria-expanded="false" aria-controls="commitment-details-{{ $commitment->id }}">
                         <span class="commitment-card-heading">
                             <span class="commitment-card-name">{{ $commitment->name }}@if ($commitment->merchant)<small class="commitment-merchant">{{ $commitment->merchant }}</small>@endif</span>
@@ -94,11 +112,41 @@
                         </span>
                     </button>
 
-                    <div class="commitment-card-utility">
-                        <button type="button" class="commitment-card-details-label" aria-controls="commitment-details-{{ $commitment->id }}">Detalhes <span aria-hidden="true">⌄</span></button>
-                        <button type="button" class="btn btn-outline-primary btn-sm commitment-history-trigger" data-bs-toggle="modal" data-bs-target="#commitmentHistoryModal-{{ $commitment->id }}">
-                            Histórico <span class="commitment-history-count">({{ $history->total() }})</span>
+                    <div class="d-flex align-items-center justify-content-between gap-2 px-3 py-2 border-top">
+                        <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 commitment-card-details-label" aria-controls="commitment-details-{{ $commitment->id }}">
+                            Detalhes <i data-lucide="chevron-down" class="ms-1" aria-hidden="true"></i>
                         </button>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary commitment-history-trigger" data-bs-toggle="modal" data-bs-target="#commitmentHistoryModal-{{ $commitment->id }}">
+                                Histórico <span class="commitment-history-count">({{ $history->total() }})</span>
+                            </button>
+                            <x-financial.action-menu label="Ações da compra">
+                                <li><button type="button" class="dropdown-item js-edit-commitment" @disabled($isCompleted)
+                                    data-url="{{ route('financial.commitments.update', $commitment->id) }}"
+                                    data-name="{{ $commitment->name }}" data-merchant="{{ $commitment->merchant }}"
+                                    data-total="{{ number_format((float) $commitment->total_amount, 2, '.', '') }}">Editar</button></li>
+                                <li><button type="button" class="dropdown-item js-renegotiate-commitment" @disabled($isCompleted)
+                                    data-url="{{ route('financial.commitments.renegotiate', $commitment->id) }}"
+                                    data-name="{{ $commitment->name }}"
+                                    data-remaining="{{ number_format((float) $commitment->remaining_amount, 2, '.', '') }}"
+                                    data-count="{{ max(1, $partsTotal - $partsPaid) }}"
+                                    data-frequency="{{ $commitment->installment_frequency ?? 'monthly' }}"
+                                    data-due="{{ $next && $next->due_date->gte(today()) ? $next->due_date->format('Y-m-d') : now()->addMonth()->toDateString() }}">Renegociar</button></li>
+                                @if ($isArchived)
+                                    @if ($isSoftDeleted)
+                                        <li><button type="button" class="dropdown-item js-restore-commitment" data-url="{{ route('financial.commitments.restore', $commitment->id) }}">Recuperar</button></li>
+                                    @elseif (!$isCancelled)
+                                        <li><button type="button" class="dropdown-item js-restore-commitment" data-url="{{ route('financial.commitments.restore', $commitment->id) }}">Restaurar</button></li>
+                                    @endif
+                                    <li><button type="button" class="dropdown-item js-archive-commitment" data-archived="true" data-name="{{ $commitment->name }}" data-delete-url="{{ route('financial.commitments.destroy', $commitment->id) }}">Gerir</button></li>
+                                @else
+                                    <li><button type="button" class="dropdown-item js-archive-commitment" data-url="{{ route('financial.commitments.archive', $commitment->id) }}" data-name="{{ $commitment->name }}" data-delete-url="{{ route('financial.commitments.destroy', $commitment->id) }}">Arquivar</button></li>
+                                @endif
+                                <li><hr class="dropdown-divider"></li>
+                                <li><button type="button" class="dropdown-item text-danger js-cancel-commitment" @disabled($isCompleted)
+                                    data-url="{{ route('financial.commitments.cancel', $commitment->id) }}" data-name="{{ $commitment->name }}">Cancelar</button></li>
+                            </x-financial.action-menu>
+                        </div>
                     </div>
 
                     <div class="commitment-details" id="commitment-details-{{ $commitment->id }}" hidden>
@@ -127,50 +175,12 @@
 
 
 
-                        <div class="commitment-management">
-                            <h3 class="small fw-bold mb-2">Gestão da compra</h3>
-                            <div class="commitment-card-actions">
-                                <button type="button" class="btn btn-outline-secondary js-edit-commitment" @disabled($isCompleted)
-                                    data-url="{{ route('financial.commitments.update', $commitment->id) }}"
-                                    data-name="{{ $commitment->name }}"
-                                    data-merchant="{{ $commitment->merchant }}"
-                                    data-total="{{ number_format((float) $commitment->total_amount, 2, '.', '') }}">Editar</button>
-                                <button type="button" class="btn btn-outline-primary js-renegotiate-commitment" @disabled($isCompleted)
-                                    data-url="{{ route('financial.commitments.renegotiate', $commitment->id) }}"
-                                    data-name="{{ $commitment->name }}"
-                                    data-remaining="{{ number_format((float) $commitment->remaining_amount, 2, '.', '') }}"
-                                    data-count="{{ max(1, $partsTotal - $partsPaid) }}"
-                                    data-frequency="{{ $commitment->installment_frequency ?? 'monthly' }}"
-                                    data-due="{{ $next && $next->due_date->gte(today()) ? $next->due_date->format('Y-m-d') : now()->addMonth()->toDateString() }}">Renegociar</button>
-                                @if ($isArchived)
-                                    @if ($isSoftDeleted)
-                                        <button type="button" class="btn btn-outline-primary js-restore-commitment"
-                                            data-url="{{ route('financial.commitments.restore', $commitment->id) }}">Recuperar</button>
-                                    @elseif (!$isCancelled)
-                                        <button type="button" class="btn btn-outline-primary js-restore-commitment"
-                                            data-url="{{ route('financial.commitments.restore', $commitment->id) }}">Restaurar</button>
-                                    @endif
-                                    <button type="button" class="btn btn-outline-danger js-archive-commitment"
-                                        data-archived="true"
-                                        data-name="{{ $commitment->name }}"
-                                        data-delete-url="{{ route('financial.commitments.destroy', $commitment->id) }}">Gerir</button>
-                                @else
-                                    <button type="button" class="btn btn-outline-secondary js-archive-commitment"
-                                        data-url="{{ route('financial.commitments.archive', $commitment->id) }}"
-                                        data-name="{{ $commitment->name }}"
-                                        data-delete-url="{{ route('financial.commitments.destroy', $commitment->id) }}">Arquivar</button>
-                                @endif
-                                <button type="button" class="btn btn-outline-danger js-cancel-commitment" @disabled($isCompleted)
-                                    data-url="{{ route('financial.commitments.cancel', $commitment->id) }}"
-                                    data-name="{{ $commitment->name }}">Cancelar</button>
-                            </div>
-                        </div>
                     </div>
                 </article>
 
                 <div class="modal fade commitment-history-modal" id="commitmentHistoryModal-{{ $commitment->id }}" tabindex="-1" aria-hidden="true">
-                    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
-                        <div class="modal-content rounded-4 border-0">
+                    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg commitment-modal-dialog">
+                        <div class="modal-content rounded-4 border-0 shadow-sm commitment-modal-content">
                             <div class="modal-header">
                                 <div>
                                     <h2 class="modal-title h5 fw-bold mb-1">Histórico de prestações</h2>
@@ -187,12 +197,17 @@
                                     $overdue = $installment->status !== 'cancelled' && !$paid && $installment->due_date->lt(today());
                                     $label = $paid ? 'Paga' : ($installment->status === 'cancelled' ? 'Substituída' : ($overdue ? 'Atrasada' : ($installment->id === $next?->id ? 'Próxima' : 'Pendente')));
                                 @endphp
-                                <div class="commitment-installment">
-                                    <div><strong>{{ $installment->installment_number }}/{{ $partsTotal }}</strong><small>{{ $installment->due_date->format('d/m/Y') }}</small></div>
-                                    <div class="commitment-installment-value">
-                                        <strong>{{ auth()->user()->currency }} {{ number_format($remaining > 0 ? $remaining : (float) $installment->amount, 2, ',', '.') }}</strong>
-                                        <span class="badge {{ $paid ? 'text-bg-success' : ($overdue ? 'text-bg-danger' : ($label === 'Próxima' ? 'text-bg-warning' : 'text-bg-secondary')) }}">{{ $label }}</span>
-                                    </div>
+                                <div class="commitment-installment border-bottom py-2">
+                                    <x-financial.history-row
+                                        :icon="$paid ? 'check-circle' : ($overdue ? 'alert-circle' : 'calendar-clock')"
+                                        :icon-class="$paid ? 'bg-success-subtle text-success' : ($overdue ? 'bg-danger-subtle text-danger' : 'bg-body-secondary text-secondary')"
+                                        :title="'Prestação ' . $installment->installment_number . '/' . $partsTotal"
+                                        :subtitle="$installment->due_date->format('d/m/Y')"
+                                        :amount="auth()->user()->currency . ' ' . number_format($remaining > 0 ? $remaining : (float) $installment->amount, 2, ',', '.')"
+                                        :amount-class="$paid ? 'text-success' : ($overdue ? 'text-danger' : 'text-body')"
+                                        :status="$label"
+                                        :status-class="$paid ? 'text-bg-success' : ($overdue ? 'text-bg-danger' : ($label === 'Próxima' ? 'text-bg-warning' : 'text-bg-secondary'))"
+                                    />
                                 </div>
                             @endforeach
                             @if ($history->hasPages())
@@ -225,15 +240,15 @@
                             @endif
                         </div>
                             </div>
-                            <div class="modal-footer border-0">
+                            <div class="modal-footer border-0 pt-2">
                                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
                             </div>
                         </div>
                     </div>
                 </div>
             @empty
-                <div class="commitment-empty-state">
-                    <strong>Nenhuma compra encontrada.</strong>
+                <div class="text-center p-4 rounded-4 border bg-body-tertiary">
+                    <strong class="d-block">Nenhuma compra encontrada.</strong>
                     <span class="text-secondary small">Sem resultados.</span>
                 </div>
             @endforelse
@@ -254,10 +269,10 @@
 </div>
 
 <div class="modal fade" id="createCommitmentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable commitment-payment-dialog">
-        <div class="modal-content rounded-4 border-0">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable commitment-payment-dialog commitment-modal-dialog">
+        <div class="modal-content rounded-4 border-0 shadow-sm commitment-modal-content">
             <form id="createCommitmentForm">
-                <div class="modal-header border-0"><h2 class="modal-title h5 fw-bold">Nova compra parcelada</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+                <div class="modal-header border-0 pb-2"><h2 class="modal-title h5 fw-bold">Nova compra parcelada</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
                 <div class="modal-body">
                     <label class="form-label" for="newCommitmentName">Nome da compra</label><input class="form-control mb-3" id="newCommitmentName" name="name" maxlength="160" required>
                     <label class="form-label" for="newCommitmentMerchant">Comerciante (opcional)</label><input class="form-control mb-3" id="newCommitmentMerchant" name="merchant" maxlength="160">
@@ -269,18 +284,18 @@
                     <label class="form-label" for="newCommitmentAccount">Conta associada (opcional)</label><select class="form-select" id="newCommitmentAccount" name="account_id"><option value="">Sem conta associada</option>@foreach ($paymentAccounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select>
                     <div class="small text-danger mt-2" id="createCommitmentError" role="alert"></div>
                 </div>
-                <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Criar</button></div>
+                <div class="modal-footer border-0 pt-2"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Criar</button></div>
             </form>
         </div>
     </div>
 </div>
 
 <div class="modal fade" id="commitmentPaymentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable commitment-payment-dialog">
-        <div class="modal-content rounded-4 border-0">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable commitment-payment-dialog commitment-modal-dialog">
+        <div class="modal-content rounded-4 border-0 shadow-sm commitment-modal-content">
             <form id="commitmentPaymentForm" class="js-api-form" method="POST" data-endpoint="">
                 @csrf
-                <div class="modal-header border-0">
+                <div class="modal-header border-0 pb-2">
                     <div><h2 class="modal-title h5 fw-bold mb-1">Pagar prestação</h2><small class="text-secondary" id="paymentCommitmentName"></small></div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
@@ -299,7 +314,7 @@
                     <input class="form-control" id="commitmentPaymentDate" name="payment_date" type="date" value="{{ now()->toDateString() }}" required>
                     <div class="small text-danger mt-2" id="commitmentPaymentError" role="alert"></div>
                 </div>
-                <div class="modal-footer border-0">
+                <div class="modal-footer border-0 pt-2">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Pagar</button>
                 </div>
@@ -309,8 +324,8 @@
 </div>
 
 <div class="modal fade" id="editCommitmentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered"><div class="modal-content rounded-4 border-0"><form id="editCommitmentForm">
-        <div class="modal-header border-0"><h2 class="modal-title h5 fw-bold">Editar compra</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable commitment-payment-dialog commitment-modal-dialog"><div class="modal-content rounded-4 border-0 shadow-sm commitment-modal-content"><form id="editCommitmentForm">
+        <div class="modal-header border-0 pb-2"><h2 class="modal-title h5 fw-bold">Editar compra</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
         <div class="modal-body">
             <label class="form-label" for="editCommitmentName">Nome da compra</label><input class="form-control mb-3" id="editCommitmentName" name="name" required maxlength="160">
             <label class="form-label" for="editCommitmentMerchant">Comerciante (opcional)</label><input class="form-control mb-3" id="editCommitmentMerchant" name="merchant" maxlength="160">
@@ -318,14 +333,14 @@
             
             <div id="editCommitmentError" class="small text-danger mt-2"></div>
         </div>
-        <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
+        <div class="modal-footer border-0 pt-2"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
     </form></div></div>
 </div>
 
 <div class="modal fade" id="renegotiateCommitmentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable commitment-payment-dialog"><div class="modal-content rounded-4 border-0">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable commitment-payment-dialog commitment-modal-dialog"><div class="modal-content rounded-4 border-0 shadow-sm commitment-modal-content">
         <form id="renegotiateCommitmentForm">
-            <div class="modal-header border-0"><div><h2 class="modal-title h5 fw-bold">Renegociar parcelamento</h2><small class="text-secondary" id="renegotiateCommitmentName"></small></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+            <div class="modal-header border-0 pb-2"><div><h2 class="modal-title h5 fw-bold">Renegociar parcelamento</h2><small class="text-secondary" id="renegotiateCommitmentName"></small></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
             <div class="modal-body">
                 
                 <label class="form-label" for="renegotiateRemaining">Saldo a renegociar (€)</label><input class="form-control mb-3" id="renegotiateRemaining" name="remaining_amount" type="number" min="0.01" step="0.01" required>
@@ -335,23 +350,23 @@
                 <div class="commitment-renegotiation-preview mt-3 p-3 rounded-3 bg-body-tertiary"><small class="text-secondary d-block">Valor por prestação</small><strong id="renegotiatePreview">—</strong><small class="text-secondary d-block mt-1" id="renegotiatePreviewNote"></small></div>
                 <div id="renegotiateCommitmentError" class="small text-danger mt-2" role="alert"></div>
             </div>
-            <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button><button type="submit" class="btn btn-primary">Renegociar</button></div>
+            <div class="modal-footer border-0 pt-2"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button><button type="submit" class="btn btn-primary">Renegociar</button></div>
         </form>
     </div></div>
 </div>
 
 <div class="modal fade" id="cancelCommitmentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered"><div class="modal-content rounded-4 border-0">
-        <div class="modal-header border-0"><h2 class="modal-title h5 fw-bold">Cancelar compra</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable commitment-payment-dialog commitment-modal-dialog"><div class="modal-content rounded-4 border-0 shadow-sm commitment-modal-content">
+        <div class="modal-header border-0 pb-2"><h2 class="modal-title h5 fw-bold">Cancelar compra</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
         <div class="modal-body"><p id="cancelCommitmentMessage" class="mb-2"></p><p class="small text-secondary">Pagamentos anteriores não serão reembolsados.</p><div id="cancelCommitmentError" class="small text-danger mt-2" role="alert"></div></div>
-        <div class="modal-footer border-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button><button type="button" class="btn btn-danger" id="confirmCancelCommitment">Cancelar</button></div>
+        <div class="modal-footer border-0 pt-2"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button><button type="button" class="btn btn-danger" id="confirmCancelCommitment">Cancelar</button></div>
     </div></div>
 </div>
 <div class="modal fade" id="archiveCommitmentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered"><div class="modal-content rounded-4 border-0">
-        <div class="modal-header border-0"><h2 class="modal-title h5 fw-bold">Arquivar compra</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable commitment-payment-dialog commitment-modal-dialog"><div class="modal-content rounded-4 border-0 shadow-sm commitment-modal-content">
+        <div class="modal-header border-0 pb-2"><h2 class="modal-title h5 fw-bold">Arquivar compra</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
         <div class="modal-body"><p id="archiveCommitmentMessage" class="mb-2"></p><p class="small text-secondary">Histórico e pagamentos serão preservados.</p><div id="archiveCommitmentError" class="small text-danger mt-2" role="alert"></div></div>
-        <div class="modal-footer border-0">
+        <div class="modal-footer border-0 pt-2">
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button>
             <button type="button" class="btn btn-primary" id="confirmArchiveCommitment">Arquivar</button>
             <button type="button" class="btn btn-outline-danger" id="deleteCommitmentButton">Eliminar</button>
@@ -532,6 +547,54 @@
 .commitment-card-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem;padding:0;margin:0;border:0}
 .commitment-card-actions .btn{min-height:42px;white-space:normal}
 .commitment-renegotiation-preview strong{font-size:1.25rem;font-variant-numeric:tabular-nums}
+
+/* Parcelamentos: pequenos ajustes sobre os componentes Bootstrap partilhados. */
+.commitments-page .commitment-tabs .nav-link {
+    padding: .45rem .8rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 999px;
+    font-size: .8rem;
+    line-height: 1.35;
+    white-space: nowrap;
+}
+.commitments-page .commitment-tabs .nav-link.active {
+    border-color: var(--app-primary);
+    background: var(--app-primary);
+    color: #fff;
+}
+.commitments-page .commitment-modal-content {
+    overflow: hidden;
+}
+.commitments-page .commitment-modal-content .modal-header,
+.commitments-page .commitment-modal-content .modal-footer {
+    padding-right: 1.25rem;
+    padding-left: 1.25rem;
+}
+.commitments-page .commitment-modal-content .modal-body {
+    padding: 1rem 1.25rem;
+}
+.commitments-page .commitment-modal-content .form-label {
+    margin-bottom: .35rem;
+    font-size: .875rem;
+    font-weight: 600;
+}
+.commitments-page .commitment-modal-content .form-control,
+.commitments-page .commitment-modal-content .form-select {
+    min-height: 2.75rem;
+}
+.commitments-page .commitment-modal-content .modal-footer .btn {
+    min-width: 6rem;
+}
+@media (max-width: 575.98px) {
+    .commitments-page .commitment-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: .2rem;
+    }
+    .commitments-page .commitment-tabs .nav-link {
+        flex: 0 0 auto;
+    }
+}
 </style>
 @endpush
 
