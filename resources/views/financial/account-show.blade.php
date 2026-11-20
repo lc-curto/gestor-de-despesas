@@ -207,9 +207,56 @@
     <x-modal-header title="Detalhes do movimento" title-id="accountMovementDetailsTitle" />
     <x-modal-body>
         <x-financial.movement-details-panel prefix="accountMovement" related-label="Conta relacionada" destructive-label="Cancelar" :show-actions="! $isClosedAccount" />
-        <form id="accountMovementEditForm" class="d-none" novalidate>
-
-            </form>
+                    <form id="accountMovementEditForm" class="d-none" novalidate>
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="accountMovementEditBack">Voltar</button>
+                    <h3 class="h6 fw-bold mb-0">Editar movimento</h3>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="accountMovementEditDescription">Descrição</label>
+                    <input class="form-control" id="accountMovementEditDescription" name="description" maxlength="255" required>
+                </div>
+                <div class="mb-3" id="accountMovementEditAccountField" hidden>
+                    <label class="form-label" for="accountMovementEditAccount">Conta de origem</label>
+                    <select class="form-select" id="accountMovementEditAccount" name="source_account_id">
+                        @foreach ($paymentAccounts as $paymentAccount)
+                            <option value="{{ $paymentAccount->id }}">{{ $paymentAccount->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="mb-3" id="accountMovementEditDestinationField" hidden>
+                    <label class="form-label" for="accountMovementEditDestination">Conta de destino</label>
+                    <select class="form-select" id="accountMovementEditDestination" name="destination_account_id">
+                        @foreach ($paymentAccounts as $paymentAccount)
+                            <option value="{{ $paymentAccount->id }}">{{ $paymentAccount->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="mb-3" id="accountMovementEditDirectionField" hidden>
+                    <label class="form-label" for="accountMovementEditDirection">Tipo de ajuste</label>
+                    <select class="form-select" id="accountMovementEditDirection" name="adjustment_direction">
+                        <option value="increase">Aumentar saldo</option>
+                        <option value="decrease">Diminuir saldo</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="accountMovementEditAmount">Valor</label>
+                    <input class="form-control" id="accountMovementEditAmount" name="amount" type="number" min="0.01" step="0.01" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="accountMovementEditDate">Data</label>
+                    <input class="form-control" id="accountMovementEditDate" name="movement_date" type="date" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="accountMovementEditNotes">Observações</label>
+                    <textarea class="form-control" id="accountMovementEditNotes" name="notes" rows="2"></textarea>
+                </div>
+                <div class="small mb-3" id="accountMovementEditFeedback" role="status" aria-live="polite"></div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary flex-fill" id="accountMovementEditCancel">Cancelar</button>
+                    <button type="submit" class="btn btn-primary flex-fill" id="accountMovementEditSubmit">Guardar</button>
+                </div>
+       
     </x-modal-body>
 </x-modal>
 
