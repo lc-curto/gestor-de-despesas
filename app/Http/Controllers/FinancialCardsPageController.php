@@ -25,7 +25,7 @@ class FinancialCardsPageController extends Controller
             && (float) ($card->opening_debt_paid ?? 0) === 0.0
             && (float) ($card->opening_balance ?? 0) === 0.0;
 
-        $invoices = app(\\App\\Services\\Financial\\CardInvoiceService::class)->listInvoices($request->user(), $card->id);
+        $invoices = app(\App\Services\Financial\CardInvoiceService::class)->listInvoices($request->user(), $card->id);
 
         return view('financial.card-show', compact('card', 'invoices'));
     }
