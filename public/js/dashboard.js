@@ -1150,7 +1150,7 @@
         const settleAction = document.getElementById('movementDetailsSettle');
         const editAction = document.getElementById('movementDetailsEdit');
         const deleteAction = document.getElementById('movementDetailsDelete');
-        settleAction.hidden = row.dataset.isInvoicePayment === '1' ||
+        settleAction.hidden = row.dataset.isInvoicePayment === '1' || row.dataset.isInvoiceCharge === '1' ||
             !(['pending', 'partial', 'partially_settled'].includes(status) && Boolean(row.dataset.financialMovementId));
         editAction.hidden = row.dataset.isInvoicePayment === '1' || row.dataset.isInvoiceCharge === '1';
         deleteAction.hidden = row.dataset.isInvoicePayment === '1' || row.dataset.isInvoiceCharge === '1';
