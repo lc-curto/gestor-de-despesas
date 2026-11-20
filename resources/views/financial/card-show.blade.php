@@ -80,7 +80,7 @@
                     $cycleClasses = ['open' => 'text-bg-primary', 'closed' => 'text-bg-secondary'];
                     $currency = $card->currency;
                 @endphp
-                <a href="{{ route('financial.invoices.show', $invoice->id) }}" class="card border rounded-4 text-decoration-none text-body">
+                <a href="{{ route('financial.invoices.show', ['id' => $invoice->id, 'card_page' => $invoices->currentPage()]) }}" class="card border rounded-4 text-decoration-none text-body">
                     <div class="card-body p-3">
                         <div class="d-flex justify-content-between align-items-center gap-2">
                             <div class="min-w-0">
