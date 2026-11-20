@@ -114,7 +114,7 @@
                     </div>
                 </div>
                 <div class="mb-3 d-none" data-field="chargeType"><label class="form-label" for="invoiceChargeType">Tipo de encargo</label><select class="form-select" id="invoiceChargeType"><option value="interest">Juros</option><option value="late_fee">Multa</option><option value="commission">Comissão</option><option value="tax">Imposto</option><option value="other">Outro</option></select></div>
-                <div class="mb-3 d-none" data-field="purchase"><label class="form-label" for="invoicePurchase">Compra a creditar</label><select class="form-select" id="invoicePurchase"></select></div>
+                <div class="mb-3 d-none" data-field="purchase"><label class="form-label" for="invoicePurchase">Compra a creditar</label><select class="form-select" id="invoicePurchase">@foreach($invoice->movimentos as $purchase)<option value="{{ $purchase->id }}">{{ $purchase->description }} · {{ $purchase->amount }} {{ $currency }}</option>@endforeach</select></div>
                 <div class="mb-3 d-none" data-field="statement"><label class="form-label" for="invoiceStatement">Total do extrato</label><input class="form-control" id="invoiceStatement" inputmode="decimal" placeholder="0,00"></div>
                 <div class="alert alert-danger d-none mb-0" id="invoiceActionError" role="alert"></div>
             </div>
@@ -143,13 +143,6 @@
         document.getElementById('invoiceActionContext').textContent='Em falta: '+context.dataset.remaining+' '+context.dataset.currency;
         if(action==='pay')document.getElementById('invoiceAmount').value=context.dataset.remaining;
         document.getElementById('invoiceActionError').classList.add('d-none');
-        if(action==='credit'){
-            const select=document.getElementById('invoicePurchase');select.replaceChildren();
-            fetch('/api/financial/invoices',{credentials:'same-origin',headers:{Accept:'application/json'}}).then(r=>r.json()).then(result=>{
-                const current=(result.data?.data||[]).find(item=>item.id===invoiceId);
-                (current?.movimentos||[]).forEach(m=>{const option=document.createElement('option');option.value=m.id;option.textContent=m.description+' · '+m.amount;select.append(option);});
-            }).catch(()=>{});
-        }
         modal.show();
     }));
     document.getElementById('allocationEnabled').addEventListener('change',e=>document.getElementById('allocationFields').classList.toggle('d-none',!e.target.checked));
