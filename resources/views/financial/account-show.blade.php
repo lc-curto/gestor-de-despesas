@@ -354,6 +354,13 @@ if (accountDeleteModalElement && accountDetailsElement) {
         editFeedback.className = 'small mb-3';
     };
 
+    document.getElementById('accountMovementEditDirection').addEventListener('change', (event) => {
+        if (!activeAccountMovement || activeAccountMovement.dataset.movementType !== 'adjustment') return;
+        const decrease = event.target.value === 'decrease';
+        document.getElementById('accountMovementEditAccountField').hidden = !decrease;
+        document.getElementById('accountMovementEditDestinationField').hidden = decrease;
+    });
+
     editButton.addEventListener('click', enterMovementEditMode);
     document.getElementById('accountMovementEditBack').addEventListener('click', showMovementDetails);
     document.getElementById('accountMovementEditCancel').addEventListener('click', showMovementDetails);
