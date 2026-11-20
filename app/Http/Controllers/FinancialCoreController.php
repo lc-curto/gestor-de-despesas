@@ -381,6 +381,22 @@ class FinancialCoreController extends Controller
         return response()->json(['data' => $updated]);
     }
 
+
+    public function updateInvoiceComponent(Request $request, string $id, string $movementId, CardInvoiceService $service): JsonResponse
+    {
+        $data = $request->validate([
+            'description' => 'sometimes|required|string|max:255',
+            'amount' => 'sometimes|required|numeric|gt:0|decimal:0,2|max:9999999999.99',
+            'movement_date' => 'sometimes|required|date|before_or_equal:today',
+        ]);
+        $invoice = $request->user()->faturas()->whereKey($id)->firstOrFail();
+
+        return response()->json([
+            'data' => $service->updateInvoiceComponent($request->user(), $invoice, $movementId, $data),
+            'message' => 'Movimento da fatura atualizado.',
+        ]);
+    }
+
     public function setCardStatus(Request $request, string $id, FinancialAccountService $service): JsonResponse
     {
         $data = $request->validate(['status' => ['required', Rule::in(['active', 'suspended'])]]);
