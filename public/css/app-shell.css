@@ -1367,6 +1367,8 @@ body.sidebar-collapsed .account-avatar {
 .home-month-summary .summary-value { font-size: 1.1rem; }
 .home-quick-action {
     display: flex;
+    font: inherit;
+    cursor: pointer;
     width: 100%;
     min-height: 4.3rem;
     align-items: center;
