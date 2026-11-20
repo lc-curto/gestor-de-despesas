@@ -11,7 +11,7 @@
 @endphp
 
 <div class="account-history-page">
-    <header class="account-history-heading mb-4">
+    <header class="account-history-heading mb-3">
         <a class="btn btn-link p-0 text-decoration-none d-inline-flex align-items-center gap-2" href="{{ $backUrl }}">
             <i data-lucide="arrow-left" aria-hidden="true"></i>
             <span>Voltar</span>
@@ -33,7 +33,7 @@
         </div>
     </header>
 
-    <section class="card border-0 shadow-sm rounded-4 account-history-summary mb-4" aria-label="Resumo da conta">
+    <section class="card border-0 shadow-sm rounded-4 account-history-summary mb-3" aria-label="Resumo da conta">
         <div class="card-body p-3 p-sm-4">
             <div class="mb-3">
                 @if ($account->type === 'credit_card')
@@ -149,8 +149,31 @@
                         $canCancelMovement = ! $isClosedAccount && ! $requiresOriginManagement && $movement->status !== 'void';
                         $deleteRoute = route('financial.accounts.movement.destroy', $movement->id);
                     @endphp
-                    <article class="list-group-item list-group-item-action account-movement-item d-flex justify-content-between align-items-center gap-3 py-3 px-3 px-sm-4 border-bottom"
-                        tabindex="0" role="button" aria-label="Ver detalhes de {{ $movement->
+                    <article class="list-group-item list-group-item-action account-movement-item py-2 px-3 border-bottom"
+                        tabindex="0" role="button" aria-label="Ver detalhes de {{ $movement->description }}"
+                        data-bs-toggle="modal" data-bs-target="#accountMovementDetailsModal"
+                        data-account-movement
+                        data-description="{{ $movement->description }}"
+                        data-movement-id="{{ $movement->id }}"
+                        data-amount="{{ number_format((float) $movement->amount, 2, '.', '') }}"
+                        data-notes="{{ $movement->notes ?? '' }}"
+                        data-date-iso="{{ $movement->movement_date->format('Y-m-d') }}"
+                        data-editable="{{ $canEditMovement ? '1' : '0' }}"
+                        data-cancelable="{{ $canCancelMovement ? '1' : '0' }}"
+                        data-action-note="{{ $actionNote }}"
+                        data-invoice-payment="{{ $isInvoicePayment ? '1' : '0' }}"
+                        data-source-account-id="{{ $movement->source_account_id }}"
+                        data-destination-account-id="{{ $movement->destination_account_id }}"
+                        data-movement-type="{{ $movement->type }}"
+                        data-adjustment-direction="{{ $movement->adjustment_direction }}"
+                        data-signed-amount="{{ $sign }}{{ number_format((float) $movement->amount, 2, ',', '.') }} {{ $movement->currency ?? $account->currency }}"
+                        data-amount-class="{{ $isOutgoing ? 'text-danger' : 'text-success' }}"
+                        data-category="{{ $category }}"
+                        data-date="{{ $movement->movement_date->format('d/m/Y') }}"
+                        data-kind="{{ $isTransfer ? 'Transferência' : ($movement->type === 'adjustment' ? 'Ajuste de saldo' : ($isOutgoing ? 'Despesa' : 'Receita')) }}"
+                        data-counterpart="{{ $isTransfer ? (($isCurrentAccountSource ? 'Para: ' : 'De: ') . ($isCurrentAccountSource ? ($movement->contaDestino?->name ?? 'Conta encerrada') : ($movement->contaOrigem?->name ?? 'Conta encerrada'))) : '' }}"
+                        data-edit-url="{{ route('financial.movements.update', $movement->id) }}"
+                        data-delete-url="{{ $deleteRoute }}">
                         <x-financial.history-row
                             icon="{{ $isTransfer ? 'arrow-left-right' : ($isOutgoing ? 'arrow-down-left' : 'arrow-up-right') }}"
                             icon-class="{{ $isTransfer ? 'bg-primary-subtle text-primary' : ($isOutgoing ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success') }}"
@@ -496,17 +519,8 @@ document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', as
     color: var(--bs-secondary-color);
 }
 @media (max-width: 575.98px) {
-    .account-history-heading { margin-bottom: 1rem !important; }
-    .account-history-summary { margin-bottom: 1rem !important; }
-    .account-history-summary .card-body { padding: 1rem !important; }
-    .account-history-card .card-body > .d-flex { padding: .75rem 1rem !important; }
-    .account-movement-item { padding: .65rem 1rem !important; }
     .account-history-summary .row > div + div { border-left: 0; }
     .account-history-summary .row > div:not(:first-child) { border-left: 1px solid var(--mb-border); }
-    .account-movement-item { gap: .6rem; }
-    .account-movement-item > .d-flex:first-child { flex: 1 1 0; min-width: 0; gap: .6rem; }
-    .account-movement-actions { max-width: 42%; gap: .25rem; }
-    .account-movement-item .movement-value { font-size: .8rem; }
 }
 </style>
 @endpush
