@@ -215,7 +215,7 @@
         const trigger=event.relatedTarget,edit=trigger?.dataset.mode==='edit';
         form.reset();form.action=edit?trigger.dataset.updateUrl:baseAction;method.value=edit?'PUT':'POST';
         categoryId.value=edit?trigger.dataset.id:'';title.textContent=edit?'Editar categoria':'Nova categoria';
-        submit.textContent=edit?'Guardar alterações':'Guardar categoria';
+        submit.textContent='Guardar';
         document.getElementById('categoryName').value=edit?trigger.dataset.name:'';
         const categoryType=document.getElementById('categoryType');
         categoryType.value=edit?trigger.dataset.type:(trigger?.dataset.type||'despesa');
@@ -244,7 +244,7 @@
     document.addEventListener('DOMContentLoaded',()=>{
         const editId=oldCategoryId;categoryId.value=editId||'';method.value=editId?'PUT':'POST';
         form.action=editId?updateBase+'/'+encodeURIComponent(editId):baseAction;
-        title.textContent=editId?'Editar categoria':'Nova categoria';submit.textContent=editId?'Guardar alterações':'Guardar categoria';
+        title.textContent=editId?'Editar categoria':'Nova categoria';submit.textContent='Guardar';
         document.getElementById('categoryName').value=@json(old('name',''));
         const categoryType=document.getElementById('categoryType');
         categoryType.value=@json(old('type','despesa'));
