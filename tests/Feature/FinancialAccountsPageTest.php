@@ -44,6 +44,50 @@ class FinancialAccountsPageTest extends TestCase
             ->assertDontSee('Conta privada de outro utilizador');
     }
 
+    public function test_active_and_closed_accounts_are_rendered_in_separate_tabs(): void
+    {
+        $user = User::factory()->create();
+        $service = app(FinancialAccountService::class);
+
+        $active = $service->create($user, [
+            'name' => 'Conta ativa',
+            'type' => 'bank',
+            'opening_balance' => '100.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+        $closed = $service->create($user, [
+            'name' => 'Conta encerrada',
+            'type' => 'bank',
+            'opening_balance' => '0.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+        $service->close($user, $closed);
+
+        $response = $this->actingAs($user)->get('/contas')->assertOk()
+            ->assertSee('id="activeAccountsTab"', false)
+            ->assertSee('id="closedAccountsTab"', false)
+            ->assertSee('id="activeAccountsPanel"', false)
+            ->assertSee('id="closedAccountsPanel"', false)
+            ->assertSee('aria-selected="true"', false)
+            ->assertSee('1 conta ativa')
+            ->assertSee('Histórico preservado');
+
+        $html = $response->getContent();
+        $activePanelPosition = strpos($html, 'id="activeAccountsPanel"');
+        $closedPanelPosition = strpos($html, 'id="closedAccountsPanel"');
+        $activeCardPosition = strpos($html, 'data-account-id="'.$active->id.'"');
+        $closedCardPosition = strpos($html, 'data-account-id="'.$closed->id.'"');
+
+        $this->assertNotFalse($activePanelPosition);
+        $this->assertNotFalse($closedPanelPosition);
+        $this->assertNotFalse($activeCardPosition);
+        $this->assertNotFalse($closedCardPosition);
+        $this->assertTrue($activePanelPosition < $activeCardPosition && $activeCardPosition < $closedPanelPosition);
+        $this->assertTrue($closedPanelPosition < $closedCardPosition);
+        $this->assertStringContainsString('data-account-status="active"', $html);
+        $this->assertStringContainsString('data-account-status="closed"', $html);
+    }
+
     public function test_accounts_page_renders_the_close_account_modal_and_form(): void
     {
         $user = User::factory()->create();
