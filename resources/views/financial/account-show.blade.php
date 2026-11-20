@@ -95,7 +95,6 @@
                         data-category="{{ $category }}"
                         data-date="{{ $movement->movement_date->format('d/m/Y') }}"
                         data-kind="{{ $isTransfer ? 'Transferência' : ($movement->type === 'adjustment' ? 'Ajuste de saldo' : ($isOutgoing ? 'Despesa' : 'Receita')) }}"
-                        data-status="{{ $statusLabels[$movement->status] ?? $movement->status }}"
                         data-counterpart="{{ $isTransfer ? (($isCurrentAccountSource ? 'Para: ' : 'De: ') . ($isCurrentAccountSource ? ($movement->contaDestino?->name ?? 'Conta encerrada') : ($movement->contaOrigem?->name ?? 'Conta encerrada'))) : '' }}"
                         data-edit-url="{{ route('financial.movements.update', $movement->id) }}"
                         data-delete-url="{{ $deleteRoute }}">
@@ -285,6 +284,7 @@ if (accountDeleteModalElement && accountDetailsElement) {
         document.getElementById('accountMovementEditNotes').value = activeAccountMovement.dataset.notes;
         const accountField = document.getElementById('accountMovementEditAccountField');
         accountField.hidden = activeAccountMovement.dataset.invoicePayment !== '1';
+        document.getElementById('accountMovementEditAccount').disabled = activeAccountMovement.dataset.invoicePayment !== '1';
         if (activeAccountMovement.dataset.invoicePayment === '1') {
             document.getElementById('accountMovementEditAccount').value = activeAccountMovement.dataset.sourceAccountId;
         }
