@@ -442,8 +442,10 @@ class CardIntegrityRegressionTest extends TestCase
         $cardsPage->assertOk()
             ->assertSee(route('financial.cards.show', $card->id), false)
             ->assertSee('Disponível')
-            ->assertSee('Fecho: dia')
-            ->assertSee('Vencimento: dia')
+            ->assertSee('Limite total')
+            ->assertSee('Fecho')
+            ->assertSee('Vencimento')
+            ->assertSee('Dia')
             ->assertDontSee('cardDetails-', false)
             ->assertDontSee(route('financial.accounts.show', $card->id), false);
 
@@ -478,6 +480,9 @@ class CardIntegrityRegressionTest extends TestCase
             ->assertSee('Pagamentos')
             ->assertSee('Ainda não existem pagamentos.')
             ->assertSee('Pagar fatura')
+            ->assertSee('Encargo')
+            ->assertDontSee('O banco informou a decomposição')
+            ->assertDontSee('allocationEnabled')
             ->assertDontSee('Por pagar');
     }
 
