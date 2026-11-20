@@ -89,7 +89,56 @@ class DashboardController extends Controller
             ->get();
         $availableBalance = $operationalAccounts->sum(fn ($account) => (float) $balances->balance($account));
 
+        // Categorias do mês: agrega o legado e os movimentos do núcleo sem
+        // incluir transferências nem duplicar pagamentos de faturas.
+        $legacyExpenseCategories = DB::table('despesas')
+            ->join('categorias', 'categorias.id', '=', 'despesas.category_id')
+            ->where('despesas.user_id', $user->id)
+            ->whereBetween('despesas.expense_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->whereNotExists(function ($subquery) {
+                $subquery->selectRaw('1')->from('movimentos')
+                    ->where('movimentos.legacy_type', 'despesa')
+                    ->whereColumn('movimentos.legacy_id', 'despesas.id')
+                    ->where('movimentos.status', 'void');
+            })
+            ->selectRaw('categorias.id AS category_id, categorias.name, categorias.icon, categorias.color, SUM(despesas.amount) AS total')
+            ->groupBy('categorias.id', 'categorias.name', 'categorias.icon', 'categorias.color')
+            ->get();
+
+        $canonicalExpenseCategories = $user->movimentos()
+            ->whereNull('movimentos.legacy_type')
+            ->where('movimentos.type', 'expense')
+            ->whereIn('movimentos.status', ['pending', 'partial', 'settled'])
+            ->whereNull('movimentos.settles_movement_id')
+            ->where(fn ($query) => $query->whereNull('movimentos.invoice_id')->orWhere('movimentos.is_settlement_parent', false))
+            ->whereBetween('movimentos.movement_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->whereNotNull('movimentos.category_id')
+            ->join('categorias', 'categorias.id', '=', 'movimentos.category_id')
+            ->selectRaw("categorias.id AS category_id, categorias.name, categorias.icon, categorias.color, SUM(CASE WHEN movimentos.invoice_charge_type = 'credit' THEN -movimentos.amount ELSE movimentos.amount END) AS total")
+            ->groupBy('categorias.id', 'categorias.name', 'categorias.icon', 'categorias.color')
+            ->get();
+
+        $expenseCategories = $legacyExpenseCategories->concat($canonicalExpenseCategories)
+            ->groupBy('category_id')
+            ->map(function ($rows) {
+                $category = $rows->first();
+                $category->total = (float) $rows->sum('total');
+
+                return $category;
+            })
+            ->filter(fn ($category) => $category->total > 0)
+            ->sortByDesc('total')
+            ->take(4)
+            ->values();
+
+        $result = $totalReceitas - $totalDespesas;
+
         $invoicePage = $invoices->listInvoices($user);
+        $nearestOpenInvoice = $invoicePage->getCollection()
+            ->filter(fn ($invoice) => (float) $invoice->remaining_amount > 0)
+            ->sortBy(fn ($invoice) => $invoice->due_date?->timestamp ?? PHP_INT_MAX)
+            ->first();
+
         $openInvoiceTotal = (float) $invoicePage->getCollection()->sum('remaining_amount');
         $openInstallmentTotal = (float) $user->parcelasDivida()
             ->whereIn('status', ['pending', 'partial'])
@@ -149,7 +198,7 @@ class DashboardController extends Controller
         return view('dashboard', compact(
             'inicio', 'mes', 'movimentos', 'movimentosVisiveis', 'movimentosIniciais', 'categorias', 'categoriasDespesa',
             'categoriasReceita', 'expenseCategoryBehaviors', 'filtroTipo', 'filtroCategoria',
-            'totalDespesas', 'totalReceitas', 'availableBalance', 'pendingPaymentTotal', 'pendingPaymentCount', 'totalMovimentos', 'totalDespesasFiltradas', 'totalReceitasFiltradas', 'limit'
+            'totalDespesas', 'totalReceitas', 'result', 'availableBalance', 'expenseCategories', 'nearestOpenInvoice', 'pendingPaymentTotal', 'pendingPaymentCount', 'totalMovimentos', 'totalDespesasFiltradas', 'totalReceitasFiltradas', 'limit'
         ))->with('moeda', $user->currency)->with('accounts', $accounts)->with('accountBalances', $accountBalances);
     }
 
