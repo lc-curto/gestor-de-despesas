@@ -43,11 +43,17 @@
             </div>
         </div>
 
-        <div class="d-flex flex-wrap gap-2 mb-3">
-            <button type="button" class="btn btn-outline-secondary btn-sm js-invoice-action" data-action="charge" @disabled($locked)>Adicionar encargo</button>
-            <button type="button" class="btn btn-outline-secondary btn-sm js-invoice-action" data-action="credit" @disabled($locked || $invoice->movimentos->isEmpty())>Registar crédito</button>
+        <div class="row g-2 mb-3 invoice-secondary-actions">
+            <div class="col-4">
+                <button type="button" class="btn btn-outline-secondary btn-sm w-100 h-100 js-invoice-action" data-action="charge" aria-label="Adicionar encargo" title="Adicionar encargo" @disabled($locked)>Encargo</button>
+            </div>
+            <div class="col-4">
+                <button type="button" class="btn btn-outline-secondary btn-sm w-100 h-100 js-invoice-action" data-action="credit" aria-label="Registar crédito" title="Registar crédito" @disabled($locked || $invoice->movimentos->isEmpty())>Crédito</button>
+            </div>
             @if(! $locked)
-                <button type="button" class="btn btn-outline-secondary btn-sm js-invoice-action" data-action="close" @disabled($invoice->closing_date->isFuture())>Fechar fatura</button>
+                <div class="col-4">
+                    <button type="button" class="btn btn-outline-secondary btn-sm w-100 h-100 js-invoice-action" data-action="close" aria-label="Fechar fatura" title="Fechar fatura" @disabled($invoice->closing_date->isFuture())>Fechar</button>
+                </div>
             @endif
         </div>
 
