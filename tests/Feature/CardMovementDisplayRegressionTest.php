@@ -143,7 +143,7 @@ class CardMovementDisplayRegressionTest extends TestCase
         ]))->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('total', 3)->assertJsonPath('has_more', false);
 
         $page = $this->get(route('dashboard.movimentos', ['mes' => '2026-11', 'limit' => 10]));
-        $page->assertOk()->assertDontSee('Compra canónica no cartão')->assertDontSee('Compra legada no cartão')
+        $page->assertOk()->assertSee('Compra canónica no cartão')->assertSee('Compra legada no cartão')
             ->assertSee('Pagamento da fatura Visa')->assertSee('Despesa legada de banco')
             ->assertSee('Despesa canónica de banco')->assertSee('Receita de banco')
             ->assertSee('data-total="137"', false)->assertSee('data-total="200"', false);
