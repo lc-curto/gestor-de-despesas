@@ -85,9 +85,9 @@
                             || $movement->recurrence_id
                             || ($movement->status === 'partial' && ! $movement->is_settlement_parent));
                         $actionNote = $movement->debt_id || $movement->installment_id
-                            ? 'Este movimento pertence a um parcelamento. Gere-o na área Parcelamentos.'
+                            ? 'Este movimento pertence a um parcelamento. Faça alterações na área Parcelamentos.'
                             : ($movement->recurrence_id
-                                ? 'Este movimento pertence a uma recorrência. Gere-o na área de Recorrências.'
+                                ? 'Este movimento pertence a uma recorrência. Faça alterações na área de Recorrências.'
                                 : ($movement->is_settlement_parent
                                     ? ($canEditSettlementParent
                                         ? 'Podes corrigir os dados. Os pagamentos já registados serão preservados e os saldos recalculados.'
