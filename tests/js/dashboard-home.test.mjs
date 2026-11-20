@@ -71,7 +71,7 @@ test('year navigation and month selection apply only after confirmation', () => 
     ui.element('applyDashboardMonth').click();
 
     assert.equal(ui.element('dashboardMonth').value, '2025-03');
-    assert.equal(ui.element('dashboardMonthLabel').textContent, 'Março 2025');
+    assert.equal(ui.element('dashboardMonthLabel').textContent, 'Março de 2025');
     assert.equal(ui.submitted(), true);
     assert.equal(ui.hidden(), 1);
     ui.dom.window.close();
