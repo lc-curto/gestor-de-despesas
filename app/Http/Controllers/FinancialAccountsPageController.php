@@ -42,9 +42,9 @@ class FinancialAccountsPageController extends Controller
             ->whereKey($id)
             ->firstOrFail();
 
-        $account->current_balance = $account->is_operational && $account->opening_balance !== null
-            ? $balances->balance($account)
-            : null;
+        $account->current_balance = $account->is_operational
+            ? ($account->opening_balance !== null ? $balances->balance($account) : null)
+            : $balances->balanceForHistory($account);
         $paymentAccounts = $request->user()->contasFinanceiras()->whereIn('type', ['bank', 'cash'])->where('is_operational', true)->where('status', 'active')->whereNotNull('opening_balance')->orderBy('name')->get();
         $openingDebtRemaining = max(0, (float) ($account->opening_debt_amount ?? 0) - (float) ($account->opening_debt_paid ?? 0));
 
