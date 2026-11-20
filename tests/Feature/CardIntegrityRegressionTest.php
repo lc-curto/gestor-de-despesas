@@ -445,7 +445,7 @@ class CardIntegrityRegressionTest extends TestCase
             ->assertSee('Fecho: dia')
             ->assertSee('Vencimento: dia')
             ->assertDontSee('cardDetails-', false)
-            ->assertDontSee('Movimentos');
+            ->assertDontSee(route('financial.accounts.show', $card->id), false);
 
         $cardPage = $this->get(route('financial.cards.show', $card->id));
         $cardPage->assertOk()
