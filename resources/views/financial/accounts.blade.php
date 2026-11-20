@@ -6,6 +6,8 @@
 @php
     $typeLabels = ['bank' => 'Banco', 'cash' => 'Dinheiro', 'credit_card' => 'Cartão'];
     $statusLabels = ['active' => 'Ativa', 'setup_pending' => 'Por configurar', 'closed' => 'Encerrada'];
+    $activeAccounts = $accounts->reject(fn ($account) => $account->status === 'closed')->values();
+    $closedAccounts = $accounts->filter(fn ($account) => $account->status === 'closed')->values();
 @endphp
 
 <div class="app-content accounts-rebuilt" id="accountsPage">
@@ -28,73 +30,120 @@
 
     <div id="accountFeedback" class="d-none" role="status" aria-live="polite"></div>
 
-    @if ($accounts->isEmpty())
-        <section class="accounts-empty card border-0 shadow-sm rounded-4">
-            <div class="card-body text-center py-5">
-                <span class="accounts-empty-icon"><i data-lucide="wallet-cards" aria-hidden="true"></i></span>
-                <h2 class="h5 fw-bold mt-3">Ainda não tens contas</h2>
-                <button class="btn btn-primary mt-2" type="button" data-bs-toggle="modal" data-bs-target="#newAccountModal">Adicionar</button>
-            </div>
-        </section>
-    @else
-        <section class="accounts-list-v2" aria-label="As minhas contas">
-            @foreach ($accounts as $account)
-                @php
-                    $icon = $account->type === 'cash' ? 'wallet' : ($account->type === 'credit_card' ? 'credit-card' : 'landmark');
-                @endphp
-                <article class="account-row-v2">
-                    <a class="account-row-link-v2" href="{{ route('financial.accounts.show', $account->id) }}" aria-label="Ver histórico de {{ $account->name }}">
-                        <span class="account-row-icon-v2"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></span>
-                        <div class="account-row-main-v2">
-                            <div class="account-row-title-v2">
-                                <h2 class="account-row-name-v2">{{ $account->name }}</h2>
-                                <span class="account-row-status-v2 {{ $account->status === 'active' ? 'is-active' : ($account->status === 'closed' ? 'is-closed' : 'is-pending') }}">
-                                    {{ $statusLabels[$account->status] ?? $account->status }}
-                                </span>
-                            </div>
-                            <div class="account-row-subtitle-v2">{{ $typeLabels[$account->type] ?? $account->type }} <span aria-hidden="true">·</span> {{ $account->currency }}</div>
-                        </div>
-                    </a>
-                    <div class="account-row-balance-v2">
-                        @if ($account->current_balance !== null)
-                            @if ($account->type === 'credit_card' && $account->credit_limit !== null)
-                                <strong>{{ number_format(max(0, (float) $account->credit_limit - abs((float) $account->current_balance)), 2, ',', '.') }} <small>{{ $account->currency }}</small></strong>
-                                <span>Crédito disponível</span>
-                            @else
-                                <strong>{{ number_format((float) $account->current_balance, 2, ',', '.') }} <small>{{ $account->currency }}</small></strong>
-                                <span>{{ $account->type === 'credit_card' ? 'Dívida utilizada' : 'Saldo atual' }}</span>
+    <div class="accounts-tabs nav nav-pills nav-fill" id="accountsTabs" role="tablist" aria-label="Tipo de conta">
+        <button
+            class="nav-link active"
+            id="activeAccountsTab"
+            type="button"
+            role="tab"
+            data-bs-toggle="tab"
+            data-bs-target="#activeAccountsPanel"
+            aria-controls="activeAccountsPanel"
+            aria-selected="true"
+        >
+            <span>Ativas</span>
+            <span class="accounts-tab-count">{{ $activeAccounts->count() }}</span>
+        </button>
+        <button
+            class="nav-link"
+            id="closedAccountsTab"
+            type="button"
+            role="tab"
+            data-bs-toggle="tab"
+            data-bs-target="#closedAccountsPanel"
+            aria-controls="closedAccountsPanel"
+            aria-selected="false"
+        >
+            <span>Encerradas</span>
+            <span class="accounts-tab-count">{{ $closedAccounts->count() }}</span>
+        </button>
+    </div>
+
+    <div class="tab-content accounts-tab-content" id="accountsTabContent">
+        @foreach (['active' => $activeAccounts, 'closed' => $closedAccounts] as $accountGroup => $groupAccounts)
+            <section
+                class="tab-pane fade {{ $accountGroup === 'active' ? 'show active' : '' }}"
+                id="{{ $accountGroup === 'active' ? 'activeAccountsPanel' : 'closedAccountsPanel' }}"
+                role="tabpanel"
+                aria-labelledby="{{ $accountGroup === 'active' ? 'activeAccountsTab' : 'closedAccountsTab' }}"
+                tabindex="0"
+            >
+                @if ($groupAccounts->isEmpty())
+                    <section class="accounts-empty card border-0 shadow-sm rounded-4">
+                        <div class="card-body text-center py-5">
+                            <span class="accounts-empty-icon"><i data-lucide="wallet-cards" aria-hidden="true"></i></span>
+                            <h2 class="h5 fw-bold mt-3">
+                                {{ $accountGroup === 'active' ? 'Não tens contas ativas' : 'Ainda não existem contas encerradas' }}
+                            </h2>
+                            @if ($accountGroup === 'active')
+                                <button class="btn btn-primary mt-2" type="button" data-bs-toggle="modal" data-bs-target="#newAccountModal">Adicionar</button>
                             @endif
-                        @elseif ($account->type === 'credit_card')
-                            <strong>—</strong><span>Cartão</span>
-                        @else
-                            <strong>—</strong><span>Saldo por configurar</span>
-                        @endif
-                    </div>
-                    @if ($account->is_operational && $account->status !== 'closed')
-                        <div class="dropdown account-row-menu-v2">
-                            <button class="account-row-menu-v2-button" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações para {{ $account->name }}">
-                                <span>Ações</span><i data-lucide="chevron-down" aria-hidden="true"></i>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                <li><button class="dropdown-item js-edit-account" type="button" data-bs-toggle="modal" data-bs-target="#renameAccountModal"
-                                    data-endpoint="{{ route('financial.accounts.update', $account->id) }}"
-                                    data-settings-endpoint="{{ route('financial.accounts.settings', $account->id) }}"
-                                    data-opening-endpoint="{{ route('financial.accounts.opening-balance', $account->id) }}"
-                                    data-name="{{ $account->name }}" data-allowed="{{ $account->allow_negative_balance ? '1' : '0' }}"
-                                    data-opening="{{ $account->opening_balance !== null ? '1' : '0' }}"
-                                    data-opening-value="{{ $account->opening_balance }}" data-opening-date="{{ $account->opening_balance_date?->format('d/m/Y') }}" data-opening-iso="{{ $account->opening_balance_date?->toDateString() }}" data-movements="{{ $account->movimentos_origem_count + $account->movimentos_destino_count }}"
-                                    data-type="{{ $account->type }}" data-currency="{{ $account->currency }}">Editar</button></li>
-                                @if (in_array($account->type, ['bank', 'cash'], true) && $account->status === 'active' && $account->opening_balance !== null)
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><button class="dropdown-item text-danger js-close-account" type="button" data-bs-toggle="modal" data-bs-target="#closeAccountModal" data-endpoint="{{ route('financial.accounts.close', $account->id) }}" data-id="{{ $account->id }}" data-name="{{ $account->name }}" data-balance="{{ number_format((float) ($account->current_balance ?? 0), 2, '.', '') }}" data-currency="{{ $account->currency }}">Encerrar</button></li>
-                                @endif
-                            </ul>
                         </div>
-                    @endif
-                </article>
-            @endforeach
-        </section>
-    @endif
+                    </section>
+                @else
+                    <section class="accounts-list-v2" aria-label="{{ $accountGroup === 'active' ? 'Contas ativas' : 'Contas encerradas' }}">
+                        @foreach ($groupAccounts as $account)
+                            @php
+                                $icon = $account->type === 'cash' ? 'wallet' : ($account->type === 'credit_card' ? 'credit-card' : 'landmark');
+                            @endphp
+                            <article class="account-row-v2" data-account-id="{{ $account->id }}" data-account-status="{{ $account->status }}">
+                                <a class="account-row-link-v2" href="{{ route('financial.accounts.show', $account->id) }}" aria-label="Ver histórico de {{ $account->name }}">
+                                    <span class="account-row-icon-v2"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></span>
+                                    <div class="account-row-main-v2">
+                                        <div class="account-row-title-v2">
+                                            <h2 class="account-row-name-v2">{{ $account->name }}</h2>
+                                            <span class="account-row-status-v2 {{ $account->status === 'active' ? 'is-active' : ($account->status === 'closed' ? 'is-closed' : 'is-pending') }}">
+                                                {{ $statusLabels[$account->status] ?? $account->status }}
+                                            </span>
+                                        </div>
+                                        <div class="account-row-subtitle-v2">{{ $typeLabels[$account->type] ?? $account->type }} <span aria-hidden="true">·</span> {{ $account->currency }}</div>
+                                    </div>
+                                </a>
+                                <div class="account-row-balance-v2">
+                                    @if ($accountGroup === 'closed')
+                                        <strong>—</strong><span>Histórico preservado</span>
+                                    @elseif ($account->current_balance !== null)
+                                        @if ($account->type === 'credit_card' && $account->credit_limit !== null)
+                                            <strong>{{ number_format(max(0, (float) $account->credit_limit - abs((float) $account->current_balance)), 2, ',', '.') }} <small>{{ $account->currency }}</small></strong>
+                                            <span>Crédito disponível</span>
+                                        @else
+                                            <strong>{{ number_format((float) $account->current_balance, 2, ',', '.') }} <small>{{ $account->currency }}</small></strong>
+                                            <span>{{ $account->type === 'credit_card' ? 'Dívida utilizada' : 'Saldo atual' }}</span>
+                                        @endif
+                                    @elseif ($account->type === 'credit_card')
+                                        <strong>—</strong><span>Cartão</span>
+                                    @else
+                                        <strong>—</strong><span>Saldo por configurar</span>
+                                    @endif
+                                </div>
+                                @if ($accountGroup === 'active' && $account->is_operational && $account->status !== 'closed')
+                                    <div class="dropdown account-row-menu-v2">
+                                        <button class="account-row-menu-v2-button" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações para {{ $account->name }}">
+                                            <span>Ações</span><i data-lucide="chevron-down" aria-hidden="true"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                            <li><button class="dropdown-item js-edit-account" type="button" data-bs-toggle="modal" data-bs-target="#renameAccountModal"
+                                                data-endpoint="{{ route('financial.accounts.update', $account->id) }}"
+                                                data-settings-endpoint="{{ route('financial.accounts.settings', $account->id) }}"
+                                                data-opening-endpoint="{{ route('financial.accounts.opening-balance', $account->id) }}"
+                                                data-name="{{ $account->name }}" data-allowed="{{ $account->allow_negative_balance ? '1' : '0' }}"
+                                                data-opening="{{ $account->opening_balance !== null ? '1' : '0' }}"
+                                                data-opening-value="{{ $account->opening_balance }}" data-opening-date="{{ $account->opening_balance_date?->format('d/m/Y') }}" data-opening-iso="{{ $account->opening_balance_date?->toDateString() }}" data-movements="{{ $account->movimentos_origem_count + $account->movimentos_destino_count }}"
+                                                data-type="{{ $account->type }}" data-currency="{{ $account->currency }}">Editar</button></li>
+                                            @if (in_array($account->type, ['bank', 'cash'], true) && $account->status === 'active' && $account->opening_balance !== null)
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li><button class="dropdown-item text-danger js-close-account" type="button" data-bs-toggle="modal" data-bs-target="#closeAccountModal" data-endpoint="{{ route('financial.accounts.close', $account->id) }}" data-id="{{ $account->id }}" data-name="{{ $account->name }}" data-balance="{{ number_format((float) ($account->current_balance ?? 0), 2, '.', '') }}" data-currency="{{ $account->currency }}">Encerrar</button></li>
+                                            @endif
+                                        </ul>
+                                    </div>
+                                @endif
+                            </article>
+                        @endforeach
+                    </section>
+                @endif
+            </section>
+        @endforeach
+    </div>
 
 </div>
 
@@ -306,6 +355,52 @@
 <style>
 /* A página segue a mesma hierarquia de Cartões, sem depender de regras globais. */
 .accounts-rebuilt { width: 100%; min-width: 0; }
+.accounts-rebuilt .accounts-tabs {
+    display: flex;
+    gap: .25rem;
+    padding: .25rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--mb-border);
+    border-radius: .85rem;
+    background: var(--mb-page);
+}
+.accounts-rebuilt .accounts-tabs .nav-link {
+    display: inline-flex;
+    flex: 1 1 50%;
+    align-items: center;
+    justify-content: center;
+    gap: .45rem;
+    min-height: 2.75rem;
+    padding: .55rem .75rem;
+    border: 0;
+    border-radius: .65rem;
+    background: transparent;
+    color: var(--mb-muted);
+    font-size: .9rem;
+    font-weight: 650;
+}
+.accounts-rebuilt .accounts-tabs .nav-link.active {
+    background: var(--mb-surface);
+    color: var(--mb-primary);
+    box-shadow: var(--mb-shadow);
+}
+.accounts-rebuilt .accounts-tab-count {
+    display: inline-flex;
+    min-width: 1.4rem;
+    height: 1.4rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0 .35rem;
+    border-radius: 999px;
+    background: var(--mb-page);
+    color: inherit;
+    font-size: .72rem;
+    font-weight: 700;
+}
+.accounts-rebuilt .accounts-tabs .nav-link.active .accounts-tab-count {
+    background: rgba(99,91,255,.1);
+}
+.accounts-rebuilt .accounts-tab-content { min-width: 0; }
 .accounts-rebuilt .accounts-header-v2 { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 0 0 1.25rem; }
 .accounts-rebuilt .accounts-header-v2 > :first-child { min-width: 0; flex: 1 1 auto; }
 .accounts-rebuilt .accounts-header-v2 h1 { display: block; margin: 0 0 .25rem; color: var(--mb-text); font-size: clamp(1.45rem, 2.2vw, 1.9rem); line-height: 1.2; }
