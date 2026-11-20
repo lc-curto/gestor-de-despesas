@@ -1207,7 +1207,7 @@ html {
 }
 .category-color-choice input:checked + span { outline: 3px solid var(--app-primary); outline-offset: 2px; }
 .category-color-choice input:focus-visible + span { outline: 3px solid var(--app-primary); outline-offset: 3px; }
-.category-modal-content { border: 0; border-radius: 1.1rem; box-shadow: var(--app-shadow); }
+.category-modal-content { border: 0; border-radius: 0; box-shadow: var(--app-shadow); }
 .category-modal-content .modal-header,
 .category-modal-content .modal-footer { padding: 1.25rem 1.5rem; }
 .category-modal-content .modal-body { padding: 1.5rem; }
@@ -1216,11 +1216,36 @@ html {
   .category-tabs { width: 100%; }
   .category-tabs .nav-item { flex: 1 1 0; }
   .category-tabs .nav-link { width: 100%; }
-  .category-modal-content { min-height: 100%; border-radius: 0; }
-  #categoryModal .modal-dialog { width: 100%; max-width: none; min-height: 100%; margin: 0; }
-  #categoryModal .modal-content { min-height: 100svh; border-radius: 0; }
-  #categoryModal .modal-body { flex: 1 1 auto; }
-  #categoryModal .modal-footer { padding-bottom: max(1.25rem, env(safe-area-inset-bottom)); }
+  #categoryModal .modal-dialog {
+    width: calc(100% - 2rem);
+    max-width: 32rem;
+    max-height: 90svh;
+    margin: auto;
+  }
+  #categoryModal .modal-content {
+    min-height: 0;
+    max-height: 90svh;
+    border-radius: 0;
+    overflow: hidden;
+  }
+  #categoryModal #categoryForm {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #categoryModal .modal-header,
+  #categoryModal .modal-footer { flex: 0 0 auto; }
+  #categoryModal .modal-body {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  #categoryModal .modal-footer {
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  }
 }
 
 
@@ -1341,3 +1366,43 @@ body:has(.category-grid) #income-tab.active {
     background: #198754;
     box-shadow: 0 2px 7px rgba(25, 135, 84, .22);
 }
+
+
+/* Seletor de ícones das categorias */
+.category-icon-picker {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: .4rem;
+}
+.category-icon-picker.is-scrollable {
+  max-height: 11.25rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: .15rem .2rem .15rem 0;
+}
+.category-icon-option {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 2.65rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--app-border);
+  border-radius: .4rem;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  font-size: 1.15rem;
+}
+.category-icon-option:hover {
+  border-color: var(--app-primary);
+  color: var(--app-primary);
+}
+.category-icon-option.is-selected {
+  border: 2px solid var(--app-primary);
+  background: color-mix(in srgb, var(--app-primary) 9%, var(--bs-body-bg));
+  color: var(--app-primary);
+}
+.category-icon-option:focus-visible {
+  outline: 2px solid var(--app-primary);
+  outline-offset: 2px;
+}
+#categoryIconToggle[hidden] { display: none !important; }
