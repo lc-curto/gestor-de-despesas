@@ -23,7 +23,7 @@
             <h1>Rota Financeira</h1>
         </div>
         <div class="financial-route-actions">
-            <button type="button" class="btn btn-primary" id="routeNewMovement"><i data-lucide="plus" aria-hidden="true"></i><span class="route-new-label">Novo movimento</span></button>
+            <button type="button" class="btn btn-primary" id="routeNewMovement"><i data-lucide="plus" aria-hidden="true"></i><span class="route-new-label">Novo</span></button>
         </div>
     </header>
 
@@ -32,11 +32,11 @@
             <button type="button" class="btn btn-sm btn-light" id="routePrevious" aria-label="Período anterior"><i data-lucide="chevron-left"></i></button>
             <strong id="routePeriodLabel">{{ $mode === 3 ? $months->first()->locale('pt_PT')->translatedFormat('F') . ' — ' . $months->last()->locale('pt_PT')->translatedFormat('F Y') : $months->first()->locale('pt_PT')->translatedFormat('F Y') }}</strong>
             <button type="button" class="btn btn-sm btn-light" id="routeNext" aria-label="Período seguinte"><i data-lucide="chevron-right"></i></button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" id="routeToday">Ir para hoje</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="routeToday">Hoje</button>
         </div>
         <div class="btn-group btn-group-sm" role="group" aria-label="Visualização">
-            <button type="button" class="btn {{ $mode === 3 ? 'btn-primary' : 'btn-outline-secondary' }}" data-route-mode="3">3 meses</button>
-            <button type="button" class="btn {{ $mode === 1 ? 'btn-primary' : 'btn-outline-secondary' }}" data-route-mode="1">1 mês</button>
+            <button type="button" class="btn {{ $mode === 3 ? 'btn-primary' : 'btn-outline-secondary' }}" data-route-mode="3">Trimestre</button>
+            <button type="button" class="btn {{ $mode === 1 ? 'btn-primary' : 'btn-outline-secondary' }}" data-route-mode="1">Mês</button>
         </div>
     </div>
 
@@ -103,7 +103,7 @@
     <div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content route-sheet-content">
         <div class="modal-header"><div><h2 class="modal-title h5 fw-bold" id="routeDayTitle">Detalhes do dia</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
         <div class="modal-body"><div class="route-day-balance" id="routeDayBalance"><span class="route-day-balance__label">Saldo previsto no fim do dia</span><strong id="routeDayBalanceValue"></strong></div><div class="route-filter-tabs" id="routeFilterTabs">
-            <button type="button" class="active" data-day-filter="all">Todos</button><button type="button" data-day-filter="income">Entradas</button><button type="button" data-day-filter="fixed">Gasto fixo</button><button type="button" data-day-filter="variable">Variável</button>
+            <button type="button" class="active" data-day-filter="all">Todos</button><button type="button" data-day-filter="income">Entradas</button><button type="button" data-day-filter="fixed">Fixo</button><button type="button" data-day-filter="variable">Variável</button>
         </div><section id="routeOverdueSection" class="route-overdue-section" hidden>
             <div class="route-overdue-heading"><strong>Vencidas</strong><span id="routeOverdueCount"></span></div>
             <div id="routeOverdueMovements" class="route-overdue-list"></div>
@@ -131,7 +131,7 @@
                     <div class="col-12"><label for="routeNotes" class="form-label">Observação (opcional)</label><textarea id="routeNotes" name="notes" class="form-control" rows="2" placeholder="Adicionar observação..."></textarea></div>
                 </div><div class="small text-danger mt-3" id="routeFormError" role="alert"></div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar movimento</button></div>
+            <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
         </form>
     </div></div>
 </div>
