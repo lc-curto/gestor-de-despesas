@@ -150,53 +150,18 @@
                         $deleteRoute = route('financial.accounts.movement.destroy', $movement->id);
                     @endphp
                     <article class="list-group-item list-group-item-action account-movement-item d-flex justify-content-between align-items-center gap-3 py-3 px-3 px-sm-4 border-bottom"
-                        tabindex="0" role="button" aria-label="Ver detalhes de {{ $movement->description }}"
-                        data-bs-toggle="modal" data-bs-target="#accountMovementDetailsModal"
-                        data-account-movement
-                        data-description="{{ $movement->description }}"
-                        data-movement-id="{{ $movement->id }}"
-                        data-amount="{{ number_format((float) $movement->amount, 2, '.', '') }}"
-                        data-notes="{{ $movement->notes ?? '' }}"
-                        data-date-iso="{{ $movement->movement_date->format('Y-m-d') }}"
-                        data-editable="{{ $canEditMovement ? '1' : '0' }}"
-                        data-cancelable="{{ $canCancelMovement ? '1' : '0' }}"
-                        data-action-note="{{ $actionNote }}"
-                        data-invoice-payment="{{ $isInvoicePayment ? '1' : '0' }}"
-                        data-source-account-id="{{ $movement->source_account_id }}"
-                        data-destination-account-id="{{ $movement->destination_account_id }}"
-                        data-movement-type="{{ $movement->type }}"
-                        data-adjustment-direction="{{ $movement->adjustment_direction }}"
-                        data-signed-amount="{{ $sign }}{{ number_format((float) $movement->amount, 2, ',', '.') }} {{ $movement->currency ?? $account->currency }}"
-                        data-amount-class="{{ $isOutgoing ? 'text-danger' : 'text-success' }}"
-                        data-category="{{ $category }}"
-                        data-date="{{ $movement->movement_date->format('d/m/Y') }}"
-                        data-kind="{{ $isTransfer ? 'Transferência' : ($movement->type === 'adjustment' ? 'Ajuste de saldo' : ($isOutgoing ? 'Despesa' : 'Receita')) }}"
-                        data-counterpart="{{ $isTransfer ? (($isCurrentAccountSource ? 'Para: ' : 'De: ') . ($isCurrentAccountSource ? ($movement->contaDestino?->name ?? 'Conta encerrada') : ($movement->contaOrigem?->name ?? 'Conta encerrada'))) : '' }}"
-                        data-edit-url="{{ route('financial.movements.update', $movement->id) }}"
-                        data-delete-url="{{ $deleteRoute }}">
-                        <div class="d-flex align-items-center gap-3 min-w-0">
-                            <div class="account-movement-icon rounded-3 flex-shrink-0 d-inline-flex align-items-center justify-content-center {{ $isTransfer ? 'bg-primary-subtle text-primary' : ($isOutgoing ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success') }}" aria-hidden="true">
-                                <i data-lucide="{{ $isTransfer ? 'arrow-left-right' : ($isOutgoing ? 'arrow-down-left' : 'arrow-up-right') }}"></i>
-                            </div>
-                            <div class="min-w-0 flex-grow-1">
-                                <h3 class="account-movement-description h6 fw-semibold mb-1">{{ $movement->description }}</h3>
-                                <p class="small text-secondary mb-1">{{ $category }} · {{ $movement->movement_date->format('d/m/Y') }}</p>
-                                @if ($movement->status === 'pending')
-                                    <span class="badge rounded-pill text-bg-warning">Pendente</span>
-                                @elseif ($movement->status === 'void')
-                                    <span class="badge rounded-pill text-bg-secondary">Anulado</span>
-                                @endif
-                                @if ($isTransfer)
-                                    <p class="small text-secondary mb-0 text-truncate movement-transfer-counterpart">
-                                        {{ $isCurrentAccountSource ? 'Para' : 'De' }}: {{ $isCurrentAccountSource ? ($movement->contaDestino?->name ?? 'Conta encerrada') : ($movement->contaOrigem?->name ?? 'Conta encerrada') }}
-                                    </p>
-                                @endif
-                            </div>
-                        </div>
-                        <div class="expense-actions account-movement-actions d-flex align-items-center justify-content-end gap-2 flex-shrink-0">
-                            <strong class="{{ $isOutgoing ? 'text-danger' : 'text-success' }} text-nowrap movement-value">{{ $sign }}{{ number_format((float) $movement->amount, 2, ',', '.') }} {{ $movement->currency ?? $account->currency }}</strong>
-                            <span class="text-secondary" aria-hidden="true"><i data-lucide="chevron-right"></i></span>
-                        </div>
+                        tabindex="0" role="button" aria-label="Ver detalhes de {{ $movement->
+                        <x-financial.history-row
+                            icon="{{ $isTransfer ? 'arrow-left-right' : ($isOutgoing ? 'arrow-down-left' : 'arrow-up-right') }}"
+                            icon-class="{{ $isTransfer ? 'bg-primary-subtle text-primary' : ($isOutgoing ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success') }}"
+                            :title="$movement->description"
+                            :subtitle="$category . ' · ' . $movement->movement_date->format('d/m/Y')"
+                            :amount="$sign . number_format((float) $movement->amount, 2, ',', '.') . ' ' . ($movement->currency ?? $account->currency)"
+                            :amount-class="$isOutgoing ? 'text-danger' : 'text-success'"
+                            :status="$movement->status === 'pending' ? 'Pendente' : ($movement->status === 'void' ? 'Anulado' : null)"
+                            :status-class="$movement->status === 'pending' ? 'text-bg-warning' : 'text-bg-secondary'"
+                            :counterpart="$isTransfer ? (($isCurrentAccountSource ? 'Para: ' : 'De: ') . ($isCurrentAccountSource ? ($movement->contaDestino?->name ?? 'Conta encerrada') : ($movement->contaOrigem?->name ?? 'Conta encerrada'))) : null"
+                        />
                     </article>
                 @empty
                     <div class="empty-state text-center py-5">
@@ -511,7 +476,7 @@ document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', as
     outline: 2px solid var(--mb-primary);
     outline-offset: -2px;
 }
-.account-movement-icon { width: 2.65rem; height: 2.65rem; }
+.account-movement-icon { width: 2.25rem; height: 2.25rem; }
 .account-movement-description { overflow-wrap: anywhere; }
 .account-movement-actions { max-width: 48%; }
 .account-movement-item .movement-value { font-size: .9rem; }
@@ -531,6 +496,11 @@ document.getElementById('openingDebtPaymentForm')?.addEventListener('submit', as
     color: var(--bs-secondary-color);
 }
 @media (max-width: 575.98px) {
+    .account-history-heading { margin-bottom: 1rem !important; }
+    .account-history-summary { margin-bottom: 1rem !important; }
+    .account-history-summary .card-body { padding: 1rem !important; }
+    .account-history-card .card-body > .d-flex { padding: .75rem 1rem !important; }
+    .account-movement-item { padding: .65rem 1rem !important; }
     .account-history-summary .row > div + div { border-left: 0; }
     .account-history-summary .row > div:not(:first-child) { border-left: 1px solid var(--mb-border); }
     .account-movement-item { gap: .6rem; }
