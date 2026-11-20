@@ -21,7 +21,7 @@
             <input id="email" name="email" type="email" class="form-control form-control-lg"
                    value="{{ old('email') }}" autocomplete="email" required autofocus>
         </div>
-        <button class="btn btn-primary btn-lg w-100" type="submit">Enviar ligação</button>
+        <button class="btn btn-primary btn-lg w-100" type="submit">Enviar</button>
     </form>
     <p class="text-center mt-4 mb-0"><a href="{{ route('login') }}" class="text-decoration-none">Voltar ao início de sessão</a></p>
 @endsection
