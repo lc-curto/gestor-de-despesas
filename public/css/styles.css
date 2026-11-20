@@ -1216,36 +1216,6 @@ html {
   .category-tabs { width: 100%; }
   .category-tabs .nav-item { flex: 1 1 0; }
   .category-tabs .nav-link { width: 100%; }
-  #categoryModal .modal-dialog {
-    width: calc(100% - 2rem);
-    max-width: 32rem;
-    max-height: 90svh;
-    margin: auto;
-  }
-  #categoryModal .modal-content {
-    min-height: 0;
-    max-height: 90svh;
-    border-radius: 0;
-    overflow: hidden;
-  }
-  #categoryModal #categoryForm {
-    display: flex;
-    min-height: 0;
-    flex: 1 1 auto;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  #categoryModal .modal-header,
-  #categoryModal .modal-footer { flex: 0 0 auto; }
-  #categoryModal .modal-body {
-    min-height: 0;
-    flex: 1 1 auto;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-  #categoryModal .modal-footer {
-    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
-  }
 }
 
 
