@@ -44,7 +44,7 @@
                 <div class="sidebar-utility-actions">
                     <button type="button" class="btn btn-outline-secondary sidebar-utility-button d-none"
                         id="installAppButton" aria-label="Instalar aplicação" title="Instalar aplicação">
-                        <i data-lucide="download" aria-hidden="true"></i><span>Instalar aplicação</span>
+                        <i data-lucide="download" aria-hidden="true"></i><span>Instalar</span>
                     </button>
                     <button type="button" class="btn btn-outline-secondary sidebar-utility-button"
                         id="themeToggle" aria-label="Alternar tema" title="Alternar tema">
@@ -115,8 +115,8 @@
     <div class="offcanvas offcanvas-bottom mobile-action-sheet" tabindex="-1" id="mobileNewMenu" aria-labelledby="mobileNewMenuTitle">
         <div class="offcanvas-header"><h2 class="offcanvas-title h5 fw-bold" id="mobileNewMenuTitle">Novo registo</h2><button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button></div>
         <div class="offcanvas-body pt-0">
-            <a class="mobile-sheet-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'despesa']) }}"><i data-lucide="arrow-down-right" aria-hidden="true"></i><span><strong>Nova despesa</strong></span></a>
-            <a class="mobile-sheet-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'receita']) }}"><i data-lucide="arrow-up-right" aria-hidden="true"></i><span><strong>Nova receita</strong></span></a>
+            <a class="mobile-sheet-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'despesa']) }}"><i data-lucide="arrow-down-right" aria-hidden="true"></i><span><strong>Despesa</strong></span></a>
+            <a class="mobile-sheet-action" href="{{ route('dashboard.movimentos', ['novo' => 1, 'tipo' => 'receita']) }}"><i data-lucide="arrow-up-right" aria-hidden="true"></i><span><strong>Receita</strong></span></a>
         </div>
     </div>
 
@@ -154,7 +154,7 @@
                     <i data-lucide="moon" aria-hidden="true"></i><span>Tema</span><i data-lucide="chevron-right" aria-hidden="true"></i>
                 </button>
                 <form method="POST" action="{{ route('logout') }}">@csrf
-                    <button type="submit" class="mobile-more-logout"><i data-lucide="log-out" aria-hidden="true"></i> Terminar sessão</button>
+                    <button type="submit" class="mobile-more-logout"><i data-lucide="log-out" aria-hidden="true"></i> Sair</button>
                 </form>
             </div>
         </div>
