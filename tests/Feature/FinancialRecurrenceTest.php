@@ -212,7 +212,7 @@ class FinancialRecurrenceTest extends TestCase
         $this->putJson('/api/financial/movements/'.$movement->id.'/settle', ['source_account_id' => $account->id])->assertOk();
 
         $siblingsBefore = $user->movimentos()->where('recurrence_id', $movement->recurrence_id)
-            ->whereKeyNot($movement->id)->get()->keyBy('id')->map(fn ($item) => [$item->amount, $item->movement_date->toDateString()])->all();
+            ->where('id', '!=', $movement->id)->get()->keyBy('id')->map(fn ($item) => [$item->amount, $item->movement_date->toDateString()])->all();
 
         $this->putJson('/api/financial/movements/'.$movement->id, [
             'description' => 'Internet corrigida',
@@ -224,7 +224,7 @@ class FinancialRecurrenceTest extends TestCase
         $this->assertSame('35.00', $movement->fresh()->amount);
         $this->assertSame(3, $user->movimentos()->where('recurrence_id', $movement->recurrence_id)->count());
         $this->assertSame($siblingsBefore, $user->movimentos()->where('recurrence_id', $movement->recurrence_id)
-            ->whereKeyNot($movement->id)->get()->keyBy('id')->map(fn ($item) => [$item->amount, $item->movement_date->toDateString()])->all());
+            ->where('id', '!=', $movement->id)->get()->keyBy('id')->map(fn ($item) => [$item->amount, $item->movement_date->toDateString()])->all());
         $this->assertDatabaseHas('despesas', [
             'id' => $movement->legacy_id,
             'description' => 'Internet corrigida',

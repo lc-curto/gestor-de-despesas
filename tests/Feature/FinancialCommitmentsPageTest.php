@@ -321,7 +321,7 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->assertSame('partial', $first->fresh()->status);
         $this->assertSame('31.67', $first->fresh()->amount);
         $this->assertSame('75.00', number_format((float) $debt->fresh()->parcelas()->sum('amount'), 2, '.', ''));
-        $this->assertSame('10.00', app(AccountBalanceService::class)->balance($account->fresh()) === '190.00' ? '10.00' : 'unexpected');
+        $this->assertSame('190.00', app(AccountBalanceService::class)->balance($account->fresh()));
     }
 
     public function test_renegotiation_preserves_paid_parts_and_replaces_only_future_installments(): void
