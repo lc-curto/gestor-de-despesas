@@ -200,6 +200,56 @@
 </div>
 @endif
 
+{{-- Edição de conta: utiliza a estrutura de modal reutilizável do sistema. --}}
+<x-modal id="renameAccountModal" aria-labelledby="editAccountTitle">
+    <form id="accountNameForm">
+        <div class="modal-header border-0 pb-0">
+            <div>
+                <h2 class="modal-title h5 fw-bold" id="editAccountTitle">Editar conta</h2>
+                <p class="small text-secondary mb-0" id="editAccountDescription">Atualiza os dados da tua conta.</p>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+            <div class="mb-3">
+                <label for="editAccountName" class="form-label">Nome da conta</label>
+                <input id="editAccountName" name="name" class="form-control" maxlength="120" required>
+            </div>
+
+            <div id="editOpeningBalanceFields" class="mb-3">
+                <label for="editOpeningBalance" class="form-label">Saldo inicial</label>
+                <input id="editOpeningBalance" name="opening_balance" type="text" inputmode="decimal"
+                    class="form-control" data-money="opening" data-money-optional="true"
+                    placeholder="Ex.: 1.000,00">
+                <div class="form-text">Altera o saldo de partida sem apagar os movimentos registados.</div>
+                <div class="row g-3 mt-1">
+                    <div class="col-12">
+                        <label for="editOpeningDate" class="form-label">Data do saldo inicial</label>
+                        <input id="editOpeningDate" name="opening_balance_date" type="date" class="form-control"
+                            max="{{ now()->toDateString() }}" value="{{ now()->toDateString() }}">
+                    </div>
+                </div>
+                <div id="editOpeningSummary" class="small text-secondary mt-2 d-none">
+                    Saldo inicial atual: <strong id="editOpeningSummaryValue"></strong>
+                    <span class="d-block" id="editOpeningSummaryDate"></span>
+                </div>
+            </div>
+
+            <div id="editNegativeBalanceField" class="form-check mt-3">
+                <input class="form-check-input" type="checkbox" id="editAllowNegativeBalance" name="allow_negative_balance" value="1">
+                <label class="form-check-label" for="editAllowNegativeBalance">Permitir saldo negativo</label>
+                <div class="form-text">Autoriza que esta conta fique com saldo abaixo de zero.</div>
+            </div>
+
+            <div class="account-form-feedback small text-danger mt-3" role="alert" aria-live="polite"></div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+    </form>
+</x-modal>
+
 @endsection
 
 
@@ -302,6 +352,7 @@
 
     function normalizeMoneyFields(form) {
         form.querySelectorAll('[data-money]').forEach((field) => {
+            if (field.dataset.moneyOptional === 'true' && !field.value.trim()) return;
             field.value = parseMoney(field.value, field.dataset.money === 'opening');
         });
     }
@@ -386,6 +437,9 @@
     document.querySelectorAll('.js-edit-account').forEach((button) => {
         button.addEventListener('click', () => {
             const form = document.getElementById('accountNameForm');
+            if (!form) return;
+
+            form.querySelector('.account-form-feedback')?.replaceChildren();
             form.dataset.endpoint = button.dataset.endpoint;
             form.dataset.settingsEndpoint = button.dataset.settingsEndpoint;
             form.dataset.openingEndpoint = button.dataset.openingEndpoint;
