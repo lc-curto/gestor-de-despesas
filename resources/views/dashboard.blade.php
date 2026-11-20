@@ -236,7 +236,7 @@
 window.meuBolsoHome = { currency: @json($moeda) };
 window.meuBolsoDashboard = {
     userId: @json(auth()->id()), name: @json(auth()->user()->name), currency: @json($moeda),
-    initialType: 'despesa', initialCategory: null, type: @json($filtroTipo), category: @json($filtroCategoria),
+    initialType: 'despesa', initialCategory: null, dashboardHome: true, type: @json($filtroTipo), category: @json($filtroCategoria),
     hasMore: @json($totalMovimentos > $limit), initialExpenseCount: @json($totalDespesasFiltradas),
     initialIncomeCount: @json($totalReceitasFiltradas), initialMovements: @json($movimentosIniciais),
     movementsUrl: @json(route('dashboard.movimentos.data')),
