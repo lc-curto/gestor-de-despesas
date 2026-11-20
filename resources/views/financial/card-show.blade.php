@@ -11,29 +11,7 @@
                 <h1 class="h3 fw-bold mb-0 text-break">{{ $card->name }}</h1>
                 <span class="small text-secondary">Cartão de crédito</span>
             </div>
-            <div class="dropdown">
-                <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Gerir cartão"><i data-lucide="ellipsis"></i></button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    @if($card->status !== 'closed' && $card->is_operational)
-                        <li><button class="dropdown-item js-edit-card" type="button" data-name="{{ $card->name }}" data-update-url="{{ route('financial.accounts.update',$card->id) }}" data-settings-url="{{ route('financial.cards.settings',$card->id) }}" data-limit="{{ $card->credit_limit }}" data-closing="{{ $card->closing_day }}" data-due="{{ $card->due_day }}" data-opening-debt="{{ $card->opening_debt_amount }}">Editar</button></li>
-                    @endif
-                    @if($card->status === 'active' && $card->is_operational)
-                        <li><button class="dropdown-item js-card-status" type="button" data-status="suspended" data-status-url="{{ route('financial.cards.status',$card->id) }}" data-name="{{ $card->name }}">Suspender</button></li>
-                    @elseif($card->status === 'suspended' && $card->is_operational)
-                        <li><button class="dropdown-item js-card-status" type="button" data-status="active" data-status-url="{{ route('financial.cards.status',$card->id) }}" data-name="{{ $card->name }}">Reativar</button></li>
-                    @endif
-                    @if($card->status === 'closed' || ! $card->is_operational)
-                        <li><button class="dropdown-item js-reopen-card" type="button" data-url="{{ route('financial.cards.reopen',$card->id) }}">Reabrir</button></li>
-                    @endif
-                    @if($card->status === 'active' && $card->is_operational && $card->used_limit <= 0.00001)
-                        <li><button class="dropdown-item js-close-card text-danger" type="button" data-close-url="{{ route('financial.accounts.close',$card->id) }}" data-name="{{ $card->name }}">Encerrar</button></li>
-                    @endif
-                    @if($card->can_delete)
-                        <li><hr class="dropdown-divider"></li>
-                        <li><button class="dropdown-item js-delete-card text-danger" type="button" data-url="{{ route('financial.cards.destroy',$card->id) }}">Eliminar</button></li>
-                    @endif
-                </ul>
-            </div>
+
         </div>
     </header>
 
