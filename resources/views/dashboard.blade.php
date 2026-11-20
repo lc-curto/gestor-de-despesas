@@ -6,6 +6,7 @@
 @php
     $currencySymbols = ['EUR' => '€', 'USD' => '$', 'GBP' => '£', 'BRL' => 'R$'];
     $currencySymbol = $currencySymbols[$moeda] ?? $moeda;
+    $simbolos = $currencySymbols;
     $recentMovements = $movimentos->take(5);
     $maxCategoryTotal = max(1, (float) $expenseCategories->max('total'));
     $greeting = now()->hour < 12 ? 'Bom dia' : (now()->hour < 19 ? 'Boa tarde' : 'Boa noite');
