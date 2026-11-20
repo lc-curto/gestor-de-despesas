@@ -1054,7 +1054,29 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('0.00', $paid->remaining_amount);
         $this->assertSame('0.00', app(AccountBalanceService::class)->balance($card->fresh()));
         $this->assertSame('413.00', app(AccountBalanceService::class)->balance($bank->fresh()));
-        $this->assertSame(2, $invoice->movimentos()->where('invoice_charge_type', '!=', 'credit')->count());
-        $this->assertSame(87.00, (float) $invoice->movimentos()->where('is_settlement_parent', true)->value('amount'));
+
+        // A new retroactive expense after full payment reopens only the new balance.
+        $this->postJson('/api/financial/invoices/'.$invoice->id.'/charges', [
+            'charge_type' => 'commission', 'description' => 'Comissão lançada após pagamento integral',
+            'amount' => '3.00', 'movement_date' => '2026-11-26',
+        ])->assertCreated();
+
+        $reopened = $invoices->findInvoice($user, $invoice->id);
+        $this->assertSame('closed', $reopened->cycle_status);
+        $this->assertSame('partial', $reopened->payment_status);
+        $this->assertSame('90.00', $reopened->total_amount);
+        $this->assertSame('87.00', $reopened->paid_amount);
+        $this->assertSame('3.00', $reopened->remaining_amount);
+        $this->assertSame('-3.00', app(AccountBalanceService::class)->balance($card->fresh()));
+        $this->assertSame('413.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+
+        $invoices->pay($user, $invoice, $bank->id, '2026-11-28', '3.00');
+        $final = $invoices->findInvoice($user, $invoice->id);
+        $this->assertSame('paid', $final->payment_status);
+        $this->assertSame('0.00', $final->remaining_amount);
+        $this->assertSame('0.00', app(AccountBalanceService::class)->balance($card->fresh()));
+        $this->assertSame('410.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+        $this->assertSame(3, $invoice->movimentos()->where('invoice_charge_type', '!=', 'credit')->count());
+        $this->assertSame(90.00, (float) $invoice->movimentos()->where('is_settlement_parent', true)->value('amount'));
     }
 }
