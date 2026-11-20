@@ -72,17 +72,17 @@
 
                 <div class="d-grid gap-2 mb-4">
                     @if ($active['id'] === 'accounts')
-                        <a class="btn btn-outline-primary rounded-3" href="{{ route('financial.accounts.page') }}">Abrir as minhas contas <i data-lucide="arrow-up-right" class="ms-1" aria-hidden="true"></i></a>
+                        <a class="btn btn-outline-primary rounded-3" href="{{ route('financial.accounts.page') }}">Contas <i data-lucide="arrow-up-right" class="ms-1" aria-hidden="true"></i></a>
                     @elseif ($active['id'] === 'categories')
-                        <a class="btn btn-outline-primary rounded-3" href="{{ route('categorias.index') }}">Ver as minhas categorias <i data-lucide="arrow-up-right" class="ms-1" aria-hidden="true"></i></a>
+                        <a class="btn btn-outline-primary rounded-3" href="{{ route('categorias.index') }}">Categorias <i data-lucide="arrow-up-right" class="ms-1" aria-hidden="true"></i></a>
                     @elseif ($active['id'] === 'movements')
-                        <a class="btn btn-outline-primary rounded-3" href="{{ route('dashboard.movimentos') }}">Ver movimentos <i data-lucide="arrow-up-right" class="ms-1" aria-hidden="true"></i></a>
+                        <a class="btn btn-outline-primary rounded-3" href="{{ route('dashboard.movimentos') }}">Movimentos <i data-lucide="arrow-up-right" class="ms-1" aria-hidden="true"></i></a>
                         <div class="d-flex gap-2">
-                            <a class="btn btn-light border rounded-3 flex-fill" href="{{ route('despesas.index') }}">Despesas antigas</a>
-                            <a class="btn btn-light border rounded-3 flex-fill" href="{{ route('receitas.index') }}">Receitas antigas</a>
+                            <a class="btn btn-light border rounded-3 flex-fill" href="{{ route('despesas.index') }}">Despesas</a>
+                            <a class="btn btn-light border rounded-3 flex-fill" href="{{ route('receitas.index') }}">Receitas</a>
                         </div>
                     @else
-                        <a class="btn btn-outline-primary rounded-3" href="{{ route('dashboard.movimentos') }}">Rever classificação nos movimentos <i data-lucide="arrow-up-right" class="ms-1" aria-hidden="true"></i></a>
+                        <a class="btn btn-outline-primary rounded-3" href="{{ route('dashboard.movimentos') }}">Rever <i data-lucide="arrow-up-right" class="ms-1" aria-hidden="true"></i></a>
                     @endif
                 </div>
 
@@ -105,7 +105,7 @@
                             <input class="form-check-input" type="checkbox" name="confirmed" value="1" id="review-confirm" required>
                             <label class="form-check-label small" for="review-confirm">Confirmo que verifiquei esta etapa.</label>
                         </div>
-                        <button class="btn btn-primary rounded-3 w-100 py-2" type="submit">Guardar e continuar <i data-lucide="arrow-right" class="ms-1" aria-hidden="true"></i></button>
+                        <button class="btn btn-primary rounded-3 w-100 py-2" type="submit">Guardar <i data-lucide="arrow-right" class="ms-1" aria-hidden="true"></i></button>
                     </form>
                 </div>
             </div>
@@ -124,7 +124,7 @@
                         <input class="form-check-input" type="checkbox" name="confirmed" value="1" id="confirm-final" required>
                         <label class="form-check-label small" for="confirm-final">Confirmo que revi os dados e quero continuar.</label>
                     </div>
-                    <button class="btn btn-primary rounded-3 w-100 py-2" type="submit">Concluir revisão e entrar</button>
+                    <button class="btn btn-primary rounded-3 w-100 py-2" type="submit">Concluir</button>
                 </form>
             </div>
         </section>
