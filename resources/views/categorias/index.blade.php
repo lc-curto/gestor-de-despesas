@@ -102,6 +102,7 @@
     aria-labelledby="categoryModalTitle"
     :scrollable="true"
     content-class="category-modal-content"
+    :rounded="false"
 >
     <form method="POST" action="{{ route('categorias.store') }}" id="categoryForm">
         @csrf
@@ -184,6 +185,7 @@
     const iconGrid = document.getElementById('categoryIconPicker');
     const iconPreview = document.getElementById('categoryIconPreview');
     const iconToggle = document.getElementById('categoryIconToggle');
+    const modalBody = modal.querySelector('.modal-body');
     const colorInputs = [...form.querySelectorAll('input[name="color"]')];
     const iconCatalog = ['tag','tags','house','building-2','bed-double','sofa','lamp','key-round','utensils','chef-hat','coffee','pizza','sandwich','apple','milk','shopping-basket','car-front','bus-front','train-front','plane','bike','fuel','map-pin','ticket','heart-pulse','pill','stethoscope','dumbbell','activity','shield-check','paw-print','baby','gamepad-2','clapperboard','music','headphones','book-open','graduation-cap','school','laptop','smartphone','monitor','wifi','briefcase-business','factory','store','shopping-bag','shirt','wallet','credit-card','banknote','coins','piggy-bank','chart-no-axes-combined','trending-up','receipt','badge-euro','hand-coins','handshake','gift','calendar-days','plane-takeoff','church','leaf','sprout','droplets','zap','sun','moon','cloud','umbrella','wrench','hammer','package','truck','recycle','ellipsis','circle-help','landmark','globe'];
     const iconKeywords = {'house':'casa lar moradia','building-2':'edificio apartamento','bed-double':'quarto hotel','sofa':'mobilia','utensils':'alimentacao comida restaurante','chef-hat':'cozinha','coffee':'cafe','pizza':'comida','apple':'fruta','shopping-basket':'supermercado','car-front':'carro transporte','bus-front':'autocarro','train-front':'comboio','plane':'aviao viagem','bike':'bicicleta','fuel':'combustivel gasolina','heart-pulse':'saude','pill':'medicamento farmacia','stethoscope':'medico','dumbbell':'ginasio desporto','paw-print':'animal estimacao','baby':'bebe crianca','gamepad-2':'jogos lazer','music':'musica','headphones':'audio','book-open':'livro leitura','graduation-cap':'educacao estudo','laptop':'computador tecnologia','smartphone':'telemovel telefone','briefcase-business':'trabalho emprego','store':'vendas negocio','shopping-bag':'compras loja','shirt':'roupa vestuario','wallet':'carteira dinheiro','credit-card':'cartao banco','banknote':'dinheiro notas','coins':'moedas poupanca','piggy-bank':'poupanca','trending-up':'investimento crescimento','receipt':'fatura recibo','hand-coins':'pagamento','gift':'presente oferta','calendar-days':'calendario','leaf':'natureza','sprout':'plantas jardim','droplets':'agua','wrench':'reparacao','hammer':'construcao','package':'encomenda','truck':'entrega','landmark':'banco instituicao'};
@@ -226,6 +228,12 @@
         const color=edit?trigger.dataset.color:'#635BFF';
         const selected=colorInputs.find(input=>input.value.toUpperCase()===color.toUpperCase());if(selected)selected.checked=true;
         iconsExpanded=false;iconSearch.value='';selectIcon(edit?trigger.dataset.icon:'tag');renderIconCatalog();
+        modalBody.scrollTop=0;
+        iconGrid.scrollTop=0;
+    });
+    modal.addEventListener('shown.bs.modal',()=>{
+        modalBody.scrollTop=0;
+        iconGrid.scrollTop=0;
     });
     document.getElementById('categoryType')?.addEventListener('change',event=>{
         const field=document.getElementById('categoryExpenseBehaviorField');
