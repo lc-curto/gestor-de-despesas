@@ -42,10 +42,12 @@
     });
     document.getElementById('dashboardMonthPreviousYear')?.addEventListener('click', () => {
         draftYear -= 1;
+        draftMonth = String(draftYear) + '-' + draftMonth.slice(5, 7);
         renderMonthPicker();
     });
     document.getElementById('dashboardMonthNextYear')?.addEventListener('click', () => {
         draftYear += 1;
+        draftMonth = String(draftYear) + '-' + draftMonth.slice(5, 7);
         renderMonthPicker();
     });
     document.getElementById('applyDashboardMonth')?.addEventListener('click', () => {
