@@ -564,6 +564,101 @@ class FinancialMovementService
 
 
 
+
+    /**
+     * Corrige um pagamento de fatura como uma única operação financeira.
+     * O evento continua ligado à obrigação; o backend recalcula a fatura e os saldos.
+     */
+    public function updateInvoicePayment(User $user, Movimento $movement, array $data): Movimento
+    {
+        return DB::transaction(function () use ($user, $movement, $data): Movimento {
+            $snapshot = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->firstOrFail();
+            if ($snapshot->type !== 'transfer' || ! $snapshot->invoice_id || ! $snapshot->settles_movement_id
+                || $snapshot->status !== 'settled' || $snapshot->reversal_of_id) {
+                throw ValidationException::withMessages([
+                    'movement' => 'Este movimento não é um pagamento de fatura que possa ser corrigido diretamente.',
+                ]);
+            }
+            if (Movimento::query()->where('user_id', $user->id)->where('reversal_of_id', $snapshot->id)->exists()) {
+                throw ValidationException::withMessages([
+                    'movement' => 'Este pagamento já tem uma correção associada e não pode ser alterado novamente.',
+                ]);
+            }
+
+            $invoiceSnapshot = Fatura::query()->where('user_id', $user->id)->whereKey($snapshot->invoice_id)->firstOrFail();
+            $card = ContaFinanceira::query()->where('user_id', $user->id)->whereKey($invoiceSnapshot->account_id)
+                ->where('type', 'credit_card')->lockForUpdate()->firstOrFail();
+            $invoice = Fatura::query()->where('user_id', $user->id)->whereKey($snapshot->invoice_id)->lockForUpdate()->firstOrFail();
+            if ($invoice->status === 'carried'
+                || DB::table('fatura_saldos_transportados')->where('user_id', $user->id)
+                    ->where(function ($query) use ($invoice): void {
+                        $query->where('source_invoice_id', $invoice->id)->orWhere('target_invoice_id', $invoice->id);
+                    })->exists()) {
+                throw ValidationException::withMessages([
+                    'movement' => 'O saldo desta fatura já foi transportado. Corrige o pagamento na fatura que recebeu o saldo.',
+                ]);
+            }
+            $this->assertInvoiceReconciled($user, $invoice);
+
+            $sourceId = $data['source_account_id'] ?? $snapshot->source_account_id;
+            $accountIds = collect([$snapshot->source_account_id, $sourceId])->filter()->unique()->sort()->values();
+            $accounts = [];
+            foreach ($accountIds as $accountId) {
+                $accounts[$accountId] = $this->account($user, $accountId);
+            }
+            $source = $accounts[$sourceId] ?? null;
+            if (! $source || ! in_array($source->type, ['bank', 'cash'], true)) {
+                throw ValidationException::withMessages(['source_account_id' => 'Seleciona uma conta bancária ou de dinheiro ativa.']);
+            }
+            if ($source->currency !== $card->currency) {
+                throw ValidationException::withMessages(['source_account_id' => 'A conta selecionada tem uma moeda diferente da fatura.']);
+            }
+
+            $parent = Movimento::query()->where('user_id', $user->id)->whereKey($snapshot->settles_movement_id)
+                ->where('invoice_id', $invoice->id)->where('is_settlement_parent', true)->lockForUpdate()->first();
+            if (! $parent) {
+                throw ValidationException::withMessages(['movement' => 'A obrigação desta fatura não foi encontrada. Atualiza a página e tenta novamente.']);
+            }
+            $locked = Movimento::query()->where('user_id', $user->id)->whereKey($snapshot->id)->lockForUpdate()->firstOrFail();
+            if ($locked->settles_movement_id !== $parent->id || $locked->invoice_id !== $invoice->id || $locked->status !== 'settled') {
+                throw ValidationException::withMessages(['movement' => 'O pagamento foi alterado em simultâneo. Atualiza a página e tenta novamente.']);
+            }
+
+            $currentCents = $this->balances->toCents((string) $locked->amount);
+            $netPaidCents = $this->netSettledCents($user, $parent);
+            $paidWithoutThisPayment = $netPaidCents - $currentCents;
+            $newAmountCents = array_key_exists('amount', $data)
+                ? $this->balances->toCents((string) $data['amount'])
+                : $currentCents;
+            $remainingCapacity = $this->balances->toCents((string) $parent->amount) - $paidWithoutThisPayment;
+            if ($newAmountCents <= 0 || $newAmountCents > $remainingCapacity) {
+                throw ValidationException::withMessages([
+                    'amount' => 'O valor deve ser positivo e não pode ultrapassar o saldo da fatura depois dos outros pagamentos.',
+                ]);
+            }
+
+            $before = $locked->getAttributes();
+            $locked->update([
+                'description' => $data['description'] ?? $locked->description,
+                'amount' => number_format($newAmountCents / 100, 2, '.', ''),
+                'movement_date' => $data['movement_date'] ?? $locked->movement_date->toDateString(),
+                'source_account_id' => $source->id,
+                'notes' => $data['notes'] ?? $locked->notes,
+            ]);
+            $this->audit(
+                $user,
+                $locked,
+                'invoice_payment_updated',
+                $before,
+                $locked->getAttributes(),
+                'Pagamento da fatura corrigido; obrigação e saldos recalculados.'
+            );
+            $this->refreshSettlementParentAfterDeletion($user, $parent->id);
+
+            return $locked->refresh();
+        });
+    }
+
     public function updatePending(User $user, Movimento $movement, array $data): Movimento
     {
         return DB::transaction(function () use ($user, $movement, $data) {

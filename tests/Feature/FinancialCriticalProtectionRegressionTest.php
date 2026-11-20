@@ -53,7 +53,7 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
     }
 
 
-    public function test_settled_invoice_payment_cannot_be_deleted_directly(): void
+    public function test_settled_invoice_payment_can_be_cancelled_with_invoice_and_account_recalculation(): void
     {
         $user = User::factory()->create();
         $bank = $this->bank($user);
@@ -70,12 +70,12 @@ class FinancialCriticalProtectionRegressionTest extends TestCase
 
         $this->actingAs($user)
             ->deleteJson(route('financial.movements.destroy', $payment->id))
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('movement');
+            ->assertOk();
 
-        $this->assertSame('settled', $payment->fresh()->status);
-        $this->assertSame('180.00', app(AccountBalanceService::class)->balance($bank->fresh()));
-        $this->assertDatabaseMissing('deletion_operations', [
+        $this->assertSame('void', $payment->fresh()->status);
+        $this->assertSame('200.00', app(AccountBalanceService::class)->balance($bank->fresh()));
+        $this->assertSame('-20.00', app(AccountBalanceService::class)->balance($card->fresh()));
+        $this->assertDatabaseHas('deletion_operations', [
             'user_id' => $user->id,
             'root_entity_id' => $payment->id,
             'status' => 'completed',
