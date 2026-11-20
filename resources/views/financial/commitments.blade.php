@@ -133,7 +133,8 @@
                                 <button type="button" class="btn btn-outline-secondary js-edit-commitment" @disabled($isCompleted)
                                     data-url="{{ route('financial.commitments.update', $commitment->id) }}"
                                     data-name="{{ $commitment->name }}"
-                                    data-merchant="{{ $commitment->merchant }}">Editar compra</button>
+                                    data-merchant="{{ $commitment->merchant }}"
+                                    data-total="{{ number_format((float) $commitment->total_amount, 2, '.', '') }}">Editar compra</button>
                                 <button type="button" class="btn btn-outline-primary js-renegotiate-commitment" @disabled($isCompleted)
                                     data-url="{{ route('financial.commitments.renegotiate', $commitment->id) }}"
                                     data-name="{{ $commitment->name }}"
@@ -313,6 +314,7 @@
         <div class="modal-body">
             <label class="form-label" for="editCommitmentName">Nome da compra</label><input class="form-control mb-3" id="editCommitmentName" name="name" required maxlength="160">
             <label class="form-label" for="editCommitmentMerchant">Comerciante (opcional)</label><input class="form-control mb-3" id="editCommitmentMerchant" name="merchant" maxlength="160">
+            <label class="form-label" for="editCommitmentTotal">Valor total</label><input class="form-control mb-3" id="editCommitmentTotal" name="total_amount" type="number" min="0.01" step="0.01" required>
             
             <div id="editCommitmentError" class="small text-danger mt-2"></div>
         </div>
@@ -603,6 +605,7 @@
         form.dataset.url = button.dataset.url;
         form.elements.name.value = button.dataset.name;
         form.elements.merchant.value = button.dataset.merchant || '';
+        form.elements.total_amount.value = button.dataset.total || '';
         document.getElementById('editCommitmentError').textContent = '';
         bootstrap.Modal.getOrCreateInstance(document.getElementById('editCommitmentModal')).show();
     }));
@@ -611,7 +614,7 @@
         const form = event.currentTarget, button = form.querySelector('[type="submit"]');
         button.disabled = true;
         try {
-            const response = await fetch(form.dataset.url,{method:'PUT',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({name:form.elements.name.value,merchant:form.elements.merchant.value})});
+            const response = await fetch(form.dataset.url,{method:'PUT',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({name:form.elements.name.value,merchant:form.elements.merchant.value,total_amount:form.elements.total_amount.value})});
             const result = await response.json().catch(()=>({}));
             if (!response.ok) throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível atualizar.');
             window.location.reload();

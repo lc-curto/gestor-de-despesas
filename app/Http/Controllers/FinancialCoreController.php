@@ -84,6 +84,7 @@ class FinancialCoreController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:160',
             'merchant' => 'nullable|string|max:160',
+            'total_amount' => 'sometimes|required|numeric|gt:0|decimal:0,2|max:9999999999.99',
             'due_date' => 'sometimes|required|date|after_or_equal:today',
         ]);
         $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();
@@ -627,7 +628,7 @@ class FinancialCoreController extends Controller
             return response()->json(['data' => $service->updateOperationalMovement($request->user(), $movement, $data)]);
         }
         if ($movement->is_settlement_parent) {
-            return response()->json(['data' => $service->updateSettlementParent($request->user(), $movement, $data)]);
+            return response()->json(['data' => $service->updateSettlementParent($request->user(), $movement, $data, (bool) $movement->recurrence_id)]);
         }
         $updated = DB::transaction(function () use ($request, $service, $movement, $data) {
             $updated = $service->updatePending($request->user(), $movement, $data);
