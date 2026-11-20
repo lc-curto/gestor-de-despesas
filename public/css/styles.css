@@ -1207,10 +1207,6 @@ html {
 }
 .category-color-choice input:checked + span { outline: 3px solid var(--app-primary); outline-offset: 2px; }
 .category-color-choice input:focus-visible + span { outline: 3px solid var(--app-primary); outline-offset: 3px; }
-.category-modal-content { border: 0; border-radius: 0; box-shadow: var(--app-shadow); }
-.category-modal-content .modal-header,
-.category-modal-content .modal-footer { padding: 1.25rem 1.5rem; }
-.category-modal-content .modal-body { padding: 1.5rem; }
 @media (max-width: 575.98px) {
   .category-search { width: 100%; }
   .category-tabs { width: 100%; }
