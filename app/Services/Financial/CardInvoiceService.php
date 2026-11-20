@@ -134,12 +134,12 @@ class CardInvoiceService
             ->with('conta:id,name,type,currency,credit_limit')
             ->with([
                 'movimentos' => fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false)
-                    ->select('id', 'invoice_id', 'description', 'amount', 'movement_date', 'type', 'is_settlement_parent'),
+                    ->select('id', 'invoice_id', 'description', 'amount', 'movement_date', 'type', 'invoice_charge_type', 'is_settlement_parent'),
                 'pagamentos' => fn ($q) => $q->where('status', 'settled')
                     ->with(['contaOrigem:id,name,type', 'contaDestino:id,name,type'])
-                    ->select('id', 'invoice_id', 'amount', 'reversal_of_id', 'type', 'movement_date', 'source_account_id', 'destination_account_id'),
+                    ->select('id', 'invoice_id', 'description', 'amount', 'reversal_of_id', 'type', 'movement_date', 'source_account_id', 'destination_account_id'),
                 'creditos' => fn ($q) => $q->where('status', 'settled')
-                    ->select('id', 'invoice_id', 'amount', 'movement_date', 'invoice_credit_for_movement_id', 'invoice_charge_type'),
+                    ->select('id', 'invoice_id', 'description', 'amount', 'movement_date', 'invoice_credit_for_movement_id', 'invoice_charge_type'),
                 'saldosTransportados' => fn ($q) => $q->with('sourceInvoice:id,reference_month,closing_date,due_date,status')
                     ->select('id', 'user_id', 'source_invoice_id', 'target_invoice_id', 'amount'),
             ])
@@ -488,7 +488,7 @@ class CardInvoiceService
                     ->where('type', 'expense')->where('status', 'settled')->firstOrFail();
                 $otherCredits = Movimento::query()->where('user_id', $user->id)
                     ->where('invoice_credit_for_movement_id', $purchase->id)
-                    ->where('status', 'settled')->whereKeyNot($movement->id)
+                    ->where('status', 'settled')->where('id', '!=', $movement->id)
                     ->get(['amount'])->sum(fn (Movimento $item) => (int) round((float) $item->amount * 100));
                 $purchaseCents = (int) round((float) $purchase->amount * 100);
                 if ($newAmount + $otherCredits > $purchaseCents) {
