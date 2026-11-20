@@ -76,11 +76,17 @@
                             && in_array($movement->type, ['income', 'expense'], true)
                             && ! $movement->debt_id && ! $movement->installment_id
                             && ! $movement->invoice_id && ! $movement->recurrence_id;
+                        $canEditOperationalMovement = $movement->status === 'settled'
+                            && in_array($movement->type, ['transfer', 'adjustment'], true)
+                            && ! $movement->is_historical && ! $movement->invoice_id
+                            && ! $movement->settles_movement_id && ! $movement->reversal_of_id
+                            && ! $movement->debt_id && ! $movement->installment_id && ! $movement->recurrence_id
+                            && ! $movement->is_settlement_parent;
                         $canEditMovement = ($movement->status === 'pending'
                             && in_array($movement->type, ['income', 'expense'], true)
                             && ! $movement->debt_id && ! $movement->installment_id
                             && ! $movement->invoice_id && ! $movement->is_settlement_parent)
-                            || $isInvoicePayment || $canEditSettlementParent;
+                            || $isInvoicePayment || $canEditSettlementParent || $canEditOperationalMovement;
                         $requiresOriginManagement = (bool) ($movement->debt_id || $movement->installment_id
                             || $movement->recurrence_id
                             || ($movement->status === 'partial' && ! $movement->is_settlement_parent));
@@ -112,6 +118,9 @@
                         data-action-note="{{ $actionNote }}"
                         data-invoice-payment="{{ $isInvoicePayment ? '1' : '0' }}"
                         data-source-account-id="{{ $movement->source_account_id }}"
+                        data-destination-account-id="{{ $movement->destination_account_id }}"
+                        data-movement-type="{{ $movement->type }}"
+                        data-adjustment-direction="{{ $movement->adjustment_direction }}"
                         data-signed-amount="{{ $sign }}{{ number_format((float) $movement->amount, 2, ',', '.') }} {{ $movement->currency ?? $account->currency }}"
                         data-amount-class="{{ $isOutgoing ? 'text-danger' : 'text-success' }}"
                         data-category="{{ $category }}"
@@ -189,11 +198,26 @@
                     <input class="form-control" id="accountMovementEditDescription" name="description" maxlength="255" required>
                 </div>
                 <div class="mb-3" id="accountMovementEditAccountField" hidden>
-                    <label class="form-label" for="accountMovementEditAccount">Pagar a partir de</label>
+                    <label class="form-label" for="accountMovementEditAccount">Conta de origem</label>
                     <select class="form-select" id="accountMovementEditAccount" name="source_account_id">
                         @foreach ($paymentAccounts as $paymentAccount)
                             <option value="{{ $paymentAccount->id }}">{{ $paymentAccount->name }}</option>
                         @endforeach
+                    </select>
+                </div>
+                <div class="mb-3" id="accountMovementEditDestinationField" hidden>
+                    <label class="form-label" for="accountMovementEditDestination">Conta de destino</label>
+                    <select class="form-select" id="accountMovementEditDestination" name="destination_account_id">
+                        @foreach ($paymentAccounts as $paymentAccount)
+                            <option value="{{ $paymentAccount->id }}">{{ $paymentAccount->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="mb-3" id="accountMovementEditDirectionField" hidden>
+                    <label class="form-label" for="accountMovementEditDirection">Tipo de ajuste</label>
+                    <select class="form-select" id="accountMovementEditDirection" name="adjustment_direction">
+                        <option value="increase">Aumentar saldo</option>
+                        <option value="decrease">Diminuir saldo</option>
                     </select>
                 </div>
                 <div class="mb-3">
@@ -310,15 +334,32 @@ if (accountDeleteModalElement && accountDetailsElement) {
         document.getElementById('accountMovementEditAmount').value = activeAccountMovement.dataset.amount;
         document.getElementById('accountMovementEditDate').value = activeAccountMovement.dataset.dateIso;
         document.getElementById('accountMovementEditNotes').value = activeAccountMovement.dataset.notes;
+        const isInvoicePayment = activeAccountMovement.dataset.invoicePayment === '1';
+        const movementType = activeAccountMovement.dataset.movementType;
+        const isTransfer = movementType === 'transfer' && !isInvoicePayment;
+        const isAdjustment = movementType === 'adjustment';
         const accountField = document.getElementById('accountMovementEditAccountField');
-        accountField.hidden = activeAccountMovement.dataset.invoicePayment !== '1';
-        document.getElementById('accountMovementEditAccount').disabled = activeAccountMovement.dataset.invoicePayment !== '1';
-        if (activeAccountMovement.dataset.invoicePayment === '1') {
-            document.getElementById('accountMovementEditAccount').value = activeAccountMovement.dataset.sourceAccountId;
-        }
+        const destinationField = document.getElementById('accountMovementEditDestinationField');
+        const directionField = document.getElementById('accountMovementEditDirectionField');
+        accountField.hidden = !(isInvoicePayment || isTransfer || (isAdjustment && activeAccountMovement.dataset.adjustmentDirection === 'decrease'));
+        destinationField.hidden = !(isTransfer || (isAdjustment && activeAccountMovement.dataset.adjustmentDirection === 'increase'));
+        directionField.hidden = !isAdjustment;
+        document.getElementById('accountMovementEditAccount').disabled = !(isInvoicePayment || isTransfer || isAdjustment);
+        document.getElementById('accountMovementEditDestination').disabled = !(isTransfer || isAdjustment);
+        document.getElementById('accountMovementEditDirection').disabled = !isAdjustment;
+        document.getElementById('accountMovementEditAccount').value = activeAccountMovement.dataset.sourceAccountId || '';
+        document.getElementById('accountMovementEditDestination').value = activeAccountMovement.dataset.destinationAccountId || '';
+        document.getElementById('accountMovementEditDirection').value = activeAccountMovement.dataset.adjustmentDirection || 'increase';
         editFeedback.textContent = '';
         editFeedback.className = 'small mb-3';
     };
+
+    document.getElementById('accountMovementEditDirection').addEventListener('change', (event) => {
+        if (!activeAccountMovement || activeAccountMovement.dataset.movementType !== 'adjustment') return;
+        const decrease = event.target.value === 'decrease';
+        document.getElementById('accountMovementEditAccountField').hidden = !decrease;
+        document.getElementById('accountMovementEditDestinationField').hidden = decrease;
+    });
 
     editButton.addEventListener('click', enterMovementEditMode);
     document.getElementById('accountMovementEditBack').addEventListener('click', showMovementDetails);
