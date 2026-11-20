@@ -1459,7 +1459,7 @@ button.financial-history-item:focus-visible {
   }
 
   .financial-history-row {
-    gap: .75rem !important;
+    column-gap: .75rem;
   }
 
   .financial-history-row-icon {
