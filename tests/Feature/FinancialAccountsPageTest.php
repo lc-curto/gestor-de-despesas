@@ -68,6 +68,11 @@ class FinancialAccountsPageTest extends TestCase
             ->assertSee('id="closeAccountModal"', false)
             ->assertSee('id="closeAccountForm"', false)
             ->assertSee('id="closeTransferTarget"', false)
+            ->assertSee('id="closeAccountZeroNotice"', false)
+            ->assertSee('id="closeAccountNegativeNotice"', false)
+            ->assertSee('id="closeAccountNoTargets"', false)
+            ->assertSee('data-currency="EUR"', false)
+            ->assertDontSee('>Não transferir</option>', false)
             ->assertSee(route('financial.accounts.close', $account->id), false);
     }
 
@@ -206,6 +211,28 @@ class FinancialAccountsPageTest extends TestCase
         ])->assertUnprocessable();
 
         $this->assertDatabaseHas('contas_financeiras', ['id' => $account->id, 'allow_negative_balance' => true]);
+    }
+
+    public function test_account_with_negative_balance_cannot_be_closed(): void
+    {
+        $user = User::factory()->create();
+        $account = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Conta em descoberto',
+            'type' => 'bank',
+            'opening_balance' => '-150.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+
+        $this->actingAs($user)
+            ->postJson('/api/financial/accounts/'.$account->id.'/close')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('account');
+
+        $this->assertDatabaseHas('contas_financeiras', [
+            'id' => $account->id,
+            'status' => 'active',
+            'is_operational' => true,
+        ]);
     }
 
     public function test_closing_positive_balance_transfers_it_and_keeps_both_accounts(): void
