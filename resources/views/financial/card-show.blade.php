@@ -42,29 +42,26 @@
             <p class="mb-0 text-secondary">Ainda não existem faturas para este cartão.</p>
         </div></div>
     @else
-        <section class="d-grid gap-2" aria-label="Faturas deste cartão">
+        <section class="card border-0 shadow-sm rounded-4 overflow-hidden" aria-label="Faturas deste cartão"><div class="list-group list-group-flush">
             @foreach($invoices as $invoice)
                 @php
                     $cycleLabels = ['open' => 'Aberta', 'closed' => 'Fechada'];
                     $cycleClasses = ['open' => 'text-bg-primary', 'closed' => 'text-bg-secondary'];
                     $currency = $card->currency;
                 @endphp
-                <a href="{{ route('financial.invoices.show', ['id' => $invoice->id, 'card_page' => $invoices->currentPage(), 'return_to' => request()->getRequestUri()]) }}" class="card border rounded-4 text-decoration-none text-body">
-                    <div class="card-body p-3">
-                        <div class="d-flex justify-content-between align-items-center gap-2">
-                            <div class="min-w-0">
-                                <h3 class="h6 fw-semibold mb-1 text-capitalize">{{ $invoice->reference_month->translatedFormat('F Y') }}</h3>
-                                <span class="small text-secondary">Vence {{ $invoice->due_date->format('d/m/Y') }}</span>
-                            </div>
-                            <div class="text-end flex-shrink-0">
-                                <strong class="d-block">{{ number_format((float)$invoice->total_amount,2,',','.') }} {{ $currency }}</strong>
-                                <span class="badge mt-1 {{ $cycleClasses[$invoice->cycle_status] ?? 'text-bg-secondary' }}">{{ $cycleLabels[$invoice->cycle_status] ?? 'Fechada' }}</span>
-                            </div>
-                        </div>
-                    </div>
+                <a href="{{ route('financial.invoices.show', ['id' => $invoice->id, 'card_page' => $invoices->currentPage(), 'return_to' => request()->getRequestUri()]) }}" class="list-group-item list-group-item-action text-decoration-none py-2 px-3">
+                    <x-financial.history-row
+                        icon="receipt"
+                        icon-class="bg-body-secondary text-secondary"
+                        :title="$invoice->reference_month->translatedFormat('F Y')"
+                        :subtitle="'Vence ' . $invoice->due_date->format('d/m/Y')"
+                        :amount="number_format((float) $invoice->total_amount, 2, ',', '.') . ' ' . $currency"
+                        :status="$cycleLabels[$invoice->cycle_status] ?? 'Fechada'"
+                        :status-class="$cycleClasses[$invoice->cycle_status] ?? 'text-bg-secondary'"
+                    />
                 </a>
             @endforeach
-        </section>
+        </div></section>
         <div class="mt-3">{{ $invoices->links() }}</div>
     @endif
 </div>
@@ -170,4 +167,17 @@
     }));
 })();
 </script>
+@endpush
+
+@push('styles')
+<style>
+.financial-history-row { min-width: 0; }
+.financial-history-row-icon { width: 2.25rem; height: 2.25rem; }
+.financial-history-row-icon svg { width: 1rem; height: 1rem; }
+.financial-history-row-chevron { width: .9rem; height: .9rem; }
+@media (max-width: 575.98px) {
+    .financial-history-row-icon { width: 2rem; height: 2rem; }
+    .financial-history-row { gap: .55rem; }
+}
+</style>
 @endpush
