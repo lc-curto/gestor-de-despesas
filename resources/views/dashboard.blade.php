@@ -115,7 +115,7 @@
             <a class="small text-decoration-none" href="{{ route('financial.cards.page') }}">Ver todos</a>
         </div>
         @if ($nearestOpenInvoice)
-            <a class="home-invoice-card" href="{{ route('financial.invoices.show', $nearestOpenInvoice->id) }}">
+            <a class="home-invoice-card" href="{{ route('financial.invoices.show', ['id' => $nearestOpenInvoice->id, 'return_to' => request()->getRequestUri()]) }}">
                 <div class="d-flex align-items-center justify-content-between gap-2">
                     <strong class="small text-truncate">Fatura do cartão</strong>
                     <span class="home-invoice-status {{ $nearestOpenInvoice->payment_status === 'overdue' ? 'is-overdue' : 'is-open' }}">

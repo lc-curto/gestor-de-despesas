@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ContaFinanceira;
+use App\Support\SafeReturnUrl;
 use App\Services\Financial\CardInvoiceService;
 use Illuminate\Http\Request;
 
@@ -18,8 +19,9 @@ class FinancialInvoicesPageController extends Controller
         $card = $request->user()->contasFinanceiras()
             ->where('type', 'credit_card')->whereKey($cardId)->firstOrFail();
         $items = $invoices->listInvoices($request->user(), $card->id);
+        $backUrl = SafeReturnUrl::resolve($request, route('financial.cards.show', $card->id));
 
-        return view('financial.invoices', compact('card', 'items'));
+        return view('financial.invoices', compact('card', 'items', 'backUrl'));
     }
 
     public function show(Request $request, string $id, CardInvoiceService $invoices)
@@ -33,7 +35,8 @@ class FinancialInvoicesPageController extends Controller
             ->orderBy('name')->get(['id', 'name', 'type', 'currency']);
 
         $cardPage = max(1, (int) $request->query('card_page', 1));
-        $cardBackUrl = route('financial.cards.show', $card->id).'?page='.$cardPage;
+        $defaultBackUrl = route('financial.cards.show', ['id' => $card->id, 'page' => $cardPage]);
+        $cardBackUrl = SafeReturnUrl::resolve($request, $defaultBackUrl);
 
         return view('financial.invoice-show', compact('invoice', 'card', 'accounts', 'cardBackUrl'));
     }

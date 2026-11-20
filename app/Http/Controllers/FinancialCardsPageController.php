@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ContaFinanceira;
+use App\Support\SafeReturnUrl;
 use App\Services\Financial\AccountBalanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,8 +27,9 @@ class FinancialCardsPageController extends Controller
             && (float) ($card->opening_balance ?? 0) === 0.0;
 
         $invoices = app(\App\Services\Financial\CardInvoiceService::class)->listInvoices($request->user(), $card->id);
+        $backUrl = SafeReturnUrl::resolve($request, route('financial.cards.page'));
 
-        return view('financial.card-show', compact('card', 'invoices'));
+        return view('financial.card-show', compact('card', 'invoices', 'backUrl'));
     }
 
     private function prepareCard(ContaFinanceira $card, AccountBalanceService $balances): void

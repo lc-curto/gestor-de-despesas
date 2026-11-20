@@ -12,9 +12,9 @@
 
 <div class="account-history-page">
     <header class="account-history-heading mb-4">
-        <a class="btn btn-link p-0 text-decoration-none d-inline-flex align-items-center gap-2" href="{{ route('financial.accounts.page') }}">
+        <a class="btn btn-link p-0 text-decoration-none d-inline-flex align-items-center gap-2" href="{{ $backUrl }}">
             <i data-lucide="arrow-left" aria-hidden="true"></i>
-            <span>Contas</span>
+            <span>Voltar</span>
         </a>
 
         <div class="mt-4">
