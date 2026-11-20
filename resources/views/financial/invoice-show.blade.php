@@ -51,10 +51,19 @@
         <section class="mb-3">
             <h2 class="h6 fw-bold mb-2">Movimentos</h2>
                 @forelse($invoice->movimentos as $movement)
-                    <div class="d-flex justify-content-between gap-3 py-2 border-bottom">
-                        <span class="min-w-0 text-break">{{ $movement->description }}<span class="d-block small text-secondary">{{ $movement->movement_date->format('d/m/Y') }}</span></span>
+                    @php $movementKind = $movement->invoice_charge_type ? 'charge' : 'purchase'; @endphp
+                    <button type="button" class="btn btn-link text-body text-decoration-none text-start w-100 d-flex justify-content-between align-items-center gap-3 px-0 py-2 border-bottom rounded-0 invoice-movement-row"
+                        data-invoice-movement
+                        data-id="{{ $movement->id }}"
+                        data-kind="{{ $movementKind }}"
+                        data-description="{{ $movement->description }}"
+                        data-amount="{{ $movement->amount }}"
+                        data-date="{{ $movement->movement_date->toDateString() }}"
+                        data-edit-url="{{ route('financial.invoices.movements.update', ['id' => $invoice->id, 'movementId' => $movement->id]) }}"
+                        data-delete-url="{{ route('financial.movements.destroy', $movement->id) }}">
+                        <span class="min-w-0 text-break">{{ $movement->description }}<span class="d-block small text-secondary">{{ $movement->movement_date->format('d/m/Y') }} · {{ $movementKind === 'charge' ? 'Encargo' : 'Compra' }}</span></span>
                         <strong class="text-nowrap">{{ number_format((float)$movement->amount,2,',','.') }} {{ $currency }}</strong>
-                    </div>
+                    </button>
                 @empty
                     <p class="small text-secondary mb-0">Ainda não existem movimentos nesta fatura.</p>
                 @endforelse
@@ -67,20 +76,30 @@
                     @endforeach
                 @endif
                 @foreach($invoice->creditos as $credit)
-                    <div class="d-flex justify-content-between gap-3 py-2 border-bottom">
+                    <button type="button" class="btn btn-link text-body text-decoration-none text-start w-100 d-flex justify-content-between align-items-center gap-3 px-0 py-2 border-bottom rounded-0 invoice-movement-row"
+                        data-invoice-movement data-id="{{ $credit->id }}" data-kind="credit"
+                        data-description="{{ $credit->description }}" data-amount="{{ $credit->amount }}"
+                        data-date="{{ $credit->movement_date?->toDateString() }}"
+                        data-edit-url="{{ route('financial.invoices.movements.update', ['id' => $invoice->id, 'movementId' => $credit->id]) }}"
+                        data-delete-url="{{ route('financial.movements.destroy', $credit->id) }}">
                         <span>Crédito de compra<span class="d-block small text-secondary">{{ $credit->movement_date?->format('d/m/Y') }}</span></span>
                         <strong class="text-success">−{{ number_format((float)$credit->amount,2,',','.') }} {{ $currency }}</strong>
-                    </div>
+                    </button>
                 @endforeach
         </section>
 
         <section class="border-top pt-3">
                 <h2 class="h6 fw-bold mb-2">Pagamentos</h2>
                 @forelse($invoice->pagamentos as $payment)
-                    <div class="d-flex justify-content-between gap-3 py-2 border-bottom">
+                    <button type="button" class="btn btn-link text-body text-decoration-none text-start w-100 d-flex justify-content-between align-items-center gap-3 px-0 py-2 border-bottom rounded-0 invoice-movement-row"
+                        data-invoice-movement data-id="{{ $payment->id }}" data-kind="payment"
+                        data-description="{{ $payment->description }}" data-amount="{{ $payment->amount }}"
+                        data-date="{{ $payment->movement_date?->toDateString() }}"
+                        data-edit-url="{{ route('financial.movements.update', $payment->id) }}"
+                        data-delete-url="{{ route('financial.movements.destroy', $payment->id) }}">
                         <span class="min-w-0">Pagamento<span class="d-block small text-secondary">{{ $payment->movement_date?->format('d/m/Y') }} · {{ $payment->contaOrigem?->name ?? 'Conta' }}</span></span>
                         <strong class="text-success text-nowrap">{{ number_format((float)$payment->amount,2,',','.') }} {{ $currency }}</strong>
-                    </div>
+                    </button>
                 @empty
                     <p class="small text-secondary mb-0">Ainda não existem pagamentos.</p>
                 @endforelse
@@ -107,6 +126,44 @@
         </form>
     </div></div>
 </div>
+
+<div class="modal fade" id="invoiceMovementModal" tabindex="-1" aria-labelledby="invoiceMovementTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow rounded-4">
+        <div class="modal-header border-0 pb-0">
+            <h2 class="modal-title h5 fw-bold" id="invoiceMovementTitle">Detalhes do movimento</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body p-4">
+            <div id="invoiceMovementDetails">
+                <div class="small text-secondary mb-1" id="invoiceMovementKind"></div>
+                <strong class="fs-3 d-block mb-2" id="invoiceMovementAmount"></strong>
+                <div class="mb-1" id="invoiceMovementDescription"></div>
+                <div class="small text-secondary" id="invoiceMovementDate"></div>
+            </div>
+            <form id="invoiceMovementEditForm" class="d-none">
+                <div class="mb-3"><label class="form-label" for="invoiceMovementEditDescription">Descrição</label><input class="form-control" id="invoiceMovementEditDescription" maxlength="255" required></div>
+                <div class="mb-3"><label class="form-label" for="invoiceMovementEditAmount">Valor</label><input class="form-control" id="invoiceMovementEditAmount" inputmode="decimal" required></div>
+                <div class="mb-3"><label class="form-label" for="invoiceMovementEditDate">Data</label><input class="form-control" id="invoiceMovementEditDate" type="date" required></div>
+            </form>
+            <div id="invoiceMovementDeleteConfirm" class="alert alert-warning d-none mb-0">Queres excluir este movimento? O sistema registará a correção e recalculará os saldos. Esta ação não pode ser desfeita pela interface.</div>
+            <div id="invoiceMovementError" class="alert alert-danger d-none mt-3 mb-0" role="alert"></div>
+        </div>
+        <div class="modal-footer border-0 pt-0" id="invoiceMovementActions">
+            <button type="button" class="btn btn-outline-danger me-auto" id="invoiceMovementDelete">Excluir</button>
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+            <button type="button" class="btn btn-primary" id="invoiceMovementEdit">Editar</button>
+        </div>
+        <div class="modal-footer border-0 pt-0 d-none" id="invoiceMovementEditActions">
+            <button type="button" class="btn btn-outline-secondary" id="invoiceMovementCancelEdit">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="invoiceMovementSave">Guardar alterações</button>
+        </div>
+        <div class="modal-footer border-0 pt-0 d-none" id="invoiceMovementDeleteActions">
+            <button type="button" class="btn btn-outline-secondary" id="invoiceMovementCancelDelete">Cancelar</button>
+            <button type="button" class="btn btn-danger" id="invoiceMovementConfirmDelete">Excluir movimento</button>
+        </div>
+    </div></div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -154,4 +211,72 @@
     });
 })();
 </script>
+
+<script>
+(() => {
+    const modalElement=document.getElementById('invoiceMovementModal');
+    if(!modalElement)return;
+    const modal=bootstrap.Modal.getOrCreateInstance(modalElement);
+    const context=document.querySelector('.invoice-detail-context');
+    const csrf=document.querySelector('meta[name="csrf-token"]')?.content;
+    const state={movement:null,mode:'view'};
+    const byId=id=>document.getElementById(id);
+    const showError=message=>{const el=byId('invoiceMovementError');el.textContent=message;el.classList.remove('d-none');};
+    const hideError=()=>byId('invoiceMovementError').classList.add('d-none');
+    const showMode=mode=>{
+        state.mode=mode;
+        byId('invoiceMovementDetails').classList.toggle('d-none',mode!=='view');
+        byId('invoiceMovementEditForm').classList.toggle('d-none',mode!=='edit');
+        byId('invoiceMovementDeleteConfirm').classList.toggle('d-none',mode!=='delete');
+        byId('invoiceMovementActions').classList.toggle('d-none',mode!=='view');
+        byId('invoiceMovementEditActions').classList.toggle('d-none',mode!=='edit');
+        byId('invoiceMovementDeleteActions').classList.toggle('d-none',mode!=='delete');
+        byId('invoiceMovementTitle').textContent=mode==='edit'?'Editar movimento':mode==='delete'?'Excluir movimento':'Detalhes do movimento';
+        hideError();
+    };
+    document.querySelectorAll('[data-invoice-movement]').forEach(row=>row.addEventListener('click',()=>{
+        state.movement=row.dataset;
+        byId('invoiceMovementKind').textContent=({purchase:'Compra',charge:'Encargo',credit:'Crédito',payment:'Pagamento'})[row.dataset.kind]||'Movimento';
+        byId('invoiceMovementAmount').textContent=(row.dataset.kind==='credit'?'−':'')+row.dataset.amount+' '+context.dataset.currency;
+        byId('invoiceMovementDescription').textContent=row.dataset.description||'—';
+        byId('invoiceMovementDate').textContent=row.dataset.date||'—';
+        byId('invoiceMovementEditDescription').value=row.dataset.description||'';
+        byId('invoiceMovementEditAmount').value=row.dataset.amount||'';
+        byId('invoiceMovementEditDate').value=row.dataset.date||'';
+        byId('invoiceMovementEdit').disabled=row.dataset.kind==='payment' ? false : false;
+        showMode('view');modal.show();
+    }));
+    byId('invoiceMovementEdit').addEventListener('click',()=>showMode('edit'));
+    byId('invoiceMovementCancelEdit').addEventListener('click',()=>showMode('view'));
+    byId('invoiceMovementDelete').addEventListener('click',()=>showMode('delete'));
+    byId('invoiceMovementCancelDelete').addEventListener('click',()=>showMode('view'));
+    byId('invoiceMovementSave').addEventListener('click',async()=>{
+        if(!state.movement)return;
+        const button=byId('invoiceMovementSave');button.disabled=true;hideError();
+        const amount=byId('invoiceMovementEditAmount').value.trim().replace(',','.');
+        if(!/^\\d+(\\.\\d{1,2})?$/.test(amount)){showError('Indica um valor válido com até duas casas decimais.');button.disabled=false;return;}
+        const url=state.movement.editUrl;
+        const payload={description:byId('invoiceMovementEditDescription').value.trim(),amount,movement_date:byId('invoiceMovementEditDate').value};
+        try{
+            const response=await fetch(url,{method:'PUT',credentials:'same-origin',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':csrf},body:JSON.stringify(payload)});
+            const result=await response.json().catch(()=>({}));
+            if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível atualizar o movimento.');
+            window.location.reload();
+        }catch(error){showError(error.message);}
+        finally{button.disabled=false;}
+    });
+    byId('invoiceMovementConfirmDelete').addEventListener('click',async()=>{
+        if(!state.movement)return;
+        const button=byId('invoiceMovementConfirmDelete');button.disabled=true;hideError();
+        try{
+            const response=await fetch(state.movement.deleteUrl,{method:'DELETE',credentials:'same-origin',headers:{Accept:'application/json','X-CSRF-TOKEN':csrf}});
+            const result=await response.json().catch(()=>({}));
+            if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível excluir o movimento.');
+            window.location.reload();
+        }catch(error){showError(error.message);}
+        finally{button.disabled=false;}
+    });
+})();
+</script>
+
 @endpush

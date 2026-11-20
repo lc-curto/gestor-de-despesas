@@ -4,6 +4,7 @@ namespace App\Services\Financial;
 
 use App\Models\Fatura;
 use App\Models\FaturaSaldoTransportado;
+use App\Models\HistoricoMovimento;
 use App\Models\Movimento;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -134,12 +135,12 @@ class CardInvoiceService
             ->with('conta:id,name,type,currency,credit_limit')
             ->with([
                 'movimentos' => fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false)
-                    ->select('id', 'invoice_id', 'description', 'amount', 'movement_date', 'type', 'is_settlement_parent'),
+                    ->select('id', 'invoice_id', 'description', 'amount', 'movement_date', 'type', 'invoice_charge_type', 'is_settlement_parent'),
                 'pagamentos' => fn ($q) => $q->where('status', 'settled')
                     ->with(['contaOrigem:id,name,type', 'contaDestino:id,name,type'])
-                    ->select('id', 'invoice_id', 'amount', 'reversal_of_id', 'type', 'movement_date', 'source_account_id', 'destination_account_id'),
+                    ->select('id', 'invoice_id', 'description', 'amount', 'reversal_of_id', 'type', 'movement_date', 'source_account_id', 'destination_account_id'),
                 'creditos' => fn ($q) => $q->where('status', 'settled')
-                    ->select('id', 'invoice_id', 'amount', 'movement_date', 'invoice_credit_for_movement_id', 'invoice_charge_type'),
+                    ->select('id', 'invoice_id', 'description', 'amount', 'movement_date', 'invoice_credit_for_movement_id', 'invoice_charge_type'),
                 'saldosTransportados' => fn ($q) => $q->with('sourceInvoice:id,reference_month,closing_date,due_date,status')
                     ->select('id', 'user_id', 'source_invoice_id', 'target_invoice_id', 'amount'),
             ])
@@ -421,6 +422,108 @@ class CardInvoiceService
             $this->movements->syncInvoiceSettlementParent($user, $locked);
 
             return $credit;
+        });
+    }
+
+
+    /**
+     * Corrige uma compra, encargo ou crédito individual da fatura.
+     * Pagamentos, saldo transportado e agregados técnicos não são editáveis aqui.
+     */
+    public function updateInvoiceComponent(User $user, Fatura $invoice, string $movementId, array $data): Movimento
+    {
+        return DB::transaction(function () use ($user, $invoice, $movementId, $data): Movimento {
+            $snapshot = Movimento::query()->where('user_id', $user->id)
+                ->whereKey($movementId)->where('invoice_id', $invoice->id)->firstOrFail();
+            $invoiceSnapshot = Fatura::query()->where('user_id', $user->id)
+                ->whereKey($invoice->id)->firstOrFail();
+            $card = $user->contasFinanceiras()->whereKey($invoiceSnapshot->account_id)
+                ->where('type', 'credit_card')->lockForUpdate()->firstOrFail();
+            $lockedInvoice = Fatura::query()->where('user_id', $user->id)
+                ->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+
+            if ($lockedInvoice->status === 'carried') {
+                throw ValidationException::withMessages(['movement' => 'Esta fatura já foi transportada e não pode ser alterada.']);
+            }
+
+            $movement = Movimento::query()->where('user_id', $user->id)
+                ->whereKey($snapshot->id)->where('invoice_id', $lockedInvoice->id)
+                ->lockForUpdate()->firstOrFail();
+
+            $isPurchaseOrCharge = $movement->type === 'expense'
+                && $movement->status === 'settled'
+                && ! $movement->is_settlement_parent
+                && ! $movement->debt_id
+                && ! $movement->installment_id
+                && ! $movement->reversal_of_id;
+            $isCredit = $movement->type === 'adjustment'
+                && $movement->status === 'settled'
+                && $movement->invoice_charge_type === 'credit'
+                && $movement->invoice_credit_for_movement_id
+                && ! $movement->reversal_of_id;
+
+            if (! $isPurchaseOrCharge && ! $isCredit) {
+                throw ValidationException::withMessages(['movement' => 'Este registo não pode ser editado nesta área.']);
+            }
+
+            if ($isPurchaseOrCharge && array_key_exists('movement_date', $data)) {
+                $date = Carbon::parse($data['movement_date'])->startOfDay();
+                if ($date->greaterThan(today())) {
+                    throw ValidationException::withMessages(['movement_date' => 'A data do movimento não pode ser futura.']);
+                }
+                $reference = $date->day > $card->closing_day ? $date->copy()->addMonthNoOverflow() : $date->copy();
+                $reference->day = 1;
+                if (! $reference->equalTo($lockedInvoice->reference_month->copy()->startOfMonth())) {
+                    throw ValidationException::withMessages(['movement_date' => 'A data deve permanecer no ciclo de faturação original. Para mudar de ciclo, regista o movimento no ciclo correto.']);
+                }
+            }
+            if ($isPurchaseOrCharge && Movimento::query()->where('user_id', $user->id)
+                ->where('invoice_credit_for_movement_id', $movement->id)
+                ->where('status', 'settled')->exists()) {
+                throw ValidationException::withMessages(['movement' => 'Esta compra já tem créditos associados. Corrige primeiro os créditos existentes.']);
+            }
+
+            $before = $movement->getAttributes();
+            $newAmount = array_key_exists('amount', $data)
+                ? app(AccountBalanceService::class)->toCents((string) $data['amount'])
+                : app(AccountBalanceService::class)->toCents((string) $movement->amount);
+            if ($newAmount <= 0) {
+                throw ValidationException::withMessages(['amount' => 'O valor deve ser superior a zero.']);
+            }
+
+            if ($isCredit) {
+                $purchase = Movimento::query()->where('user_id', $user->id)
+                    ->whereKey($movement->invoice_credit_for_movement_id)
+                    ->where('type', 'expense')->where('status', 'settled')->firstOrFail();
+                $otherCredits = Movimento::query()->where('user_id', $user->id)
+                    ->where('invoice_credit_for_movement_id', $purchase->id)
+                    ->where('status', 'settled')->where('id', '!=', $movement->id)
+                    ->get(['amount'])->sum(fn (Movimento $item) => (int) round((float) $item->amount * 100));
+                $purchaseCents = (int) round((float) $purchase->amount * 100);
+                if ($newAmount + $otherCredits > $purchaseCents) {
+                    throw ValidationException::withMessages(['amount' => 'O crédito não pode ultrapassar o valor ainda não creditado da compra.']);
+                }
+            }
+
+            $movement->update([
+                'description' => $data['description'] ?? $movement->description,
+                'amount' => number_format($newAmount / 100, 2, '.', ''),
+                'movement_date' => $data['movement_date'] ?? $movement->movement_date->toDateString(),
+            ]);
+
+            HistoricoMovimento::query()->create([
+                'user_id' => $user->id,
+                'movement_id' => $movement->id,
+                'changed_by' => $user->id,
+                'action' => 'invoice_component_updated',
+                'before_data' => $before,
+                'after_data' => $movement->fresh()->getAttributes(),
+                'reason' => 'Movimento da fatura corrigido pelo utilizador.',
+            ]);
+
+            $this->movements->syncInvoiceSettlementParent($user, $lockedInvoice);
+
+            return $movement->refresh();
         });
     }
 

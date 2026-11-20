@@ -11,12 +11,9 @@
 @endphp
 
 <div class="app-content accounts-rebuilt" id="accountsPage">
-    <header class="accounts-header-v2">
-        <div>
-            <h1 class="h2 fw-bold mb-0">Contas</h1>
-            <span class="small text-secondary">{{ $activeAccounts->count() }} {{ $activeAccounts->count() === 1 ? 'conta ativa' : 'contas ativas' }}</span>
-        </div>
-        <div class="d-flex gap-2">
+    <x-financial.page-header title="Contas">
+        <x-slot:subtitle>{{ $activeAccounts->count() }} {{ $activeAccounts->count() === 1 ? 'conta ativa' : 'contas ativas' }}</x-slot:subtitle>
+        <x-slot:actions>
             @if ($transferTargets->count() >= 2)
                 <button class="btn btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#accountTransferModal">
                     <i data-lucide="arrow-left-right" aria-hidden="true"></i><span class="ms-1">Transferir</span>
@@ -25,8 +22,8 @@
             <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#newAccountModal">
                 <i data-lucide="plus" aria-hidden="true"></i><span class="ms-1">Nova</span>
             </button>
-        </div>
-    </header>
+        </x-slot:actions>
+    </x-financial.page-header>
 
     <div id="accountFeedback" class="d-none" role="status" aria-live="polite"></div>
 
@@ -142,11 +139,11 @@
                                     @endif
                                 </div>
                                 @if ($accountGroup === 'active' && $account->is_operational && $account->status !== 'closed')
-                                    <div class="dropdown account-row-menu-v2">
-                                        <button class="account-row-menu-v2-button" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações para {{ $account->name }}">
-                                            <span>Ações</span><i data-lucide="chevron-down" aria-hidden="true"></i>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                    <x-financial.action-menu
+                                        wrapper-class="account-row-menu-v2"
+                                        button-class="account-row-menu-v2-button"
+                                        :label="'Ações para ' . $account->name"
+                                    >
                                             <li><button class="dropdown-item js-edit-account" type="button" data-bs-toggle="modal" data-bs-target="#renameAccountModal"
                                                 data-endpoint="{{ route('financial.accounts.update', $account->id) }}"
                                                 data-settings-endpoint="{{ route('financial.accounts.settings', $account->id) }}"
@@ -159,8 +156,7 @@
                                                 <li><hr class="dropdown-divider"></li>
                                                 <li><button class="dropdown-item text-danger js-close-account" type="button" data-bs-toggle="modal" data-bs-target="#closeAccountModal" data-endpoint="{{ route('financial.accounts.close', $account->id) }}" data-id="{{ $account->id }}" data-name="{{ $account->name }}" data-balance="{{ number_format((float) ($account->current_balance ?? 0), 2, '.', '') }}" data-currency="{{ $account->currency }}">Encerrar</button></li>
                                             @endif
-                                        </ul>
-                                    </div>
+                                    </x-financial.action-menu>
                                 @endif
                             </article>
                         @endforeach
@@ -378,6 +374,28 @@
 
 @push('styles')
 <style>
+.account-row-menu-v2-button {
+    width: 40px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--bs-border-color);
+    border-radius: .65rem;
+    color: var(--bs-secondary-color);
+    background: var(--bs-body-bg);
+}
+.account-row-menu-v2-button:hover,
+.account-row-menu-v2-button:focus-visible {
+    color: var(--bs-body-color);
+    border-color: var(--bs-secondary-color);
+}
+</style>
+@endpush
+
+@push('styles')
+<style>
 /* A página segue a mesma hierarquia de Cartões, sem depender de regras globais. */
 .accounts-rebuilt { width: 100%; min-width: 0; }
 .accounts-rebuilt .accounts-filter { min-height: 1.75rem; }
@@ -443,9 +461,6 @@
 .accounts-rebuilt .accounts-empty-icon { display: inline-grid; place-items: center; width: 3.4rem; height: 3.4rem; border-radius: 1rem; background: rgba(99,91,255,.1); color: var(--mb-primary); }
 .accounts-rebuilt .accounts-empty-icon svg { width: 1.5rem; height: 1.5rem; }
 @media (max-width: 767.98px) {
-    .accounts-rebuilt .accounts-header-v2 { align-items: flex-start; flex-direction: column; }
-    .accounts-rebuilt .accounts-header-v2 > :last-child { width: 100%; }
-    .accounts-rebuilt .accounts-header-v2 > :last-child .btn { flex: 1 1 auto; }
     .accounts-rebuilt .account-row-v2 { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; gap: .6rem .7rem; min-height: 0; padding: .9rem; }
     .accounts-rebuilt .account-row-link-v2 { grid-column: 1; grid-row: 1; }
     .accounts-rebuilt .account-row-menu-v2 { grid-column: 2; grid-row: 1; align-self: start; }

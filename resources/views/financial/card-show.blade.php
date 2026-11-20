@@ -11,29 +11,7 @@
                 <h1 class="h3 fw-bold mb-0 text-break">{{ $card->name }}</h1>
                 <span class="small text-secondary">Cartão de crédito</span>
             </div>
-            <div class="dropdown">
-                <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Gerir cartão"><i data-lucide="ellipsis"></i></button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    @if($card->status !== 'closed' && $card->is_operational)
-                        <li><button class="dropdown-item js-edit-card" type="button" data-name="{{ $card->name }}" data-update-url="{{ route('financial.accounts.update',$card->id) }}" data-settings-url="{{ route('financial.cards.settings',$card->id) }}" data-limit="{{ $card->credit_limit }}" data-closing="{{ $card->closing_day }}" data-due="{{ $card->due_day }}" data-opening-debt="{{ $card->opening_debt_amount }}">Editar</button></li>
-                    @endif
-                    @if($card->status === 'active' && $card->is_operational)
-                        <li><button class="dropdown-item js-card-status" type="button" data-status="suspended" data-status-url="{{ route('financial.cards.status',$card->id) }}" data-name="{{ $card->name }}">Suspender</button></li>
-                    @elseif($card->status === 'suspended' && $card->is_operational)
-                        <li><button class="dropdown-item js-card-status" type="button" data-status="active" data-status-url="{{ route('financial.cards.status',$card->id) }}" data-name="{{ $card->name }}">Reativar</button></li>
-                    @endif
-                    @if($card->status === 'closed' || ! $card->is_operational)
-                        <li><button class="dropdown-item js-reopen-card" type="button" data-url="{{ route('financial.cards.reopen',$card->id) }}">Reabrir</button></li>
-                    @endif
-                    @if($card->status === 'active' && $card->is_operational && $card->used_limit <= 0.00001)
-                        <li><button class="dropdown-item js-close-card text-danger" type="button" data-close-url="{{ route('financial.accounts.close',$card->id) }}" data-name="{{ $card->name }}">Encerrar</button></li>
-                    @endif
-                    @if($card->can_delete)
-                        <li><hr class="dropdown-divider"></li>
-                        <li><button class="dropdown-item js-delete-card text-danger" type="button" data-url="{{ route('financial.cards.destroy',$card->id) }}">Eliminar</button></li>
-                    @endif
-                </ul>
-            </div>
+
         </div>
     </header>
 
@@ -64,29 +42,26 @@
             <p class="mb-0 text-secondary">Ainda não existem faturas para este cartão.</p>
         </div></div>
     @else
-        <section class="d-grid gap-2" aria-label="Faturas deste cartão">
+        <section class="card border-0 shadow-sm rounded-4 overflow-hidden" aria-label="Faturas deste cartão"><div class="list-group list-group-flush">
             @foreach($invoices as $invoice)
                 @php
                     $cycleLabels = ['open' => 'Aberta', 'closed' => 'Fechada'];
                     $cycleClasses = ['open' => 'text-bg-primary', 'closed' => 'text-bg-secondary'];
                     $currency = $card->currency;
                 @endphp
-                <a href="{{ route('financial.invoices.show', ['id' => $invoice->id, 'card_page' => $invoices->currentPage(), 'return_to' => request()->getRequestUri()]) }}" class="card border rounded-4 text-decoration-none text-body">
-                    <div class="card-body p-3">
-                        <div class="d-flex justify-content-between align-items-center gap-2">
-                            <div class="min-w-0">
-                                <h3 class="h6 fw-semibold mb-1 text-capitalize">{{ $invoice->reference_month->translatedFormat('F Y') }}</h3>
-                                <span class="small text-secondary">Vence {{ $invoice->due_date->format('d/m/Y') }}</span>
-                            </div>
-                            <div class="text-end flex-shrink-0">
-                                <strong class="d-block">{{ number_format((float)$invoice->total_amount,2,',','.') }} {{ $currency }}</strong>
-                                <span class="badge mt-1 {{ $cycleClasses[$invoice->cycle_status] ?? 'text-bg-secondary' }}">{{ $cycleLabels[$invoice->cycle_status] ?? 'Fechada' }}</span>
-                            </div>
-                        </div>
-                    </div>
+                <a href="{{ route('financial.invoices.show', ['id' => $invoice->id, 'card_page' => $invoices->currentPage(), 'return_to' => request()->getRequestUri()]) }}" class="list-group-item list-group-item-action text-decoration-none py-2 px-3">
+                    <x-financial.history-row
+                        icon="receipt"
+                        icon-class="bg-body-secondary text-secondary"
+                        :title="$invoice->reference_month->translatedFormat('F Y')"
+                        :subtitle="'Vence ' . $invoice->due_date->format('d/m/Y')"
+                        :amount="number_format((float) $invoice->total_amount, 2, ',', '.') . ' ' . $currency"
+                        :status="$cycleLabels[$invoice->cycle_status] ?? 'Fechada'"
+                        :status-class="$cycleClasses[$invoice->cycle_status] ?? 'text-bg-secondary'"
+                    />
                 </a>
             @endforeach
-        </section>
+        </div></section>
         <div class="mt-3">{{ $invoices->links() }}</div>
     @endif
 </div>
@@ -109,6 +84,15 @@
         </form>
     </div></div>
 </div>
+
+<div class="modal fade" id="cardStatusConfirmModal" tabindex="-1" aria-labelledby="cardStatusConfirmTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow rounded-4">
+        <div class="modal-header border-0 pb-0"><h2 class="modal-title h5 fw-bold" id="cardStatusConfirmTitle">Suspender cartão</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+        <div class="modal-body"><p class="mb-0" id="cardStatusConfirmMessage"></p><div class="small text-danger mt-3 d-none" id="cardStatusConfirmError" role="alert"></div></div>
+        <div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="cardStatusConfirmSubmit">Confirmar</button></div>
+    </div></div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -139,13 +123,30 @@
             window.location.reload();
         }catch(error){document.getElementById('editCardError').textContent=error.message;button.disabled=false;}
     });
-    document.querySelectorAll('.js-card-status').forEach(button=>button.addEventListener('click',async()=>{
-        const active=button.dataset.status==='active';
-        if(!confirm((active?'Reativar':'Suspender')+' este cartão?'))return;
-        const response=await fetch(button.dataset.statusUrl,{method:'POST',credentials:'same-origin',headers,body:JSON.stringify({status:button.dataset.status})});
-        if(!response.ok){const result=await response.json().catch(()=>({}));fail(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível alterar o cartão.');return;}
-        window.location.reload();
+    const statusModalElement=document.getElementById('cardStatusConfirmModal');
+    const statusModal=statusModalElement?bootstrap.Modal.getOrCreateInstance(statusModalElement):null;
+    let pendingStatusButton=null;
+    document.querySelectorAll('.js-card-status').forEach(button=>button.addEventListener('click',()=>{
+        pendingStatusButton=button;
+        const activating=button.dataset.status==='active';
+        document.getElementById('cardStatusConfirmTitle').textContent=activating?'Reativar cartão':'Suspender cartão';
+        document.getElementById('cardStatusConfirmMessage').textContent=activating
+            ?'Queres reativar o cartão '+button.dataset.name+'?'
+            :'Queres suspender o cartão '+button.dataset.name+'? Não será possível registar novas compras enquanto estiver suspenso.';
+        document.getElementById('cardStatusConfirmError').classList.add('d-none');
+        statusModal?.show();
     }));
+    document.getElementById('cardStatusConfirmSubmit')?.addEventListener('click',async()=>{
+        if(!pendingStatusButton)return;
+        const submit=document.getElementById('cardStatusConfirmSubmit');submit.disabled=true;
+        try{
+            const response=await fetch(pendingStatusButton.dataset.statusUrl,{method:'POST',credentials:'same-origin',headers,body:JSON.stringify({status:pendingStatusButton.dataset.status})});
+            const result=await response.json().catch(()=>({}));
+            if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível alterar o cartão.');
+            window.location.reload();
+        }catch(error){const el=document.getElementById('cardStatusConfirmError');el.textContent=error.message;el.classList.remove('d-none');}
+        finally{submit.disabled=false;}
+    });
     document.querySelectorAll('.js-reopen-card').forEach(button=>button.addEventListener('click',async()=>{
         if(!confirm('Reabrir este cartão?'))return;
         const response=await fetch(button.dataset.url,{method:'POST',credentials:'same-origin',headers,body:JSON.stringify({})});
@@ -166,4 +167,17 @@
     }));
 })();
 </script>
+@endpush
+
+@push('styles')
+<style>
+.financial-history-row { min-width: 0; }
+.financial-history-row-icon { width: 2.25rem; height: 2.25rem; }
+.financial-history-row-icon svg { width: 1rem; height: 1rem; }
+.financial-history-row-chevron { width: .9rem; height: .9rem; }
+@media (max-width: 575.98px) {
+    .financial-history-row-icon { width: 2rem; height: 2rem; }
+    .financial-history-row { gap: .55rem; }
+}
+</style>
 @endpush

@@ -48,8 +48,19 @@ function setup({ status = 200, result = {} } = {}) {
         requests.push({ url, ...options, payload: JSON.parse(options.body) });
         return { ok: status >= 200 && status < 300, json: async () => result };
     };
-    runInNewContext(inlineScript, { document, FormData: FakeFormData, fetch, window: { location: { reload() { reloads++; } } } });
-    return { create, edit, editButton, errors, requests, get reloads() { return reloads; } };
+    const modalCalls = [];
+    const bootstrap = {
+        Modal: {
+            getOrCreateInstance(element) {
+                return {
+                    show() { modalCalls.push({ action: 'show', element }); },
+                    hide() { modalCalls.push({ action: 'hide', element }); },
+                };
+            },
+        },
+    };
+    runInNewContext(inlineScript, { document, FormData: FakeFormData, fetch, bootstrap, window: { location: { reload() { reloads++; } } } });
+    return { create, edit, editButton, errors, requests, modalCalls, get reloads() { return reloads; } };
 }
 
 test('campos monetários preservam texto digitado e têm instruções acessíveis', () => {
