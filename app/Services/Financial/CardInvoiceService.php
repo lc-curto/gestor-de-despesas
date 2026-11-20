@@ -124,12 +124,12 @@ class CardInvoiceService
         return $this->movements->payCardOpeningDebt($user, $cardId, $sourceAccountId, $date, $requestedAmount);
     }
 
-    public function listInvoices(User $user, ?string $accountId = null)
+    private function invoiceQuery(User $user)
     {
         return Fatura::query()->where('user_id', $user->id)
-            ->when($accountId, fn ($query) => $query->where('account_id', $accountId))
             ->where(function ($query) {
-                $query->whereHas('movimentos', fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false))->orWhereHas('saldosTransportados');
+                $query->whereHas('movimentos', fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false))
+                    ->orWhereHas('saldosTransportados');
             })
             ->with('conta:id,name,type,currency,credit_limit')
             ->with([
@@ -140,55 +140,69 @@ class CardInvoiceService
                     ->select('id', 'invoice_id', 'amount', 'reversal_of_id', 'type', 'movement_date', 'source_account_id', 'destination_account_id'),
                 'creditos' => fn ($q) => $q->where('status', 'settled')
                     ->select('id', 'invoice_id', 'amount', 'movement_date', 'invoice_credit_for_movement_id', 'invoice_charge_type'),
-                'saldosTransportados' => fn ($q) => $q->with('sourceInvoice:id,reference_month,closing_date,due_date,status')->select('id', 'user_id', 'source_invoice_id', 'target_invoice_id', 'amount'),
+                'saldosTransportados' => fn ($q) => $q->with('sourceInvoice:id,reference_month,closing_date,due_date,status')
+                    ->select('id', 'user_id', 'source_invoice_id', 'target_invoice_id', 'amount'),
             ])
-            ->withCount(['movimentos' => fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false)])
-            ->orderByDesc('reference_month')->paginate(30)
-            ->through(function (Fatura $invoice): Fatura {
-                $totalCents = 0;
-                $paidCents = 0;
-                foreach ($invoice->movimentos as $movement) {
-                    $cents = (int) round((float) $movement->amount * 100);
-                    if ($movement->type === 'expense' && ! $movement->is_settlement_parent) {
-                        $totalCents += $cents;
-                    }
-                }
-                $carriedCents = 0;
-                foreach ($invoice->saldosTransportados as $carried) {
-                    $carriedCents += (int) round((float) $carried->amount * 100);
-                }
-                foreach ($invoice->creditos as $credit) {
-                    $totalCents -= (int) round((float) $credit->amount * 100);
-                }
-                foreach ($invoice->pagamentos as $payment) {
-                    $cents = (int) round((float) $payment->amount * 100);
-                    $paidCents += $payment->reversal_of_id ? -$cents : $cents;
-                }
-                $totalCents += $carriedCents;
-                $total = $totalCents / 100;
-                $paid = $paidCents / 100;
-                $remaining = $invoice->status === 'carried' ? 0 : max(0, round($total - $paid, 2));
-                $invoice->setAttribute('carried_balance', number_format($carriedCents / 100, 2, '.', ''));
-                $invoice->setAttribute('total_amount', number_format($total, 2, '.', ''));
-                $invoice->setAttribute('paid_amount', number_format($paid, 2, '.', ''));
-                $invoice->setAttribute('remaining_amount', number_format($remaining, 2, '.', ''));
-                $cycleStatus = $invoice->closed_at || in_array($invoice->status, ['closed', 'paid', 'carried'], true)
-                    ? 'closed'
-                    : 'open';
-                $paymentStatus = $invoice->status === 'carried' ? 'carried'
-                    : ($remaining <= 0 ? 'paid'
-                        : ($invoice->due_date->lt(today()) ? 'overdue'
-                            : ($paid > 0 ? 'partial' : 'unpaid')));
-                $invoice->setAttribute('cycle_status', $cycleStatus);
-                $invoice->setAttribute('payment_status', $paymentStatus);
-                // Mantém o campo legado para consumidores existentes da API.
-                $invoice->setAttribute('display_status', $invoice->status === 'carried' ? 'carried'
-                    : ($remaining <= 0 ? 'paid'
-                        : ($invoice->due_date->lt(today()) ? 'overdue'
-                            : ($paid > 0 ? 'partial' : ($cycleStatus === 'closed' ? 'closed' : 'open')))));
+            ->withCount(['movimentos' => fn ($q) => $q->where('type', 'expense')->where('status', 'settled')->where('is_settlement_parent', false)]);
+    }
 
-                return $invoice;
-            });
+    public function listInvoices(User $user, ?string $accountId = null)
+    {
+        return $this->invoiceQuery($user)
+            ->when($accountId, fn ($query) => $query->where('account_id', $accountId))
+            ->orderByDesc('reference_month')->paginate(30)
+            ->through(fn (Fatura $invoice): Fatura => $this->presentInvoice($invoice));
+    }
+
+    public function findInvoice(User $user, string $invoiceId): Fatura
+    {
+        $invoice = $this->invoiceQuery($user)->whereKey($invoiceId)->firstOrFail();
+
+        return $this->presentInvoice($invoice);
+    }
+
+    private function presentInvoice(Fatura $invoice): Fatura
+    {
+        $totalCents = 0;
+        $paidCents = 0;
+        foreach ($invoice->movimentos as $movement) {
+            if ($movement->type === 'expense' && ! $movement->is_settlement_parent) {
+                $totalCents += (int) round((float) $movement->amount * 100);
+            }
+        }
+        $carriedCents = 0;
+        foreach ($invoice->saldosTransportados as $carried) {
+            $carriedCents += (int) round((float) $carried->amount * 100);
+        }
+        foreach ($invoice->creditos as $credit) {
+            $totalCents -= (int) round((float) $credit->amount * 100);
+        }
+        foreach ($invoice->pagamentos as $payment) {
+            $cents = (int) round((float) $payment->amount * 100);
+            $paidCents += $payment->reversal_of_id ? -$cents : $cents;
+        }
+        $totalCents += $carriedCents;
+        $total = $totalCents / 100;
+        $paid = $paidCents / 100;
+        $remaining = $invoice->status === 'carried' ? 0 : max(0, round($total - $paid, 2));
+        $invoice->setAttribute('carried_balance', number_format($carriedCents / 100, 2, '.', ''));
+        $invoice->setAttribute('total_amount', number_format($total, 2, '.', ''));
+        $invoice->setAttribute('paid_amount', number_format($paid, 2, '.', ''));
+        $invoice->setAttribute('remaining_amount', number_format($remaining, 2, '.', ''));
+        $cycleStatus = $invoice->closed_at || in_array($invoice->status, ['closed', 'paid', 'carried'], true) ? 'closed' : 'open';
+        $paymentStatus = $invoice->status === 'carried' ? 'carried'
+            : ($remaining <= 0 ? 'paid'
+                : ($invoice->due_date->lt(today()) ? 'overdue'
+                    : ($paid > 0 ? 'partial' : 'unpaid')));
+        $invoice->setAttribute('cycle_status', $cycleStatus);
+        $invoice->setAttribute('payment_status', $paymentStatus);
+        // Mantém o campo legado para consumidores existentes da API.
+        $invoice->setAttribute('display_status', $invoice->status === 'carried' ? 'carried'
+            : ($remaining <= 0 ? 'paid'
+                : ($invoice->due_date->lt(today()) ? 'overdue'
+                    : ($paid > 0 ? 'partial' : ($cycleStatus === 'closed' ? 'closed' : 'open')))));
+
+        return $invoice;
     }
 
     public function addCharge(User $user, Fatura $invoice, array $data): Movimento
