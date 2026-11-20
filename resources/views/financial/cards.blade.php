@@ -21,11 +21,10 @@
                         <a href="{{ route('financial.cards.show', ['id' => $card->id, 'return_to' => request()->getRequestUri()]) }}" class="text-decoration-none text-body flex-grow-1 min-w-0" aria-label="Abrir {{ $card->name }}">
                             <span class="fw-semibold text-break">{{ $card->name }}</span>
                         </a>
-                        <div class="dropdown flex-shrink-0">
-                            <button class="btn btn-sm card-actions-trigger" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações de {{ $card->name }}">
-                                <i data-lucide="ellipsis" aria-hidden="true"></i>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                        <x-financial.action-menu
+                            button-class="card-actions-trigger"
+                            :label="'Ações de ' . $card->name"
+                        >
                                 @if($card->status !== 'closed' && $card->is_operational)
                                     <li><button class="dropdown-item js-edit-card" type="button"
                                         data-name="{{ $card->name }}" data-update-url="{{ route('financial.accounts.update',$card->id) }}"
@@ -48,8 +47,7 @@
                                     <li><hr class="dropdown-divider"></li>
                                     <li><button class="dropdown-item js-delete-card text-danger" type="button" data-url="{{ route('financial.cards.destroy',$card->id) }}">Eliminar</button></li>
                                 @endif
-                            </ul>
-                        </div>
+                        </x-financial.action-menu>
                     </div>
                     <a href="{{ route('financial.cards.show', ['id' => $card->id, 'return_to' => request()->getRequestUri()]) }}" class="text-decoration-none text-body d-block">
                         <span class="badge {{ $isInactive ? 'text-bg-secondary' : 'text-bg-success' }} mb-2">{{ $isInactive ? 'Suspenso' : 'Ativo' }}</span>
