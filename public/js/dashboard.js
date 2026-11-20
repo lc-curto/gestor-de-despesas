@@ -502,6 +502,8 @@
         article.dataset.expenseBehavior = item.expense_behavior || 'variable';
         article.dataset.movementStatus = item.movement_status || '';
         article.dataset.isInvoicePayment = item.is_invoice_payment ? '1' : '0';
+        article.dataset.isInvoiceCharge = item.is_invoice_charge ? '1' : '0';
+        article.dataset.isInvoiceCredit = item.is_invoice_credit ? '1' : '0';
         article.dataset.isSettlementEvent = item.is_settlement_event ? '1' : '0';
         article.dataset.dueDate = item.due_date || '';
         article.dataset.recurrenceId = item.recurrence_id || '';
@@ -512,7 +514,8 @@
         const info = document.createElement('div');
         info.className = 'd-flex align-items-center gap-3 min-w-0';
         const icon = document.createElement('div');
-        icon.className = isExpense ? 'expense-icon flex-shrink-0' : 'expense-icon income-icon flex-shrink-0';
+        const isInvoiceCredit = Boolean(item.is_invoice_credit);
+        icon.className = (isExpense && !isInvoiceCredit) ? 'expense-icon flex-shrink-0' : 'expense-icon income-icon flex-shrink-0';
         icon.setAttribute('aria-hidden', 'true');
         icon.style.setProperty('--category-color', item.category_color || '#635BFF');
         icon.innerHTML = '<i data-lucide="' + (item.category_icon || 'tag') + '"></i>';
@@ -600,10 +603,10 @@
         const actions = document.createElement('div');
         actions.className = 'expense-actions d-flex align-items-center justify-content-end gap-2';
         const value = document.createElement('strong');
-        value.className = (isExpense ? 'text-danger' : 'text-success') + ' text-nowrap movement-value';
+        value.className = ((isExpense && !isInvoiceCredit) ? 'text-danger' : 'text-success') + ' text-nowrap movement-value';
         value.dataset.value = item.amount;
         value.dataset.currency = item.currency || cfg.currency || 'EUR';
-        value.textContent = (isExpense ? '−' : '+') + formatCurrency(item.amount, item.currency);
+        value.textContent = ((isExpense && !isInvoiceCredit) ? '−' : '+') + formatCurrency(Math.abs(Number(item.amount)), item.currency);
 
         actions.append(value);
         const detailsButton = document.createElement('button');
@@ -1149,8 +1152,8 @@
         const deleteAction = document.getElementById('movementDetailsDelete');
         settleAction.hidden = row.dataset.isInvoicePayment === '1' ||
             !(['pending', 'partial', 'partially_settled'].includes(status) && Boolean(row.dataset.financialMovementId));
-        editAction.hidden = row.dataset.isInvoicePayment === '1';
-        deleteAction.hidden = row.dataset.isInvoicePayment === '1';
+        editAction.hidden = row.dataset.isInvoicePayment === '1' || row.dataset.isInvoiceCharge === '1';
+        deleteAction.hidden = row.dataset.isInvoicePayment === '1' || row.dataset.isInvoiceCharge === '1';
 
         const progressTitle = document.getElementById('movementDetailsPaymentHeading');
         progressTitle.hidden = !partial;

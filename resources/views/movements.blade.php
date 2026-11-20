@@ -340,6 +340,8 @@
                     @forelse ($movimentosVisiveis as $movimento)
                         @php
                             $isExpense = $movimento->tipo === 'despesa';
+                            $isInvoiceCredit = (bool) ($movimento->is_invoice_credit ?? false);
+                            $isInvoiceCharge = (bool) ($movimento->is_invoice_charge ?? false);
                             $dataMovimento = \Illuminate\Support\Carbon::parse($movimento->data_movimento);
                             $categoriaLabel = $categorias[$movimento->category] ?? $movimento->category;
                         @endphp
@@ -349,7 +351,7 @@
                             data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}"
                             data-amount="{{ $movimento->amount }}" data-remaining-amount="{{ $movimento->remaining_amount ?? $movimento->amount }}" data-currency="{{ $movimento->currency }}"
                             data-category-id="{{ $movimento->category }}" data-account-id="{{ $movimento->account_id }}"
-                            data-movement-status="{{ $movimento->movement_status }}" data-is-settlement-event="{{ (bool) ($movimento->is_settlement_event ?? false) ? 1 : 0 }}" data-expense-behavior="{{ $movimento->expense_behavior ?? 'variable' }}" data-recurrence-id="{{ $movimento->recurrence_id }}" data-recurrence-frequency="{{ $movimento->recurrence_frequency }}" data-financial-movement-id="{{ $movimento->financial_movement_id }}">
+                            data-movement-status="{{ $movimento->movement_status }}" data-is-settlement-event="{{ (bool) ($movimento->is_settlement_event ?? false) ? 1 : 0 }}" data-expense-behavior="{{ $movimento->expense_behavior ?? 'variable' }}" data-recurrence-id="{{ $movimento->recurrence_id }}" data-recurrence-frequency="{{ $movimento->recurrence_frequency }}" data-financial-movement-id="{{ $movimento->financial_movement_id }}" data-is-invoice-charge="{{ (bool) ($movimento->is_invoice_charge ?? false) ? 1 : 0 }}" data-is-invoice-credit="{{ (bool) ($movimento->is_invoice_credit ?? false) ? 1 : 0 }}">
                             <div class="d-flex justify-content-between align-items-center gap-3 w-100">
                             <div class="d-flex align-items-center gap-3 min-w-0">
                                 <div class="expense-icon flex-shrink-0" style="--category-color: {{ $movimento->category_color ?? '#635BFF' }}" aria-hidden="true">
@@ -386,15 +388,19 @@
                                 </div>
                             </div>
                             <div class="expense-actions d-flex align-items-center justify-content-end gap-2">
-                                <strong class="{{ $isExpense ? 'text-danger' : 'text-success' }} text-nowrap movement-value"
-                                    data-value="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}">{{ $isExpense ? '−' : '+' }}{{ number_format((float) $movimento->amount, 2, ',', '.') }}</strong>
-                                <div class="btn-group btn-group-sm" role="group" aria-label="Ações de {{ $movimento->description }}">
-                                    <button type="button" class="btn btn-outline-secondary edit-movement" data-acao="editar" aria-label="Editar {{ $movimento->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></button>
-                                    @if ($movimento->movement_status === 'pending' && $movimento->financial_movement_id)
-                                        <button type="button" class="btn btn-outline-success" data-movement-action="settle" title="Efetivar" aria-label="Efetivar {{ $movimento->description }}"><i data-lucide="check-circle" aria-hidden="true"></i></button>
-                                    @endif
-                                    <button type="button" class="btn btn-outline-danger" data-movement-action="delete" aria-label="Excluir {{ $movimento->description }}" title="Excluir"><i data-lucide="trash-2" aria-hidden="true"></i></button>
-                                </div>
+                                <strong class="{{ ($isExpense && ! $isInvoiceCredit) ? 'text-danger' : 'text-success' }} text-nowrap movement-value"
+                                    data-value="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}">{{ ($isExpense && ! $isInvoiceCredit) ? '−' : '+' }}{{ number_format(abs((float) $movimento->amount), 2, ',', '.') }}</strong>
+                                @if ($isInvoiceCharge)
+                                    <span class="small text-secondary">Na fatura</span>
+                                @else
+                                    <div class="btn-group btn-group-sm" role="group" aria-label="Ações de {{ $movimento->description }}">
+                                        <button type="button" class="btn btn-outline-secondary edit-movement" data-acao="editar" aria-label="Editar {{ $movimento->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></button>
+                                        @if ($movimento->movement_status === 'pending' && $movimento->financial_movement_id)
+                                            <button type="button" class="btn btn-outline-success" data-movement-action="settle" title="Efetivar" aria-label="Efetivar {{ $movimento->description }}"><i data-lucide="check-circle" aria-hidden="true"></i></button>
+                                        @endif
+                                        <button type="button" class="btn btn-outline-danger" data-movement-action="delete" aria-label="Excluir {{ $movimento->description }}" title="Excluir"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                                    </div>
+                                @endif
                             </div>
                             </div>
                             @if (in_array($movimento->movement_status, ['partial', 'partially_settled'], true))
