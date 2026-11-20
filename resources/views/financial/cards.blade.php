@@ -76,7 +76,7 @@
 @push('styles')
 <style>
 .credit-card-item { transition: border-color .15s ease, background-color .15s ease; }
-.credit-card-item:hover { border-color: var(--bs-primary) !important; background-color: var(--bs-tertiary-bg); }
+.credit-card-item:hover { border-color: var(--bs-primary); background-color: var(--bs-tertiary-bg); }
 .credit-card-item:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
 .credit-card-item .progress { background-color: var(--bs-secondary-bg); }
 </style>
