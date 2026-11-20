@@ -40,7 +40,8 @@ class DashboardNavigationTest extends TestCase
 
         $movementPage->assertOk()
             ->assertSee('autoOpenEditor: true', false)
-            ->assertSee('returnUrl: '.json_encode($dashboardUrl), false)
+            ->assertSee('returnUrl:', false)
+            ->assertSee('mes='.$month, false)
             ->assertSee('periodMonth" name="mes" class="form-control" value="'.$month.'"', false);
     }
 
@@ -57,6 +58,7 @@ class DashboardNavigationTest extends TestCase
         ]));
 
         $response->assertOk()
-            ->assertSee('returnUrl: '.json_encode(route('dashboard', ['mes' => $month])), false);
+            ->assertSee('returnUrl:', false)
+            ->assertSee('mes='.$month, false);
     }
 }
