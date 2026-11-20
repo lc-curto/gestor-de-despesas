@@ -10,39 +10,26 @@ class DashboardNavigationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_dashboard_uses_month_picker_and_quick_actions_preserve_selected_month_and_origin(): void
+    public function test_dashboard_opens_movement_editor_in_place_from_quick_actions_and_mobile_new_menu(): void
     {
         $user = User::factory()->create();
         $month = '2026-10';
-        $dashboardUrl = route('dashboard', ['mes' => $month], false);
 
-        $dashboard = $this->actingAs($user)->get($dashboardUrl);
+        $response = $this->actingAs($user)->get(route('dashboard', ['mes' => $month], false));
 
-        $dashboard->assertOk()
+        $response->assertOk()
             ->assertSee('id="dashboardMonthPicker"', false)
             ->assertSee('id="dashboardMonthGrid"', false)
             ->assertSee('id="dashboardMonth" name="mes" value="'.$month.'"', false)
-            ->assertDontSee('id="dashboardMonth" name="mes" class="form-select', false)
-            ->assertSee('novo=1', false)
-            ->assertSee('tipo=despesa', false)
-            ->assertSee('tipo=receita', false)
-            ->assertSee('mes='.$month, false)
-            ->assertSee('return_to=', false);
-
-        $quickExpense = route('dashboard.movimentos', [
-            'novo' => 1,
-            'tipo' => 'despesa',
-            'mes' => $month,
-            'return_to' => $dashboardUrl,
-        ]);
-
-        $movementPage = $this->get($quickExpense);
-
-        $movementPage->assertOk()
-            ->assertSee('autoOpenEditor: true', false)
-            ->assertSee('returnUrl:', false)
-            ->assertSee('mes='.$month, false)
-            ->assertSee('periodMonth" name="mes" class="form-control" value="'.$month.'"', false);
+            ->assertSee('id="movementEntryModal"', false)
+            ->assertSee('id="dashboardMovementForm"', false)
+            ->assertSee('id="quickExpenseButton"', false)
+            ->assertSee('id="quickIncomeButton"', false)
+            ->assertSee('data-dashboard-new-movement="despesa"', false)
+            ->assertSee('data-dashboard-new-movement="receita"', false)
+            ->assertSee('dashboardHome: true', false)
+            ->assertDontSee('id="quickExpenseButton" href=', false)
+            ->assertDontSee('id="quickIncomeButton" href=', false);
     }
 
     public function test_quick_action_return_url_rejects_external_redirects(): void
