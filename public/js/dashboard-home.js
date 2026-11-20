@@ -10,11 +10,10 @@
         });
         balanceToggle.setAttribute('aria-pressed', String(hidden));
         balanceToggle.setAttribute('aria-label', hidden ? 'Mostrar saldos' : 'Ocultar saldos');
-        const icon = balanceToggle.querySelector('[data-lucide]');
-        if (icon) {
-            icon.setAttribute('data-lucide', hidden ? 'eye-off' : 'eye');
-            window.lucide?.createIcons?.({ nodes: [icon] });
-        }
+        balanceToggle.innerHTML = hidden
+            ? '<i data-lucide="eye-off" aria-hidden="true"></i>'
+            : '<i data-lucide="eye" aria-hidden="true"></i>';
+        window.lucide?.createIcons?.();
     });
 
     const amount = document.getElementById('conversionAmount');
