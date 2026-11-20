@@ -74,7 +74,7 @@
         </div>
     </section>
 
-    @if (! $isClosedAccount && $account->type === 'credit_card' && $openingDebtRemaining > 0)
+    @if ($account->type === 'credit_card' && $openingDebtRemaining > 0)
     <section class="card border rounded-4 mb-4">
         <div class="card-body p-3 p-sm-4">
             <h2 class="h5 fw-bold mb-1">Dívida anterior à aplicação</h2>
