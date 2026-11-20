@@ -111,14 +111,6 @@
                 <div class="mb-3 d-none" data-field="amount"><label class="form-label" for="invoiceAmount">Valor</label><input class="form-control" id="invoiceAmount" inputmode="decimal" placeholder="0,00"></div>
                 <div class="mb-3 d-none" data-field="date"><label class="form-label" for="invoiceDate">Data efetiva</label><input class="form-control" id="invoiceDate" type="date" value="{{ today()->toDateString() }}"></div>
                 <div class="mb-3 d-none" data-field="account"><label class="form-label" for="invoiceAccount">Conta de pagamento</label><select class="form-select" id="invoiceAccount"><option value="">Selecionar conta</option>@foreach($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select></div>
-                <div class="mb-3 d-none" data-field="allocation">
-                    <div class="form-check"><input class="form-check-input" type="checkbox" id="allocationEnabled"><label class="form-check-label" for="allocationEnabled">O banco informou a decomposição</label></div>
-                    <div id="allocationFields" class="row g-2 mt-1 d-none">
-                        @foreach(['principal'=>'Capital','interest'=>'Juros','fees'=>'Comissões','taxes'=>'Impostos','other'=>'Outros'] as $key=>$label)
-                            <div class="col-6"><label class="form-label small" for="allocation_{{ $key }}">{{ $label }}</label><input class="form-control form-control-sm" id="allocation_{{ $key }}" inputmode="decimal" placeholder="0,00"></div>
-                        @endforeach
-                    </div>
-                </div>
                 <div class="mb-3 d-none" data-field="chargeType"><label class="form-label" for="invoiceChargeType">Tipo de encargo</label><select class="form-select" id="invoiceChargeType"><option value="interest">Juros</option><option value="late_fee">Multa</option><option value="commission">Comissão</option><option value="tax">Imposto</option><option value="other">Outro</option></select></div>
                 <div class="mb-3 d-none" data-field="purchase"><label class="form-label" for="invoicePurchase">Compra a creditar</label><select class="form-select" id="invoicePurchase">@foreach($invoice->movimentos as $purchase)<option value="{{ $purchase->id }}">{{ $purchase->description }} · {{ $purchase->amount }} {{ $currency }}</option>@endforeach</select></div>
                 <div class="mb-3 d-none" data-field="statement"><label class="form-label" for="invoiceStatement">Total do extrato</label><input class="form-control" id="invoiceStatement" inputmode="decimal" placeholder="0,00"></div>
@@ -138,7 +130,7 @@
     const modal=bootstrap.Modal.getOrCreateInstance(modalEl),csrf=document.querySelector('meta[name="csrf-token"]')?.content;
     const context=document.querySelector('.invoice-detail-context');
     let invoiceId=context?.dataset.invoiceId,action=null;
-    const fieldMap={pay:['amount','date','account','allocation'],charge:['description','amount','date','chargeType'],credit:['description','amount','date','purchase'],close:['statement']};
+    const fieldMap={pay:['amount','date','account'],charge:['description','amount','date','chargeType'],credit:['description','amount','date','purchase'],close:['statement']};
     const titleMap={pay:'Pagar fatura',charge:'Adicionar encargo',credit:'Registar crédito',close:'Fechar fatura'};
     const money=v=>{const s=String(v??'').trim().replace(',','.');return /^\d+(\.\d{1,2})?$/.test(s)?s:null;};
     document.querySelectorAll('.js-invoice-action').forEach(button=>button.addEventListener('click',()=>{
@@ -151,13 +143,11 @@
         document.getElementById('invoiceActionError').classList.add('d-none');
         modal.show();
     }));
-    document.getElementById('allocationEnabled').addEventListener('change',e=>document.getElementById('allocationFields').classList.toggle('d-none',!e.target.checked));
     form.addEventListener('submit',async event=>{
         event.preventDefault();const submit=form.querySelector('[type="submit"]');submit.disabled=true;
         const value=id=>document.getElementById(id).value,payload={};let suffix='';
         if(action==='pay'){
             payload.amount=money(value('invoiceAmount'));payload.payment_date=value('invoiceDate');payload.account_id=value('invoiceAccount');suffix='pay';
-            if(document.getElementById('allocationEnabled').checked){payload.allocation={};['principal','interest','fees','taxes','other'].forEach(k=>{const v=money(value('allocation_'+k));if(v!==null)payload.allocation[k]=v;});}
         }else if(action==='charge'){
             payload.description=value('invoiceDescription');payload.amount=money(value('invoiceAmount'));payload.movement_date=value('invoiceDate');payload.charge_type=value('invoiceChargeType');suffix='charges';
         }else if(action==='credit'){
