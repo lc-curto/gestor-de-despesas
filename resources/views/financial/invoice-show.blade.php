@@ -127,42 +127,27 @@
     </div></div>
 </div>
 
-<div class="modal fade" id="invoiceMovementModal" tabindex="-1" aria-labelledby="invoiceMovementTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow rounded-4">
-        <div class="modal-header border-0 pb-0">
-            <h2 class="modal-title h5 fw-bold" id="invoiceMovementTitle">Detalhes do movimento</h2>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-        </div>
-        <div class="modal-body p-4">
-            <div id="invoiceMovementDetails">
-                <div class="small text-secondary mb-1" id="invoiceMovementKind"></div>
-                <strong class="fs-3 d-block mb-2" id="invoiceMovementAmount"></strong>
-                <div class="mb-1" id="invoiceMovementDescription"></div>
-                <div class="small text-secondary" id="invoiceMovementDate"></div>
-            </div>
-            <form id="invoiceMovementEditForm" class="d-none">
-                <div class="mb-3"><label class="form-label" for="invoiceMovementEditDescription">Descrição</label><input class="form-control" id="invoiceMovementEditDescription" maxlength="255" required></div>
-                <div class="mb-3"><label class="form-label" for="invoiceMovementEditAmount">Valor</label><input class="form-control" id="invoiceMovementEditAmount" inputmode="decimal" required></div>
-                <div class="mb-3"><label class="form-label" for="invoiceMovementEditDate">Data</label><input class="form-control" id="invoiceMovementEditDate" type="date" required></div>
-            </form>
-            <div id="invoiceMovementDeleteConfirm" class="alert alert-warning d-none mb-0">Queres excluir este movimento? O sistema registará a correção e recalculará os saldos. Esta ação não pode ser desfeita pela interface.</div>
-            <div id="invoiceMovementError" class="alert alert-danger d-none mt-3 mb-0" role="alert"></div>
-        </div>
-        <div class="modal-footer border-0 pt-0" id="invoiceMovementActions">
-            <button type="button" class="btn btn-outline-danger me-auto" id="invoiceMovementDelete">Excluir</button>
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
-            <button type="button" class="btn btn-primary" id="invoiceMovementEdit">Editar</button>
-        </div>
-        <div class="modal-footer border-0 pt-0 d-none" id="invoiceMovementEditActions">
-            <button type="button" class="btn btn-outline-secondary" id="invoiceMovementCancelEdit">Cancelar</button>
-            <button type="button" class="btn btn-primary" id="invoiceMovementSave">Guardar alterações</button>
-        </div>
-        <div class="modal-footer border-0 pt-0 d-none" id="invoiceMovementDeleteActions">
-            <button type="button" class="btn btn-outline-secondary" id="invoiceMovementCancelDelete">Cancelar</button>
-            <button type="button" class="btn btn-danger" id="invoiceMovementConfirmDelete">Excluir movimento</button>
-        </div>
-    </div></div>
-</div>
+<x-modal id="invoiceMovementModal" aria-labelledby="invoiceMovementTitle" :scrollable="true">
+    <x-modal-header title="Detalhes do movimento" title-id="invoiceMovementTitle" />
+    <x-modal-body>
+        <x-financial.movement-details-panel prefix="invoiceMovement" related-label="Fatura" destructive-label="Excluir" />
+        <form id="invoiceMovementEditForm" class="d-none">
+            <div class="mb-3"><label class="form-label" for="invoiceMovementEditDescription">Descrição</label><input class="form-control" id="invoiceMovementEditDescription" maxlength="255" required></div>
+            <div class="mb-3"><label class="form-label" for="invoiceMovementEditAmount">Valor</label><input class="form-control" id="invoiceMovementEditAmount" inputmode="decimal" required></div>
+            <div class="mb-3"><label class="form-label" for="invoiceMovementEditDate">Data</label><input class="form-control" id="invoiceMovementEditDate" type="date" required></div>
+        </form>
+        <div id="invoiceMovementDeleteConfirm" class="alert alert-warning d-none mb-0">Queres excluir este movimento? O sistema registará a correção e recalculará os saldos. Esta ação não pode ser desfeita pela interface.</div>
+        <div id="invoiceMovementError" class="alert alert-danger d-none mt-3 mb-0" role="alert"></div>
+    </x-modal-body>
+    <x-modal-footer id="invoiceMovementEditActions" class="d-none">
+        <button type="button" class="btn btn-outline-secondary flex-fill" id="invoiceMovementCancelEdit">Cancelar</button>
+        <button type="button" class="btn btn-primary flex-fill" id="invoiceMovementSave">Guardar alterações</button>
+    </x-modal-footer>
+    <x-modal-footer id="invoiceMovementDeleteActions" class="d-none">
+        <button type="button" class="btn btn-outline-secondary flex-fill" id="invoiceMovementCancelDelete">Cancelar</button>
+        <button type="button" class="btn btn-danger flex-fill" id="invoiceMovementConfirmDelete">Excluir movimento</button>
+    </x-modal-footer>
+</x-modal>
 
 @endsection
 
@@ -225,10 +210,9 @@
     const hideError=()=>byId('invoiceMovementError').classList.add('d-none');
     const showMode=mode=>{
         state.mode=mode;
-        byId('invoiceMovementDetails').classList.toggle('d-none',mode!=='view');
+        byId('invoiceMovementDetailsContent').classList.toggle('d-none',mode!=='view');
         byId('invoiceMovementEditForm').classList.toggle('d-none',mode!=='edit');
         byId('invoiceMovementDeleteConfirm').classList.toggle('d-none',mode!=='delete');
-        byId('invoiceMovementActions').classList.toggle('d-none',mode!=='view');
         byId('invoiceMovementEditActions').classList.toggle('d-none',mode!=='edit');
         byId('invoiceMovementDeleteActions').classList.toggle('d-none',mode!=='delete');
         byId('invoiceMovementTitle').textContent=mode==='edit'?'Editar movimento':mode==='delete'?'Excluir movimento':'Detalhes do movimento';
@@ -236,19 +220,19 @@
     };
     document.querySelectorAll('[data-invoice-movement]').forEach(row=>row.addEventListener('click',()=>{
         state.movement=row.dataset;
-        byId('invoiceMovementKind').textContent=({purchase:'Compra',charge:'Encargo',credit:'Crédito',payment:'Pagamento'})[row.dataset.kind]||'Movimento';
-        byId('invoiceMovementAmount').textContent=(row.dataset.kind==='credit'?'−':'')+row.dataset.amount+' '+context.dataset.currency;
-        byId('invoiceMovementDescription').textContent=row.dataset.description||'—';
-        byId('invoiceMovementDate').textContent=row.dataset.date||'—';
+        byId('invoiceMovementDetailsKind').textContent=({purchase:'Compra',charge:'Encargo',credit:'Crédito',payment:'Pagamento'})[row.dataset.kind]||'Movimento';
+        byId('invoiceMovementDetailsAmount').textContent=(row.dataset.kind==='credit'?'−':'')+row.dataset.amount+' '+context.dataset.currency;
+        byId('invoiceMovementDetailsName').textContent=row.dataset.description||'—';
+        byId('invoiceMovementDetailsDate').textContent=row.dataset.date||'—';
         byId('invoiceMovementEditDescription').value=row.dataset.description||'';
         byId('invoiceMovementEditAmount').value=row.dataset.amount||'';
         byId('invoiceMovementEditDate').value=row.dataset.date||'';
-        byId('invoiceMovementEdit').disabled=row.dataset.kind==='payment' ? false : false;
+        byId('invoiceMovementDetailsEdit').disabled=row.dataset.kind==='payment' ? false : false;
         showMode('view');modal.show();
     }));
     byId('invoiceMovementEdit').addEventListener('click',()=>showMode('edit'));
     byId('invoiceMovementCancelEdit').addEventListener('click',()=>showMode('view'));
-    byId('invoiceMovementDelete').addEventListener('click',()=>showMode('delete'));
+    byId('invoiceMovementDetailsDelete').addEventListener('click',()=>showMode('delete'));
     byId('invoiceMovementCancelDelete').addEventListener('click',()=>showMode('view'));
     byId('invoiceMovementSave').addEventListener('click',async()=>{
         if(!state.movement)return;

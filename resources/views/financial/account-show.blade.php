@@ -206,21 +206,8 @@
 <x-modal id="accountMovementDetailsModal" aria-labelledby="accountMovementDetailsTitle" :scrollable="true">
     <x-modal-header title="Detalhes do movimento" title-id="accountMovementDetailsTitle" />
     <x-modal-body>
-            <div id="accountMovementDetailsContent">
-            <div class="mb-3"><h3 class="h6 fw-semibold mb-1" id="accountMovementDetailsName"></h3><p class="small text-secondary mb-0" id="accountMovementDetailsCategory"></p></div>
-            <strong class="fs-3 d-block mb-1" id="accountMovementDetailsAmount"></strong>
-            <hr><h3 class="small fw-semibold mb-3">Informações</h3>
-            <div class="d-flex justify-content-between gap-3 mb-2"><span class="small text-secondary">Data</span><span class="small fw-medium" id="accountMovementDetailsDate"></span></div>
-            <div class="d-flex justify-content-between gap-3 mb-2"><span class="small text-secondary">Tipo</span><span class="small fw-medium" id="accountMovementDetailsKind"></span></div>
-            <div class="d-flex justify-content-between gap-3" id="accountMovementDetailsCounterpartRow" hidden><span class="small text-secondary">Conta relacionada</span><span class="small fw-medium text-end" id="accountMovementDetailsCounterpart"></span></div>
-            <hr class="{{ $isClosedAccount ? 'd-none' : '' }}"><h3 class="small fw-semibold mb-3 {{ $isClosedAccount ? 'd-none' : '' }}">Ações</h3>
-            <div class="list-group list-group-flush border rounded-3 overflow-hidden {{ $isClosedAccount ? 'd-none' : '' }}">
-                <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3" id="accountMovementDetailsEdit"><i data-lucide="pencil" aria-hidden="true"></i><span>Editar</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i></button>
-                <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3 text-danger" id="accountMovementDetailsDelete"><i data-lucide="x-circle" aria-hidden="true"></i><span>Cancelar</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i></button>
-            </div>
-            <p class="small text-secondary mt-3 mb-0" id="accountMovementActionNote" hidden></p>
-            </div>
-            <form id="accountMovementEditForm" class="d-none" novalidate>
+        <x-financial.movement-details-panel prefix="accountMovement" related-label="Conta relacionada" destructive-label="Cancelar" :show-actions="! $isClosedAccount" />
+                    <form id="accountMovementEditForm" class="d-none" novalidate>
                 <div class="d-flex align-items-center gap-2 mb-3">
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="accountMovementEditBack">Voltar</button>
                     <h3 class="h6 fw-bold mb-0">Editar movimento</h3>
@@ -323,13 +310,13 @@ if (accountDeleteModalElement && accountDetailsElement) {
         document.getElementById('accountMovementDetailsAmount').className = 'fs-3 d-block mb-1 ' + row.dataset.amountClass;
         document.getElementById('accountMovementDetailsDate').textContent = row.dataset.date;
         document.getElementById('accountMovementDetailsKind').textContent = row.dataset.kind;
-        const counterpartRow = document.getElementById('accountMovementDetailsCounterpartRow');
+        const counterpartRow = document.getElementById('accountMovementDetailsRelatedRow');
         counterpartRow.hidden = !row.dataset.counterpart;
-        document.getElementById('accountMovementDetailsCounterpart').textContent = row.dataset.counterpart;
+        document.getElementById('accountMovementDetailsRelated').textContent = row.dataset.counterpart;
         document.getElementById('accountDeleteForm').action = row.dataset.deleteUrl;
         editButton.hidden = row.dataset.editable !== '1';
         document.getElementById('accountMovementDetailsDelete').hidden = row.dataset.cancelable !== '1';
-        const actionNote = document.getElementById('accountMovementActionNote');
+        const actionNote = document.getElementById('accountMovementDetailsActionNote');
         actionNote.textContent = row.dataset.actionNote || '';
         actionNote.hidden = !row.dataset.actionNote;
         showMovementDetails();

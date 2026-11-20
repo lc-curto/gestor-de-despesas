@@ -34,4 +34,22 @@ class ReusableModalComponentsTest extends TestCase
             ->assertSee('class="modal-footer', false)
             ->assertSee('data-bs-dismiss="modal"', false);
     }
+    public function test_financial_movement_details_panel_is_reusable_for_accounts_and_invoices(): void
+    {
+        $this->blade(<<<'BLADE'
+            <x-financial.movement-details-panel prefix="accountMovement" related-label="Conta relacionada" destructive-label="Cancelar" />
+            <x-financial.movement-details-panel prefix="invoiceMovement" related-label="Fatura" destructive-label="Excluir" />
+        BLADE)
+            ->assertSee('id="accountMovementDetailsName"', false)
+            ->assertSee('id="accountMovementDetailsRelatedRow"', false)
+            ->assertSee('id="accountMovementDetailsEdit"', false)
+            ->assertSee('Cancelar')
+            ->assertSee('id="invoiceMovementDetailsName"', false)
+            ->assertSee('id="invoiceMovementDetailsRelatedRow"', false)
+            ->assertSee('id="invoiceMovementDetailsEdit"', false)
+            ->assertSee('Excluir')
+            ->assertSee('Informações')
+            ->assertSee('Ações');
+    }
+
 }
