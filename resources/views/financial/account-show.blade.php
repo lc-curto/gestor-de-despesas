@@ -206,69 +206,9 @@
 <x-modal id="accountMovementDetailsModal" aria-labelledby="accountMovementDetailsTitle" :scrollable="true">
     <x-modal-header title="Detalhes do movimento" title-id="accountMovementDetailsTitle" />
     <x-modal-body>
-            <div id="accountMovementDetailsContent">
-            <div class="mb-3"><h3 class="h6 fw-semibold mb-1" id="accountMovementDetailsName"></h3><p class="small text-secondary mb-0" id="accountMovementDetailsCategory"></p></div>
-            <strong class="fs-3 d-block mb-1" id="accountMovementDetailsAmount"></strong>
-            <hr><h3 class="small fw-semibold mb-3">Informações</h3>
-            <div class="d-flex justify-content-between gap-3 mb-2"><span class="small text-secondary">Data</span><span class="small fw-medium" id="accountMovementDetailsDate"></span></div>
-            <div class="d-flex justify-content-between gap-3 mb-2"><span class="small text-secondary">Tipo</span><span class="small fw-medium" id="accountMovementDetailsKind"></span></div>
-            <div class="d-flex justify-content-between gap-3" id="accountMovementDetailsCounterpartRow" hidden><span class="small text-secondary">Conta relacionada</span><span class="small fw-medium text-end" id="accountMovementDetailsCounterpart"></span></div>
-            <hr class="{{ $isClosedAccount ? 'd-none' : '' }}"><h3 class="small fw-semibold mb-3 {{ $isClosedAccount ? 'd-none' : '' }}">Ações</h3>
-            <div class="list-group list-group-flush border rounded-3 overflow-hidden {{ $isClosedAccount ? 'd-none' : '' }}">
-                <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3" id="accountMovementDetailsEdit"><i data-lucide="pencil" aria-hidden="true"></i><span>Editar</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i></button>
-                <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3 text-danger" id="accountMovementDetailsDelete"><i data-lucide="x-circle" aria-hidden="true"></i><span>Cancelar</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i></button>
-            </div>
-            <p class="small text-secondary mt-3 mb-0" id="accountMovementActionNote" hidden></p>
-            </div>
-            <form id="accountMovementEditForm" class="d-none" novalidate>
-                <div class="d-flex align-items-center gap-2 mb-3">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="accountMovementEditBack">Voltar</button>
-                    <h3 class="h6 fw-bold mb-0">Editar movimento</h3>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label" for="accountMovementEditDescription">Descrição</label>
-                    <input class="form-control" id="accountMovementEditDescription" name="description" maxlength="255" required>
-                </div>
-                <div class="mb-3" id="accountMovementEditAccountField" hidden>
-                    <label class="form-label" for="accountMovementEditAccount">Conta de origem</label>
-                    <select class="form-select" id="accountMovementEditAccount" name="source_account_id">
-                        @foreach ($paymentAccounts as $paymentAccount)
-                            <option value="{{ $paymentAccount->id }}">{{ $paymentAccount->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="mb-3" id="accountMovementEditDestinationField" hidden>
-                    <label class="form-label" for="accountMovementEditDestination">Conta de destino</label>
-                    <select class="form-select" id="accountMovementEditDestination" name="destination_account_id">
-                        @foreach ($paymentAccounts as $paymentAccount)
-                            <option value="{{ $paymentAccount->id }}">{{ $paymentAccount->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="mb-3" id="accountMovementEditDirectionField" hidden>
-                    <label class="form-label" for="accountMovementEditDirection">Tipo de ajuste</label>
-                    <select class="form-select" id="accountMovementEditDirection" name="adjustment_direction">
-                        <option value="increase">Aumentar saldo</option>
-                        <option value="decrease">Diminuir saldo</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label" for="accountMovementEditAmount">Valor</label>
-                    <input class="form-control" id="accountMovementEditAmount" name="amount" type="number" min="0.01" step="0.01" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label" for="accountMovementEditDate">Data</label>
-                    <input class="form-control" id="accountMovementEditDate" name="movement_date" type="date" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label" for="accountMovementEditNotes">Observações</label>
-                    <textarea class="form-control" id="accountMovementEditNotes" name="notes" rows="2"></textarea>
-                </div>
-                <div class="small mb-3" id="accountMovementEditFeedback" role="status" aria-live="polite"></div>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-outline-secondary flex-fill" id="accountMovementEditCancel">Cancelar</button>
-                    <button type="submit" class="btn btn-primary flex-fill" id="accountMovementEditSubmit">Guardar</button>
-                </div>
+        <x-financial.movement-details-panel prefix="accountMovement" related-label="Conta relacionada" destructive-label="Cancelar" :show-actions="! $isClosedAccount" />
+        <form id="accountMovementEditForm" class="d-none" novalidate>
+
             </form>
     </x-modal-body>
 </x-modal>
@@ -323,13 +263,13 @@ if (accountDeleteModalElement && accountDetailsElement) {
         document.getElementById('accountMovementDetailsAmount').className = 'fs-3 d-block mb-1 ' + row.dataset.amountClass;
         document.getElementById('accountMovementDetailsDate').textContent = row.dataset.date;
         document.getElementById('accountMovementDetailsKind').textContent = row.dataset.kind;
-        const counterpartRow = document.getElementById('accountMovementDetailsCounterpartRow');
+        const counterpartRow = document.getElementById('accountMovementDetailsRelatedRow');
         counterpartRow.hidden = !row.dataset.counterpart;
-        document.getElementById('accountMovementDetailsCounterpart').textContent = row.dataset.counterpart;
+        document.getElementById('accountMovementDetailsRelated').textContent = row.dataset.counterpart;
         document.getElementById('accountDeleteForm').action = row.dataset.deleteUrl;
         editButton.hidden = row.dataset.editable !== '1';
         document.getElementById('accountMovementDetailsDelete').hidden = row.dataset.cancelable !== '1';
-        const actionNote = document.getElementById('accountMovementActionNote');
+        const actionNote = document.getElementById('accountMovementDetailsActionNote');
         actionNote.textContent = row.dataset.actionNote || '';
         actionNote.hidden = !row.dataset.actionNote;
         showMovementDetails();
