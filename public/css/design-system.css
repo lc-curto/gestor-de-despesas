@@ -387,3 +387,100 @@ body { color: var(--mb-text); background: var(--mb-page); -webkit-font-smoothing
         padding: 0 1.75rem 1.5rem;
     }
 }
+
+
+/* Dashboard — card financeiro e secções responsivas */
+.home-dashboard { width: 100%; max-width: 76rem; margin-inline: auto; }
+.home-dashboard-intro h1 { letter-spacing: -.04em; }
+.home-month-selector { display: flex; min-height: 1.8rem; align-items: center; flex-wrap: wrap; gap: .35rem; }
+.home-month-selector label { margin: 0; font-size: .78rem; font-weight: 500; }
+.home-month-select {
+    width: auto;
+    min-width: 0;
+    min-height: 1.65rem !important;
+    padding: .05rem 1.4rem .05rem .1rem !important;
+    border: 0 !important;
+    border-radius: .25rem !important;
+    background-color: transparent !important;
+    color: var(--mb-text) !important;
+    font-size: .88rem !important;
+    font-weight: 750 !important;
+    box-shadow: none !important;
+    cursor: pointer;
+}
+.home-month-select:focus-visible { outline: 2px solid var(--mb-primary); outline-offset: 2px; }
+.home-financial-card {
+    padding: 1.2rem 1.35rem;
+    border: 0;
+    border-radius: 1.15rem;
+    background: #6257f5;
+    color: #fff;
+    box-shadow: 0 .65rem 1.5rem rgba(98,87,245,.16);
+}
+.home-financial-label { color: rgba(255,255,255,.92); font-size: .75rem; font-weight: 600; text-transform: uppercase; }
+.home-financial-eye { display: inline-flex; align-items: center; justify-content: center; padding: .15rem; border: 0; background: transparent; color: #fff; cursor: pointer; }
+.home-financial-eye svg { width: 1rem; height: 1rem; }
+.home-financial-balance { margin-top: 1.05rem; color: #fff; font-size: clamp(1.85rem, 4vw, 2.45rem); font-weight: 800; letter-spacing: -.04em; line-height: 1.15; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.home-financial-caption { color: rgba(255,255,255,.9); font-size: .78rem; }
+.home-financial-divider { height: 1px; margin: 1rem 0 .85rem; background: rgba(255,255,255,.28); }
+.home-financial-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
+.home-financial-metric { display: flex; min-width: 0; flex-direction: column; gap: .2rem; }
+.home-financial-metric span { color: rgba(255,255,255,.88); font-size: .72rem; }
+.home-financial-metric strong { color: #fff; font-size: clamp(.76rem, 1.6vw, 1rem); font-weight: 750; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.home-quick-actions .row > div { display: flex; }
+.home-quick-action {
+    display: flex;
+    width: 100%;
+    min-height: 5rem;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .55rem;
+    padding: .7rem .4rem;
+    border: 1px solid var(--mb-border);
+    border-radius: var(--mb-radius-md);
+    background: var(--mb-surface);
+    color: var(--mb-text);
+    text-decoration: none;
+    font: inherit;
+    cursor: pointer;
+}
+.home-quick-action svg { width: 1.35rem; height: 1.35rem; color: var(--mb-primary); }
+.home-quick-action strong { font-size: .82rem; font-weight: 700; }
+.home-quick-action:hover { border-color: var(--mb-primary); background: color-mix(in srgb, var(--mb-primary) 4%, var(--mb-surface)); color: var(--mb-text); }
+.home-section-card { min-width: 0; padding: 1rem 1.1rem; border: 1px solid var(--mb-border); border-radius: var(--mb-radius-lg); background: var(--mb-surface); box-shadow: var(--mb-shadow); }
+.home-section-card h2 { letter-spacing: -.02em; }
+.home-category-row + .home-category-row { margin-top: .85rem; }
+.home-category-track { height: .42rem; overflow: hidden; border-radius: 999px; background: var(--mb-page); }
+.home-category-track span { display: block; height: 100%; border-radius: inherit; background: var(--mb-primary); }
+.home-invoice-card { display: flex; flex-direction: column; gap: .45rem; padding: .9rem; border: 1px solid var(--mb-border); border-radius: .85rem; color: inherit; text-decoration: none; }
+.home-invoice-card:hover { border-color: var(--mb-primary); color: inherit; }
+.home-invoice-status { padding: .22rem .55rem; border-radius: 999px; background: rgba(33,132,91,.1); color: var(--mb-positive); font-size: .68rem; font-weight: 700; white-space: nowrap; }
+.home-invoice-status.is-overdue { background: rgba(217,72,95,.1); color: var(--mb-negative); }
+.home-invoice-amount { font-size: 1.45rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.home-recent-item { display: grid; grid-template-columns: 2.35rem minmax(0,1fr) auto; align-items: center; gap: .7rem; min-width: 0; padding: .75rem 0; }
+.home-recent-item + .home-recent-item { border-top: 1px solid var(--mb-border); }
+.home-recent-icon { display: inline-flex; width: 2.35rem; height: 2.35rem; align-items: center; justify-content: center; border-radius: .75rem; background: var(--mb-page); color: var(--mb-primary); }
+.home-recent-icon svg { width: 1.1rem; height: 1.1rem; }
+.home-recent-copy { display: flex; min-width: 0; flex-direction: column; gap: .12rem; }
+.home-recent-copy strong { overflow: hidden; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
+.home-recent-copy span { overflow: hidden; color: var(--mb-muted); font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
+.home-recent-amount { font-size: .8rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.home-recent-amount.is-expense { color: var(--mb-negative); }
+.home-recent-amount.is-income { color: var(--mb-positive); }
+@media (max-width: 575.98px) {
+    .home-financial-card { padding: 1rem; }
+    .home-financial-balance { margin-top: .85rem; font-size: clamp(1.75rem, 8vw, 2.15rem); }
+    .home-financial-metrics { gap: .45rem; }
+    .home-financial-metric span { font-size: .68rem; }
+    .home-financial-metric strong { font-size: clamp(.67rem, 3vw, .82rem); letter-spacing: -.02em; }
+    .home-section-card { padding: .9rem; }
+    .home-recent-item { grid-template-columns: 2.15rem minmax(0,1fr) auto; gap: .55rem; }
+    .home-recent-icon { width: 2.15rem; height: 2.15rem; }
+    .home-recent-amount { font-size: .72rem; }
+}
+@media (max-width: 350px) {
+    .home-financial-metric strong { font-size: .64rem; }
+    .home-recent-item { grid-template-columns: 2rem minmax(0,1fr); }
+    .home-recent-amount { grid-column: 2; justify-self: start; }
+}
