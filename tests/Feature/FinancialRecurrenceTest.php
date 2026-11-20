@@ -201,6 +201,39 @@ class FinancialRecurrenceTest extends TestCase
         ]);
     }
 
+    public function test_settled_recurring_occurrence_can_be_corrected_without_changing_other_occurrences(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->account($user);
+        $this->actingAs($user)->postJson('/api/financial/recurrences', $this->createRule($user, $account->id))->assertCreated();
+
+        $movement = $user->movimentos()->whereDate('recurrence_occurrence_date', '2026-11-15')->firstOrFail();
+        $this->putJson('/api/financial/movements/'.$movement->id.'/confirm', ['source_account_id' => $account->id])->assertOk();
+        $this->putJson('/api/financial/movements/'.$movement->id.'/settle', ['source_account_id' => $account->id])->assertOk();
+
+        $siblingsBefore = $user->movimentos()->where('recurrence_id', $movement->recurrence_id)
+            ->whereKeyNot($movement->id)->get()->keyBy('id')->map(fn ($item) => [$item->amount, $item->movement_date->toDateString()])->all();
+
+        $this->putJson('/api/financial/movements/'.$movement->id, [
+            'description' => 'Internet corrigida',
+            'amount' => '35.00',
+            'movement_date' => '2026-11-16',
+        ])->assertOk()->assertJsonPath('data.status', 'partial');
+
+        $this->assertSame('Internet corrigida', $movement->fresh()->description);
+        $this->assertSame('35.00', $movement->fresh()->amount);
+        $this->assertSame(3, $user->movimentos()->where('recurrence_id', $movement->recurrence_id)->count());
+        $this->assertSame($siblingsBefore, $user->movimentos()->where('recurrence_id', $movement->recurrence_id)
+            ->whereKeyNot($movement->id)->get()->keyBy('id')->map(fn ($item) => [$item->amount, $item->movement_date->toDateString()])->all());
+        $this->assertDatabaseHas('despesas', [
+            'id' => $movement->legacy_id,
+            'description' => 'Internet corrigida',
+            'amount' => '35.00',
+            'expense_date' => '2026-11-16',
+        ]);
+        $this->assertSame('30.00', $movement->settlements()->where('status', 'settled')->firstOrFail()->amount);
+    }
+
     public function test_settling_pending_expense_preserves_original_and_records_effective_payment_separately(): void
     {
         $user = User::factory()->create();

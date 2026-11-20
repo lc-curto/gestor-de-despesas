@@ -84,6 +84,7 @@ class FinancialCoreController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:160',
             'merchant' => 'nullable|string|max:160',
+            'total_amount' => 'sometimes|required|numeric|gt:0|decimal:0,2|max:9999999999.99',
             'due_date' => 'sometimes|required|date|after_or_equal:today',
         ]);
         $debt = $request->user()->dividas()->whereKey($id)->firstOrFail();

@@ -295,6 +295,35 @@ class FinancialCommitmentsPageTest extends TestCase
         $this->assertSame($originalParts, $debt->fresh()->parcelas()->get()->map(fn ($part) => [$part->amount, $part->due_date->toDateString()])->all());
     }
 
+    public function test_edit_purchase_total_redistributes_only_unpaid_amount_and_preserves_paid_value(): void
+    {
+        $user = User::factory()->create();
+        $account = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Conta', 'type' => 'bank', 'opening_balance' => '200.00',
+        ]);
+        $debt = app(FinancialCommitmentService::class)->create($user, [
+            'name' => 'Computador', 'total_amount' => '60.00',
+            'start_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(),
+            'payment_condition' => 'installments', 'installments_count' => 3,
+        ]);
+        $first = $debt->parcelas()->where('installment_number', 1)->firstOrFail();
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+        $this->actingAs($user)->postJson(route('financial.commitments.installments.pay', [$debt->id, $first->id]), [
+            'account_id' => $account->id, 'amount' => '10.00', 'payment_date' => now()->toDateString(),
+        ])->assertOk();
+
+        $this->putJson(route('financial.commitments.update', $debt->id), [
+            'name' => 'Computador', 'merchant' => 'Loja', 'total_amount' => '75.00',
+        ])->assertOk();
+
+        $this->assertSame('75.00', $debt->fresh()->total_amount);
+        $this->assertSame('10.00', $first->fresh()->paid_amount);
+        $this->assertSame('partial', $first->fresh()->status);
+        $this->assertSame('31.67', $first->fresh()->amount);
+        $this->assertSame('75.00', number_format((float) $debt->fresh()->parcelas()->sum('amount'), 2, '.', ''));
+        $this->assertSame('10.00', app(AccountBalanceService::class)->balance($account->fresh()) === '190.00' ? '10.00' : 'unexpected');
+    }
+
     public function test_renegotiation_preserves_paid_parts_and_replaces_only_future_installments(): void
     {
         $user = User::factory()->create();

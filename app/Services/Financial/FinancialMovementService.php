@@ -796,7 +796,6 @@ class FinancialMovementService
                 || $locked->installment_id
                 || $locked->debt_id
                 || $locked->invoice_id
-                || $locked->recurrence_id
                 || ! in_array($locked->type, ['expense', 'income'], true)) {
                 throw ValidationException::withMessages([
                     'movement' => 'Este movimento não pode ser ajustado por esta operação. Revê a origem da obrigação.',
@@ -857,6 +856,9 @@ class FinancialMovementService
                 $locked->getAttributes(),
                 'Termos do movimento original ajustados sem alterar o histórico de liquidações.'
             );
+            if ($locked->recurrence_id && $locked->legacy_type && $locked->legacy_id) {
+                $this->syncLegacyRecordFromMovement($user, $locked);
+            }
 
             return $locked->refresh();
         });
@@ -990,6 +992,40 @@ class FinancialMovementService
                 'type' => 'Não é possível registar despesas, receitas ou ajustes genéricos num cartão de crédito. Para compras, usa o registo de compra na fatura; para pagar, usa o pagamento da fatura ou da dívida inicial.',
             ]);
         }
+    }
+
+
+    /**
+     * Mantém a linha legada da ocorrência sincronizada sem alterar a regra
+     * nem as restantes ocorrências da recorrência.
+     */
+    private function syncLegacyRecordFromMovement(User $user, Movimento $movement): void
+    {
+        $table = match ($movement->legacy_type) {
+            'despesa' => 'despesas',
+            'receita' => 'receitas',
+            default => null,
+        };
+        if (! $table) {
+            return;
+        }
+
+        $dateColumn = $movement->legacy_type === 'despesa' ? 'expense_date' : 'income_date';
+        $slug = $movement->category_id
+            ? DB::table('categorias')->where('user_id', $user->id)->where('id', $movement->category_id)->value('slug')
+            : null;
+        $allowed = $movement->type === 'expense'
+            ? ['casa', 'alimentacao', 'transportes', 'saude', 'lazer', 'compras', 'educacao', 'outros']
+            : ['salario', 'vendas', 'trabalho_extra', 'investimentos', 'reembolsos', 'outros'];
+
+        DB::table($table)->where('user_id', $user->id)->where('id', $movement->legacy_id)->update([
+            'description' => $movement->description,
+            'amount' => $movement->amount,
+            'currency' => $user->currency,
+            'category_id' => $movement->category_id,
+            'category' => in_array($slug, $allowed, true) ? $slug : 'outros',
+            $dateColumn => $movement->movement_date->toDateString(),
+        ]);
     }
 
     private function audit(User $user, Movimento $movement, string $action, ?array $before, ?array $after, ?string $reason = null): void
