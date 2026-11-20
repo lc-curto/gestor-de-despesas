@@ -1,4 +1,4 @@
-<div class="modal fade" id="movementEntryModal" tabindex="-1" aria-labelledby="recordTitle" aria-hidden="true">
+        <div class="modal fade" id="movementEntryModal" tabindex="-1" aria-labelledby="recordTitle" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered movement-entry-dialog">
                 <div class="modal-content border-0 bg-transparent">
                     <article id="movementEntryCard" class="card border-0 shadow-sm rounded-4 movement-editor-card">
