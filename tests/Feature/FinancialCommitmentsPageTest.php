@@ -124,7 +124,7 @@ class FinancialCommitmentsPageTest extends TestCase
         $response->assertDontSee('Despesa única futura');
         $xpath = $this->document($response->getContent());
         foreach (['Ontem' => ['16/11/2026', 'Atrasada'], 'Hoje' => ['17/11/2026', 'Próxima'], 'Amanhã' => ['18/11/2026', 'Próxima']] as $name => [$dueDate, $status]) {
-            $badges = $xpath->query('//div[contains(@class,"commitment-history-modal")]//div[contains(@class,"commitment-installment") and .//small[normalize-space(.)="'.$dueDate.'"]]//span[contains(concat(" ", normalize-space(@class), " "), " badge ")]');
+            $badges = $xpath->query('//div[contains(@class,"commitment-history-modal")]//div[contains(@class,"commitment-installment") and .//span[contains(@class,"text-secondary") and normalize-space(.)="'.$dueDate.'"]]//span[contains(concat(" ", normalize-space(@class), " "), " badge ")]');
             $this->assertCount(1, $badges, $name);
             $this->assertSame($status, trim($badges->item(0)->textContent), $name);
         }
@@ -242,7 +242,7 @@ class FinancialCommitmentsPageTest extends TestCase
         $secondXPath = $this->document($secondHistoryPage->getContent());
         $this->assertCount(6, $secondXPath->query('//div[contains(concat(" ", normalize-space(@class), " "), " commitment-installment ")]'));
         $this->assertSame('2', (string) $secondHistoryPage->viewData('commitments')->first()->installmentsPage->currentPage());
-        $this->assertSame('7/120', trim($secondXPath->query('//div[contains(@class,"commitment-installment")]/div/strong')->item(0)->textContent));
+        $this->assertSame('7/120', trim($secondXPath->query('//div[contains(@class,"commitment-installment")]//strong')->item(0)->textContent));
     }
 
     public function test_purchase_pagination_is_server_side_and_summary_uses_all_commitments(): void
