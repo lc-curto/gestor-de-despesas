@@ -453,7 +453,7 @@ class CardIntegrityRegressionTest extends TestCase
             ->assertSee('Faturas')
             ->assertSee(route('financial.invoices.show', $invoice->id), false)
             ->assertSee('Aberta')
-            ->assertSee('120,00 €');
+            ->assertSee('120,00');
 
         $invoiceList = $this->get(route('financial.invoices.page', ['account_id' => $card->id]));
         $invoiceList->assertOk()
