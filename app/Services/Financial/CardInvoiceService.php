@@ -360,8 +360,8 @@ class CardInvoiceService
             if (in_array($locked->status, ['paid', 'carried', 'closed'], true)) {
                 throw ValidationException::withMessages(['invoice' => 'Esta fatura já está fechada, paga ou transportada.']);
             }
-            if ($locked->closing_date && $locked->closing_date->gt(today())) {
-                throw ValidationException::withMessages(['invoice' => 'A data de fecho deste ciclo ainda não chegou.']);
+            if ($locked->closing_date && $locked->closing_date->greaterThanOrEqualTo(today())) {
+                throw ValidationException::withMessages(['invoice' => 'A fatura só pode ser fechada no dia seguinte à data de fecho.']);
             }
             $this->carryOverdueInvoices($user, $locked);
             $this->movements->assertInvoiceReconciled($user, $locked);
