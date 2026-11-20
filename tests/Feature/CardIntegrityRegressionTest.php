@@ -470,7 +470,7 @@ class CardIntegrityRegressionTest extends TestCase
             ->assertSee('Total')
             ->assertSee('Pago')
             ->assertSee('Em falta')
-            ->assertSee('Compras')
+            ->assertSee('Movimentos')
             ->assertSee('Compra')
             ->assertSee('Pagamentos')
             ->assertSee('Ainda não existem pagamentos.')
