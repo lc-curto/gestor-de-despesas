@@ -1430,7 +1430,7 @@ body.sidebar-collapsed .account-avatar {
     }
     #dashboardMonthPicker .dashboard-month-dialog .modal-content {
         width: 100%;
-        border-radius: 1.15rem 1.15rem 0 0 !important;
+        border-radius: 1.15rem 1.15rem 0 0;
         padding-bottom: max(.5rem, env(safe-area-inset-bottom));
     }
 }
