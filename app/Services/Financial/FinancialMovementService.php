@@ -9,6 +9,7 @@ use App\Models\HistoricoMovimento;
 use App\Models\Movimento;
 use App\Models\ParcelaDivida;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -599,6 +600,9 @@ class FinancialMovementService
                 ]);
             }
             $this->assertInvoiceReconciled($user, $invoice);
+            if (! empty($data['movement_date']) && Carbon::parse($data['movement_date'])->greaterThan(today())) {
+                throw ValidationException::withMessages(['movement_date' => 'A data do pagamento não pode ser futura.']);
+            }
 
             $sourceId = $data['source_account_id'] ?? $snapshot->source_account_id;
             $accountIds = collect([$snapshot->source_account_id, $sourceId])->filter()->unique()->sort()->values();

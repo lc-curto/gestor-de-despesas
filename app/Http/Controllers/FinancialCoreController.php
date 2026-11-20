@@ -612,7 +612,7 @@ class FinancialCoreController extends Controller
             'description' => 'sometimes|required|string|max:255',
             'notes' => 'sometimes|nullable|string|max:2000',
             'amount' => 'sometimes|required|numeric|gt:0|decimal:0,2|max:9999999999.99',
-            'movement_date' => 'sometimes|required|date|before_or_equal:today',
+            'movement_date' => 'sometimes|required|date',
             'source_account_id' => ['sometimes', 'required', 'uuid', Rule::exists('contas_financeiras', 'id')->where('user_id', $request->user()->id)],
             'category_id' => ['sometimes', 'nullable', 'uuid', Rule::exists('categorias', 'id')->where('user_id', $request->user()->id)],
             'expense_behavior' => ['sometimes', Rule::in(['fixed', 'variable'])],
