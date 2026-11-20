@@ -86,7 +86,7 @@
                                     data-type="{{ $account->type }}" data-currency="{{ $account->currency }}">Editar</button></li>
                                 @if (in_array($account->type, ['bank', 'cash'], true) && $account->status === 'active' && $account->opening_balance !== null)
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><button class="dropdown-item text-danger js-close-account" type="button" data-bs-toggle="modal" data-bs-target="#closeAccountModal" data-endpoint="{{ route('financial.accounts.close', $account->id) }}" data-id="{{ $account->id }}" data-name="{{ $account->name }}">Encerrar</button></li>
+                                    <li><button class="dropdown-item text-danger js-close-account" type="button" data-bs-toggle="modal" data-bs-target="#closeAccountModal" data-endpoint="{{ route('financial.accounts.close', $account->id) }}" data-id="{{ $account->id }}" data-name="{{ $account->name }}" data-balance="{{ number_format((float) ($account->current_balance ?? 0), 2, '.', '') }}">Encerrar</button></li>
                                 @endif
                             </ul>
                         </div>
@@ -244,6 +244,41 @@
         <x-modal-footer>
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
             <button type="submit" class="btn btn-primary">Guardar</button>
+        </x-modal-footer>
+    </form>
+</x-modal>
+
+{{-- Encerramento: preserva o histórico e transfere o saldo positivo quando necessário. --}}
+<x-modal id="closeAccountModal" aria-labelledby="closeAccountTitle">
+    <form id="closeAccountForm">
+        <x-modal-header
+            title="Encerrar conta"
+            title-id="closeAccountTitle"
+            description="O histórico e os movimentos serão mantidos."
+        />
+        <x-modal-body>
+            <p class="mb-3">
+                Confirmas o encerramento de <strong id="closeAccountName"></strong>?
+            </p>
+
+            <div class="mb-3">
+                <label for="closeTransferTarget" class="form-label">Conta de destino</label>
+                <select id="closeTransferTarget" name="transfer_to_account_id" class="form-select">
+                    <option value="">Não transferir</option>
+                    @foreach ($transferTargets as $target)
+                        <option value="{{ $target->id }}">{{ $target->name }}</option>
+                    @endforeach
+                </select>
+                <div id="closeAccountBalanceHelp" class="form-text">
+                    Se existir saldo positivo, seleciona a conta que vai recebê-lo.
+                </div>
+            </div>
+
+            <div class="account-form-feedback small text-danger mt-3" role="alert" aria-live="polite"></div>
+        </x-modal-body>
+        <x-modal-footer>
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-danger">Encerrar</button>
         </x-modal-footer>
     </form>
 </x-modal>
@@ -528,10 +563,24 @@
         button.addEventListener('click', () => {
             const form = document.getElementById('closeAccountForm');
             const target = document.getElementById('closeTransferTarget');
+            if (!form || !target) return;
+
+            const balance = Number(button.dataset.balance || 0);
+            const balanceHelp = document.getElementById('closeAccountBalanceHelp');
+
             form.dataset.endpoint = button.dataset.endpoint;
             document.getElementById('closeAccountName').textContent = button.dataset.name;
             target.value = '';
+            target.required = balance > 0;
             [...target.options].forEach((option) => { option.disabled = option.value === button.dataset.id; });
+
+            if (balance > 0) {
+                balanceHelp.textContent = 'Esta conta tem saldo positivo. Seleciona a conta que vai receber o valor.';
+            } else if (balance < 0) {
+                balanceHelp.textContent = 'O saldo é negativo. Regulariza-o antes de encerrar a conta.';
+            } else {
+                balanceHelp.textContent = 'O saldo está a zero. Não precisas de selecionar outra conta.';
+            }
         });
     });
     document.getElementById('closeAccountForm')?.addEventListener('submit', async (event) => {
