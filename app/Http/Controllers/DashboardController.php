@@ -212,7 +212,7 @@ class DashboardController extends Controller
         $dashboardData = $dashboard->getData();
         $returnUrl = SafeReturnUrl::resolve(
             $request,
-            route('dashboard', ['mes' => $dashboardData['mes']])
+            route('dashboard', ['mes' => $dashboardData['mes']], false)
         );
 
         return view('movements', array_merge($dashboardData, ['returnUrl' => $returnUrl]));
