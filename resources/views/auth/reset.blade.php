@@ -29,6 +29,6 @@
             <input id="password_confirmation" name="password_confirmation" type="password"
                    class="form-control form-control-lg" autocomplete="new-password" minlength="8" required>
         </div>
-        <button type="submit" class="btn btn-primary btn-lg w-100">Guardar nova palavra-passe</button>
+        <button type="submit" class="btn btn-primary btn-lg w-100">Guardar</button>
     </form>
 @endsection
