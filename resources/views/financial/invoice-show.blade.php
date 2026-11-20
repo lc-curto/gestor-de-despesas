@@ -56,7 +56,7 @@
                         <strong class="text-nowrap">{{ number_format((float)$movement->amount,2,',','.') }} {{ $currency }}</strong>
                     </div>
                 @empty
-                    <p class="small text-secondary mb-0">Ainda não existem compras nesta fatura.</p>
+                    <p class="small text-secondary mb-0">Ainda não existem movimentos nesta fatura.</p>
                 @endforelse
                 @if($invoice->saldosTransportados->isNotEmpty())
                     @foreach($invoice->saldosTransportados as $carried)
@@ -75,7 +75,6 @@
         </section>
 
         <section class="border-top pt-3">
-            <div class="card-body p-3">
                 <h2 class="h6 fw-bold mb-2">Pagamentos</h2>
                 @forelse($invoice->pagamentos as $payment)
                     <div class="d-flex justify-content-between gap-3 py-2 border-bottom">
@@ -85,7 +84,6 @@
                 @empty
                     <p class="small text-secondary mb-0">Ainda não existem pagamentos.</p>
                 @endforelse
-            </div>
         </section>
     </section>
 </div>
