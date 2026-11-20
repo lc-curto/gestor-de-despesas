@@ -51,7 +51,7 @@
         renderMonthPicker();
     });
     document.getElementById('applyDashboardMonth')?.addEventListener('click', () => {
-        if (!monthInput || !/^\\d{4}-(0[1-9]|1[0-2])$/.test(draftMonth)) return;
+        if (!monthInput || !/^\d{4}-(0[1-9]|1[0-2])$/.test(draftMonth)) return;
         monthInput.value = draftMonth;
         if (monthLabel) {
             const [year, month] = draftMonth.split('-').map(Number);
