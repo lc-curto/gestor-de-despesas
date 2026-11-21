@@ -349,6 +349,46 @@ class FinancialAcceptanceTest extends TestCase
         $this->assertSame(-90.0, $days['2026-12']['2026-12-10']['cash_delta']);
     }
 
+    public function test_card_purchase_is_included_in_dashboard_and_movements_expense_totals_without_double_counting_invoice_payment(): void
+    {
+        $user = User::factory()->create();
+        $bank = $this->bank($user, balance: '500.00');
+        $card = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Visa',
+            'type' => 'credit_card',
+            'opening_balance' => '0.00',
+            'opening_balance_date' => '2026-11-01',
+            'closing_day' => 25,
+            'due_day' => 5,
+            'credit_limit' => '1000.00',
+        ]);
+
+        $invoices = app(CardInvoiceService::class);
+        $invoices->purchase($user, [
+            'account_id' => $card->id,
+            'description' => 'Compra contabilizada no cartão',
+            'amount' => '100.00',
+            'movement_date' => '2026-11-12',
+        ]);
+        $invoice = $user->faturas()->firstOrFail();
+        $invoices->pay($user, $invoice, $bank->id, '2026-12-05');
+
+        $this->withoutMiddleware(EnsureFinancialDataReviewed::class);
+        $dashboard = $this->actingAs($user)->get(route('dashboard', ['mes' => '2026-11']));
+        $dashboard->assertOk();
+        $this->assertSame(100.0, $dashboard->viewData('totalDespesas'));
+        $this->assertSame(0.0, $dashboard->viewData('totalReceitas'));
+
+        $movements = $this->actingAs($user)->getJson(route('dashboard.movimentos.data', [
+            'mes' => '2026-11',
+            'limit' => 10,
+        ]));
+        $movements->assertOk()
+            ->assertJsonPath('total_despesas', 100)
+            ->assertJsonPath('total_receitas', 0);
+        $this->assertSame(1, $movements->json('total'));
+    }
+
     public function test_acceptance_dashboard_and_movements_read_canonical_financial_movements(): void
     {
         $user = User::factory()->create();
