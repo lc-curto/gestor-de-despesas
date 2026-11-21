@@ -529,9 +529,37 @@
     .movements-page .movements-period-summary-values { gap:.25rem; }
     .movements-page .movements-period-metric > span { font-size:.68rem; }
     .movements-page .movements-period-metric > strong { font-size:clamp(.72rem,3.2vw,.88rem); letter-spacing:-.035em; }
-    .movements-page .movements-page-header { align-items:center; margin-bottom:.85rem; }
+    .movements-page .movements-page-header {
+        display:flex;
+        width:100%;
+        max-width:100%;
+        flex-direction:column;
+        align-items:flex-start;
+        gap:.55rem;
+        margin-bottom:.85rem;
+    }
+    .movements-page .movements-page-header > div:first-child,
+    .movements-page .movements-page-header > div:last-child {
+        width:100%;
+        min-width:0;
+        max-width:100%;
+    }
     .movements-page .movements-page-header h1 { font-size:1.35rem; }
     .movements-page .movements-page-header > div:first-child .small { font-size:.78rem; }
+    .movements-page .movements-month-selector {
+        display:flex;
+        width:100%;
+        min-width:0;
+        max-width:100%;
+        flex-wrap:wrap;
+        align-items:center;
+        gap:.35rem .5rem;
+    }
+    .movements-page .movements-month-selector .home-month-trigger {
+        max-width:100%;
+        min-width:0;
+        font-size:.88rem;
+    }
     .movements-page .movements-period-picker .form-control { width:7.7rem; font-size:.72rem; }
     .movements-page .movements-period-picker .btn { width:27px; height:32px; }
     .movements-page .history-card { border-radius:.85rem!important; }
