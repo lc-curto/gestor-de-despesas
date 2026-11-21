@@ -418,9 +418,13 @@
    document.getElementById('routeMovementDetailsNotes').textContent=item.notes||'—';
    document.getElementById('routeDetailError').textContent='';
    document.getElementById('routeMovementDetailsEdit').disabled=!canEditMovement(item);
-   document.getElementById('routeEditHelp').textContent=!canEditMovement(item)
-     ?(item.invoice_id?'Movimento associado a fatura. Gere em Cartões.':item.installment_id||item.debt_id?'Movimento associado a parcelamento. Gere em Parcelamentos.':'Este movimento não admite edição direta.')
-     :'';
+   document.getElementById('routeEditHelp').textContent=item.type==='adjustment'
+     ?'Ajustes não editáveis. Elimina o movimento.'
+     :item.type==='transfer'
+       ?'Transferências não editáveis. Elimina e recria.'
+       :!canEditMovement(item)
+         ?(item.invoice_id?'Movimento associado a fatura. Gere em Cartões.':item.installment_id||item.debt_id?'Movimento associado a parcelamento. Gere em Parcelamentos.':item.status==='settled'?'Este movimento não admite edição direta.':'Previsão gerada automaticamente. Gere em Faturas.')
+         :'';
    const deleteButton=document.getElementById('routeMovementDetailsDelete');
    deleteButton.textContent=item.recurrence_id?'Eliminar ocorrência':'Eliminar';
    detailModal.show();
