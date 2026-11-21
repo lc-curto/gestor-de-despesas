@@ -64,27 +64,23 @@
                                     </div>
                                     <div class="d-flex align-items-center justify-content-between mt-auto pt-2 border-top">
                                         <span class="small text-secondary">{{ $type === 'despesa' ? (($item->expense_behavior ?? 'variable') === 'fixed' ? 'Despesa fixa' : 'Despesa variável') : 'Receita' }}</span>
-                                        <div class="d-flex gap-1">
-                                            <button type="button" class="btn btn-sm btn-outline-secondary" title="Editar {{ $item->name }}" aria-label="Editar {{ $item->name }}"
-                                                data-bs-toggle="modal" data-bs-target="#categoryModal" data-mode="edit"
-                                                data-id="{{ $item->id }}" data-name="{{ $item->name }}" data-type="{{ $item->type }}"
-                                                data-icon="{{ $item->icon }}" data-color="{{ $item->color }}" data-expense-behavior="{{ $item->expense_behavior ?? 'variable' }}"
-                                                data-update-url="{{ route('categorias.update', $item->id) }}">
-                                                <i class="bi bi-pencil" aria-hidden="true"></i>
-                                            </button>
-                                            <form method="POST" action="{{ route('categorias.toggle', $item->id) }}">
-                                                @csrf @method('PATCH')
-                                                <button class="btn btn-sm btn-outline-secondary" title="{{ $item->is_active ? 'Desativar' : 'Ativar' }} {{ $item->name }}" aria-label="{{ $item->is_active ? 'Desativar' : 'Ativar' }} {{ $item->name }}">
-                                                    <i class="bi {{ $item->is_active ? 'bi-pause-circle' : 'bi-play-circle' }}" aria-hidden="true"></i>
-                                                </button>
-                                            </form>
-                                            @if ($movementCount === 0)
-                                                <form method="POST" action="{{ route('categorias.destroy', $item->id) }}" onsubmit="return confirm('Eliminar definitivamente a categoria {{ addslashes($item->name) }}?')">
-                                                    @csrf @method('DELETE')
-                                                    <button class="btn btn-sm btn-outline-danger" title="Eliminar {{ $item->name }}" aria-label="Eliminar {{ $item->name }}"><i class="bi bi-trash" aria-hidden="true"></i></button>
-                                                </form>
-                                            @endif
-                                        </div>
+                                        @if ($item->is_system)
+    <span class="badge text-bg-light border text-secondary"><i class="bi bi-lock-fill me-1" aria-hidden="true"></i>Predefinida</span>
+@else
+    <div class="d-flex gap-1">
+        <button type="button" class="btn btn-sm btn-outline-secondary" title="Editar {{ $item->name }}" aria-label="Editar {{ $item->name }}" data-bs-toggle="modal" data-bs-target="#categoryModal" data-mode="edit" data-id="{{ $item->id }}" data-name="{{ $item->name }}" data-type="{{ $item->type }}" data-icon="{{ $item->icon }}" data-color="{{ $item->color }}" data-expense-behavior="{{ $item->expense_behavior ?? 'variable' }}" data-update-url="{{ route('categorias.update', $item->id) }}">
+            <i class="bi bi-pencil" aria-hidden="true"></i>
+        </button>
+        <form method="POST" action="{{ route('categorias.toggle', $item->id) }}">@csrf @method('PATCH')
+            <button class="btn btn-sm btn-outline-secondary" title="{{ $item->is_active ? 'Desativar' : 'Ativar' }} {{ $item->name }}" aria-label="{{ $item->is_active ? 'Desativar' : 'Ativar' }} {{ $item->name }}"><i class="bi {{ $item->is_active ? 'bi-pause-circle' : 'bi-play-circle' }}" aria-hidden="true"></i></button>
+        </form>
+        @if ($movementCount === 0)
+            <form method="POST" action="{{ route('categorias.destroy', $item->id) }}" onsubmit="return confirm('Eliminar definitivamente a categoria {{ addslashes($item->name) }}?')">@csrf @method('DELETE')
+                <button class="btn btn-sm btn-outline-danger" title="Eliminar {{ $item->name }}" aria-label="Eliminar {{ $item->name }}"><i class="bi bi-trash" aria-hidden="true"></i></button>
+            </form>
+        @endif
+    </div>
+@endif
                                     </div>
                                 </div>
                             </article>

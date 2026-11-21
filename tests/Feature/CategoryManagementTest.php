@@ -21,6 +21,18 @@ class CategoryManagementTest extends TestCase
             ->assertSee('Alimentação');
     }
 
+    public function test_default_categories_are_protected_and_visible_in_management(): void
+    {
+        $user = User::factory()->create();
+        $category = $user->categorias()->where('type', 'despesa')->where('slug', 'casa')->firstOrFail();
+        $this->assertTrue($category->is_system);
+        $this->assertTrue($category->show_in_management);
+        $this->actingAs($user)->get(route('categorias.index'))->assertOk()->assertSee('Casa')->assertSee('Predefinida');
+        $this->actingAs($user)->put(route('categorias.update', $category->id), ['name' => 'Minha casa', 'type' => 'despesa', 'icon' => 'house', 'color' => '#2563EB'])->assertForbidden();
+        $this->actingAs($user)->patch(route('categorias.toggle', $category->id))->assertForbidden();
+        $this->actingAs($user)->delete(route('categorias.destroy', $category->id))->assertForbidden();
+    }
+
     public function test_user_can_create_a_custom_category(): void
     {
         $user = User::factory()->create();
