@@ -15,6 +15,10 @@
 <div class="home-dashboard">
     <header class="home-dashboard-intro mb-3">
         <h1 class="h2 fw-bold mb-1">{{ $greeting }}, {{ auth()->user()->name }}!</h1>
+        <button type="button" class="btn install-app-dashboard-trigger d-none" id="installAppDashboardButton"
+            aria-label="Instalar aplicação" title="Instalar aplicação">
+            <i data-lucide="download" aria-hidden="true"></i>
+        </button>
         <p class="small text-secondary mb-0">
             <time datetime="{{ now()->toDateString() }}">{{ ucfirst(now()->locale('pt_PT')->translatedFormat('l, d')) }} de {{ now()->locale('pt_PT')->translatedFormat('F') }}</time>
         </p>
