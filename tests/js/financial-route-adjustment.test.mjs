@@ -60,7 +60,7 @@ function setup(response = { ok: false, json: async () => ({ message: 'Operação
     const modals = new Map();
     window.matchMedia = () => ({ matches: false });
     window.bootstrap = { Modal: { getOrCreateInstance(element) {
-        if (!modals.has(element.id)) modals.set(element.id, { shown: 0, hidden: 0, show() { this.shown++; }, hide() { this.hidden++; element.dispatchEvent(new window.Event('hidden.bs.modal')); } });
+        if (!modals.has(element.id)) modals.set(element.id, { shown: 0, hidden: 0, show() { this.shown++; element.classList.add('show'); element.dispatchEvent(new window.Event('shown.bs.modal')); }, hide() { this.hidden++; element.classList.remove('show'); element.dispatchEvent(new window.Event('hidden.bs.modal')); } });
         return modals.get(element.id);
     } } };
     const requests = [];
@@ -219,4 +219,17 @@ test('edição de liquidado ou previsão virtual é bloqueada e exclusão preser
     assert.equal(h.requests[0].method, 'DELETE');
     assert.equal(h.el('routeConfirmText').textContent, 'Operação não permitida');
     assert.equal(h.el('routeConfirmHint').hidden, true);
+});
+
+test('a Rota Financeira fecha o modal do dia antes de abrir os detalhes', () => {
+    const h = setup();
+    h.openDay();
+    const day = h.modals.get('routeDayModal');
+    const details = h.modals.get('routeMovementDetailModal');
+    const row = h.rows()[0];
+    row.click();
+    assert.equal(day.hidden, 1);
+    assert.equal(details.shown, 1);
+    assert.equal(h.el('routeDayModal').classList.contains('show'), false);
+    assert.equal(h.el('routeMovementDetailModal').classList.contains('show'), true);
 });
