@@ -991,7 +991,13 @@ class FinancialCoreServiceTest extends TestCase
         $movements->assertOk()->assertJsonPath('total_despesas', 90);
         $purchaseRow = collect($movements->json('data'))->firstWhere('financial_movement_id', $purchase->id);
         $this->assertNotNull($purchaseRow);
-        $this->assertSame(90.0, (float) $purchaseRow['amount']);
+        $this->assertSame(100.0, (float) $purchaseRow['amount']);
+
+        $creditRow = collect($movements->json('data'))->firstWhere('category_label', 'Crédito de compra');
+        $this->assertNotNull($creditRow);
+        $this->assertSame(10.0, (float) $creditRow['amount']);
+        $this->assertSame('despesa', $creditRow['tipo']);
+        $this->assertSame(90.0, (float) $movements->json('total_despesas'));
     }
 
     public function test_invoice_closes_automatically_and_retroactive_charges_reopen_only_the_remaining_balance(): void

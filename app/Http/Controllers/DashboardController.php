@@ -196,6 +196,11 @@ class DashboardController extends Controller
                 'recurrence_ends_at' => $item->recurrence_ends_at,
                 'installment_id' => $item->installment_id ?? null,
                 'debt_id' => $item->debt_id ?? null,
+                'invoice_id' => $item->invoice_id ?? null,
+                'invoice_reference_month' => $item->invoice_reference_month ?? null,
+                'invoice_due_date' => $item->invoice_due_date ?? null,
+                'invoice_status' => $item->invoice_status ?? null,
+                'invoice_card_name' => $item->invoice_card_name ?? null,
             ];
         })->values();
 
@@ -399,6 +404,27 @@ class DashboardController extends Controller
                 ), 0)) END ELSE receitas.amount END AS remaining_amount,
                 receitas.currency, categorias.id AS category, categorias.name AS category_label, categorias.icon AS category_icon, categorias.color AS category_color, receitas.income_date AS data_movimento, financial_movements.destination_account_id AS account_id, financial_movements.status AS movement_status, financial_movements.requires_account_assignment AS requires_account_assignment, financial_movements.is_historical AS is_historical, financial_movements.expense_behavior AS expense_behavior, NULL AS due_date, financial_movements.recurrence_id AS recurrence_id, recurrence_rules.frequency AS recurrence_frequency, recurrence_rules.interval_value AS recurrence_interval, recurrence_rules.ends_at AS recurrence_ends_at, financial_movements.debt_id AS debt_id, financial_movements.installment_id AS installment_id, NULL AS invoice_id, NULL AS invoice_reference_month, NULL AS invoice_due_date, NULL AS invoice_status, NULL AS invoice_card_name, NULL AS installment_number, NULL AS installments_count, NULL AS commitment_total_amount, NULL AS commitment_name");
 
+        // Créditos de fatura são ajustes positivos de despesa: aparecem como linha
+        // própria no histórico, sem serem classificados como receita.
+        $invoiceCredits = DB::table('movimentos as invoice_credits')
+            ->join('users as credit_users', 'credit_users.id', '=', 'invoice_credits.user_id')
+            ->leftJoin('faturas as credit_invoices', 'credit_invoices.id', '=', 'invoice_credits.invoice_id')
+            ->leftJoin('contas_financeiras as credit_cards', 'credit_cards.id', '=', 'credit_invoices.account_id')
+            ->leftJoin('movimentos as credited_purchase', 'credited_purchase.id', '=', 'invoice_credits.invoice_credit_for_movement_id')
+            ->where('invoice_credits.user_id', $userId)
+            ->where('invoice_credits.type', 'adjustment')
+            ->where('invoice_credits.invoice_charge_type', 'credit')
+            ->where('invoice_credits.status', 'settled')
+            ->whereBetween('invoice_credits.movement_date', [$inicio->toDateString(), $fim->toDateString()])
+            ->selectRaw("invoice_credits.id, invoice_credits.id AS financial_movement_id, 0 AS is_invoice_payment, 0 AS is_settlement_event, 'despesa' AS tipo, invoice_credits.description, invoice_credits.amount, invoice_credits.amount AS remaining_amount,
+                credit_users.currency, credited_purchase.category_id AS category, 'Crédito de compra' AS category_label, 'undo-2' AS category_icon, '#16a34a' AS category_color,
+                invoice_credits.movement_date AS data_movimento, invoice_credits.destination_account_id AS account_id, invoice_credits.status AS movement_status,
+                0 AS requires_account_assignment, 0 AS is_historical, 'variable' AS expense_behavior, NULL AS due_date, NULL AS recurrence_id,
+                NULL AS recurrence_frequency, NULL AS recurrence_interval, NULL AS recurrence_ends_at, NULL AS debt_id, NULL AS installment_id,
+                invoice_credits.invoice_id AS invoice_id, credit_invoices.reference_month AS invoice_reference_month, credit_invoices.due_date AS invoice_due_date,
+                credit_invoices.status AS invoice_status, credit_cards.name AS invoice_card_name, NULL AS installment_number, NULL AS installments_count,
+                NULL AS commitment_total_amount, NULL AS commitment_name");
+
         $canonical = DB::table('movimentos as canonical_movements')
             ->leftJoin('categorias as canonical_categories', 'canonical_categories.id', '=', 'canonical_movements.category_id')
             ->leftJoin('recorrencias as canonical_rules', 'canonical_rules.id', '=', 'canonical_movements.recurrence_id')
@@ -421,17 +447,7 @@ class DashboardController extends Controller
             // O pagamento da fatura continua numa união separada como transferência.
             ->whereBetween('canonical_movements.movement_date', [$inicio->toDateString(), $fim->toDateString()])
             ->selectRaw("canonical_movements.id, canonical_movements.id AS financial_movement_id, 0 AS is_invoice_payment, CASE WHEN canonical_movements.settles_movement_id IS NOT NULL OR canonical_movements.is_settlement_parent = 1 THEN 1 ELSE 0 END AS is_settlement_event, CASE WHEN canonical_movements.type = 'income' THEN 'receita' ELSE 'despesa' END AS tipo, canonical_movements.description,
-                CASE WHEN canonical_movements.type = 'expense' AND canonical_movements.invoice_id IS NOT NULL THEN canonical_movements.amount - COALESCE((
-                    SELECT SUM(invoice_credits.amount)
-                    FROM movimentos AS invoice_credits
-                    WHERE invoice_credits.user_id = canonical_movements.user_id
-                        AND invoice_credits.invoice_credit_for_movement_id = canonical_movements.id
-                        AND invoice_credits.type = 'adjustment'
-                        AND invoice_credits.invoice_charge_type = 'credit'
-                        AND invoice_credits.status = 'settled'
-                        AND YEAR(invoice_credits.movement_date) = YEAR(canonical_movements.movement_date)
-                        AND MONTH(invoice_credits.movement_date) = MONTH(canonical_movements.movement_date)
-                ), 0) ELSE canonical_movements.amount END AS amount,
+                canonical_movements.amount,
                 CASE WHEN canonical_movements.is_settlement_parent = 1 THEN CASE WHEN (canonical_movements.amount - COALESCE((
                     SELECT SUM(CASE WHEN settlement_events.reversal_of_id IS NULL THEN settlement_events.amount ELSE -settlement_events.amount END)
                     FROM movimentos AS settlement_events
@@ -448,11 +464,11 @@ class DashboardController extends Controller
                 canonical_users.currency, canonical_categories.id AS category, canonical_categories.name AS category_label, canonical_categories.icon AS category_icon, canonical_categories.color AS category_color, canonical_movements.movement_date AS data_movimento, CASE WHEN canonical_movements.type = 'income' THEN canonical_movements.destination_account_id ELSE canonical_movements.source_account_id END AS account_id, canonical_movements.status AS movement_status, canonical_movements.requires_account_assignment AS requires_account_assignment, canonical_movements.is_historical AS is_historical, canonical_movements.expense_behavior AS expense_behavior, NULL AS due_date, canonical_movements.recurrence_id AS recurrence_id, canonical_rules.frequency AS recurrence_frequency, canonical_rules.interval_value AS recurrence_interval, canonical_rules.ends_at AS recurrence_ends_at, canonical_movements.debt_id AS debt_id, canonical_movements.installment_id AS installment_id, canonical_movements.invoice_id AS invoice_id, canonical_invoices.reference_month AS invoice_reference_month, canonical_invoices.due_date AS invoice_due_date, canonical_invoices.status AS invoice_status, canonical_invoice_cards.name AS invoice_card_name, canonical_installments.installment_number AS installment_number, canonical_commitments.installments_count AS installments_count, canonical_commitments.total_amount AS commitment_total_amount, canonical_commitments.name AS commitment_name");
 
         if ($tipo === 'despesa') {
-            $query = $despesas->unionAll((clone $canonical)->where('canonical_movements.type', 'expense'))->unionAll($cardPayments);
+            $query = $despesas->unionAll((clone $canonical)->where('canonical_movements.type', 'expense'))->unionAll($invoiceCredits)->unionAll($cardPayments);
         } elseif ($tipo === 'receita') {
             $query = $receitas->unionAll((clone $canonical)->where('canonical_movements.type', 'income'));
         } else {
-            $query = $despesas->unionAll($receitas)->unionAll($canonical)->unionAll($cardPayments);
+            $query = $despesas->unionAll($receitas)->unionAll($canonical)->unionAll($invoiceCredits)->unionAll($cardPayments);
         }
 
         $wrapped = DB::query()->fromSub($query, 'movimentos');
