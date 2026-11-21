@@ -181,7 +181,16 @@
                                 data-movement-status="{{ $estado }}" data-is-settlement-event="{{ (bool) ($movimento->is_settlement_event ?? false) ? 1 : 0 }}"
                                 data-expense-behavior="{{ $movimento->expense_behavior ?? 'variable' }}" data-recurrence-id="{{ $movimento->recurrence_id }}"
                                 data-recurrence-frequency="{{ $movimento->recurrence_frequency }}" data-financial-movement-id="{{ $movimento->financial_movement_id }}"
-                                data-installment-id="{{ $movimento->installment_id ?? '' }}" data-due-date="{{ $movimento->due_date ?? '' }}">
+                                data-installment-id="{{ $movimento->installment_id ?? '' }}" data-due-date="{{ $movimento->due_date ?? '' }}"
+                                data-debt-id="{{ $movimento->debt_id ?? '' }}" data-debt-name="{{ $movimento->commitment_name ?? '' }}"
+                                data-commitment-total="{{ $movimento->commitment_total_amount ?? '' }}" data-installment-number="{{ $movimento->installment_number ?? '' }}"
+                                data-installments-count="{{ $movimento->installments_count ?? '' }}"
+                                data-invoice-id="{{ $movimento->invoice_id ?? '' }}" data-invoice-reference-month="{{ $movimento->invoice_reference_month ?? '' }}"
+                                data-invoice-due-date="{{ $movimento->invoice_due_date ?? '' }}" data-invoice-status="{{ $movimento->invoice_status ?? '' }}"
+                                data-invoice-card-name="{{ $movimento->invoice_card_name ?? '' }}"
+                                data-is-invoice-payment="{{ (bool) ($movimento->is_invoice_payment ?? false) ? 1 : 0 }}"
+                                data-invoice-url="{{ !empty($movimento->invoice_id) ? route('financial.invoices.show', $movimento->invoice_id) : '' }}"
+                                data-commitment-url="{{ !empty($movimento->debt_id) && !empty($movimento->installment_id) ? route('financial.commitments.page', ['compromisso' => $movimento->debt_id]) : '' }}">
                                 <div class="movement-entry-main">
                                     <div class="expense-icon flex-shrink-0 {{ $isExpense ? '' : 'income-icon' }}" style="--category-color: {{ $movimento->category_color ?? '#635BFF' }}" aria-hidden="true">
                                         <i data-lucide="{{ $movimento->category_icon ?? 'tag' }}"></i>
@@ -282,6 +291,16 @@
                 <div class="d-flex justify-content-between gap-3 mb-2"><span class="small text-secondary">Data</span><span class="small fw-medium" id="movementDetailsDate">—</span></div>
                 <div class="d-flex justify-content-between gap-3 mb-2"><span class="small text-secondary">Categoria</span><span class="small fw-medium" id="movementDetailsCategory">—</span></div>
                 <div class="d-flex justify-content-between gap-3"><span class="small text-secondary">Tipo</span><span class="small fw-medium" id="movementDetailsKind">—</span></div>
+                <section id="movementDetailsOrigin" class="mt-3" hidden>
+                    <hr>
+                    <h3 class="small fw-semibold mb-3" id="movementDetailsOriginHeading">Registo associado</h3>
+                    <div class="rounded-3 border p-3">
+                        <div class="fw-semibold" id="movementDetailsOriginName">—</div>
+                        <div class="small text-secondary mt-1" id="movementDetailsOriginMeta">—</div>
+                        <a id="movementDetailsOriginLink" class="btn btn-outline-secondary btn-sm w-100 mt-3" href="#">Consultar registo</a>
+                    </div>
+                </section>
+                <div id="movementDetailsActions">
                 <hr>
                 <h3 class="small fw-semibold mb-3">Ações</h3>
                 <div class="list-group list-group-flush border rounded-3 overflow-hidden">
@@ -294,6 +313,7 @@
                     <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3 text-danger" id="movementDetailsDelete">
                         <i data-lucide="trash-2" aria-hidden="true"></i><span>Eliminar</span><i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i>
                     </button>
+                </div>
                 </div>
             </div>
         </div>

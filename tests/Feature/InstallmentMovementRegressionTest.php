@@ -48,13 +48,22 @@ class InstallmentMovementRegressionTest extends TestCase
         }
         $this->assertDatabaseCount('despesas', 0);
 
+        $movementPage = $this->actingAs($user)->get(route('dashboard.movimentos', ['mes' => '2026-12']));
+        $movementPage->assertOk()
+            ->assertSee('data-debt-id="'.$debt->id.'"', false)
+            ->assertSee(route('financial.commitments.page', ['compromisso' => $debt->id]), false);
+        $commitmentPage = $this->get(route('financial.commitments.page', ['compromisso' => $debt->id]));
+        $commitmentPage->assertOk()->assertSee('id="commitmentDetailsModal-'.$debt->id.'"', false);
+
         $this->getJson(route('dashboard.movimentos.data', ['mes' => '2026-11']))
-            ->assertOk()->assertJsonCount(0, 'data')->assertJsonPath('total', 0);
+            ->assertOk()->assertJsonCount(0, 'data')->assertJsonPath('total', 0)
+            ->assertJsonPath('total_despesas', 0)->assertJsonPath('total_receitas', 0);
         foreach (['2026-12' => 1, '2027-01' => 2, '2027-02' => 3] as $month => $number) {
             $this->getJson(route('dashboard.movimentos.data', ['mes' => $month]))
                 ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('total', 1)
                 ->assertJsonPath('data.0.description', $data['name'].' · Parcela '.$number.'/3')
-                ->assertJsonPath('data.0.category', $data['category_id']);
+                ->assertJsonPath('data.0.category', $data['category_id'])
+                ->assertJsonPath('total_despesas', 30)->assertJsonPath('total_receitas', 0);
         }
     }
 

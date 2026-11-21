@@ -904,6 +904,13 @@
         showError(feedback, 'Não foi possível carregar a validação de valores. Atualiza a página antes de pagar.');
     }
 
+    // Abre diretamente o compromisso selecionado a partir de um movimento.
+    const focusCommitmentId = @json($focusCommitmentId);
+    if (focusCommitmentId) {
+        const detailsModalElement = document.getElementById('commitmentDetailsModal-' + focusCommitmentId);
+        if (detailsModalElement) bootstrap.Modal.getOrCreateInstance(detailsModalElement).show();
+    }
+
 })();
 </script>
 @endpush

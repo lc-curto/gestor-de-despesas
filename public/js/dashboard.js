@@ -1127,17 +1127,34 @@
         const categoryEl = document.getElementById('movementDetailsCategory');
         const dateEl = document.getElementById('movementDetailsDate');
         const kindEl = document.getElementById('movementDetailsKind');
+        const originWrap = document.getElementById('movementDetailsOrigin');
+        const originHeading = document.getElementById('movementDetailsOriginHeading');
+        const originName = document.getElementById('movementDetailsOriginName');
+        const originMeta = document.getElementById('movementDetailsOriginMeta');
+        const originLink = document.getElementById('movementDetailsOriginLink');
+        const actionsWrap = document.getElementById('movementDetailsActions');
+        const isInvoiceMovement = Boolean(row.dataset.invoiceId);
+        const isInvoicePayment = row.dataset.isInvoicePayment === '1';
+        const isInstallment = Boolean(row.dataset.installmentId && row.dataset.debtId);
 
         titleEl.textContent = row.dataset.description || 'Movimento';
-        typeEl.textContent = isExpense ? 'Despesa' : 'Receita';
-        statusEl.textContent = ({ settled: 'Pago', partial: 'Parcial', partially_settled: 'Parcial', pending: 'Pendente' })[status] || 'Registado';
-        statusEl.className = 'badge ' + (status === 'settled' ? 'text-bg-success' : partial ? 'text-bg-info' : 'text-bg-secondary');
+        typeEl.textContent = isInvoicePayment
+            ? 'Liquidação de fatura'
+            : (isInvoiceMovement ? 'Compra no cartão de crédito' : (isInstallment ? 'Prestação de compra parcelada' : (isExpense ? 'Despesa' : 'Receita')));
+        statusEl.textContent = isInvoiceMovement && !isInvoicePayment
+            ? 'Na fatura'
+            : (({ settled: 'Pago', partial: 'Parcial', partially_settled: 'Parcial', pending: 'Pendente' })[status] || 'Registado');
+        statusEl.className = 'badge ' + (isInvoiceMovement && !isInvoicePayment
+            ? 'text-bg-warning'
+            : (status === 'settled' ? 'text-bg-success' : partial ? 'text-bg-info' : 'text-bg-secondary'));
         amountEl.textContent = symbol;
         paidEl.textContent = formatCurrency(paid, currency);
         pendingEl.textContent = formatCurrency(remaining, currency);
         categoryEl.textContent = row.querySelector('.expense-item__category')?.textContent || row.querySelector('.expense-item p')?.textContent?.split(' · ')[0] || '—';
         dateEl.textContent = formatMovementDate(row.dataset.date);
-        kindEl.textContent = row.dataset.expenseBehavior === 'fixed' ? 'Despesa fixa' : (isExpense ? 'Despesa variável' : 'Receita');
+        kindEl.textContent = isInvoicePayment
+            ? 'Liquidação de fatura'
+            : (isInvoiceMovement ? 'Compra no cartão' : (isInstallment ? 'Prestação parcelada' : (row.dataset.expenseBehavior === 'fixed' ? 'Despesa fixa' : (isExpense ? 'Despesa variável' : 'Receita'))));
 
         const percentage = total > 0 ? Math.min(100, Math.max(0, paid / total * 100)) : 0;
         progress.style.width = percentage + '%';
@@ -1149,10 +1166,38 @@
         const settleAction = document.getElementById('movementDetailsSettle');
         const editAction = document.getElementById('movementDetailsEdit');
         const deleteAction = document.getElementById('movementDetailsDelete');
-        settleAction.hidden = row.dataset.isInvoicePayment === '1' ||
+        const hasOrigin = isInvoiceMovement || isInstallment;
+        settleAction.hidden = hasOrigin || isInvoicePayment ||
             !(['pending', 'partial', 'partially_settled'].includes(status) && Boolean(row.dataset.financialMovementId));
-        editAction.hidden = row.dataset.isInvoicePayment === '1';
-        deleteAction.hidden = row.dataset.isInvoicePayment === '1';
+        editAction.hidden = hasOrigin || isInvoicePayment;
+        deleteAction.hidden = hasOrigin || isInvoicePayment;
+        if (actionsWrap) actionsWrap.hidden = hasOrigin || isInvoicePayment;
+        if (originWrap) originWrap.hidden = !hasOrigin;
+
+        if (isInvoiceMovement) {
+            const reference = row.dataset.invoiceReferenceMonth
+                ? (() => { const [year, month] = row.dataset.invoiceReferenceMonth.slice(0, 10).split('-').map(Number); return new Intl.DateTimeFormat('pt-PT', { month: 'long', year: 'numeric' }).format(new Date(year, month - 1, 1)); })()
+                : 'Fatura associada';
+            originHeading.textContent = 'Fatura associada';
+            originName.textContent = 'Fatura de ' + reference;
+            const dueDate = row.dataset.invoiceDueDate ? 'Vencimento ' + formatMovementDate(row.dataset.invoiceDueDate) : '';
+            const cardName = row.dataset.invoiceCardName || 'Cartão de crédito';
+            const invoiceState = ({ open: 'Ciclo aberto', closed: 'Ciclo fechado', carried: 'Saldo transportado' })[row.dataset.invoiceStatus] || '';
+            originMeta.textContent = [cardName, invoiceState, dueDate].filter(Boolean).join(' · ');
+            originLink.href = row.dataset.invoiceUrl || '#';
+            originLink.textContent = 'Consultar fatura';
+            originLink.setAttribute('aria-label', 'Consultar fatura de ' + reference);
+        } else if (isInstallment) {
+            const number = row.dataset.installmentNumber || '—';
+            const count = row.dataset.installmentsCount || '—';
+            const commitmentTotal = Number(row.dataset.commitmentTotal || 0);
+            originHeading.textContent = 'Parcelamento associado';
+            originName.textContent = row.dataset.debtName || row.dataset.description || 'Parcelamento';
+            originMeta.textContent = 'Prestação ' + number + ' de ' + count + ' · Total ' + formatCurrency(commitmentTotal, currency);
+            originLink.href = row.dataset.commitmentUrl || '#';
+            originLink.textContent = 'Consultar parcelamento';
+            originLink.setAttribute('aria-label', 'Consultar parcelamento ' + (row.dataset.debtName || 'associado'));
+        }
 
         const progressTitle = document.getElementById('movementDetailsPaymentHeading');
         progressTitle.hidden = !partial;
