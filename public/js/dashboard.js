@@ -909,6 +909,9 @@
             invoiceId: row.dataset.invoiceId,
             installmentId: row.dataset.installmentId,
             debtId: row.dataset.debtId,
+            isSettlementEvent: row.dataset.isSettlementEvent === '1',
+            settlesMovementId: row.dataset.settlesMovementId,
+            isSettlementParent: row.dataset.isSettlementParent === '1',
             isInvoicePayment: row.dataset.isInvoicePayment === '1'
         }) === true;
     }
