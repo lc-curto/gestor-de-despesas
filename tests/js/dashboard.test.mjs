@@ -365,6 +365,17 @@ test('a mesma ação mostra Pagar em pendentes e Reverter em movimentos liquidad
     assert.equal(pendingAction.querySelector('span').textContent, 'Pagar');
     pendingUi.dom.window.close();
 
+    const partialUi = setup(async () => jsonResponse(200, { data: [] }), [{
+        ...existingMovement,
+        movement_status: 'partial',
+        remaining_amount: '50.00',
+    }]);
+    partialUi.element('expensesList').querySelector('[data-movement-action="details"]').click();
+    const partialAction = partialUi.element('movementDetailsSettle');
+    assert.equal(partialAction.hidden, false);
+    assert.equal(partialAction.querySelector('span').textContent, 'Reverter');
+    partialUi.dom.window.close();
+
     const settledUi = setup(async () => jsonResponse(200, { data: [] }), [{
         ...existingMovement,
         movement_status: 'settled',
