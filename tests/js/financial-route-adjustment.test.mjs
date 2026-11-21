@@ -54,7 +54,7 @@ function setup(response = { ok: false, json: async () => ({ message: 'Operação
         <div id="routeMovementDetailsKind"></div>
         <div id="routeMovementDetailsRelatedRow" hidden><span id="routeMovementDetailsRelated"></span></div>
         <div id="routeMovementDetailsDescription"></div><div id="routeMovementDetailsNotes"></div>
-        <button id="routeMovementDetailsEdit"></button><button id="routeMovementDetailsDelete"></button>
+        <button id="routeMovementDetailsEdit"></button><button id="routeMovementDetailsReverse" hidden></button><button id="routeMovementDetailsDelete"></button>
       </div>
       <div id="routeDetailError" role="alert"></div><p id="routeEditHelp" role="status"></p>
       <div id="routeConfirmTitle"></div><div id="routeConfirmText"></div><small id="routeConfirmHint">Esta ação não pode ser desfeita.</small><button id="routeConfirmAction"></button>`;
@@ -278,4 +278,11 @@ test('Rota Financeira aguarda hidden quando os detalhes já estão em transiçã
     assert.equal(editor.shown, 1);
     assert.equal(h.el('movementEditDescription').value, 'Entrada');
     h.window.close();
+});
+
+test('Rota Financeira disponibiliza reversão para obrigações liquidadas elegíveis', () => {
+    const h = setup();
+    h.openItem('Liquidação Freelance');
+    assert.equal(h.el('routeMovementDetailsReverse').hidden, false);
+    h.dom?.window?.close?.();
 });
