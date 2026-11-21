@@ -582,7 +582,7 @@ test('modal de detalhes apresenta totais pagos e pendentes e mantém as ações 
     assert.equal(ui.element('movementDetailsPending').textContent, '80,00 €');
     assert.equal(ui.element('movementDetailsSettle').hidden, false);
     assert.equal(ui.element('movementDetailsEdit').hidden, true);
-    assert.equal(ui.element('movementDetailsDelete').hidden, false);
+    assert.equal(ui.element('movementDetailsDelete').hidden, true, 'movimentos parciais não podem ser eliminados diretamente');
     ui.dom.window.close();
 });
 
