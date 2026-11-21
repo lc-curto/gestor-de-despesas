@@ -104,7 +104,7 @@ test('ajustes apresentam tipo, sinal, conta e detalhes corretos e não entram no
         assert.equal(h.el('routeMovementDetailsEdit').disabled, true);
         assert.match(h.el('routeEditHelp').textContent, /elimina o movimento/i);
         h.el('routeMovementDetailsEdit').dispatchEvent(new h.window.MouseEvent('click', { bubbles: true }));
-        assert.equal(h.modals.get('routeMovementModal').shown, 0, 'até um clique sintético não abre edição genérica');
+        assert.equal((h.modals.get('movementEditModal')?.shown || 0), 0, 'até um clique sintético não abre edição genérica');
     }
 
     for (const [filter, expected] of [['income', ['Entrada', 'Entrada liquidada']], ['fixed', ['Fixo', 'Empréstimo', 'Fatura prevista']], ['variable', ['Variável']]]) {
@@ -160,7 +160,7 @@ test('transferências são identificadas pelo delta e também não abrem ediçã
         assert.equal(h.el('routeMovementDetailsEdit').disabled, true);
         assert.match(h.el('routeEditHelp').textContent, /transferências/i);
         h.el('routeMovementDetailsEdit').dispatchEvent(new h.window.MouseEvent('click', { bubbles: true }));
-        assert.equal(h.modals.get('routeMovementModal').shown, 0);
+        assert.equal((h.modals.get('movementEditModal')?.shown || 0), 0);
     }
 });
 
@@ -174,7 +174,7 @@ test('edição suportada mantém o tipo e o comportamento da receita ou despesa 
         assert.equal(h.el('routeEditHelp').textContent, '');
         h.el('routeMovementDetailsEdit').click();
         assert.equal(h.modals.get('movementEditModal').shown, 1);
-        assert.equal(h.modals.get('routeMovementModal').shown, 0, 'a edição não reutiliza o modal de criação');
+        assert.equal((h.modals.get('movementEditModal')?.shown || 0), 0, 'a edição não reutiliza o modal de criação');
         assert.equal(h.el('movementEditDescription').value, description);
         assert.equal(h.el('movementEditAmount').value, description === 'Entrada' ? '30,1' : '12,4');
         assert.equal(h.el('movementEditDate').value, '2026-12-05');
