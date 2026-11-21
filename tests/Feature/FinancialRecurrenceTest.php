@@ -201,7 +201,7 @@ class FinancialRecurrenceTest extends TestCase
         ]);
     }
 
-    public function test_settled_recurring_occurrence_can_be_corrected_without_changing_other_occurrences(): void
+    public function test_settled_recurring_occurrence_cannot_be_edited_and_other_occurrences_remain_unchanged(): void
     {
         $user = User::factory()->create();
         $account = $this->account($user);
@@ -218,18 +218,18 @@ class FinancialRecurrenceTest extends TestCase
             'description' => 'Internet corrigida',
             'amount' => '35.00',
             'movement_date' => '2026-11-16',
-        ])->assertOk()->assertJsonPath('data.status', 'partial');
+        ])->assertUnprocessable()->assertJsonValidationErrors('movement');
 
-        $this->assertSame('Internet corrigida', $movement->fresh()->description);
-        $this->assertSame('35.00', $movement->fresh()->amount);
+        $this->assertSame('Internet', $movement->fresh()->description);
+        $this->assertSame('30.00', $movement->fresh()->amount);
         $this->assertSame(3, $user->movimentos()->where('recurrence_id', $movement->recurrence_id)->count());
         $this->assertSame($siblingsBefore, $user->movimentos()->where('recurrence_id', $movement->recurrence_id)
             ->where('id', '!=', $movement->id)->get()->keyBy('id')->map(fn ($item) => [$item->amount, $item->movement_date->toDateString()])->all());
         $this->assertDatabaseHas('despesas', [
             'id' => $movement->legacy_id,
-            'description' => 'Internet corrigida',
-            'amount' => '35.00',
-            'expense_date' => '2026-11-16',
+            'description' => 'Internet',
+            'amount' => '30.00',
+            'expense_date' => '2026-11-15',
         ]);
         $this->assertSame('30.00', $movement->settlements()->where('status', 'settled')->firstOrFail()->amount);
     }
