@@ -10,6 +10,21 @@ class CategoryManagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    private function createCustomExpenseCategory(User $user): \\App\\Models\\Categoria
+    {
+        return $user->categorias()->create([
+            'name' => 'Categoria personalizada',
+            'slug' => 'categoria-personalizada',
+            'type' => 'despesa',
+            'icon' => 'tag',
+            'color' => '#2563EB',
+            'expense_behavior' => 'variable',
+            'is_active' => true,
+            'is_system' => false,
+            'show_in_management' => true,
+        ]);
+    }
+
     public function test_authenticated_user_can_view_own_categories(): void
     {
         $user = User::factory()->create();
@@ -91,7 +106,7 @@ class CategoryManagementTest extends TestCase
     public function test_category_with_movements_cannot_be_deleted(): void
     {
         $user = User::factory()->create();
-        $category = $user->categorias()->where('type', 'despesa')->firstOrFail();
+        $category = $this->createCustomExpenseCategory($user);
 
         $user->despesas()->create([
             'description' => 'Compra de teste',
