@@ -81,11 +81,18 @@ function setup(fetch, initialMovements = []) {
         if (!instances.has(element)) {
             instances.set(element, {
                 open: false,
-                show() { this.open = true; element.dispatchEvent(new window.Event('shown.bs.modal')); },
+                _isTransitioning: false,
+                show() {
+                    this.open = true;
+                    element.classList.add('show');
+                    element.dispatchEvent(new window.Event('shown.bs.modal'));
+                },
                 hide() {
+                    if (this._isTransitioning) return;
                     const event = new window.Event('hide.bs.modal', { cancelable: true });
                     if (!element.dispatchEvent(event)) return;
                     this.open = false;
+                    element.classList.remove('show');
                     element.dispatchEvent(new window.Event('hidden.bs.modal'));
                 },
             });
@@ -393,6 +400,32 @@ test('edição usa o modal próprio e envia o valor com vírgula em decimal can�
     assert.equal(sent.amount, '90.50');
     assert.equal(sentUrl, '/api/financial/movements/movement-id');
     ui.dom.window.close();
+});
+
+test('edição aguarda o fim da abertura do modal de detalhes antes de o fechar', () => {
+    const ui = setup(async () => jsonResponse(200, { data: [] }), [existingMovement]);
+    ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
+    const details = ui.window.bootstrap.Modal.getOrCreateInstance(ui.element('movementDetailsModal'));
+    const editor = ui.window.bootstrap.Modal.getOrCreateInstance(ui.element('movementEditModal'));
+
+    details._isTransitioning = true;
+    ui.element('movementDetailsEdit').click();
+    assert.equal(details.open, true);
+    assert.equal(editor.open, false);
+
+    details._isTransitioning = false;
+    ui.element('movementDetailsModal').dispatchEvent(new ui.window.Event('shown.bs.modal'));
+    assert.equal(details.open, false);
+    assert.equal(editor.open, true);
+    assert.equal(ui.element('movementEditAmount').value, '90,50');
+    ui.dom.window.close();
+});
+
+test('Rota Financeira aguarda a transição Bootstrap antes de trocar para o modal de edição', () => {
+    const route = readFileSync(new URL('../../resources/views/financial-route.blade.php', import.meta.url), 'utf8');
+    assert.match(route, /if\s*\(instance\._isTransitioning\)\s*\{\s*element\.addEventListener\('shown\.bs\.modal',hideWhenReady/);
+    assert.match(route, /hideModalThen\(detailElement,detailModal,\(\)=>movementModal\.show\(\)\)/);
+    assert.match(route, /movementElement\.addEventListener\('hidden\.bs\.modal'/);
 });
 
 test('liquidação normaliza vírgula e rejeita valores ambíguos antes do pedido', async () => {
