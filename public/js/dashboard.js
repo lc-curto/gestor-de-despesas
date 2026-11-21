@@ -504,6 +504,13 @@
         article.dataset.recurrenceEndsAt = item.recurrence_ends_at || '';
         article.dataset.installmentId = item.installment_id || '';
         article.dataset.debtId = item.debt_id || '';
+        article.dataset.invoiceId = item.invoice_id || '';
+        article.dataset.invoiceReferenceMonth = item.invoice_reference_month || '';
+        article.dataset.invoiceDueDate = item.invoice_due_date || '';
+        article.dataset.invoiceStatus = item.invoice_status || '';
+        article.dataset.invoiceCardName = item.invoice_card_name || '';
+        article.dataset.invoiceUrl = item.invoice_id ? '/faturas/' + encodeURIComponent(item.invoice_id) : '';
+        article.dataset.isInvoiceCredit = item.category_label === 'Crédito de compra' ? '1' : '0';
 
         const info = document.createElement('div');
         info.className = 'movement-entry-main';
@@ -597,10 +604,11 @@
         const trailing = document.createElement('div');
         trailing.className = 'movement-entry-trailing expense-actions';
         const value = document.createElement('strong');
-        value.className = 'movement-entry-amount ' + (isExpense ? 'is-expense' : 'is-income');
+        const isInvoiceCredit = item.category_label === 'Crédito de compra';
+        value.className = 'movement-entry-amount ' + (isExpense && !isInvoiceCredit ? 'is-expense' : 'is-income');
         value.dataset.value = item.amount;
         value.dataset.currency = item.currency || cfg.currency || 'EUR';
-        value.textContent = (isExpense ? '−' : '+') + formatCurrency(originalAmount, item.currency || cfg.currency || 'EUR');
+        value.textContent = (isExpense && !isInvoiceCredit ? '−' : '+') + formatCurrency(originalAmount, item.currency || cfg.currency || 'EUR');
 
         const detailsButton = document.createElement('button');
         detailsButton.type = 'button';
@@ -1138,6 +1146,7 @@
             detailsError.classList.add('d-none');
         }
         const isExpense = row.dataset.movementType === 'despesa';
+        const isInvoiceCredit = row.dataset.isInvoiceCredit === '1';
         const total = Number(row.dataset.amount) || 0;
         const remaining = Math.max(0, Number(row.dataset.remainingAmount ?? row.dataset.amount) || 0);
         const paid = Math.max(0, total - remaining);
@@ -1170,23 +1179,27 @@
         const isInstallment = Boolean(row.dataset.installmentId && row.dataset.debtId);
 
         titleEl.textContent = row.dataset.description || 'Movimento';
-        typeEl.textContent = isInvoicePayment
-            ? 'Liquidação de fatura'
-            : (isInvoiceMovement ? 'Compra no cartão de crédito' : (isInstallment ? 'Prestação de compra parcelada' : (isExpense ? 'Despesa' : 'Receita')));
+        typeEl.textContent = isInvoiceCredit
+            ? 'Crédito de compra'
+            : (isInvoicePayment
+                ? 'Liquidação de fatura'
+                : (isInvoiceMovement ? 'Compra no cartão de crédito' : (isInstallment ? 'Prestação de compra parcelada' : (isExpense ? 'Despesa' : 'Receita'))));
         statusEl.textContent = isInvoiceMovement && !isInvoicePayment
             ? 'Na fatura'
             : (({ settled: 'Pago', partial: 'Parcial', partially_settled: 'Parcial', pending: 'Pendente' })[status] || 'Registado');
         statusEl.className = 'badge ' + (isInvoiceMovement && !isInvoicePayment
             ? 'text-bg-warning'
             : (status === 'settled' ? 'text-bg-success' : partial ? 'text-bg-info' : 'text-bg-secondary'));
-        amountEl.textContent = symbol;
+        amountEl.textContent = (isInvoiceCredit || !isExpense ? '+' : '−') + symbol;
         paidEl.textContent = formatCurrency(paid, currency);
         pendingEl.textContent = formatCurrency(remaining, currency);
         categoryEl.textContent = row.querySelector('.expense-item__category')?.textContent || row.querySelector('.expense-item p')?.textContent?.split(' · ')[0] || '—';
         dateEl.textContent = formatMovementDate(row.dataset.date);
-        kindEl.textContent = isInvoicePayment
-            ? 'Liquidação de fatura'
-            : (isInvoiceMovement ? 'Compra no cartão' : (isInstallment ? 'Prestação parcelada' : (row.dataset.expenseBehavior === 'fixed' ? 'Despesa fixa' : (isExpense ? 'Despesa variável' : 'Receita'))));
+        kindEl.textContent = isInvoiceCredit
+            ? 'Ajuste de despesa · crédito de fatura'
+            : (isInvoicePayment
+                ? 'Liquidação de fatura'
+                : (isInvoiceMovement ? 'Compra no cartão' : (isInstallment ? 'Prestação parcelada' : (row.dataset.expenseBehavior === 'fixed' ? 'Despesa fixa' : (isExpense ? 'Despesa variável' : 'Receita')))));
 
         const percentage = total > 0 ? Math.min(100, Math.max(0, paid / total * 100)) : 0;
         progress.style.width = percentage + '%';
