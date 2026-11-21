@@ -1132,6 +1132,11 @@
 
     function openMovementDetails(row) {
         actionMovement = row;
+        const detailsError = document.getElementById('movementDetailsError');
+        if (detailsError) {
+            detailsError.textContent = '';
+            detailsError.classList.add('d-none');
+        }
         const isExpense = row.dataset.movementType === 'despesa';
         const total = Number(row.dataset.amount) || 0;
         const remaining = Math.max(0, Number(row.dataset.remainingAmount ?? row.dataset.amount) || 0);
@@ -1288,7 +1293,9 @@
     async function reverseMovementSettlement(row) {
         if (!row.dataset.financialMovementId || !window.confirm('Reverter a liquidação deste movimento? O movimento voltará ao estado pendente.')) return;
         const button = document.getElementById('movementDetailsSettle');
+        const errorBox = document.getElementById('movementDetailsError');
         if (button) button.disabled = true;
+        if (errorBox) errorBox.classList.add('d-none');
         try {
             const response = await fetch(cfg.financialMovementBase + '/' + encodeURIComponent(row.dataset.financialMovementId) + '/reverse-settlement', {
                 method: 'PUT',
@@ -1300,9 +1307,18 @@
             returnToDetailsAfterCancel = false;
             movementDetailsModal?.hide();
             showMovementConfirmation('Liquidação revertida. O movimento voltou a Pendente.');
-            await refreshDashboard();
+            try {
+                await refreshDashboard();
+            } catch (_) {
+                showMovementConfirmation('Liquidação revertida. Não foi possível atualizar a lista; atualiza a página. Não repitas a reversão.', false, true);
+            }
         } catch (error) {
-            showSettleError(error.message || 'Não foi possível reverter a liquidação.');
+            if (errorBox) {
+                errorBox.textContent = error.message || 'Não foi possível reverter a liquidação.';
+                errorBox.classList.remove('d-none');
+            } else {
+                window.alert(error.message || 'Não foi possível reverter a liquidação.');
+            }
         } finally {
             if (button) button.disabled = false;
         }
