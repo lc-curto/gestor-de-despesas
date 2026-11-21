@@ -116,7 +116,7 @@
                 @endphp
                 <div id="expensesList" class="expense-list history-list movements-history-list px-3 px-sm-4" aria-live="polite">
                     @forelse ($movimentosVisiveis->groupBy(fn ($item) => \Illuminate\Support\Carbon::parse($item->data_movimento)->toDateString()) as $dia => $movimentosDoDia)
-                        @php $dataGrupo = \Illuminate\Support\Carbon::parse($dia); @endphp
+                        @php $dataGrupo = \Illuminate\Support\Carbon::parse($dia)->locale('pt_PT'); @endphp
                         <div class="movement-day-heading d-flex justify-content-between align-items-center">
                             <span class="fw-semibold">{{ $dataGrupo->isToday() ? 'Hoje' : $dataGrupo->translatedFormat('d F') }}</span>
                             <span class="small text-secondary">{{ $dataGrupo->translatedFormat('l') }}</span>
@@ -147,6 +147,7 @@
                                     default => '',
                                 };
                                 $frequencias = ['weekly' => 'Semanal', 'monthly' => 'Mensal', 'yearly' => 'Anual'];
+                                $frequenciasPlural = ['weekly' => 'semanas', 'monthly' => 'meses', 'yearly' => 'anos'];
                             @endphp
                             <article class="expense-item movement-entry py-3 border-bottom"
                                 data-movement-id="{{ $movimento->id }}" data-movement-type="{{ $movimento->tipo }}"
@@ -179,7 +180,7 @@
                                                 <span class="movement-status-badge {{ $estadoClasse }}">{{ $estadoLabel }}</span>
                                             @endif
                                             @if ($movimento->recurrence_id)
-                                                <span class="movement-meta-tag"><i data-lucide="repeat" aria-hidden="true"></i>{{ ($movimento->recurrence_interval ?? 1) > 1 ? 'A cada ' . $movimento->recurrence_interval . ' ' . strtolower($frequencias[$movimento->recurrence_frequency] ?? 'períodos') : ($frequencias[$movimento->recurrence_frequency] ?? 'Recorrente') }}</span>
+                                                <span class="movement-meta-tag"><i data-lucide="repeat" aria-hidden="true"></i>{{ ($movimento->recurrence_interval ?? 1) > 1 ? 'A cada ' . $movimento->recurrence_interval . ' ' . ($frequenciasPlural[$movimento->recurrence_frequency] ?? 'períodos') : ($frequencias[$movimento->recurrence_frequency] ?? 'Recorrente') }}</span>
                                             @endif
                                             @if ($movimento->installment_id ?? false)
                                                 <span class="movement-meta-tag"><i data-lucide="layers" aria-hidden="true"></i>Prestação</span>
