@@ -433,7 +433,7 @@ test('Rota Financeira aguarda a transição Bootstrap antes de trocar para o mod
     const route = readFileSync(new URL('../../resources/views/financial-route.blade.php', import.meta.url), 'utf8');
     const sharedModal = readFileSync(new URL('../../resources/views/partials/movement-edit-modal.blade.php', import.meta.url), 'utf8');
     assert.match(route, /meuBolsoMovementEditRules\?\.hideThen/);
-    assert.match(sharedModal, /const transitionEvent = element\\.classList\\.contains\\('show'\\) \\? 'shown\\.bs\\.modal' : 'hidden\\.bs\\.modal'/);
+    assert.match(sharedModal, /const transitionEvent = element\.classList\.contains\('show'\) \? 'shown\.bs\.modal' : 'hidden\.bs\.modal'/);
     assert.match(route, /hideModalThen\(detailElement,detailModal,\(\)=>editModal\.show\(\)\)/);
     assert.match(route, /editElement\.addEventListener\('hidden\.bs\.modal'/);
     assert.match(route, /routeDetailsNext==='delete'\)confirmModal\.show\(\)/);
