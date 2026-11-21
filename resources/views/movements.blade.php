@@ -35,7 +35,7 @@
     </div>
 </section>
 
-Barra de criação@include('partials.movement-editor-modal')
+@include('partials.movement-editor-modal')
 <section class="row g-3 g-xl-4 align-items-start" aria-label="Movimentos">
     <div class="col-12">
         <article class="card border-0 shadow-sm rounded-4 history-card">
@@ -115,8 +115,8 @@ Barra de criação@include('partials.movement-editor-modal')
                         : ($filtroTipo === 'receita' ? $totalReceitasFiltradas : $totalMovimentos);
                 @endphp
                 <div id="expensesList" class="expense-list history-list movements-history-list px-3 px-sm-4" aria-live="polite">
-                    @forelse ($movimentosVisiveis->groupBy(fn ($item) => \\Illuminate\\Support\\Carbon::parse($item->data_movimento)->toDateString()) as $dia => $movimentosDoDia)
-                        @php $dataGrupo = \\Illuminate\\Support\\Carbon::parse($dia); @endphp
+                    @forelse ($movimentosVisiveis->groupBy(fn ($item) => \Illuminate\Support\Carbon::parse($item->data_movimento)->toDateString()) as $dia => $movimentosDoDia)
+                        @php $dataGrupo = \Illuminate\Support\Carbon::parse($dia); @endphp
                         <div class="movement-day-heading d-flex justify-content-between align-items-center">
                             <span class="fw-semibold">{{ $dataGrupo->isToday() ? 'Hoje' : $dataGrupo->translatedFormat('d F') }}</span>
                             <span class="small text-secondary">{{ $dataGrupo->translatedFormat('l') }}</span>
@@ -124,7 +124,7 @@ Barra de criação@include('partials.movement-editor-modal')
                         @foreach ($movimentosDoDia as $movimento)
                             @php
                                 $isExpense = $movimento->tipo === 'despesa';
-                                $dataMovimento = \\Illuminate\\Support\\Carbon::parse($movimento->data_movimento);
+                                $dataMovimento = \Illuminate\Support\Carbon::parse($movimento->data_movimento);
                                 $categoriaLabel = $categorias[$movimento->category] ?? $movimento->category;
                                 $estado = $movimento->movement_status;
                                 $valorTotal = (float) $movimento->amount;
@@ -133,7 +133,7 @@ Barra de criação@include('partials.movement-editor-modal')
                                 $parcial = in_array($estado, ['partial', 'partially_settled'], true);
                                 $percentagemPaga = $valorTotal > 0 ? min(100, max(0, ($valorPago / $valorTotal) * 100)) : 0;
                                 $emAtraso = $isExpense && $movimento->due_date && $estado !== 'settled'
-                                    && \\Illuminate\\Support\\Carbon::parse($movimento->due_date)->startOfDay()->lt(now()->startOfDay());
+                                    && \Illuminate\Support\Carbon::parse($movimento->due_date)->startOfDay()->lt(now()->startOfDay());
                                 $estadoLabel = $emAtraso ? 'Em atraso' : match ($estado) {
                                     'settled' => $isExpense ? 'Pago' : 'Recebido',
                                     'partial', 'partially_settled' => $isExpense ? 'Parcial' : 'Recebido parcial',
