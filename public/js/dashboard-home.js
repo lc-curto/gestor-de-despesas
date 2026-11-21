@@ -53,6 +53,8 @@
     document.getElementById('applyDashboardMonth')?.addEventListener('click', () => {
         if (!monthInput || !/^\d{4}-(0[1-9]|1[0-2])$/.test(draftMonth)) return;
         monthInput.value = draftMonth;
+        const periodInput = document.getElementById('periodMonth');
+        if (periodInput) periodInput.value = draftMonth;
         if (monthLabel) {
             const [year, month] = draftMonth.split('-').map(Number);
             const formatted = new Intl.DateTimeFormat('pt-PT', { month: 'long', year: 'numeric' })
