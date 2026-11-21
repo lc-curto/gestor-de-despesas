@@ -105,7 +105,8 @@ function setup(fetch, initialMovements = [], options = {}) {
         return instances.get(element);
     } } };
     window.HTMLElement.prototype.scrollIntoView = () => {};
-    window.eval(editRules);\n    window.eval(script);
+    window.eval(editRules);
+    window.eval(script);
     const element = (id) => window.document.getElementById(id);
     const form = element('dashboardMovementForm');
     const modal = element('movementEntryModal') ? window.bootstrap.Modal.getOrCreateInstance(element('movementEntryModal')) : null;
