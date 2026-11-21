@@ -417,7 +417,7 @@ class DashboardController extends Controller
             ->whereBetween('invoice_credits.movement_date', [$inicio->toDateString(), $fim->toDateString()])
             ->selectRaw("invoice_credits.id, invoice_credits.id AS financial_movement_id, 0 AS is_invoice_payment, 0 AS is_settlement_event, 'despesa' AS tipo, invoice_credits.description, invoice_credits.amount, invoice_credits.amount AS remaining_amount,
                 credit_users.currency, NULL AS category, 'Crédito de compra' AS category_label, 'undo-2' AS category_icon, '#16a34a' AS category_color,
-                invoice_credits.movement_date AS data_movimento, invoice_credits.source_account_id AS account_id, invoice_credits.status AS movement_status,
+                invoice_credits.movement_date AS data_movimento, invoice_credits.destination_account_id AS account_id, invoice_credits.status AS movement_status,
                 0 AS requires_account_assignment, 0 AS is_historical, 'variable' AS expense_behavior, NULL AS due_date, NULL AS recurrence_id,
                 NULL AS recurrence_frequency, NULL AS recurrence_interval, NULL AS recurrence_ends_at, NULL AS debt_id, NULL AS installment_id,
                 invoice_credits.invoice_id AS invoice_id, credit_invoices.reference_month AS invoice_reference_month, credit_invoices.due_date AS invoice_due_date,
