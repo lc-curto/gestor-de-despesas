@@ -264,7 +264,7 @@ test('Rota Financeira aguarda hidden quando os detalhes já estão em transiçã
     details._isTransitioning = true;
     detailsElement.classList.remove('show');
     h.el('routeMovementDetailsEdit').click();
-    assert.equal(editor.shown, undefined);
+    assert.equal(editor.shown, 0);
 
     details._isTransitioning = false;
     detailsElement.dispatchEvent(new h.window.Event('hidden.bs.modal'));
