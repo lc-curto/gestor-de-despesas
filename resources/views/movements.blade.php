@@ -167,8 +167,8 @@ Barra de criação@include('partials.movement-editor-modal')
                                         <p class="movement-entry-meta">{{ $categoriaLabel }} · {{ $dataMovimento->format('d/m/Y') }}</p>
                                         @if ($parcial)
                                             <div class="movement-settlement-summary">
-                                                <span>Pago: {{ number_format($valorPago, 2, ',', '.') }} {{ $movimento->currency }}</span>
-                                                <span>Em falta: {{ number_format($valorPendente, 2, ',', '.') }} {{ $movimento->currency }}</span>
+                                                <span>{{ $isExpense ? 'Pago' : 'Recebido' }}: {{ number_format($valorPago, 2, ',', '.') }} {{ $movimento->currency }}</span>
+                                                <span>{{ $isExpense ? 'Em falta' : 'Por receber' }}: {{ number_format($valorPendente, 2, ',', '.') }} {{ $movimento->currency }}</span>
                                             </div>
                                             <div class="movement-progress" role="progressbar" aria-label="Percentagem do movimento paga" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ (int) round($percentagemPaga) }}">
                                                 <span style="width: {{ $percentagemPaga }}%"></span>
@@ -179,7 +179,7 @@ Barra de criação@include('partials.movement-editor-modal')
                                                 <span class="movement-status-badge {{ $estadoClasse }}">{{ $estadoLabel }}</span>
                                             @endif
                                             @if ($movimento->recurrence_id)
-                                                <span class="movement-meta-tag"><i data-lucide="repeat" aria-hidden="true"></i>{{ $frequencias[$movimento->recurrence_frequency] ?? 'Recorrente' }}</span>
+                                                <span class="movement-meta-tag"><i data-lucide="repeat" aria-hidden="true"></i>{{ ($movimento->recurrence_interval ?? 1) > 1 ? 'A cada ' . $movimento->recurrence_interval . ' ' . strtolower($frequencias[$movimento->recurrence_frequency] ?? 'períodos') : ($frequencias[$movimento->recurrence_frequency] ?? 'Recorrente') }}</span>
                                             @endif
                                             @if ($movimento->installment_id ?? false)
                                                 <span class="movement-meta-tag"><i data-lucide="layers" aria-hidden="true"></i>Prestação</span>
@@ -459,7 +459,7 @@ Barra de criação@include('partials.movement-editor-modal')
 .movements-page .movements-period-metric > span { color:var(--bs-secondary-color); font-size:.75rem; }
 .movements-page .movements-period-metric > strong { overflow-wrap:anywhere; font-size:clamp(.88rem,2vw,1.12rem); font-variant-numeric:tabular-nums; letter-spacing:-.025em; }
 .movements-page .movements-period-result > strong { color:var(--bs-success-text-emphasis); }
-.movements-page .history-card { overflow:hidden; border:1px solid var(--bs-border-color) !important; background:var(--bs-body-bg); }
+.movements-page .history-card { overflow:hidden; border:1px solid var(--bs-border-color); background:var(--bs-body-bg); }
 .movements-page .history-card-body { min-width:0; }
 .movements-page .dashboard-period-controls { gap:.35rem; }
 .movements-page .dashboard-period-controls .form-control { width:auto; min-width:8.5rem; }
