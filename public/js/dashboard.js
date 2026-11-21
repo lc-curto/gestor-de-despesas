@@ -882,7 +882,9 @@
     let editingMovement = null;
 
     function startEdit(row) {
-        if (row.dataset.movementStatus !== 'pending' || !row.dataset.financialMovementId) return;
+        if (row.dataset.movementStatus !== 'pending' || !row.dataset.financialMovementId || !editModalElement || !editForm) return;
+        returnToDetailsAfterCancel = false;
+        if (editModalElement.parentElement !== document.body) document.body.appendChild(editModalElement);
         editingMovement = row;
         const isExpense = row.dataset.movementType === 'despesa';
         const editCategory = document.getElementById('movementEditCategory');
@@ -1193,7 +1195,16 @@
         const deleteAction = document.getElementById('movementDetailsDelete');
         const hasOrigin = isInvoiceMovement || isInstallment;
         settleAction.hidden = hasOrigin || isInvoicePayment ||
-            !(['pending', 'partial', 'partially_settled'].includes(status) && Boolean(row.dataset.financialMovementId));
+            !(['pending', 'partial', 'partially_settled', 'settled'].includes(status) && Boolean(row.dataset.financialMovementId));
+        const settleLabel = settleAction.querySelector('span');
+        const settleIcon = settleAction.querySelector('[data-lucide]');
+        const isSettled = status === 'settled';
+        if (settleLabel) settleLabel.textContent = isSettled ? 'Reverter' : (isExpense ? 'Pagar' : 'Receber');
+        if (settleIcon) {
+            settleIcon.setAttribute('data-lucide', isSettled ? 'undo-2' : 'check-circle');
+            settleIcon.classList.toggle('text-success', !isSettled);
+            settleIcon.classList.toggle('text-warning', isSettled);
+        }
         editAction.hidden = hasOrigin || isInvoicePayment || status !== 'pending' || !row.dataset.financialMovementId;
         deleteAction.hidden = hasOrigin || isInvoicePayment;
         if (actionsWrap) actionsWrap.hidden = hasOrigin || isInvoicePayment;
@@ -1232,25 +1243,66 @@
     function runMovementDetailsAction(action) {
         if (!actionMovement) return;
         const row = actionMovement;
+
+        // A edição só começa depois de o modal de detalhes terminar de fechar.
+        // Isso evita a disputa entre duas instâncias Bootstrap e os respetivos backdrops.
+        if (action === 'edit') {
+            const openEditor = () => window.requestAnimationFrame(() => startEdit(row));
+            if (movementDetailsModalElement?.classList.contains('show')) {
+                movementDetailsModalElement.addEventListener('hidden.bs.modal', openEditor, { once: true });
+                movementDetailsModal?.hide();
+            } else {
+                openEditor();
+            }
+            return;
+        }
+
         const actions = {
-            settle: () => openSettleModal(row),
+            settle: () => openSettleOrReverse(row),
             delete: () => openDeleteModal(row),
-            edit: () => startEdit(row),
         };
         const nextAction = actions[action];
         if (!nextAction) return;
         returnToDetailsAfterCancel = true;
-
-        // Regista antes de hide(): o Bootstrap emite hidden após a transição,
-        // mas implementações sem transição (e os testes) podem emiti-lo imediatamente.
         if (movementDetailsModalElement?.classList.contains('show')) {
             movementDetailsModalElement.addEventListener('hidden.bs.modal', nextAction, { once: true });
             movementDetailsModal?.hide();
             return;
         }
-
         movementDetailsModal?.hide();
         nextAction();
+    }
+
+    function openSettleOrReverse(row) {
+        actionMovement = row;
+        if (row.dataset.movementStatus === 'settled') {
+            reverseMovementSettlement(row);
+            return;
+        }
+        openSettleModal(row);
+    }
+
+    async function reverseMovementSettlement(row) {
+        if (!row.dataset.financialMovementId || !window.confirm('Reverter a liquidação deste movimento? O movimento voltará ao estado pendente.')) return;
+        const button = document.getElementById('movementDetailsSettle');
+        if (button) button.disabled = true;
+        try {
+            const response = await fetch(cfg.financialMovementBase + '/' + encodeURIComponent(row.dataset.financialMovementId) + '/reverse-settlement', {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf || '' }
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'Não foi possível reverter a liquidação.');
+            returnToDetailsAfterCancel = false;
+            movementDetailsModal?.hide();
+            showMovementConfirmation('Liquidação revertida. O movimento voltou a Pendente.');
+            await refreshDashboard();
+        } catch (error) {
+            showSettleError(error.message || 'Não foi possível reverter a liquidação.');
+        } finally {
+            if (button) button.disabled = false;
+        }
     }
 
     function openSettleModal(row) {
@@ -1616,7 +1668,7 @@
         if (actionButton) {
             const row = actionButton.closest('[data-movement-id]');
             if (row && actionButton.dataset.movementAction === 'details') openMovementDetails(row);
-            if (row && actionButton.dataset.movementAction === 'settle') openSettleModal(row);
+            if (row && actionButton.dataset.movementAction === 'settle') openSettleOrReverse(row);
             if (row && actionButton.dataset.movementAction === 'delete') openDeleteModal(row);
             return;
         }
