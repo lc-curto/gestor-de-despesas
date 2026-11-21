@@ -872,53 +872,78 @@
         setMonth(next.getFullYear() + '-' + String(next.getMonth() + 1).padStart(2, '0'));
     }
 
+    const editModalElement = document.getElementById('movementEditModal');
+    // Mantém o modal fora de contentores que possam criar stacking context.
+    if (editModalElement && editModalElement.parentElement !== document.body) {
+        document.body.appendChild(editModalElement);
+    }
+    const editModal = editModalElement ? bootstrap.Modal.getOrCreateInstance(editModalElement) : null;
+    const editForm = document.getElementById('movementEditForm');
+    let editingMovement = null;
+
     function startEdit(row) {
-        const type = row.dataset.movementType;
-        typeBeforeEdit = movementType;
-        editing = true;
-        method.value = 'PUT';
-        form.action = row.dataset.editUrl;
-        setMovementType(type);
-        title.textContent = type === 'receita' ? 'Editar receita' : 'Editar despesa';
-        description.value = row.dataset.description;
-        amount.value = row.dataset.amount;
-        date.value = row.dataset.date;
-        category.value = row.dataset.categoryId;
-        syncExpenseBehaviorFromCategory();
-        if (account) account.value = row.dataset.accountId || '';
-        if (type === 'despesa') {
-            const settled = row.dataset.movementStatus === 'settled';
-            form.querySelectorAll('[name="paid_now"]').forEach((input) => {
-                input.checked = input.value === (settled ? '1' : '0');
+        if (row.dataset.movementStatus !== 'pending' || !row.dataset.financialMovementId) return;
+        editingMovement = row;
+        const isExpense = row.dataset.movementType === 'despesa';
+        const editCategory = document.getElementById('movementEditCategory');
+        const editTitle = document.getElementById('movementEditTitle');
+        editTitle.textContent = isExpense ? 'Editar despesa' : 'Editar receita';
+        document.getElementById('movementEditDescription').value = row.dataset.description || '';
+        document.getElementById('movementEditAmount').value = String(row.dataset.amount || '').replace('.', ',');
+        document.getElementById('movementEditDate').value = row.dataset.date || localDate();
+        editCategory.replaceChildren(new Option('Seleciona uma categoria', ''));
+        Object.entries(isExpense ? (cfg.expenseCategories || {}) : (cfg.incomeCategories || {}))
+            .forEach(([id, label]) => editCategory.add(new Option(label, id)));
+        editCategory.value = row.dataset.categoryId || '';
+        document.getElementById('movementEditExpenseBehavior').value = row.dataset.expenseBehavior || 'variable';
+        document.getElementById('movementEditError').classList.add('d-none');
+        editModal?.show();
+    }
+
+    async function submitEditMovement(event) {
+        event.preventDefault();
+        if (!editingMovement || !editForm || editForm.dataset.submitting === '1') return;
+        const submit = document.getElementById('movementEditSubmit');
+        const error = document.getElementById('movementEditError');
+        const amountValue = parseMoney(document.getElementById('movementEditAmount').value);
+        if (!amountValue) {
+            error.textContent = 'Introduz um valor válido, superior a zero e com até duas casas decimais.';
+            error.classList.remove('d-none');
+            return;
+        }
+        if (!editForm.reportValidity()) return;
+        editForm.dataset.submitting = '1';
+        submit.disabled = true;
+        submit.textContent = 'A guardar…';
+        error.classList.add('d-none');
+        const isExpense = editingMovement.dataset.movementType === 'despesa';
+        const payload = {
+            description: document.getElementById('movementEditDescription').value.trim(),
+            amount: amountValue,
+            movement_date: document.getElementById('movementEditDate').value,
+            category_id: document.getElementById('movementEditCategory').value || null,
+            ...(isExpense ? { expense_behavior: document.getElementById('movementEditExpenseBehavior').value } : {})
+        };
+        try {
+            const response = await fetch(cfg.financialMovementBase + '/' + encodeURIComponent(editingMovement.dataset.financialMovementId), {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf || '' },
+                body: JSON.stringify(payload)
             });
-            if (account) account.value = row.dataset.accountId || '';
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'Não foi possível atualizar o movimento.');
+            editModal?.hide();
+            editingMovement = null;
+            await refreshDashboard();
+        } catch (err) {
+            error.textContent = err.message || 'Não foi possível atualizar o movimento.';
+            error.classList.remove('d-none');
+        } finally {
+            editForm.dataset.submitting = '0';
+            submit.disabled = false;
+            submit.textContent = 'Guardar alterações';
         }
-        if (type === 'despesa') {
-            form.querySelectorAll('[name="expense_behavior"]').forEach((input) => {
-                input.checked = input.value === (row.dataset.expenseBehavior || 'variable');
-            });
-        }
-        const repeat = document.getElementById('dashboardRecurrenceEnabled');
-        const repeatFields = document.getElementById('dashboardRecurrenceFields');
-        if (repeat) {
-            repeat.checked = Boolean(row.dataset.recurrenceId);
-            const frequency = document.getElementById('dashboardRecurrenceFrequency');
-            const interval = document.getElementById('dashboardRecurrenceInterval');
-            const ends = document.getElementById('dashboardRecurrenceEnds');
-            if (frequency) frequency.value = row.dataset.recurrenceFrequency || 'monthly';
-            if (interval) interval.value = row.dataset.recurrenceInterval || '1';
-            if (ends) ends.value = row.dataset.recurrenceEndsAt || '';
-            if (repeatFields) repeatFields.hidden = !repeat.checked;
-        }
-        // A edição substitui o movimento canónico no backend; todos os campos
-        // permanecem editáveis, inclusive em movimentos liquidados.
-        amount.readOnly = false;
-        date.readOnly = false;
-        refreshPaymentFields();
-        cancelButton?.classList.remove('d-none');
-        openEditor();
-        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        description.focus({ preventScroll: true });
     }
 
     function cancelEdit() {
@@ -1169,7 +1194,7 @@
         const hasOrigin = isInvoiceMovement || isInstallment;
         settleAction.hidden = hasOrigin || isInvoicePayment ||
             !(['pending', 'partial', 'partially_settled'].includes(status) && Boolean(row.dataset.financialMovementId));
-        editAction.hidden = hasOrigin || isInvoicePayment;
+        editAction.hidden = hasOrigin || isInvoicePayment || status !== 'pending' || !row.dataset.financialMovementId;
         deleteAction.hidden = hasOrigin || isInvoicePayment;
         if (actionsWrap) actionsWrap.hidden = hasOrigin || isInvoicePayment;
         if (originWrap) originWrap.hidden = !hasOrigin;
@@ -1578,6 +1603,7 @@
         document.getElementById(id)?.addEventListener('change', refreshPaymentFields);
     });
     form.addEventListener('submit', submitMovement);
+    editForm?.addEventListener('submit', submitEditMovement);
     settleForm?.addEventListener('submit', submitSettleMovement);
     document.getElementById('settleMovementAmount')?.addEventListener('input', (event) => event.target.setCustomValidity(''));
     deleteForm?.addEventListener('submit', submitDeleteMovement);
