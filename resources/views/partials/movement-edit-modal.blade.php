@@ -42,3 +42,14 @@
         </div>
     </div>
 </div>
+<script>
+    // Regra única de elegibilidade para o modal partilhado de edição.
+    window.meuBolsoMovementEditRules = window.meuBolsoMovementEditRules || {};
+    window.meuBolsoMovementEditRules.canEdit = function (movement) {
+        if (!movement || !['income', 'expense', 'receita', 'despesa'].includes(movement.type)) return false;
+        if (movement.status !== 'pending' || !movement.financialMovementId) return false;
+        if (movement.invoiceId || movement.isInvoicePayment) return false;
+        if (movement.installmentId && movement.debtId) return false;
+        return !/^(debt|invoice|overdue-debt|overdue-invoice|settlement)-/.test(String(movement.financialMovementId));
+    };
+</script>
