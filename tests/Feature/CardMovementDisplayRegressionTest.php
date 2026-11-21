@@ -35,7 +35,7 @@ class CardMovementDisplayRegressionTest extends TestCase
         );
     }
 
-    public function test_card_purchases_are_in_card_history_not_movements_and_invoice_payment_remains_visible(): void
+    public function test_card_purchases_and_invoice_payments_are_visible_in_movements_without_double_counting(): void
     {
         $user = User::factory()->create(['currency' => 'EUR']);
         $accounts = app(FinancialAccountService::class);
