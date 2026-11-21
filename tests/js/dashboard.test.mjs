@@ -37,6 +37,12 @@ const markup = `<!doctype html><meta name="csrf-token" content="test-token">
  <span id="movementDetailsCategory"></span><span id="movementDetailsDate"></span><span id="movementDetailsKind"></span>
  <button id="movementDetailsSettle"></button><button id="movementDetailsEdit"></button><button id="movementDetailsDelete"></button>
 </div>
+<div id="movementEditModal"><form id="movementEditForm">
+ <h2 id="movementEditTitle"></h2><div id="movementEditError" class="d-none"></div>
+ <input id="movementEditDescription" required><input id="movementEditAmount" required>
+ <input id="movementEditDate" required><select id="movementEditCategory"><option value="">Seleciona</option></select>
+ <input id="movementEditExpenseBehavior"><button id="movementEditSubmit" type="submit">Guardar alterações</button>
+</form></div>
 <div id="settleMovementModal"><form id="settleMovementForm">
  <h2 id="settleMovementTitle"></h2><span id="settleMovementDescription"></span><div id="settleMovementError" class="d-none" tabindex="-1"></div>
  <input id="settleMovementAmount" name="amount" type="text" inputmode="decimal" required>
@@ -346,21 +352,25 @@ test('despesa simples mostra confirmação única, sem opções de recorrência'
     ui.dom.window.close();
 });
 
-test('edição envia ao backend o valor com vírgula convertido em decimal canónico', async () => {
+test('edição usa o modal próprio e envia o valor com vírgula em decimal canónico', async () => {
     let sent;
-    const ui = setup(async (_url, options = {}) => {
-        if (options.method === 'POST') { sent = options.body; return jsonResponse(200, { ok: true }); }
+    let sentUrl;
+    const ui = setup(async (url, options = {}) => {
+        if (options.method === 'PUT') {
+            sent = JSON.parse(options.body);
+            sentUrl = url;
+            return jsonResponse(200, { data: { id: 'movement-id' } });
+        }
         return jsonResponse(200, { data: [] });
     }, [existingMovement]);
-    ui.element('movementPaymentCondition').value = 'cash';
     ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
     ui.element('movementDetailsEdit').click();
-    assert.equal(ui.element('movementAmount').value, '90.50');
-    ui.element('movementAmount').value = '90,50';
-    ui.submit();
+    assert.equal(ui.element('movementEditAmount').value, '90,50');
+    ui.element('movementEditAmount').value = '90,50';
+    ui.element('movementEditForm').dispatchEvent(new ui.window.Event('submit', { bubbles: true, cancelable: true }));
     await flush();
-    assert.equal(sent.get('amount'), '90.50');
-    assert.equal(sent.get('_method'), 'PUT');
+    assert.equal(sent.amount, '90.50');
+    assert.equal(sentUrl, '/api/financial/movements/movement-id');
     ui.dom.window.close();
 });
 
@@ -494,7 +504,7 @@ test('modal de detalhes apresenta totais pagos e pendentes e mantém as ações 
     assert.equal(ui.element('movementDetailsPaid').textContent, '40,00 €');
     assert.equal(ui.element('movementDetailsPending').textContent, '80,00 €');
     assert.equal(ui.element('movementDetailsSettle').hidden, false);
-    assert.equal(ui.element('movementDetailsEdit').hidden, false);
+    assert.equal(ui.element('movementDetailsEdit').hidden, true);
     assert.equal(ui.element('movementDetailsDelete').hidden, false);
     ui.dom.window.close();
 });
