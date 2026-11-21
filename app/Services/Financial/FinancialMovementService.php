@@ -505,6 +505,84 @@ class FinancialMovementService
         });
     }
 
+    /**
+     * Reverte a liquidação integral de uma obrigação simples sem apagar os eventos originais.
+     * Cada evento é compensado por um movimento inverso ligado ao evento e à obrigação.
+     */
+    public function reverseSettlement(User $user, Movimento $movement): Movimento
+    {
+        return DB::transaction(function () use ($user, $movement): Movimento {
+            $locked = Movimento::query()
+                ->where('user_id', $user->id)
+                ->whereKey($movement->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! in_array($locked->type, ['expense', 'income'], true)
+                || $locked->status !== 'settled'
+                || ! $locked->is_settlement_parent
+                || $locked->invoice_id
+                || $locked->debt_id
+                || $locked->installment_id) {
+                throw ValidationException::withMessages([
+                    'movement' => 'Só é possível reverter a liquidação integral de uma despesa ou receita simples.',
+                ]);
+            }
+
+            $totalCents = $this->balances->toCents((string) $locked->amount);
+            if ($this->netSettledCents($user, $locked) !== $totalCents) {
+                throw ValidationException::withMessages([
+                    'movement' => 'A liquidação não está integralmente concluída ou já possui uma reversão.',
+                ]);
+            }
+
+            $events = Movimento::query()
+                ->where('user_id', $user->id)
+                ->where('settles_movement_id', $locked->id)
+                ->where('status', 'settled')
+                ->whereNull('reversal_of_id')
+                ->lockForUpdate()
+                ->get();
+
+            $alreadyReversed = Movimento::query()
+                ->where('user_id', $user->id)
+                ->whereIn('reversal_of_id', $events->pluck('id'))
+                ->pluck('reversal_of_id')
+                ->all();
+            $activeEvents = $events->reject(fn (Movimento $event) => in_array($event->id, $alreadyReversed, true));
+
+            if ($activeEvents->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'movement' => 'Esta liquidação já foi revertida.',
+                ]);
+            }
+
+            foreach ($activeEvents as $event) {
+                $this->createMovement($user, [
+                    'type' => $locked->type === 'expense' ? 'income' : 'expense',
+                    'description' => 'Reversão: '.$event->description,
+                    'amount' => $event->amount,
+                    'movement_date' => now()->toDateString(),
+                    'source_account_id' => $locked->type === 'income' ? $event->destination_account_id : null,
+                    'destination_account_id' => $locked->type === 'expense' ? $event->source_account_id : null,
+                    'category_id' => $event->category_id,
+                    'reversal_of_id' => $event->id,
+                    'settles_movement_id' => $locked->id,
+                ], false);
+            }
+
+            $before = $locked->getAttributes();
+            $locked->update([
+                'status' => 'pending',
+                'is_settlement_parent' => false,
+                'settled_at' => null,
+            ]);
+            $this->audit($user, $locked, 'settlement_reversed', $before, $locked->getAttributes(), 'Liquidação revertida; eventos compensatórios preservados.');
+
+            return $locked->refresh();
+        });
+    }
+
     /** Total líquido liquidado, considerando também referências históricas de correção. */
     private function netSettledCents(User $user, Movimento $original): int
     {
