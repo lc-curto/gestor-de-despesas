@@ -157,8 +157,10 @@ class CardMovementDisplayRegressionTest extends TestCase
         $second = $this->getJson(route('dashboard.movimentos.data', ['mes' => '2026-11', 'limit' => 2, 'page' => 2]));
         $second->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('total', 7)->assertJsonPath('has_more', true);
         $third = $this->getJson(route('dashboard.movimentos.data', ['mes' => '2026-11', 'limit' => 2, 'page' => 3]));
-        $third->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('total', 7)->assertJsonPath('has_more', false);
-        $items = collect($first->json('data'))->concat($second->json('data'))->concat($third->json('data'));
+        $third->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('total', 7)->assertJsonPath('has_more', true);
+        $fourth = $this->getJson(route('dashboard.movimentos.data', ['mes' => '2026-11', 'limit' => 2, 'page' => 4]));
+        $fourth->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('total', 7)->assertJsonPath('has_more', false);
+        $items = collect($first->json('data'))->concat($second->json('data'))->concat($third->json('data'))->concat($fourth->json('data'));
         $this->assertCount(7, $items->pluck('id')->unique());
         $this->assertEqualsCanonicalizing([
             'Pagamento da fatura Visa · 11/2026', 'Previsão sem fatura', 'Receita de banco',
