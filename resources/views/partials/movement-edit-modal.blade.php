@@ -47,6 +47,7 @@
     window.meuBolsoMovementEditRules = window.meuBolsoMovementEditRules || {};
     window.meuBolsoMovementEditRules.canEdit = function (movement) {
         if (!movement || !['income', 'expense', 'receita', 'despesa'].includes(movement.type)) return false;
+        if (!movement.financialMovementId) return false;
         if (movement.invoiceId || movement.isInvoicePayment) return false;
         if (movement.installmentId || movement.debtId) return false;
         if (/^(debt|invoice|overdue-debt|overdue-invoice)-/.test(String(movement.financialMovementId))) return false;
