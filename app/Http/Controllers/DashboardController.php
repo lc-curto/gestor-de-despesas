@@ -76,8 +76,9 @@ class DashboardController extends Controller
             ->whereIn('status', ['pending', 'partial', 'settled'])->whereNull('settles_movement_id')
             ->where(fn ($query) => $query->whereNull('invoice_id')->orWhere('is_settlement_parent', false))
             ->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
-        $totalDespesas -= (float) $user->movimentos()->whereNull('legacy_type')->where('invoice_charge_type', 'credit')
-            ->where('status', 'settled')->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
+        $totalDespesas -= (float) $user->movimentos()->whereNull('legacy_type')->where('type', 'adjustment')
+            ->where('invoice_charge_type', 'credit')->where('status', 'settled')
+            ->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
         $totalReceitas += (float) $user->movimentos()->whereNull('legacy_type')->where('type', 'income')
             ->whereIn('status', ['pending', 'partial', 'settled'])->whereNull('settles_movement_id')->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
 
@@ -115,7 +116,7 @@ class DashboardController extends Controller
             ->whereBetween('movimentos.movement_date', [$inicio->toDateString(), $fim->toDateString()])
             ->whereNotNull('movimentos.category_id')
             ->join('categorias', 'categorias.id', '=', 'movimentos.category_id')
-            ->selectRaw("categorias.id AS category_id, categorias.name, categorias.icon, categorias.color, SUM(CASE WHEN movimentos.invoice_charge_type = 'credit' THEN -movimentos.amount ELSE movimentos.amount END) AS total")
+            ->selectRaw("categorias.id AS category_id, categorias.name, categorias.icon, categorias.color, SUM(movimentos.amount) AS total")
             ->groupBy('categorias.id', 'categorias.name', 'categorias.icon', 'categorias.color')
             ->get();
 
@@ -262,8 +263,9 @@ class DashboardController extends Controller
             ->whereIn('status', ['pending', 'partial', 'settled'])->whereNull('settles_movement_id')
             ->where(fn ($query) => $query->whereNull('invoice_id')->orWhere('is_settlement_parent', false))
             ->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
-        $totalDespesas -= (float) $user->movimentos()->whereNull('legacy_type')->where('invoice_charge_type', 'credit')
-            ->where('status', 'settled')->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
+        $totalDespesas -= (float) $user->movimentos()->whereNull('legacy_type')->where('type', 'adjustment')
+            ->where('invoice_charge_type', 'credit')->where('status', 'settled')
+            ->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
         $totalReceitas += (float) $user->movimentos()->whereNull('legacy_type')->where('type', 'income')
             ->whereIn('status', ['pending', 'partial', 'settled'])->whereNull('settles_movement_id')->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
 
@@ -418,7 +420,18 @@ class DashboardController extends Controller
             // Compras associadas a faturas também pertencem ao histórico de Movimentos.
             // O pagamento da fatura continua numa união separada como transferência.
             ->whereBetween('canonical_movements.movement_date', [$inicio->toDateString(), $fim->toDateString()])
-            ->selectRaw("canonical_movements.id, canonical_movements.id AS financial_movement_id, 0 AS is_invoice_payment, CASE WHEN canonical_movements.settles_movement_id IS NOT NULL OR canonical_movements.is_settlement_parent = 1 THEN 1 ELSE 0 END AS is_settlement_event, CASE WHEN canonical_movements.type = 'income' THEN 'receita' ELSE 'despesa' END AS tipo, canonical_movements.description, canonical_movements.amount,
+            ->selectRaw("canonical_movements.id, canonical_movements.id AS financial_movement_id, 0 AS is_invoice_payment, CASE WHEN canonical_movements.settles_movement_id IS NOT NULL OR canonical_movements.is_settlement_parent = 1 THEN 1 ELSE 0 END AS is_settlement_event, CASE WHEN canonical_movements.type = 'income' THEN 'receita' ELSE 'despesa' END AS tipo, canonical_movements.description,
+                CASE WHEN canonical_movements.type = 'expense' AND canonical_movements.invoice_id IS NOT NULL THEN canonical_movements.amount - COALESCE((
+                    SELECT SUM(invoice_credits.amount)
+                    FROM movimentos AS invoice_credits
+                    WHERE invoice_credits.user_id = canonical_movements.user_id
+                        AND invoice_credits.invoice_credit_for_movement_id = canonical_movements.id
+                        AND invoice_credits.type = 'adjustment'
+                        AND invoice_credits.invoice_charge_type = 'credit'
+                        AND invoice_credits.status = 'settled'
+                        AND YEAR(invoice_credits.movement_date) = YEAR(canonical_movements.movement_date)
+                        AND MONTH(invoice_credits.movement_date) = MONTH(canonical_movements.movement_date)
+                ), 0) ELSE canonical_movements.amount END AS amount,
                 CASE WHEN canonical_movements.is_settlement_parent = 1 THEN CASE WHEN (canonical_movements.amount - COALESCE((
                     SELECT SUM(CASE WHEN settlement_events.reversal_of_id IS NULL THEN settlement_events.amount ELSE -settlement_events.amount END)
                     FROM movimentos AS settlement_events
