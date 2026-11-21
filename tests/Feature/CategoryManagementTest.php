@@ -129,7 +129,7 @@ class CategoryManagementTest extends TestCase
     public function test_category_with_only_canonical_movement_cannot_be_deleted(): void
     {
         $user = User::factory()->create();
-        $category = $user->categorias()->where('type', 'despesa')->firstOrFail();
+        $category = $this->createCustomExpenseCategory($user);
         app(\App\Services\Financial\FinancialMovementService::class)->createPending($user, [
             'type' => 'expense',
             'description' => 'Previsão canónica',
@@ -148,7 +148,7 @@ class CategoryManagementTest extends TestCase
     public function test_category_type_cannot_change_when_movements_are_linked(): void
     {
         $user = User::factory()->create();
-        $category = $user->categorias()->where('type', 'despesa')->firstOrFail();
+        $category = $this->createCustomExpenseCategory($user);
 
         $user->despesas()->create([
             'description' => 'Compra de teste',
