@@ -1713,13 +1713,13 @@ body.sidebar-collapsed .app-main { margin-left:var(--sidebar-collapsed-width); }
 }
 
 /* Shell final: uma única geometria previsível por breakpoint. */
-@media (min-width:992px) {
+@media (min-width:992px) and (hover: hover) and (pointer: fine) {
     .app-sidebar { position:fixed; top:0; bottom:0; left:0; height:100dvh; overflow-x:hidden; overflow-y:auto; }
     .app-main { min-width:0; margin-left:var(--sidebar-width); }
     body.sidebar-collapsed .app-main { margin-left:var(--sidebar-collapsed-width); }
     .mobile-bottom-bar { display:none !important; }
 }
-@media (max-width:991.98px) {
+@media (max-width:991.98px), (hover: none) and (pointer: coarse) {
     .app-main, body.sidebar-hidden .app-main, body.sidebar-collapsed .app-main { min-width:0; margin-left:0 !important; padding-bottom:calc(6.25rem + env(safe-area-inset-bottom)) !important; }
     .mobile-bottom-bar { display:grid !important; padding-bottom:calc(.35rem + env(safe-area-inset-bottom)); }
     .mobile-bottom-link { min-width:0; touch-action:manipulation; }
