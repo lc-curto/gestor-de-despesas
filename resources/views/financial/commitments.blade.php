@@ -7,64 +7,74 @@
     <x-financial.page-header title="Parcelamentos">
         <x-slot:subtitle>Compras divididas em duas ou mais prestações.</x-slot:subtitle>
         <x-slot:actions>
-            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createCommitmentModal">
+            <button type="button" class="btn btn-primary btn-sm commitment-add-button" data-bs-toggle="modal" data-bs-target="#createCommitmentModal" aria-label="Nova compra">
                 <i data-lucide="plus" aria-hidden="true"></i>
-                <span class="d-none d-sm-inline">Nova compra</span>
             </button>
         </x-slot:actions>
     </x-financial.page-header>
 
     <div id="commitmentFeedback" class="alert d-none" role="status" aria-live="polite"></div>
 
-    <section class="row g-2 g-md-3 mb-4" aria-label="Resumo financeiro">
-        <div class="col-12">
-            <article class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body p-3 p-md-4">
-                    <span class="small text-secondary">Total em aberto</span>
-                    <strong class="d-block fs-3 mt-2">{{ auth()->user()->currency }} {{ number_format($summary['open'], 2, ',', '.') }}</strong>
-                    <small class="text-secondary">{{ $summary['active_count'] }} compras ativas</small>
-                </div>
-            </article>
-        </div>
-        <div class="col-6">
-            <article class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body p-3">
-                    <span class="small text-secondary">Próxima prestação</span>
+    <section class="commitment-summary-card card border-0 shadow-sm rounded-4 mb-4" aria-label="Resumo financeiro">
+        <div class="card-body p-3">
+            <span class="small text-secondary">Total em aberto</span>
+            <strong class="d-block fs-3 mt-1 commitment-summary-total">{{ auth()->user()->currency }} {{ number_format($summary['open'], 2, ',', '.') }}</strong>
+            <div class="commitment-summary-secondary">
+                <div>
+                    <span>Próxima prestação</span>
                     @if ($summary['next_installment'])
-                        <strong class="d-block fs-5 mt-2">{{ auth()->user()->currency }} {{ number_format(max(0, (float) $summary['next_installment']->amount - (float) $summary['next_installment']->paid_amount), 2, ',', '.') }}</strong>
-                        <small class="text-secondary">{{ $summary['next_installment']->due_date->lt(today()) ? 'Vencida' : $summary['next_installment']->due_date->format('d/m/Y') }}</small>
+                        <strong>{{ auth()->user()->currency }} {{ number_format(max(0, (float) $summary['next_installment']->amount - (float) $summary['next_installment']->paid_amount), 2, ',', '.') }}</strong>
                     @else
-                        <strong class="d-block fs-5 mt-2">—</strong>
-                        <small class="text-secondary">Sem pendências</small>
+                        <strong>—</strong>
                     @endif
                 </div>
-            </article>
-        </div>
-        <div class="col-6">
-            <article class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body p-3">
-                    <span class="small text-secondary">Em atraso</span>
-                    <strong class="d-block fs-5 mt-2 {{ $summary['overdue'] > 0 ? 'text-danger' : '' }}">{{ auth()->user()->currency }} {{ number_format($summary['overdue'], 2, ',', '.') }}</strong>
-                    <small class="text-secondary">{{ $summary['overdue_commitments'] }} compras</small>
+                <div>
+                    <span>Em atraso</span>
+                    <strong class="{{ $summary['overdue'] > 0 ? 'text-danger' : '' }}">{{ auth()->user()->currency }} {{ number_format($summary['overdue'], 2, ',', '.') }}</strong>
                 </div>
-            </article>
+            </div>
         </div>
     </section>
 
     <section class="commitment-list-panel" aria-labelledby="commitmentsTitle">
-        <nav class="nav nav-pills gap-2 mb-3 commitment-tabs" aria-label="Estado das compras">
-            @foreach (['active' => ['Ativos', $summary['active_count']], 'completed' => ['Concluídos', $summary['completed_count']], 'archived' => ['Arquivados', $summary['archived_count']], 'all' => ['Todos', $summary['total_count']]] as $key => [$label, $count])
-                <a href="{{ route('financial.commitments.page', array_merge(request()->except('purchases'), ['status' => $key])) }}"
-                   class="nav-link btn-sm {{ $status === $key ? 'active' : 'text-body-secondary' }}"
-                   @if ($status === $key) aria-current="page" @endif>{{ $label }} ({{ $count }})</a>
-            @endforeach
-        </nav>
+        @php
+            $commitmentFilters = [
+                'active' => ['Ativas', $summary['active_count']],
+                'completed' => ['Concluídas', $summary['completed_count']],
+                'archived' => ['Arquivadas', $summary['archived_count']],
+                'all' => ['Todas', $summary['total_count']],
+            ];
+            $currentFilter = $commitmentFilters[$status] ?? $commitmentFilters['active'];
+        @endphp
+        <div class="commitment-filter d-flex justify-content-end mb-3">
+            <div class="dropdown">
+                <button class="btn btn-sm btn-link text-decoration-none commitment-filter-trigger d-inline-flex align-items-center gap-1"
+                    id="commitmentsFilterDropdown" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="text-secondary">Mostrar:</span>
+                    <span>{{ $currentFilter[0] }}</span>
+                    <span class="commitment-filter-count">({{ $currentFilter[1] }})</span>
+                    <i data-lucide="chevron-down" aria-hidden="true"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="commitmentsFilterDropdown">
+                    @foreach ($commitmentFilters as $key => [$label, $count])
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-3 {{ $status === $key ? 'active' : '' }}"
+                                href="{{ route('financial.commitments.page', array_merge(request()->except('purchases', 'status'), ['status' => $key])) }}"
+                                @if ($status === $key) aria-current="page" @endif>
+                                <span>{{ $label }}</span>
+                                <span class="small text-secondary ms-auto">{{ $count }}</span>
+                            </a>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
 
         <form class="mb-3" method="GET" action="{{ route('financial.commitments.page') }}" role="search">
             <input type="hidden" name="status" value="{{ $status }}">
             <input type="hidden" name="per_page" value="{{ $perPage }}">
-            <div class="input-group">
-                <span class="input-group-text bg-body"><i data-lucide="search" aria-hidden="true"></i></span>
+            <div class="input-group commitment-search-control">
+                <span class="input-group-text"><i data-lucide="search" aria-hidden="true"></i></span>
                 <label class="visually-hidden" for="commitmentSearch">Pesquisar compra ou comerciante</label>
                 <input class="form-control" id="commitmentSearch" type="search" name="q" value="{{ $search }}" placeholder="Pesquisar compra ou comerciante..." autocomplete="off">
                 @if ($search !== '')<a href="{{ route('financial.commitments.page', ['status' => $status, 'per_page' => $perPage]) }}" class="btn btn-outline-secondary" aria-label="Limpar pesquisa"><i data-lucide="x" aria-hidden="true"></i></a>@endif
@@ -95,36 +105,21 @@
                     <button class="commitment-card-toggle" type="button" data-bs-toggle="modal" data-bs-target="#commitmentDetailsModal-{{ $commitment->id }}" aria-haspopup="dialog">
                         <span class="commitment-card-heading">
                             <span class="commitment-card-name">{{ $commitment->name }}@if ($commitment->merchant)<small class="commitment-merchant">{{ $commitment->merchant }}</small>@endif</span>
-                            <span class="badge {{ $isCancelled ? 'text-bg-secondary' : ($isCompleted ? 'text-bg-success' : ($commitment->has_overdue_installment ? 'text-bg-danger' : 'text-bg-success')) }}">{{ $isCancelled ? 'Cancelado' : ($isCompleted ? 'Concluído' : ($commitment->has_overdue_installment ? 'Em atraso' : 'Em dia')) }}</span>
+                            <span class="commitment-status {{ $isCancelled ? 'is-neutral' : ($isCompleted ? 'is-complete' : ($commitment->has_overdue_installment ? 'is-overdue' : 'is-active')) }}">
+                                <span aria-hidden="true"></span>{{ $isCancelled ? 'Cancelado' : ($isCompleted ? 'Concluído' : ($commitment->has_overdue_installment ? 'Em atraso' : 'Em dia')) }}
+                            </span>
                         </span>
-                        <span class="commitment-card-balances">
-                            <span class="commitment-card-balance-primary"><small>Saldo em aberto</small><strong>{{ auth()->user()->currency }} {{ number_format($commitment->remaining_amount, 2, ',', '.') }}</strong></span>
-                            <span class="commitment-card-balance-secondary"><small>Prestações pagas</small><strong>{{ $partsPaid }}/{{ $partsTotal }}</strong></span>
+                        <span class="commitment-card-balance">{{ auth()->user()->currency }} {{ number_format($commitment->remaining_amount, 2, ',', '.') }}</span>
+                        <span class="commitment-card-installments">{{ $partsPaid }}/{{ $partsTotal }} prestações pagas</span>
+                        <span class="progress commitment-progress" role="progressbar"
+                            aria-label="Percentagem do valor pago"
+                            aria-valuenow="{{ $commitment->progress_percent }}"
+                            aria-valuemin="0" aria-valuemax="100">
+                            <span class="progress-bar" style="width: {{ $commitment->progress_percent }}%"></span>
                         </span>
-                        <span class="commitment-progress-block">
-                            <span class="d-flex align-items-center justify-content-between gap-2 mb-1">
-                                <small class="text-secondary">Pago</small>
-                                <strong class="small text-success">{{ number_format($commitment->progress_percent, 0, ',', '.') }}%</strong>
-                            </span>
-                            <span class="progress commitment-progress" role="progressbar"
-                                aria-label="Percentagem do valor pago"
-                                aria-valuenow="{{ $commitment->progress_percent }}"
-                                aria-valuemin="0" aria-valuemax="100">
-                                <span class="progress-bar bg-success" style="width: {{ $commitment->progress_percent }}%"></span>
-                            </span>
-                            <span class="d-flex justify-content-between align-items-center gap-2 mt-2 commitment-progress-values">
-                                <span class="commitment-progress-amount">
-                                    <small class="text-secondary">Pago</small>
-                                    <strong>{{ auth()->user()->currency }} {{ number_format((float) $commitment->paid_amount_total, 2, ',', '.') }}</strong>
-                                </span>
-                                <span class="commitment-progress-amount text-end">
-                                    <small class="text-secondary">Por pagar</small>
-                                    <strong>{{ auth()->user()->currency }} {{ number_format((float) $commitment->remaining_amount, 2, ',', '.') }}</strong>
-                                </span>
-                            </span>
-                            <span class="commitment-card-foot mt-1">
-                                <small>{{ $next ? 'Próxima: '.$next->due_date->format('d/m/Y') : 'Plano concluído' }}</small>
-                            </span>
+                        <span class="commitment-card-foot">
+                            <small>{{ $next ? ($commitment->has_overdue_installment ? 'Prestação vencida' : 'Próxima prestação').' · '.$next->due_date->format('d/m') : 'Plano concluído' }}</small>
+                            <i data-lucide="chevron-right" aria-hidden="true"></i>
                         </span>
                     </button>
 
@@ -638,6 +633,58 @@
     .commitment-details-modal .modal-dialog { margin: .5rem; min-height: calc(100% - 1rem); }
     .commitment-details-modal .modal-content { max-height: calc(100dvh - 1rem); border-radius: 1.1rem; }
 }
+
+
+/* Redesign da página de parcelamentos: resumo, filtro e cartões compactos. */
+.commitments-page { max-width: 1500px; }
+.commitments-page .commitment-add-button { display:inline-flex; width:42px; height:42px; align-items:center; justify-content:center; padding:0; border-radius:.75rem; }
+.commitments-page .commitment-add-button svg { width:1.2rem; height:1.2rem; }
+.commitments-page .commitment-summary-card { border:1px solid var(--app-border); background:var(--bs-body-bg); }
+.commitments-page .commitment-summary-total { font-size:1.8rem; line-height:1.2; font-weight:800; letter-spacing:-.035em; font-variant-numeric:tabular-nums; }
+.commitment-summary-secondary { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; margin-top:1rem; padding-top:.85rem; border-top:1px solid var(--app-border); }
+.commitment-summary-secondary > div { display:flex; min-width:0; flex-direction:column; gap:.2rem; }
+.commitment-summary-secondary > div + div { padding-left:1rem; border-left:1px solid var(--app-border); }
+.commitment-summary-secondary span { color:var(--bs-secondary-color); font-size:.75rem; }
+.commitment-summary-secondary strong { font-size:.95rem; font-weight:700; font-variant-numeric:tabular-nums; }
+.commitment-filter-trigger { color:var(--bs-body-color); font-size:.82rem; font-weight:600; }
+.commitment-filter-trigger:hover { color:var(--app-primary); }
+.commitment-filter-trigger svg { width:.9rem; height:.9rem; }
+.commitment-filter-count { color:var(--bs-secondary-color); font-weight:500; }
+.commitments-page .commitment-search-control { border:1px solid var(--app-border); border-radius:.75rem; overflow:hidden; }
+.commitments-page .commitment-search-control .input-group-text { padding-inline:.75rem; border:0; background:var(--bs-body-bg); color:var(--bs-secondary-color); }
+.commitments-page .commitment-search-control .form-control { min-height:2.8rem; border:0; box-shadow:none; font-size:.88rem; }
+.commitments-page .commitment-list-panel { padding:0; border:0; background:transparent; box-shadow:none; }
+.commitments-page .commitment-list-heading { margin-bottom:.8rem; }
+.commitments-page .commitment-cards { gap:.7rem; }
+.commitments-page .commitment-card { border:1px solid var(--app-border); border-radius:1rem; box-shadow:none; }
+.commitments-page .commitment-card-toggle { display:flex; width:100%; flex-direction:column; gap:.55rem; padding:.9rem 1rem; border:0; background:transparent; color:var(--bs-body-color); text-align:left; }
+.commitments-page .commitment-card-heading { display:flex; width:100%; align-items:flex-start; justify-content:space-between; gap:.75rem; }
+.commitments-page .commitment-card-name { display:flex; min-width:0; flex-direction:column; gap:.15rem; font-size:.92rem; font-weight:700; }
+.commitments-page .commitment-merchant { color:var(--bs-secondary-color); font-size:.76rem; font-weight:400; }
+.commitment-status { display:inline-flex; flex:0 0 auto; align-items:center; gap:.35rem; color:var(--bs-secondary-color); font-size:.72rem; font-weight:500; }
+.commitment-status > span { width:7px; height:7px; border-radius:50%; background:var(--bs-secondary-color); }
+.commitment-status.is-active > span,.commitment-status.is-complete > span { background:#29965b; }
+.commitment-status.is-overdue > span { background:#d04444; }
+.commitment-status.is-active,.commitment-status.is-complete { color:#26834b; }
+.commitment-status.is-overdue { color:#c63f3f; }
+.commitment-card-balance { font-size:1.28rem; line-height:1.2; font-weight:800; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+.commitment-card-installments { color:var(--bs-secondary-color); font-size:.73rem; }
+.commitments-page .commitment-progress { width:100%; height:5px; border-radius:999px; background:var(--bs-tertiary-bg); }
+.commitments-page .commitment-progress .progress-bar { border-radius:inherit; background:var(--app-primary); }
+.commitment-card-foot { display:flex; width:100%; align-items:center; justify-content:space-between; gap:.5rem; color:var(--bs-secondary-color); }
+.commitment-card-foot small { font-size:.73rem; }
+.commitment-card-foot svg { width:1rem; height:1rem; }
+.commitments-page .commitment-card > .border-top { padding:.45rem .75rem !important; }
+@media (min-width:768px) {
+    .commitments-page .commitment-summary-card { max-width:none; }
+    .commitments-page .commitment-cards { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:575.98px) {
+    .commitments-page .commitment-card-toggle { padding:.85rem .9rem; }
+    .commitments-page .commitment-card-balance { font-size:1.22rem; }
+    .commitment-summary-secondary { gap:.65rem; }
+    .commitment-summary-secondary > div + div { padding-left:.65rem; }
+}
 </style>
 @endpush
 
@@ -671,7 +718,7 @@
 
     // Cada compra abre o seu próprio modal de detalhe.
     cards.forEach(card => {
-        const detailsModal = card.querySelector('.commitment-details-modal');
+        const detailsModal = document.getElementById('commitmentDetailsModal-' + card.dataset.commitmentId);
         const toggle = card.querySelector('.commitment-card-toggle');
         detailsModal?.addEventListener('shown.bs.modal', () => toggle.setAttribute('aria-expanded', 'true'));
         detailsModal?.addEventListener('hidden.bs.modal', () => toggle.setAttribute('aria-expanded', 'false'));
