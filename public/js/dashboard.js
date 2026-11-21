@@ -579,8 +579,9 @@
             recurrence.className = 'movement-meta-tag';
             const frequencies = { weekly: 'Semanal', monthly: 'Mensal', yearly: 'Anual' };
             const frequencyLabel = frequencies[item.recurrence_frequency] || 'Recorrente';
+            const pluralFrequencies = { weekly: 'semanas', monthly: 'meses', yearly: 'anos' };
             const interval = Number(item.recurrence_interval) || 1;
-            recurrence.innerHTML = '<i data-lucide="repeat" aria-hidden="true"></i><span>' + (interval > 1 ? 'A cada ' + interval + ' ' + frequencyLabel.toLocaleLowerCase('pt-PT') : frequencyLabel) + '</span>';
+            recurrence.innerHTML = '<i data-lucide="repeat" aria-hidden="true"></i><span>' + (interval > 1 ? 'A cada ' + interval + ' ' + (pluralFrequencies[item.recurrence_frequency] || 'períodos') : frequencyLabel) + '</span>';
             tags.append(recurrence);
         }
         if (item.installment_id) {
