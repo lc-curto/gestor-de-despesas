@@ -3,6 +3,8 @@
     'relatedLabel' => 'Relacionado',
     'destructiveLabel' => 'Excluir',
     'showActions' => true,
+    'showDescription' => false,
+    'showNotes' => false,
 ])
 
 <div id="{{ $prefix }}DetailsContent">
@@ -25,6 +27,18 @@
         <span class="small text-secondary">{{ $relatedLabel }}</span>
         <span class="small fw-medium text-end" id="{{ $prefix }}DetailsRelated"></span>
     </div>
+    @if ($showDescription)
+        <div class="d-flex justify-content-between gap-3 mt-2">
+            <span class="small text-secondary">Descrição</span>
+            <span class="small fw-medium text-end" id="{{ $prefix }}DetailsDescription"></span>
+        </div>
+    @endif
+    @if ($showNotes)
+        <div class="d-flex justify-content-between gap-3 mt-2">
+            <span class="small text-secondary">Observação</span>
+            <span class="small fw-medium text-end" id="{{ $prefix }}DetailsNotes"></span>
+        </div>
+    @endif
     @if ($showActions)
         <hr>
         <h3 class="small fw-semibold mb-3">Ações</h3>
