@@ -347,6 +347,15 @@
  if(window.matchMedia('(max-width: 767.98px)').matches){const [year,monthNumber]=month.split('-').map(Number);document.getElementById('routePeriodLabel').textContent=new Intl.DateTimeFormat('pt-PT',{month:'long',year:'numeric'}).format(new Date(year,monthNumber-1,1));}
  if(window.location.hash==='#route-today'){requestAnimationFrame(()=>document.querySelector('[data-date="'+root.dataset.today+'"]')?.scrollIntoView({behavior:'smooth',block:'center'}));window.history.replaceState(null,'',window.location.pathname+window.location.search);}
  document.getElementById('routeAddFromDay').addEventListener('click',()=>{dayModal.hide();openForm(activeDate)});
+ // Bootstrap ignora hide() enquanto o modal ainda está a abrir.
+ // Aguarda shown.bs.modal antes de fechar e só abre o próximo após hidden.bs.modal.
+ function hideModalThen(element,instance,callback){
+   if(!element||!instance)return;
+   const hideWhenReady=()=>{element.addEventListener('hidden.bs.modal',callback,{once:true});instance.hide()};
+   if(instance._isTransitioning){element.addEventListener('shown.bs.modal',hideWhenReady,{once:true});return}
+   if(element.classList.contains('show')){hideWhenReady();return}
+   callback();
+ }
  function openForm(date=activeDate,movement=null,show=true){
    if(movement&&!canEditMovement(movement))return;
    editId=movement?.id||null;form.reset();document.getElementById('routeMovementTitle').textContent=editId?'Editar movimento':'Novo movimento';
@@ -434,7 +443,12 @@
    deleteButton.textContent=item.recurrence_id?'Eliminar ocorrência':'Eliminar';
    detailModal.show();
  }
- document.getElementById('routeMovementDetailsEdit').addEventListener('click',()=>{if(!activeMovement||!canEditMovement(activeMovement))return;returnToRouteDetails=true;routeDetailsNext='edit';openForm(activeMovement.date,activeMovement,false);detailModal.hide()});
+ document.getElementById('routeMovementDetailsEdit').addEventListener('click',()=>{
+   if(!activeMovement||!canEditMovement(activeMovement))return;
+   returnToRouteDetails=true;routeDetailsNext='edit';
+   openForm(activeMovement.date,activeMovement,false);
+   hideModalThen(detailElement,detailModal,()=>movementModal.show());
+ });
  document.getElementById('routeMovementDetailsDelete').addEventListener('click',()=>{
    const item=activeMovement;const recurring=!!item.recurrence_id;
    document.getElementById('routeConfirmTitle').textContent=recurring?'Eliminar ocorrência?':'Eliminar movimento?';
@@ -444,7 +458,7 @@
    confirmCallback=async()=>{const endpoint=urls.remove+'/'+item.id;const response=await fetch(endpoint,{method:'DELETE',headers:{'Accept':'application/json','X-CSRF-TOKEN':csrf}});const json=await response.json();if(!response.ok)throw new Error(json.message||'Não foi possível concluir a operação.');window.location.reload()};
    returnToRouteDetails=true;routeDetailsNext='delete';detailModal.hide();
  });
- detailElement.addEventListener('hidden.bs.modal',()=>{if(!returnToRouteDetails)return;if(routeDetailsNext==='delete')confirmModal.show();else if(routeDetailsNext==='edit')movementModal.show()});
+ detailElement.addEventListener('hidden.bs.modal',()=>{if(!returnToRouteDetails)return;if(routeDetailsNext==='delete')confirmModal.show()});
  movementElement.addEventListener('hidden.bs.modal',()=>{if(returnToRouteDetails){returnToRouteDetails=false;routeDetailsNext='';detailModal.show()}});
  confirmElement.addEventListener('hidden.bs.modal',()=>{if(returnToRouteDetails){returnToRouteDetails=false;routeDetailsNext='';detailModal.show()}});
  document.getElementById('routeConfirmAction').addEventListener('click',async()=>{try{if(confirmCallback){returnToRouteDetails=false;routeDetailsNext='';await confirmCallback()}}catch(e){returnToRouteDetails=true;routeDetailsNext='delete';document.getElementById('routeConfirmText').textContent=e.message;document.getElementById('routeConfirmHint').hidden=true} });
