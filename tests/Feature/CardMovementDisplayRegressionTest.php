@@ -105,20 +105,21 @@ class CardMovementDisplayRegressionTest extends TestCase
         $paymentId = $payment->json('data.id');
 
         $first = $this->getJson(route('dashboard.movimentos.data', ['mes' => '2026-11', 'limit' => 2]));
-        $first->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('total', 5)
-            ->assertJsonPath('total_despesas_filtradas', 4)->assertJsonPath('total_receitas_filtradas', 1)
+        $first->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('total', 7)
+            ->assertJsonPath('total_despesas_filtradas', 6)->assertJsonPath('total_receitas_filtradas', 1)
             ->assertJsonPath('has_more', true)->assertJsonPath('data.0.id', $paymentId)
             ->assertJsonPath('data.0.is_invoice_payment', 1)->assertJsonPath('data.0.tipo', 'despesa')
             ->assertJsonPath('total_despesas', 137)->assertJsonPath('total_receitas', 200);
         $second = $this->getJson(route('dashboard.movimentos.data', ['mes' => '2026-11', 'limit' => 2, 'page' => 2]));
-        $second->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('total', 5)->assertJsonPath('has_more', true);
+        $second->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('total', 7)->assertJsonPath('has_more', true);
         $third = $this->getJson(route('dashboard.movimentos.data', ['mes' => '2026-11', 'limit' => 2, 'page' => 3]));
-        $third->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('total', 5)->assertJsonPath('has_more', false);
+        $third->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('total', 7)->assertJsonPath('has_more', false);
         $items = collect($first->json('data'))->concat($second->json('data'))->concat($third->json('data'));
-        $this->assertCount(5, $items->pluck('id')->unique());
+        $this->assertCount(7, $items->pluck('id')->unique());
         $this->assertEqualsCanonicalizing([
             'Pagamento da fatura Visa · 11/2026', 'Previsão sem fatura', 'Receita de banco',
             'Despesa canónica de banco', 'Despesa legada de banco',
+            'Compra canónica no cartão', 'Compra legada no cartão',
         ], $items->pluck('description')->all());
         $this->assertNotContains('Despesa de outro utilizador', $items->pluck('description')->all());
         $this->assertSame($bank->id, $items->firstWhere('id', $paymentId)['account_id']);
@@ -127,9 +128,12 @@ class CardMovementDisplayRegressionTest extends TestCase
         $shoppingFilter = $this->getJson(route('dashboard.movimentos.data', [
             'mes' => '2026-11', 'categoria' => $shopping->id, 'limit' => 1,
         ]));
-        $shoppingFilter->assertOk()->assertJsonCount(0, 'data')->assertJsonPath('total', 0)
-            ->assertJsonPath('total_despesas_filtradas', 0)->assertJsonPath('has_more', false)
+        $shoppingFilter->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('total', 2)
+            ->assertJsonPath('total_despesas_filtradas', 2)->assertJsonPath('has_more', true)
             ->assertJsonPath('total_despesas', 137);
+        $this->getJson(route('dashboard.movimentos.data', [
+            'mes' => '2026-11', 'categoria' => $shopping->id, 'limit' => 1, 'page' => 2,
+        ]))->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('total', 2)->assertJsonPath('has_more', false);
         $houseFilter = $this->getJson(route('dashboard.movimentos.data', [
             'mes' => '2026-11', 'categoria' => $house->id, 'limit' => 2,
         ]));
@@ -140,16 +144,16 @@ class CardMovementDisplayRegressionTest extends TestCase
         ]))->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('total', 3)->assertJsonPath('has_more', false);
 
         $page = $this->get(route('dashboard.movimentos', ['mes' => '2026-11', 'limit' => 10]));
-        $page->assertOk()->assertDontSee('Compra canónica no cartão')->assertDontSee('Compra legada no cartão')
+        $page->assertOk()->assertSee('Compra canónica no cartão')->assertSee('Compra legada no cartão')
             ->assertSee('Pagamento da fatura Visa')->assertSee('Despesa legada de banco')
             ->assertSee('Despesa canónica de banco')->assertSee('Receita de banco')
             ->assertSee('data-total="137"', false)->assertSee('data-total="200"', false);
-        $this->assertSame(5, $page->viewData('totalMovimentos'));
-        $this->assertSame(4, $page->viewData('totalDespesasFiltradas'));
+        $this->assertSame(7, $page->viewData('totalMovimentos'));
+        $this->assertSame(6, $page->viewData('totalDespesasFiltradas'));
         $filteredPage = $this->get(route('dashboard.movimentos', ['mes' => '2026-11', 'categoria' => $shopping->id]));
         $filteredPage->assertOk();
-        $this->assertSame(0, $filteredPage->viewData('totalMovimentos'));
-        $this->assertCount(0, $filteredPage->viewData('movimentos'));
+        $this->assertSame(2, $filteredPage->viewData('totalMovimentos'));
+        $this->assertCount(2, $filteredPage->viewData('movimentos'));
         $incomePage = $this->get(route('dashboard.movimentos', ['mes' => '2026-11', 'tipo' => 'receita']));
         $incomePage->assertOk();
         $this->assertSame(['Receita de banco'], $incomePage->viewData('movimentosVisiveis')->pluck('description')->all());
@@ -158,10 +162,11 @@ class CardMovementDisplayRegressionTest extends TestCase
         $this->assertEqualsCanonicalizing([
             'Pagamento da fatura Visa · 11/2026', 'Previsão sem fatura',
             'Despesa canónica de banco', 'Despesa legada de banco',
+            'Compra canónica no cartão', 'Compra legada no cartão',
         ], $expensePage->viewData('movimentosVisiveis')->pluck('description')->all());
         $dashboard = $this->get(route('dashboard', ['mes' => '2026-11', 'limit' => 10]));
-        $dashboard->assertOk()->assertDontSee('Compra canónica no cartão')->assertDontSee('Compra legada no cartão');
-        $this->assertSame(5, $dashboard->viewData('totalMovimentos'));
+        $dashboard->assertOk()->assertSee('Compra canónica no cartão')->assertSee('Compra legada no cartão');
+        $this->assertSame(7, $dashboard->viewData('totalMovimentos'));
         $this->assertSame(137.0, $dashboard->viewData('totalDespesas'));
 
         $this->get(route('financial.cards.page'))->assertOk()->assertSee('Visa');
