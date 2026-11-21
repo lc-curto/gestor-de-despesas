@@ -15,7 +15,7 @@ A página **Movimentos** é o histórico financeiro unificado. Os KPIs mantêm a
 | Prestação futura fora do mês selecionado | Sim, como pendente no respetivo mês | — | Não entra no mês anterior | Não afeta o mês anterior |
 | Transferência entre contas próprias | Sim | — | — | Não altera |
 | Pagamento de fatura de cartão | Sim, identificado como liquidação | — | — | Não altera |
-| Estorno/devolução de compra | Sim | — | Abate a despesa original | Corrige o resultado |
+| Crédito/devolução de compra no cartão | Sim, como ajuste positivo separado | — | Deduz o crédito à despesa | Corrige o resultado |
 | Movimento anulado | Preservado no histórico, se aplicável | — | — | Não altera |
 
 ## Cartões de crédito
@@ -25,7 +25,7 @@ A página **Movimentos** é o histórico financeiro unificado. Os KPIs mantêm a
 3. O pagamento da fatura é uma transferência/liquidação entre a conta bancária e a conta do cartão.
 4. A liquidação pode aparecer no histórico para rastreabilidade, mas nunca deve ser somada novamente como despesa.
 5. Pagamentos parciais da fatura seguem a mesma regra: liquidam a obrigação, não criam uma nova despesa.
-6. Estornos e créditos de compras devem reduzir a despesa, sem serem apresentados como receita operacional.
+6. Créditos e devoluções de compras devem aparecer como linhas próprias, com valor positivo e identificação de ajuste de despesa; o KPI Despesa deduz o crédito no período do movimento. Não são receitas operacionais.\n7. O valor original da compra permanece intacto no histórico. O crédito não deve ser subtraído da linha da compra e também lançado como linha separada, para evitar dupla dedução.\n8. O modal de compra, encargo, crédito ou pagamento vinculado a uma fatura é apenas de consulta e encaminha para a fatura; as alterações são feitas no módulo Cartões/Faturas.
 
 ## Parcelamentos
 
@@ -39,14 +39,14 @@ A página **Movimentos** é o histórico financeiro unificado. Os KPIs mantêm a
 ## Fórmula dos KPIs
 
 - **Receita:** soma das receitas reconhecidas no período.
-- **Despesa:** soma das despesas reconhecidas no período, incluindo compras no cartão e as prestações pertencentes ao período, deduzindo estornos.
+- **Despesa:** soma das despesas reconhecidas no período, incluindo compras no cartão, encargos e prestações pertencentes ao período, deduzindo créditos/devoluções de fatura no respetivo período.
 - **Resultado:** Receita − Despesa.
 
 Transferências entre contas próprias e liquidações de faturas não entram em Receita, Despesa ou Resultado.
 
 ## Navegação a partir de Movimentos
 
-- O modal de uma compra associada a cartão não disponibiliza ações operacionais; apresenta os dados e um acesso direto à fatura correspondente.
+- O modal de qualquer componente associado a uma fatura — compra, juro/encargo, crédito/devolução ou pagamento — não disponibiliza ações operacionais; apresenta os dados e um acesso direto à fatura correspondente.
 - O modal de uma prestação não disponibiliza ações operacionais; apresenta a prestação e um acesso direto ao parcelamento de origem.
 - Pagamentos de fatura também encaminham para a respetiva fatura.
 - A página Movimentos mantém a função de histórico e consulta; edição, pagamento, renegociação, cancelamento e eliminação são feitos no módulo de origem.
@@ -60,7 +60,7 @@ Transferências entre contas próprias e liquidações de faturas não entram em
 
 ## Critérios de aceitação
 
-- Uma compra de €60 no cartão aparece uma única vez em Movimentos e aumenta Despesa em €60 no mês da compra.
+- Uma compra de €60 no cartão aparece uma única vez em Movimentos e aumenta Despesa em €60 no mês da compra.\n- Um crédito de €10 associado a essa compra aparece como linha positiva separada; a compra mantém os €60 e o KPI Despesa reduz €10, sem classificar o crédito como receita.
 - O pagamento de €60 da fatura aparece como liquidação, mas não aumenta Despesa.
 - Uma compra parcelada de €90 em três prestações de €30 gera €30 de Despesa em cada um dos três meses, e não €90 no primeiro mês.
 - Uma prestação de dezembro não aumenta os KPIs de novembro.
