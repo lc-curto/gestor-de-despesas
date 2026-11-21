@@ -22,9 +22,6 @@
             
             <h1>Rota Financeira</h1>
         </div>
-        <div class="financial-route-actions">
-            <button type="button" class="btn btn-primary" id="routeNewMovement"><i data-lucide="plus" aria-hidden="true"></i><span class="route-new-label">Novo</span></button>
-        </div>
     </header>
 
     <div class="financial-route-toolbar">
@@ -114,11 +111,10 @@
 </div>
     <script type="application/json" id="route-overdue-data">{!! json_encode($overdueItems, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) !!}</script>
 
-<div class="modal fade" id="routeMovementModal" tabindex="-1" aria-labelledby="routeMovementTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered"><div class="modal-content route-sheet-content">
-        <form id="routeMovementForm">
-            <div class="modal-header"><h2 class="modal-title h5 fw-bold" id="routeMovementTitle">Novo movimento</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
-            <div class="modal-body">
+<x-modal id="routeMovementModal" aria-labelledby="routeMovementTitle" :scrollable="true">
+    <form id="routeMovementForm">
+        <x-modal-header title="Novo movimento" title-id="routeMovementTitle" />
+        <x-modal-body>
                 <div class="mb-3"><label class="form-label">Tipo de movimento</label><div class="route-type-options">
                     <label><input type="radio" name="route_type" value="income"><span>Entrada</span></label>
                     <label><input type="radio" name="route_type" value="fixed"><span>Gasto fixo</span></label>
@@ -130,34 +126,36 @@
                     <div class="col-12"><label for="routeAccount" class="form-label">Conta</label><select id="routeAccount" name="account_id" class="form-select" required><option value="">Selecionar conta</option>@foreach($accounts as $account)<option value="{{ $account->id }}" data-type="{{ $account->type }}">{{ $account->name }}</option>@endforeach</select></div>
                     <div class="col-12"><label for="routeNotes" class="form-label">Observação (opcional)</label><textarea id="routeNotes" name="notes" class="form-control" rows="2" placeholder="Adicionar observação..."></textarea></div>
                 </div><div class="small text-danger mt-3" id="routeFormError" role="alert"></div>
-            </div>
-            <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
-        </form>
-    </div></div>
-</div>
+        </x-modal-body>
+        <x-modal-footer>
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar</button>
+        </x-modal-footer>
+    </form>
+</x-modal>
 
-<div class="modal fade" id="routeMovementDetailModal" tabindex="-1" aria-labelledby="routeMovementDetailTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered"><div class="modal-content route-sheet-content">
-        <div class="modal-header"><div><p class="small text-secondary mb-1" id="routeMovementKind"></p><h2 class="modal-title h5 fw-bold" id="routeMovementDetailTitle">Movimento</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
-        <div class="modal-body"><div class="route-detail-amount" id="routeMovementAmount"></div><dl class="route-detail-list"><div><dt>Categoria</dt><dd id="routeMovementCategory"></dd></div><div><dt>Conta</dt><dd id="routeMovementAccount"></dd></div><div><dt>Data</dt><dd id="routeMovementDate"></dd></div><div><dt>Descrição</dt><dd id="routeMovementDescription"></dd></div><div><dt>Observação</dt><dd id="routeMovementNotes"></dd></div></dl><div class="small text-danger" id="routeDetailError" role="alert"></div></div>
-        <div class="modal-footer justify-content-between"><button type="button" class="btn btn-outline-danger" id="routeDeleteMovement">Excluir</button><div><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button type="button" class="btn btn-primary" id="routeEditMovement" aria-describedby="routeEditHelp">Editar</button></div></div>
+<x-modal id="routeMovementDetailModal" aria-labelledby="routeMovementDetailTitle" :scrollable="true">
+    <x-modal-header title="Detalhes do movimento" title-id="routeMovementDetailTitle">
+        <p class="small text-secondary mb-1" id="routeMovementDetailsKind"></p>
+    </x-modal-header>
+    <x-modal-body>
+        <x-financial.movement-details-panel prefix="routeMovement" related-label="Conta" destructive-label="Eliminar" :show-description="true" :show-notes="true" />
+        <div class="small text-danger mt-3" id="routeDetailError" role="alert"></div>
         <p class="visually-hidden" id="routeEditHelp" role="status"></p>
-    </div></div>
-</div>
+    </x-modal-body>
+</x-modal>
 
-<div class="modal fade" id="routeConfirmModal" tabindex="-1" aria-labelledby="routeConfirmTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered"><div class="modal-content route-sheet-content">
-        <div class="modal-header"><h2 class="modal-title h5 fw-bold" id="routeConfirmTitle">Eliminar movimento?</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
-        <div class="modal-body">
+<x-modal id="routeConfirmModal" aria-labelledby="routeConfirmTitle">
+    <x-modal-header title="Eliminar movimento?" title-id="routeConfirmTitle" />
+    <x-modal-body>
             <p class="mb-1" id="routeConfirmText">Este movimento será eliminado e os saldos das suas contas serão atualizados.</p>
             <small class="text-secondary" id="routeConfirmHint">Esta ação não pode ser desfeita.</small>
-        </div>
-        <div class="modal-footer d-flex flex-row gap-2">
-            <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Cancelar</button>
-            <button type="button" class="btn btn-danger flex-fill" id="routeConfirmAction">Eliminar</button>
-        </div>
-    </div></div>
-</div>
+    </x-modal-body>
+    <x-modal-footer class="d-flex flex-row gap-2">
+        <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-danger flex-fill" id="routeConfirmAction">Eliminar</button>
+    </x-modal-footer>
+</x-modal>
 @endsection
 
 @push('styles')
@@ -422,23 +420,24 @@
  document.querySelectorAll('[data-day-filter]').forEach(b=>b.addEventListener('click',()=>{activeFilter=b.dataset.dayFilter;document.querySelectorAll('[data-day-filter]').forEach(x=>x.classList.toggle('active',x===b));renderDayItems(dayData(activeDate))}));
  root.querySelectorAll('[data-date]').forEach(b=>b.addEventListener('click',()=>openDay(b.dataset.date)));
  function openMovementDetail(item){
-   activeMovement=item;document.getElementById('routeMovementDetailTitle').textContent=item.description;
-   document.getElementById('routeMovementKind').textContent=movementKind(item);
-   document.getElementById('routeMovementAmount').textContent=['adjustment','transfer'].includes(item.type)?signedAmount(item):fmt(item.amount);
-   document.getElementById('routeMovementCategory').textContent=item.category;
-   document.getElementById('routeMovementAccount').textContent=item.account_name;
-   document.getElementById('routeMovementDate').textContent=dateLabel(item.date);
-   document.getElementById('routeMovementDescription').textContent=item.description;
-   document.getElementById('routeMovementNotes').textContent=item.notes||'—';
+   activeMovement=item;
+   document.getElementById('routeMovementDetailsName').textContent=item.description;
+   document.getElementById('routeMovementDetailsKind').textContent=movementKind(item);
+   document.getElementById('routeMovementDetailsAmount').textContent=['adjustment','transfer'].includes(item.type)?signedAmount(item):fmt(item.amount);
+   document.getElementById('routeMovementDetailsCategory').textContent=item.category;
+   document.getElementById('routeMovementDetailsRelated').textContent=item.account_name;
+   document.getElementById('routeMovementDetailsDate').textContent=dateLabel(item.date);
+   document.getElementById('routeMovementDetailsDescription').textContent=item.description;
+   document.getElementById('routeMovementDetailsNotes').textContent=item.notes||'—';
    document.getElementById('routeDetailError').textContent='';
-   document.getElementById('routeEditMovement').disabled=!canEditMovement(item);
+   document.getElementById('routeMovementDetailsEdit').disabled=!canEditMovement(item);
    document.getElementById('routeEditHelp').textContent=item.type==='adjustment'?'Ajustes não editáveis. Elimina o movimento.':item.type==='transfer'?'Transferências não editáveis. Elimina e recria.':item.status==='settled'?'Movimento liquidado. Edição bloqueada.':!canEditMovement(item)?'Previsão gerada automaticamente. Gere em Faturas.':'';
-   const deleteButton=document.getElementById('routeDeleteMovement');
+   const deleteButton=document.getElementById('routeMovementDetailsDelete');
    deleteButton.textContent=item.recurrence_id?'Eliminar ocorrência':'Eliminar';
    detailModal.show();
  }
- document.getElementById('routeEditMovement').addEventListener('click',()=>{if(!activeMovement||!canEditMovement(activeMovement))return;returnToRouteDetails=true;routeDetailsNext='edit';openForm(activeMovement.date,activeMovement,false);detailModal.hide()});
- document.getElementById('routeDeleteMovement').addEventListener('click',()=>{
+ document.getElementById('routeMovementDetailsEdit').addEventListener('click',()=>{if(!activeMovement||!canEditMovement(activeMovement))return;returnToRouteDetails=true;routeDetailsNext='edit';openForm(activeMovement.date,activeMovement,false);detailModal.hide()});
+ document.getElementById('routeMovementDetailsDelete').addEventListener('click',()=>{
    const item=activeMovement;const recurring=!!item.recurrence_id;
    document.getElementById('routeConfirmTitle').textContent=recurring?'Eliminar ocorrência?':'Eliminar movimento?';
    document.getElementById('routeConfirmText').textContent='Este movimento será eliminado e os saldos das suas contas serão atualizados.';
