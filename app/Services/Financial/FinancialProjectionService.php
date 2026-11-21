@@ -30,12 +30,58 @@ class FinancialProjectionService
         $rangeEndExclusive = $rangeEnd->copy()->addDay()->toDateString();
 
         $openingBalance = (float) $cashAccounts->sum('opening_balance');
+
+        // O saldo de abertura precisa refletir a mesma projeção que foi aplicada
+        // nos meses anteriores. Incluir apenas movimentos liquidados fazia o
+        // saldo regressar ao saldo inicial das contas ao navegar entre meses,
+        // ignorando despesas/receitas pendentes que já tinham sido projetadas.
         $prior = $user->movimentos()
-            ->where('status', 'settled')
+            ->whereIn('type', ['income', 'expense', 'transfer', 'adjustment'])
+            ->whereIn('status', ['pending', 'partial', 'settled'])
             ->where('is_historical', false)
+            ->where('is_settlement_parent', false)
+            // Prestações vencidas ficam na secção "Vencidas" e não reduzem
+            // novamente o saldo de abertura do período consultado.
+            ->whereNot(fn ($query) => $query
+                ->where('status', 'pending')
+                ->whereNotNull('installment_id'))
             ->where('movement_date', '<', $rangeStart->toDateString())
+            ->where(function ($query) {
+                $query->whereNull('debt_id')
+                    ->orWhereExists(function ($subquery) {
+                        $subquery->selectRaw('1')
+                            ->from('dividas')
+                            ->whereColumn('dividas.id', 'movimentos.debt_id')
+                            ->whereColumn('dividas.user_id', 'movimentos.user_id')
+                            ->whereNull('dividas.archived_at')
+                            ->whereNotIn('dividas.status', ['cancelled', 'paid']);
+                    });
+            })
             ->get(['type', 'status', 'amount', 'source_account_id', 'destination_account_id', 'adjustment_direction']);
         $openingBalance += $prior->sum(fn (Movimento $movement) => $this->cashDelta($movement, $accountTypes));
+
+        // Uma obrigação parcialmente liquidada é representada pelos eventos
+        // reais já pagos mais o saldo ainda pendente, tal como no período atual.
+        $priorPartiallySettled = $user->movimentos()
+            ->where('is_settlement_parent', true)
+            ->whereNull('installment_id')
+            ->whereNull('invoice_id')
+            ->where('status', 'partial')
+            ->where('is_historical', false)
+            ->whereIn('type', ['expense', 'income'])
+            ->where('movement_date', '<', $rangeStart->toDateString())
+            ->with(['settlements' => fn ($query) => $query->where('status', 'settled')])
+            ->get();
+
+        foreach ($priorPartiallySettled as $original) {
+            $netSettled = $original->settlements
+                ->sum(fn (Movimento $event) => ($event->reversal_of_id ? -1 : 1) * (float) $event->amount);
+            $remaining = round((float) $original->amount - $netSettled, 2);
+
+            if ($remaining > 0) {
+                $openingBalance += $original->type === 'income' ? $remaining : -$remaining;
+            }
+        }
 
         $items = $user->movimentos()
             ->with('categoria:id,name')
