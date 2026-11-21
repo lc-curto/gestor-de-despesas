@@ -1171,8 +1171,8 @@
             !(['pending', 'partial', 'partially_settled'].includes(status) && Boolean(row.dataset.financialMovementId));
         editAction.hidden = hasOrigin || isInvoicePayment;
         deleteAction.hidden = hasOrigin || isInvoicePayment;
-        actionsWrap.hidden = hasOrigin || isInvoicePayment;
-        originWrap.hidden = !hasOrigin;
+        if (actionsWrap) actionsWrap.hidden = hasOrigin || isInvoicePayment;
+        if (originWrap) originWrap.hidden = !hasOrigin;
 
         if (isInvoiceMovement) {
             const reference = row.dataset.invoiceReferenceMonth
