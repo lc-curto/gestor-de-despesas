@@ -1757,3 +1757,49 @@ body.sidebar-collapsed .app-main { margin-left:var(--sidebar-collapsed-width); }
     .commitment-progress-amount strong { font-size: .74rem; }
 }
 
+
+
+/* Instalação PWA — ação compacta no cabeçalho do Dashboard e no menu Mais. */
+.install-app-dashboard-trigger {
+    display: none;
+}
+.install-guide-step {
+    display: inline-grid;
+    width: 1.8rem;
+    height: 1.8rem;
+    flex: 0 0 1.8rem;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(99, 91, 255, .1);
+    color: var(--bs-primary);
+    font-size: .82rem;
+    font-weight: 750;
+}
+@media (max-width: 991.98px) {
+    .home-dashboard-intro {
+        position: relative;
+        padding-right: 2.8rem;
+    }
+    .home-dashboard-intro h1 {
+        padding-right: 0;
+    }
+    .install-app-dashboard-trigger {
+        position: absolute;
+        top: .05rem;
+        right: 0;
+        display: inline-flex;
+        width: 2.35rem;
+        height: 2.35rem;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 1px solid var(--app-border);
+        border-radius: .7rem;
+        background: var(--bs-body-bg);
+        color: var(--bs-secondary-color);
+    }
+    .install-app-dashboard-trigger svg {
+        width: 1.05rem;
+        height: 1.05rem;
+    }
+}
