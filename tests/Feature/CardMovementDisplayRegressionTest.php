@@ -35,6 +35,34 @@ class CardMovementDisplayRegressionTest extends TestCase
         );
     }
 
+
+    public function test_invoice_interest_charge_uses_hidden_system_category(): void
+    {
+        $user = User::factory()->create(['currency' => 'EUR']);
+        $card = app(FinancialAccountService::class)->create($user, [
+            'name' => 'Cartão de teste', 'type' => 'credit_card', 'opening_balance' => '0.00',
+            'opening_balance_date' => '2026-11-01', 'closing_day' => 25, 'due_day' => 5,
+            'credit_limit' => '500.00',
+        ]);
+        $purchase = $this->actingAs($user)->postJson(route('financial.cards.purchase'), [
+            'account_id' => $card->id, 'description' => 'Compra base',
+            'amount' => '20.00', 'movement_date' => '2026-11-10',
+        ])->assertCreated();
+        $invoiceId = $purchase->json('data.invoice_id');
+
+        $charge = $this->postJson(route('financial.invoices.charges.store', $invoiceId), [
+            'charge_type' => 'interest', 'description' => 'Juros', 'amount' => '1.01',
+            'movement_date' => '2026-11-17',
+        ])->assertCreated()->json('data');
+
+        $category = $user->categorias()->where('type', 'despesa')->where('slug', 'juros-fatura')->firstOrFail();
+        $this->assertSame($category->id, $charge['category_id']);
+        $this->assertTrue($category->is_system);
+        $this->assertFalse($category->show_in_management);
+        $this->assertSame(1, $user->categorias()->where('slug', 'juros-fatura')->count());
+        $this->get(route('categorias.index'))->assertOk()->assertDontSee('Juros');
+    }
+
     public function test_income_settlement_event_is_not_listed_as_a_second_movement(): void
     {
         $user = User::factory()->create(['currency' => 'EUR']);

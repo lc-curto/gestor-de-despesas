@@ -2,6 +2,7 @@
 
 namespace App\Services\Financial;
 
+use App\Models\Categoria;
 use App\Models\Fatura;
 use App\Models\FaturaSaldoTransportado;
 use App\Models\HistoricoMovimento;
@@ -250,13 +251,42 @@ class CardInvoiceService
                 'amount' => $data['amount'],
                 'movement_date' => $data['movement_date'],
                 'source_account_id' => $card->id,
-                'category_id' => $data['category_id'] ?? null,
+                'category_id' => $this->chargeCategory($user, $data['charge_type'])->id,
                 'invoice_id' => $locked->id,
             ]);
             $this->movements->syncInvoiceSettlementParent($user, $locked);
 
             return $charge;
         });
+    }
+
+
+    /**
+     * Encargos de fatura usam categorias internas, fora da gestão normal.
+     * A chave user/type/slug garante reutilização sem duplicar categorias.
+     */
+    private function chargeCategory(User $user, string $chargeType): Categoria
+    {
+        $definitions = [
+            'interest' => ['Juros', 'juros-fatura'],
+            'late_fee' => ['Multas', 'multa-fatura'],
+            'commission' => ['Comissões', 'comissao-fatura'],
+            'tax' => ['Impostos', 'imposto-fatura'],
+            'other' => ['Outros encargos', 'outro-encargo-fatura'],
+        ];
+        [$name, $slug] = $definitions[$chargeType] ?? $definitions['other'];
+
+        $category = $user->categorias()->firstOrCreate(
+            ['type' => 'despesa', 'slug' => $slug],
+            ['name' => $name, 'icon' => 'receipt', 'color' => '#64748B',
+                'is_active' => true, 'is_system' => true, 'show_in_management' => false]
+        );
+
+        if (! $category->is_system || $category->show_in_management) {
+            $category->update(['is_system' => true, 'show_in_management' => false]);
+        }
+
+        return $category;
     }
 
     /**
