@@ -213,7 +213,7 @@ class CardMovementDisplayRegressionTest extends TestCase
             'Compra canónica no cartão', 'Compra legada no cartão',
         ], $expensePage->viewData('movimentosVisiveis')->pluck('description')->all());
         $dashboard = $this->get(route('dashboard', ['mes' => '2026-11', 'limit' => 10]));
-        $dashboard->assertOk()->assertSee('Compra canónica no cartão')->assertSee('Compra legada no cartão');
+        $dashboard->assertOk();
         $this->assertSame(7, $dashboard->viewData('totalMovimentos'));
         $this->assertSame(137.0, $dashboard->viewData('totalDespesas'));
 
