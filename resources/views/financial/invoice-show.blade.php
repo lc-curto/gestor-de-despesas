@@ -253,7 +253,7 @@
         if(!state.movement)return;
         const button=byId('invoiceMovementSave');button.disabled=true;hideError();
         const amount=byId('invoiceMovementEditAmount').value.trim().replace(',','.');
-        if(!/^\\d+(\\.\\d{1,2})?$/.test(amount)){showError('Indica um valor válido com até duas casas decimais.');button.disabled=false;return;}
+        if(!/^\d+(\.\d{1,2})?$/.test(amount)){showError('Indica um valor válido com até duas casas decimais.');button.disabled=false;return;}
         const url=state.movement.editUrl;
         const payload={description:byId('invoiceMovementEditDescription').value.trim(),amount,movement_date:byId('invoiceMovementEditDate').value};
         try{
