@@ -520,55 +520,68 @@ class FinancialMovementService
 
             if (! in_array($locked->type, ['expense', 'income'], true)
                 || $locked->status !== 'settled'
-                || ! $locked->is_settlement_parent
                 || $locked->invoice_id
                 || $locked->debt_id
-                || $locked->installment_id) {
+                || $locked->installment_id
+                || $locked->settles_movement_id
+                || $locked->reversal_of_id) {
                 throw ValidationException::withMessages([
                     'movement' => 'Só é possível reverter a liquidação integral de uma despesa ou receita simples.',
                 ]);
             }
 
-            $totalCents = $this->balances->toCents((string) $locked->amount);
-            if ($this->netSettledCents($user, $locked) !== $totalCents) {
-                throw ValidationException::withMessages([
-                    'movement' => 'A liquidação não está integralmente concluída ou já possui uma reversão.',
-                ]);
-            }
+            if ($locked->is_settlement_parent) {
+                $totalCents = $this->balances->toCents((string) $locked->amount);
+                if ($this->netSettledCents($user, $locked) !== $totalCents) {
+                    throw ValidationException::withMessages([
+                        'movement' => 'A liquidação não está integralmente concluída ou já possui uma reversão.',
+                    ]);
+                }
 
-            $events = Movimento::query()
-                ->where('user_id', $user->id)
-                ->where('settles_movement_id', $locked->id)
-                ->where('status', 'settled')
-                ->whereNull('reversal_of_id')
-                ->lockForUpdate()
-                ->get();
+                $events = Movimento::query()
+                    ->where('user_id', $user->id)
+                    ->where('settles_movement_id', $locked->id)
+                    ->where('status', 'settled')
+                    ->whereNull('reversal_of_id')
+                    ->lockForUpdate()
+                    ->get();
 
-            $alreadyReversed = Movimento::query()
-                ->where('user_id', $user->id)
-                ->whereIn('reversal_of_id', $events->pluck('id'))
-                ->pluck('reversal_of_id')
-                ->all();
-            $activeEvents = $events->reject(fn (Movimento $event) => in_array($event->id, $alreadyReversed, true));
+                $alreadyReversed = Movimento::query()
+                    ->where('user_id', $user->id)
+                    ->whereIn('reversal_of_id', $events->pluck('id'))
+                    ->pluck('reversal_of_id')
+                    ->all();
+                $activeEvents = $events->reject(fn (Movimento $event) => in_array($event->id, $alreadyReversed, true));
 
-            if ($activeEvents->isEmpty()) {
-                throw ValidationException::withMessages([
-                    'movement' => 'Esta liquidação já foi revertida.',
-                ]);
-            }
+                if ($activeEvents->isEmpty()) {
+                    throw ValidationException::withMessages([
+                        'movement' => 'Esta liquidação já foi revertida.',
+                    ]);
+                }
 
-            foreach ($activeEvents as $event) {
-                $this->createMovement($user, [
-                    'type' => $locked->type === 'expense' ? 'income' : 'expense',
-                    'description' => 'Reversão: '.$event->description,
-                    'amount' => $event->amount,
-                    'movement_date' => now()->toDateString(),
-                    'source_account_id' => $locked->type === 'income' ? $event->destination_account_id : null,
-                    'destination_account_id' => $locked->type === 'expense' ? $event->source_account_id : null,
-                    'category_id' => $event->category_id,
-                    'reversal_of_id' => $event->id,
-                    'settles_movement_id' => $locked->id,
-                ], false);
+                foreach ($activeEvents as $event) {
+                    $this->createMovement($user, [
+                        'type' => $locked->type === 'expense' ? 'income' : 'expense',
+                        'description' => 'Reversão: '.$event->description,
+                        'amount' => $event->amount,
+                        'movement_date' => now()->toDateString(),
+                        'source_account_id' => $locked->type === 'income' ? $event->destination_account_id : null,
+                        'destination_account_id' => $locked->type === 'expense' ? $event->source_account_id : null,
+                        'category_id' => $event->category_id,
+                        'reversal_of_id' => $event->id,
+                        'settles_movement_id' => $locked->id,
+                    ], false);
+                }
+            } else {
+                $hasLinkedEvents = Movimento::query()
+                    ->where('user_id', $user->id)
+                    ->where('settles_movement_id', $locked->id)
+                    ->exists();
+                if ($hasLinkedEvents) {
+                    throw ValidationException::withMessages([
+                        'movement' => 'Este movimento tem liquidações associadas e exige reversão pela operação original.',
+                    ]);
+                }
             }
 
             $before = $locked->getAttributes();
