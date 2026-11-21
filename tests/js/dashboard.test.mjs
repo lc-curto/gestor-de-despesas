@@ -342,6 +342,26 @@ test('as opções de recorrência respeitam hidden mesmo com display grid do Boo
     assert.match(blade, /id="deleteRecurringOptions"[^>]*hidden/);
 });
 
+test('a mesma ação mostra Pagar em pendentes e Reverter em movimentos liquidados', () => {
+    const pendingUi = setup(async () => jsonResponse(200, { data: [] }), [existingMovement]);
+    pendingUi.element('expensesList').querySelector('[data-movement-action="details"]').click();
+    const pendingAction = pendingUi.element('movementDetailsSettle');
+    assert.equal(pendingAction.hidden, false);
+    assert.equal(pendingAction.querySelector('span').textContent, 'Pagar');
+    pendingUi.dom.window.close();
+
+    const settledUi = setup(async () => jsonResponse(200, { data: [] }), [{
+        ...existingMovement,
+        movement_status: 'settled',
+        remaining_amount: '0.00',
+    }]);
+    settledUi.element('expensesList').querySelector('[data-movement-action="details"]').click();
+    const settledAction = settledUi.element('movementDetailsSettle');
+    assert.equal(settledAction.hidden, false);
+    assert.equal(settledAction.querySelector('span').textContent, 'Reverter');
+    settledUi.dom.window.close();
+});
+
 test('despesa simples mostra confirmação única, sem opções de recorrência', () => {
     const ui = setup(async () => jsonResponse(200, { data: [] }), [existingMovement]);
     ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
