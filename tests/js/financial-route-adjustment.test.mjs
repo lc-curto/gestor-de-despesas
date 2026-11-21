@@ -34,6 +34,12 @@ function setup(response = { ok: false, json: async () => ({ message: 'Operação
       </section>
       <script type="application/json" id="route-day-2026-12-05">${JSON.stringify({ items, balance: 174.65, status: 'comfortable' })}</script>
       <div id="routeDayModal"></div><div id="routeMovementModal"></div><div id="routeMovementDetailModal"></div><div id="routeConfirmModal"></div>
+      <div id="movementEditModal"><form id="movementEditForm">
+        <input id="movementEditDescription"><input id="movementEditAmount"><input id="movementEditDate">
+        <select id="movementEditCategory"><option value="">Seleciona</option></select>
+        <textarea id="movementEditNotes"></textarea><input id="movementEditExpenseBehavior">
+        <div id="movementEditError" class="d-none"></div><button id="movementEditSubmit" type="submit">Guardar alterações</button>
+      </form></div>
       <div id="routeDayTitle"></div><div id="routeDayBalance"><span class="route-day-balance__label"></span><strong id="routeDayBalanceValue"></strong></div><section id="routeOverdueSection" hidden><span id="routeOverdueCount"></span><div id="routeOverdueMovements"></div></section><div id="routeDayMovements"></div><button id="routeAddFromDay"></button>
       <script type="application/json" id="route-overdue-data">[]</script>
       <button data-day-filter="all"></button><button data-day-filter="income"></button><button data-day-filter="fixed"></button><button data-day-filter="variable"></button>
@@ -171,20 +177,26 @@ test('edição suportada mantém o tipo e o comportamento da receita ou despesa 
         assert.equal(h.el('routeMovementDetailsEdit').disabled, false);
         assert.equal(h.el('routeEditHelp').textContent, '');
         h.el('routeMovementDetailsEdit').click();
-        assert.equal(h.modals.get('routeMovementModal').shown, 1);
-        assert.equal(h.el('routeAccount').value, 'bank');
-        assert.equal(h.el('routeAccount').disabled, true);
-        assert.equal(h.window.document.querySelector('[name="route_type"]:checked').value, description === 'Entrada' ? 'income' : 'fixed');
-        h.el('routeMovementForm').dispatchEvent(new h.window.Event('submit', { bubbles: true, cancelable: true }));
+        assert.equal(h.modals.get('movementEditModal').shown, 1);
+        assert.equal(h.modals.get('routeMovementModal').shown, 0, 'a edição não reutiliza o modal de criação');
+        assert.equal(h.el('movementEditDescription').value, description);
+        assert.equal(h.el('movementEditAmount').value, description === 'Entrada' ? '30,1' : '12,4');
+        assert.equal(h.el('movementEditDate').value, '2026-12-05');
+        assert.equal(h.el('movementEditExpenseBehavior').value, behavior);
+        assert.equal(h.el('movementEditNotes').value, '');
+        h.el('movementEditForm').dispatchEvent(new h.window.Event('submit', { bubbles: true, cancelable: true }));
         await flush();
         assert.equal(h.requests.length, 1);
         assert.equal(h.requests[0].url, `/movements/${description === 'Entrada' ? 'income' : 'fixed'}`);
         assert.equal(h.requests[0].method, 'PUT');
         const payload = JSON.parse(h.requests[0].body);
-        assert.equal(payload.type, type);
+        assert.equal(payload.description, description);
+        assert.equal(payload.amount, description === 'Entrada' ? '30.10' : '12.40');
+        assert.equal(payload.movement_date, '2026-12-05');
         assert.equal(payload.expense_behavior, behavior);
-        assert.equal(payload[accountField], 'bank');
-        assert.match(h.el('routeFormError').textContent, /Operação não permitida/);
+        assert.equal('source_account_id' in payload, false, 'a conta mantém-se inalterada');
+        assert.equal('destination_account_id' in payload, false, 'a conta mantém-se inalterada');
+        assert.match(h.el('movementEditError').textContent, /Operação não permitida/);
     }
 });
 
