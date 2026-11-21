@@ -76,8 +76,6 @@ class DashboardController extends Controller
             ->whereIn('status', ['pending', 'partial', 'settled'])->whereNull('settles_movement_id')
             ->where(fn ($query) => $query->whereNull('invoice_id')->orWhere('is_settlement_parent', false))
             ->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
-        $totalDespesas -= (float) $user->movimentos()->whereNull('legacy_type')->where('invoice_charge_type', 'credit')
-            ->where('status', 'settled')->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
         $totalReceitas += (float) $user->movimentos()->whereNull('legacy_type')->where('type', 'income')
             ->whereIn('status', ['pending', 'partial', 'settled'])->whereNull('settles_movement_id')->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
 
@@ -115,7 +113,7 @@ class DashboardController extends Controller
             ->whereBetween('movimentos.movement_date', [$inicio->toDateString(), $fim->toDateString()])
             ->whereNotNull('movimentos.category_id')
             ->join('categorias', 'categorias.id', '=', 'movimentos.category_id')
-            ->selectRaw("categorias.id AS category_id, categorias.name, categorias.icon, categorias.color, SUM(CASE WHEN movimentos.invoice_charge_type = 'credit' THEN -movimentos.amount ELSE movimentos.amount END) AS total")
+            ->selectRaw("categorias.id AS category_id, categorias.name, categorias.icon, categorias.color, SUM(movimentos.amount) AS total")
             ->groupBy('categorias.id', 'categorias.name', 'categorias.icon', 'categorias.color')
             ->get();
 
@@ -262,8 +260,6 @@ class DashboardController extends Controller
             ->whereIn('status', ['pending', 'partial', 'settled'])->whereNull('settles_movement_id')
             ->where(fn ($query) => $query->whereNull('invoice_id')->orWhere('is_settlement_parent', false))
             ->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
-        $totalDespesas -= (float) $user->movimentos()->whereNull('legacy_type')->where('invoice_charge_type', 'credit')
-            ->where('status', 'settled')->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
         $totalReceitas += (float) $user->movimentos()->whereNull('legacy_type')->where('type', 'income')
             ->whereIn('status', ['pending', 'partial', 'settled'])->whereNull('settles_movement_id')->whereBetween('movement_date', [$inicio->toDateString(), $fim->toDateString()])->sum('amount');
 
