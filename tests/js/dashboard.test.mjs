@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 
 const script = readFileSync(new URL('../../public/js/dashboard.js', import.meta.url), 'utf8');
+const editRules = readFileSync(new URL('../../resources/views/partials/movement-edit-modal.blade.php', import.meta.url), 'utf8')
+    .match(/<script>([\\s\\S]*?)<\\/script>/)?.[1];
 const markup = `<!doctype html><meta name="csrf-token" content="test-token">
 <div id="movementSaveFeedback" class="d-none"><span id="movementSaveFeedbackMessage"></span><a id="movementSaveFeedbackLink" class="d-none" href="/compromissos">Ver parcelamentos</a></div>
 <div id="movementEntryModal"><form id="dashboardMovementForm" action="/despesas">
@@ -103,7 +105,7 @@ function setup(fetch, initialMovements = [], options = {}) {
         return instances.get(element);
     } } };
     window.HTMLElement.prototype.scrollIntoView = () => {};
-    window.eval(script);
+    window.eval(editRules);\n    window.eval(script);
     const element = (id) => window.document.getElementById(id);
     const form = element('dashboardMovementForm');
     const modal = element('movementEntryModal') ? window.bootstrap.Modal.getOrCreateInstance(element('movementEntryModal')) : null;
@@ -612,4 +614,18 @@ test('ações de Movimentos inicializam sem o formulário de criação do Dashbo
     assert.equal(editor.open, true);
     assert.equal(ui.element('movementEditDescription').value, 'Despesa de teste');
     ui.dom.window.close();
+});
+
+test('a regra comum permite apenas movimentos pendentes reais sem origem em fatura ou prestação', () => {
+    const dom = new JSDOM('<!doctype html>', { runScripts: 'outside-only' });
+    dom.window.eval(editRules);
+    const canEdit = dom.window.meuBolsoMovementEditRules.canEdit;
+    const base = { type: 'despesa', status: 'pending', financialMovementId: '123' };
+    assert.equal(canEdit(base), true);
+    assert.equal(canEdit({ ...base, status: 'settled' }), false);
+    assert.equal(canEdit({ ...base, financialMovementId: '' }), false);
+    assert.equal(canEdit({ ...base, invoiceId: 'invoice-1' }), false);
+    assert.equal(canEdit({ ...base, installmentId: 'installment-1', debtId: 'debt-1' }), false);
+    assert.equal(canEdit({ ...base, financialMovementId: 'debt-1' }), false);
+    dom.window.close();
 });
