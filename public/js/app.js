@@ -213,25 +213,62 @@
         catch (error) { console.warn('Não foi possível atualizar a sessão local:', error); }
     });
 
+    // Instalação PWA: os pontos de entrada partilham o mesmo comportamento.
     let pendingInstallEvent = null;
-    const installButton = document.getElementById('installAppButton');
+    const installTriggers = [
+        document.getElementById('installAppButton'),
+        document.getElementById('installAppDashboardButton'),
+        document.getElementById('installAppMoreButton')
+    ].filter(Boolean);
+    const installGuideModal = document.getElementById('installAppGuideModal');
+    const isIosDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches
+        || navigator.standalone === true;
+
+    function updateInstallVisibility() {
+        const shouldShow = !isStandalone() && (isIosDevice || Boolean(pendingInstallEvent));
+        installTriggers.forEach((button) => button.classList.toggle('d-none', !shouldShow));
+    }
+
+    async function startAppInstallation() {
+        if (isStandalone()) {
+            updateInstallVisibility();
+            return;
+        }
+
+        if (pendingInstallEvent) {
+            const installPrompt = pendingInstallEvent;
+            pendingInstallEvent = null;
+            updateInstallVisibility();
+            installPrompt.prompt();
+            const choice = await installPrompt.userChoice;
+            if (choice.outcome === 'accepted') {
+                console.info('O utilizador aceitou instalar o Meu Bolso.');
+                updateInstallVisibility();
+            }
+            return;
+        }
+
+        if (isIosDevice && installGuideModal && window.bootstrap) {
+            bootstrap.Modal.getOrCreateInstance(installGuideModal).show();
+        }
+    }
+
+    installTriggers.forEach((button) => button.addEventListener('click', startAppInstallation));
+
     window.addEventListener('beforeinstallprompt', (event) => {
         event.preventDefault();
         pendingInstallEvent = event;
-        installButton?.classList.remove('d-none');
+        updateInstallVisibility();
     });
-    installButton?.addEventListener('click', async () => {
-        if (!pendingInstallEvent) return;
-        pendingInstallEvent.prompt();
-        const choice = await pendingInstallEvent.userChoice;
-        pendingInstallEvent = null;
-        installButton.classList.add('d-none');
-        if (choice.outcome === 'accepted') console.info('O utilizador aceitou instalar o Meu Bolso.');
-    });
+
     window.addEventListener('appinstalled', () => {
         pendingInstallEvent = null;
-        installButton?.classList.add('d-none');
+        updateInstallVisibility();
     });
+
+    updateInstallVisibility();
 
     // Gestão de inatividade: evita executar hide() do modal em cada clique/scroll.
     const INACTIVITY_LIMIT = 15 * 60 * 1000;
