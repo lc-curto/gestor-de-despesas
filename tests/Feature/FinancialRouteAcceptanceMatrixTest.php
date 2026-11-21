@@ -143,6 +143,7 @@ class FinancialRouteAcceptanceMatrixTest extends TestCase
         ]))->assertOk();
 
         $this->assertSame(488.0, (float) $february->viewData('openingBalance'));
+        $this->assertCount(0, $february->viewData('overdueItems'));
     }
 
     public function test_overdue_commitment_is_visible_in_a_separate_section_without_being_assigned_to_period_first_day(): void
