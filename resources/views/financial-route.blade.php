@@ -134,6 +134,8 @@
     </form>
 </x-modal>
 
+@include('partials.movement-edit-modal')
+
 <x-modal id="routeMovementDetailModal" aria-labelledby="routeMovementDetailTitle" :scrollable="true">
     <x-modal-header title="Detalhes do movimento" title-id="routeMovementDetailTitle" />
     <x-modal-body>
