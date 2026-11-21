@@ -630,3 +630,22 @@ test('a regra comum permite apenas movimentos pendentes reais sem origem em fatu
     assert.equal(canEdit({ ...base, financialMovementId: 'debt-1' }), false);
     dom.window.close();
 });
+
+test('edição também aguarda hidden quando o modal de detalhes já está em transição de fecho', () => {
+    const ui = setup(async () => jsonResponse(200, { data: [] }), [existingMovement]);
+    ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
+    const detailsElement = ui.element('movementDetailsModal');
+    const details = ui.window.bootstrap.Modal.getOrCreateInstance(detailsElement);
+    const editor = ui.window.bootstrap.Modal.getOrCreateInstance(ui.element('movementEditModal'));
+
+    details._isTransitioning = true;
+    detailsElement.classList.remove('show');
+    ui.element('movementDetailsEdit').click();
+    assert.equal(editor.open, false);
+
+    details._isTransitioning = false;
+    detailsElement.dispatchEvent(new ui.window.Event('hidden.bs.modal'));
+    assert.equal(editor.open, true);
+    assert.equal(ui.element('movementEditAmount').value, '90,50');
+    ui.dom.window.close();
+});
