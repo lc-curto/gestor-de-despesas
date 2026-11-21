@@ -448,11 +448,11 @@
    if(!editingRouteMovement||editForm.dataset.submitting==='1'||!editForm.reportValidity())return;
    const error=document.getElementById('movementEditError');
    const submit=document.getElementById('movementEditSubmit');
-   const amountText=String(document.getElementById('movementEditAmount').value||'').trim().replace(/[\\u00a0\\s]/g,'');
+   const amountText=String(document.getElementById('movementEditAmount').value||'').trim().replace(/[\u00a0\s]/g,'');
    let amount='';
    try{
-     if(!/^\\d+(?:,\\d{1,2}|\\.\\d{1,2})?$/.test(amountText)&&!/^\\d{1,3}(?:\\.\\d{3})+,\\d{1,2}$/.test(amountText))throw new Error('Usa o formato 90,50 ou 1.000,00.');
-     if(amountText.includes(',')){const parts=amountText.split(',');amount=parts[0].replace(/\\./g,'')+'.'+parts[1].padEnd(2,'0');}
+     if(!/^\d+(?:,\d{1,2}|\.\d{1,2})?$/.test(amountText)&&!/^\d{1,3}(?:\.\d{3})+,\d{1,2}$/.test(amountText))throw new Error('Usa o formato 90,50 ou 1.000,00.');
+     if(amountText.includes(',')){const parts=amountText.split(',');amount=parts[0].replace(/\./g,'')+'.'+parts[1].padEnd(2,'0');}
      else if(amountText.includes('.')){const parts=amountText.split('.');amount=parts[0]+'.'+parts[1].padEnd(2,'0');}
      else amount=amountText+'.00';
      if(!(Number(amount)>0))throw new Error('O valor deve ser maior que zero.');
