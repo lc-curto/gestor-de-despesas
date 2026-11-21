@@ -49,7 +49,7 @@
         if (!movement || !['income', 'expense', 'receita', 'despesa'].includes(movement.type)) return false;
         if (movement.status !== 'pending' || !movement.financialMovementId) return false;
         if (movement.invoiceId || movement.isInvoicePayment) return false;
-        if (movement.installmentId && movement.debtId) return false;
+        if (movement.installmentId || movement.debtId) return false;
         return !/^(debt|invoice|overdue-debt|overdue-invoice|settlement)-/.test(String(movement.financialMovementId));
     };
 
