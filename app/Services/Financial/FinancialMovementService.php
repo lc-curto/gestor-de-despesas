@@ -520,6 +520,7 @@ class FinancialMovementService
 
             if (! in_array($locked->type, ['expense', 'income'], true)
                 || ! in_array($locked->status, ['partial', 'settled'], true)
+                || ! $locked->is_settlement_parent
                 || $locked->invoice_id
                 || $locked->debt_id
                 || $locked->installment_id
@@ -570,16 +571,6 @@ class FinancialMovementService
                         'reversal_of_id' => $event->id,
                         'settles_movement_id' => $locked->id,
                     ], false);
-                }
-            } else {
-                $hasLinkedEvents = Movimento::query()
-                    ->where('user_id', $user->id)
-                    ->where('settles_movement_id', $locked->id)
-                    ->exists();
-                if ($hasLinkedEvents) {
-                    throw ValidationException::withMessages([
-                        'movement' => 'Este movimento tem liquidações associadas e exige reversão pela operação original.',
-                    ]);
                 }
             }
 
