@@ -908,6 +908,7 @@
         const editTitle = document.getElementById('movementEditTitle');
         editTitle.textContent = isExpense ? 'Editar despesa' : 'Editar receita';
         document.getElementById('movementEditDescription').value = row.dataset.description || '';
+        document.getElementById('movementEditNotes').value = row.dataset.notes || '';
         document.getElementById('movementEditAmount').value = String(row.dataset.amount || '').replace('.', ',');
         document.getElementById('movementEditDate').value = row.dataset.date || localDate();
         editCategory.replaceChildren(new Option('Seleciona uma categoria', ''));
@@ -938,6 +939,7 @@
         const isExpense = editingMovement.dataset.movementType === 'despesa';
         const payload = {
             description: document.getElementById('movementEditDescription').value.trim(),
+            notes: document.getElementById('movementEditNotes').value.trim() || null,
             amount: amountValue,
             movement_date: document.getElementById('movementEditDate').value,
             category_id: document.getElementById('movementEditCategory').value || null,
