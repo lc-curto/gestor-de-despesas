@@ -412,7 +412,7 @@ class DashboardController extends Controller
             // Agregadores técnicos de fatura representam a dívida consolidada, não uma compra.
             ->where(fn ($query) => $query->whereNull('canonical_movements.invoice_id')
                 ->orWhere('canonical_movements.is_settlement_parent', false)
-                ->orWhereNull('canonical_movements.is_settlement_parent))
+                ->orWhereNull('canonical_movements.is_settlement_parent'))
             // Os recebimentos/liquidações são eventos da receita original, não movimentos independentes.
             ->whereNull('canonical_movements.settles_movement_id')
             // Compras associadas a faturas também pertencem ao histórico de Movimentos.
