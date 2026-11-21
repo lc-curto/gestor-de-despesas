@@ -1245,23 +1245,31 @@
         movementDetailsModal?.show();
     }
 
+    // Bootstrap ignora hide() enquanto o modal ainda está em transição de abertura.
+    // Espera por shown.bs.modal nesse caso; só depois regista hidden e inicia o fecho.
+    function hideModalThen(element, instance, callback) {
+        if (!element || !instance) return;
+        const hideWhenReady = () => {
+            element.addEventListener('hidden.bs.modal', callback, { once: true });
+            instance.hide();
+        };
+        if (instance._isTransitioning) {
+            element.addEventListener('shown.bs.modal', hideWhenReady, { once: true });
+            return;
+        }
+        if (element.classList.contains('show')) {
+            hideWhenReady();
+            return;
+        }
+        callback();
+    }
+
     function runMovementDetailsAction(action) {
         if (!actionMovement) return;
         const row = actionMovement;
 
-        // A edição só começa depois de o modal de detalhes terminar de fechar.
-        // Isso evita a disputa entre duas instâncias Bootstrap e os respetivos backdrops.
         if (action === 'edit') {
-            const openEditor = () => {
-                if (typeof window.requestAnimationFrame === 'function') window.requestAnimationFrame(() => startEdit(row));
-                else startEdit(row);
-            };
-            if (movementDetailsModalElement?.classList.contains('show')) {
-                movementDetailsModalElement.addEventListener('hidden.bs.modal', openEditor, { once: true });
-                movementDetailsModal?.hide();
-            } else {
-                openEditor();
-            }
+            hideModalThen(movementDetailsModalElement, movementDetailsModal, () => startEdit(row));
             return;
         }
 
