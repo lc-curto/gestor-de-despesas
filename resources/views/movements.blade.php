@@ -180,7 +180,7 @@
                             <article class="expense-item movement-entry py-3 border-bottom"
                                 data-movement-id="{{ $movimento->id }}" data-movement-type="{{ $movimento->tipo }}"
                                 data-edit-url="{{ route($isExpense ? 'despesas.update' : 'receitas.update', $movimento->id) }}"
-                                data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}"
+                                data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}" data-notes="{{ $movimento->notes ?? '' }}"
                                 data-amount="{{ $movimento->amount }}" data-remaining-amount="{{ $movimento->remaining_amount ?? $movimento->amount }}" data-currency="{{ $movimento->currency }}"
                                 data-category-id="{{ $movimento->category }}" data-account-id="{{ $movimento->account_id }}"
                                 data-movement-status="{{ $estado }}" data-is-settlement-event="{{ (bool) ($movimento->is_settlement_event ?? false) ? 1 : 0 }}"
