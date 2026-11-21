@@ -116,6 +116,35 @@ class FinancialRouteAcceptanceMatrixTest extends TestCase
         $this->assertSame(1150.0, $februaryThreeMonth);
     }
 
+    public function test_pending_installment_from_previous_month_is_carried_into_next_month_opening_balance(): void
+    {
+        $user = User::factory()->create();
+        $this->account($user, 'bank', '500.00');
+
+        app(FinancialCommitmentService::class)->create($user, [
+            'name' => 'Prestação de janeiro',
+            'total_amount' => '12.00',
+            'start_date' => '2027-01-01',
+            'due_date' => '2027-01-10',
+            'payment_condition' => 'deferred',
+            'payment_method' => 'bank',
+        ]);
+
+        $january = $this->actingAs($user)->get(route('financial.route', [
+            'mes' => '2027-01',
+            'modo' => 1,
+        ]))->assertOk();
+
+        $this->assertSame(488.0, $this->dayBalance($january, '2027-01-31'));
+
+        $february = $this->actingAs($user)->get(route('financial.route', [
+            'mes' => '2027-02',
+            'modo' => 1,
+        ]))->assertOk();
+
+        $this->assertSame(488.0, (float) $february->viewData('openingBalance'));
+    }
+
     public function test_overdue_commitment_is_visible_in_a_separate_section_without_being_assigned_to_period_first_day(): void
     {
         $user = User::factory()->create();
