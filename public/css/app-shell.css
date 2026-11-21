@@ -1757,3 +1757,20 @@ body.sidebar-collapsed .app-main { margin-left:var(--sidebar-collapsed-width); }
     .commitment-progress-amount strong { font-size: .74rem; }
 }
 
+
+
+/* Correção final da navegação mobile e contenção horizontal. */
+@media (max-width: 991.98px) {
+    .mobile-bottom-bar {
+        position: fixed !important;
+        z-index: 1045 !important;
+        inset: auto 0 0 !important;
+        display: grid !important;
+        width: 100vw;
+        max-width: 100vw;
+        box-sizing: border-box;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        padding-bottom: calc(.35rem + env(safe-area-inset-bottom));
+    }
+    .mobile-bottom-bar > * { min-width: 0; }
+}
