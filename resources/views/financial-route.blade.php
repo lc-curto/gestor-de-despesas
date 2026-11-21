@@ -346,7 +346,6 @@
  document.querySelectorAll('[data-route-mode]').forEach(b=>b.addEventListener('click',()=>{mode=Number(b.dataset.routeMode);setPeriod()}));
  if(window.matchMedia('(max-width: 767.98px)').matches){const [year,monthNumber]=month.split('-').map(Number);document.getElementById('routePeriodLabel').textContent=new Intl.DateTimeFormat('pt-PT',{month:'long',year:'numeric'}).format(new Date(year,monthNumber-1,1));}
  if(window.location.hash==='#route-today'){requestAnimationFrame(()=>document.querySelector('[data-date="'+root.dataset.today+'"]')?.scrollIntoView({behavior:'smooth',block:'center'}));window.history.replaceState(null,'',window.location.pathname+window.location.search);}
- document.getElementById('routeNewMovement').addEventListener('click',()=>openForm());
  document.getElementById('routeAddFromDay').addEventListener('click',()=>{dayModal.hide();openForm(activeDate)});
  function openForm(date=activeDate,movement=null,show=true){
    if(movement&&!canEditMovement(movement))return;
