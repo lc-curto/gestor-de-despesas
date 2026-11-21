@@ -320,7 +320,7 @@
  const movementKind=item=>item.type==='adjustment'?'Ajuste de saldo':item.type==='transfer'?'Transferência':item.type==='income'?'Entrada':item.expense_behavior==='fixed'?'Gasto fixo':'Variável';
  const signedAmount=item=>['adjustment','transfer'].includes(item.type)?(item.projection_delta>0?'+':item.projection_delta<0?'−':'')+fmt(Math.abs(item.projection_delta)):(item.type==='income'?'+':'−')+fmt(item.amount);
  const canEditMovement=item=>window.meuBolsoMovementEditRules?.canEdit({
-   type:item?.type,status:item?.status,financialMovementId:item?.financial_movement_id,
+   type:item?.type,status:item?.status,financialMovementId:item?.financial_movement_id??item?.id,
    invoiceId:item?.invoice_id,installmentId:item?.installment_id,debtId:item?.debt_id,
    isInvoicePayment:item?.type==='transfer'
  })===true;
