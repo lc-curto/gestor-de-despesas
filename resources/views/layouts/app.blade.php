@@ -153,9 +153,44 @@
                 <button type="button" class="mobile-more-utility" id="mobileThemeToggle">
                     <i data-lucide="moon" aria-hidden="true"></i><span>Tema</span><i data-lucide="chevron-right" aria-hidden="true"></i>
                 </button>
+                <button type="button" class="mobile-more-utility d-none" id="installAppMoreButton">
+                    <i data-lucide="download" aria-hidden="true"></i><span>Instalar aplicação</span><i data-lucide="chevron-right" aria-hidden="true"></i>
+                </button>
                 <form method="POST" action="{{ route('logout') }}">@csrf
                     <button type="submit" class="mobile-more-logout"><i data-lucide="log-out" aria-hidden="true"></i> Sair</button>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="installAppGuideModal" tabindex="-1" aria-labelledby="installAppGuideTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow rounded-4">
+                <div class="modal-header border-0 pb-1">
+                    <h2 class="modal-title h5 fw-bold" id="installAppGuideTitle">Instalar Meu Bolso</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body pt-2">
+                    <p class="small text-secondary mb-3">No iPhone, a instalação é feita pelo menu de partilha do navegador:</p>
+                    <ol class="list-unstyled d-grid gap-3 mb-0">
+                        <li class="d-flex align-items-start gap-3">
+                            <span class="install-guide-step">1</span>
+                            <span><strong>Toque em Partilhar</strong><br><small class="text-secondary">Abra o menu de partilha do Safari ou do navegador.</small></span>
+                        </li>
+                        <li class="d-flex align-items-start gap-3">
+                            <span class="install-guide-step">2</span>
+                            <span><strong>Adicionar ao ecrã principal</strong><br><small class="text-secondary">Escolha esta opção na lista de ações.</small></span>
+                        </li>
+                        <li class="d-flex align-items-start gap-3">
+                            <span class="install-guide-step">3</span>
+                            <span><strong>Confirme em Adicionar</strong><br><small class="text-secondary">O Meu Bolso ficará disponível no ecrã principal.</small></span>
+                        </li>
+                    </ol>
+                    <p class="small text-secondary mt-3 mb-0">Se a opção não aparecer, confirme que está a abrir o Meu Bolso num navegador compatível.</p>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-primary w-100" data-bs-dismiss="modal">Entendi</button>
+                </div>
             </div>
         </div>
     </div>
@@ -178,7 +213,7 @@
 
     <script src="{{ asset('js/bootstrap.bundle.min.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js" async data-lucide-library></script>
-    <script src="{{ asset('js/app.js') }}?v=theme-fix-1" defer></script>
+    <script src="{{ asset('js/app.js') }}?v=pwa-install-2" defer></script>
     @stack('scripts')
 </body>
 </html>
