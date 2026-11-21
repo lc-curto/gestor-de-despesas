@@ -422,9 +422,9 @@
    const reverseButton=document.getElementById('routeMovementDetailsReverse');
    reverseButton.hidden=!(item.is_settlement_parent&&['income','expense'].includes(item.type)&&['partial','partially_settled','settled'].includes(item.status)&&!item.invoice_id&&!item.installment_id&&!item.debt_id&&!item.settles_movement_id);
    document.getElementById('routeEditHelp').textContent=item.type==='adjustment'
-     ?'Ajustes não editáveis. Elimina o movimento.'
+     ?'Ajustes não editáveis.'
      :item.type==='transfer'
-       ?'Transferências não editáveis. Elimina e recria.'
+       ?'Transferências não editáveis.'
        :!canEditMovement(item)
          ?(item.invoice_id?'Movimento associado a fatura. Gere em Cartões.':item.installment_id||item.debt_id?'Movimento associado a parcelamento. Gere em Parcelamentos.':item.status==='settled'?'Este movimento não admite edição direta.':'Previsão gerada automaticamente. Gere em Faturas.')
          :'';
