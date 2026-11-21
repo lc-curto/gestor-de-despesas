@@ -427,6 +427,7 @@
          :'';
    const deleteButton=document.getElementById('routeMovementDetailsDelete');
    deleteButton.textContent=item.recurrence_id?'Eliminar ocorrência':'Eliminar';
+   deleteButton.hidden=item.status!=='pending';
    detailModal.show();
  }
  const editElement=document.getElementById('movementEditModal');
