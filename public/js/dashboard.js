@@ -1287,20 +1287,23 @@
     // Bootstrap ignora hide() enquanto o modal ainda está em transição de abertura.
     // Espera por shown.bs.modal nesse caso; só depois regista hidden e inicia o fecho.
     function hideModalThen(element, instance, callback) {
+        const transition = window.meuBolsoMovementEditRules?.hideThen;
+        if (transition) {
+            transition(element, instance, callback);
+            return;
+        }
         if (!element || !instance) return;
-        const hideWhenReady = () => {
-            element.addEventListener('hidden.bs.modal', callback, { once: true });
-            instance.hide();
-        };
         if (instance._isTransitioning) {
-            element.addEventListener('shown.bs.modal', hideWhenReady, { once: true });
+            const eventName = element.classList.contains('show') ? 'shown.bs.modal' : 'hidden.bs.modal';
+            element.addEventListener(eventName, () => hideModalThen(element, instance, callback), { once: true });
             return;
         }
-        if (element.classList.contains('show')) {
-            hideWhenReady();
+        if (!element.classList.contains('show')) {
+            callback();
             return;
         }
-        callback();
+        element.addEventListener('hidden.bs.modal', callback, { once: true });
+        instance.hide();
     }
 
     function runMovementDetailsAction(action) {
