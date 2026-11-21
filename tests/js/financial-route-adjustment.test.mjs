@@ -5,7 +5,7 @@ import { JSDOM } from 'jsdom';
 
 const blade = readFileSync(new URL('../../resources/views/financial-route.blade.php', import.meta.url), 'utf8');
 const editRules = readFileSync(new URL('../../resources/views/partials/movement-edit-modal.blade.php', import.meta.url), 'utf8')
-    .match(/<script>([\\s\\S]*?)<\\/script>/)?.[1];
+    .match(/<script>([\s\S]*?)<\/script>/)?.[1];
 const script = blade.match(/@push\('scripts'\)\s*<script>([\s\S]*?)<\/script>/)?.[1]
     .replace('{{ $mode }}', '1')
     .replace('{{ Illuminate\\Support\\Js::from($month) }}', '"2026-12"');
