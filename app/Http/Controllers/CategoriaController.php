@@ -70,6 +70,7 @@ class CategoriaController extends Controller
     public function destroy(Request $request, string $id)
     {
         $category = $request->user()->categorias()->whereKey($id)->firstOrFail();
+        abort_if($category->is_system, 403);
         app(\App\Services\Financial\FinancialDeletionService::class)
             ->deleteCategory($request->user(), $category);
 
