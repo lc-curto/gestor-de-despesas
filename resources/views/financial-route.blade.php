@@ -417,7 +417,7 @@
    document.getElementById('routeMovementDetailsDescription').textContent=item.description;
    document.getElementById('routeMovementDetailsNotes').textContent=item.notes||'—';
    document.getElementById('routeDetailError').textContent='';
-   document.getElementById('routeMovementDetailsEdit').disabled=!canEditMovement(item);
+   document.getElementById('routeMovementDetailsEdit').hidden=!canEditMovement(item);
    document.getElementById('routeEditHelp').textContent=item.type==='adjustment'
      ?'Ajustes não editáveis. Elimina o movimento.'
      :item.type==='transfer'
