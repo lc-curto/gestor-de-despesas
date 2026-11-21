@@ -877,8 +877,8 @@ class FinancialMovementService
             return $updated;
         }
         if ($snapshot->status === 'settled' && in_array($snapshot->type, ['income', 'expense'], true)
-            && $snapshot->legacy_type && $snapshot->legacy_id) {
-            return $this->updateSettledLegacyMovement($user, $snapshot, $data);
+            && ! $snapshot->invoice_id && ! $snapshot->debt_id && ! $snapshot->installment_id) {
+            return $this->updateSettledMovement($user, $snapshot, $data);
         }
 
         throw ValidationException::withMessages([
@@ -954,13 +954,13 @@ class FinancialMovementService
     }
 
     /** Corrige um movimento liquidado importado e mantém o registo legado sincronizado. */
-    public function updateSettledLegacyMovement(User $user, Movimento $movement, array $data): Movimento
+    public function updateSettledMovement(User $user, Movimento $movement, array $data): Movimento
     {
         return DB::transaction(function () use ($user, $movement, $data): Movimento {
             $locked = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
             if ($locked->status !== 'settled' || ! in_array($locked->type, ['income', 'expense'], true)
-                || ! $locked->legacy_type || ! $locked->legacy_id || $locked->settles_movement_id
-                || $locked->is_settlement_parent || $locked->invoice_id || $locked->debt_id || $locked->installment_id) {
+                || $locked->settles_movement_id || $locked->is_settlement_parent
+                || $locked->invoice_id || $locked->debt_id || $locked->installment_id) {
                 throw ValidationException::withMessages(['movement' => 'Este movimento não admite edição direta.']);
             }
 
@@ -991,7 +991,9 @@ class FinancialMovementService
             ]);
             $this->audit($user, $locked, 'settled_legacy_movement_updated', $before, $locked->getAttributes(),
                 'Movimento liquidado corrigido e registo legado sincronizado.');
-            $this->syncLegacyRecordFromMovement($user, $locked);
+            if ($locked->legacy_type && $locked->legacy_id) {
+                $this->syncLegacyRecordFromMovement($user, $locked);
+            }
 
             return $locked->refresh();
         });
