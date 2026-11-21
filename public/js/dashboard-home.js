@@ -57,7 +57,7 @@
         if (periodInput) periodInput.value = draftMonth;
         if (monthLabel) {
             const [year, month] = draftMonth.split('-').map(Number);
-            const formatted = new Intl.DateTimeFormat('pt-PT', { month: 'long', year: 'numeric' })
+            const formatted = new Intl.DateTimeFormat('pt-PT', { month: document.querySelector('.movements-page') ? 'short' : 'long', year: 'numeric' })
                 .format(new Date(year, month - 1, 1));
             monthLabel.textContent = formatted.charAt(0).toLocaleUpperCase('pt-PT') + formatted.slice(1);
         }
