@@ -214,7 +214,7 @@ test('movimentos liquidados não permitem edição e apenas obrigações com pag
     h.openItem('Entrada liquidada');
     assert.equal(h.el('routeMovementDetailsEdit').hidden, true);
     assert.match(h.el('routeEditHelp').textContent, /não admite edição direta/);
-    assert.equal(h.el('routeMovementDetailsReverse').hidden, false);
+    assert.equal(h.el('routeMovementDetailsReverse').hidden, true, 'liquidação sem obrigação original não expõe reversão');
     assert.equal(h.el('routeMovementDetailsDelete').hidden, true);
 
     h.openItem('Fatura prevista');
