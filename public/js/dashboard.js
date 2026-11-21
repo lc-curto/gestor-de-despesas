@@ -1782,7 +1782,7 @@
         returnToDetailsAfterCancel = false;
         movementDetailsModal?.show();
     };
-    [editorModalElement, settleModalElement, deleteModalElement].forEach((modalElement) => {
+    [editModalElement, editorModalElement, settleModalElement, deleteModalElement].forEach((modalElement) => {
         modalElement?.addEventListener('hidden.bs.modal', restoreMovementDetails);
     });
     editorModalElement?.addEventListener('shown.bs.modal', () => {
