@@ -12,7 +12,6 @@
     <x-slot:subtitle>Visão geral financeira</x-slot:subtitle>
     <x-slot:actions>
         <form id="dashboardMonthForm" class="home-month-selector movements-month-selector" method="GET" action="{{ route('dashboard.movimentos') }}">
-            <span class="small text-secondary">Mês de referência:</span>
             <input type="hidden" id="dashboardMonth" name="mes" value="{{ $mes }}">
             <input type="hidden" id="periodMonth" value="{{ $mes }}">
             <input type="hidden" name="tipo" value="{{ $filtroTipo }}">
@@ -20,7 +19,7 @@
             <button type="button" class="home-month-trigger" id="openDashboardMonthPicker"
                 data-bs-toggle="modal" data-bs-target="#dashboardMonthPicker"
                 aria-haspopup="dialog" aria-controls="dashboardMonthPicker">
-                <span id="dashboardMonthLabel">{{ ucfirst(\Illuminate\Support\Carbon::createFromFormat('Y-m', $mes)->locale('pt_PT')->translatedFormat('F Y')) }}</span>
+                <span id="dashboardMonthLabel">{{ ucfirst(\Illuminate\Support\Carbon::createFromFormat('Y-m', $mes)->locale('pt_PT')->translatedFormat('M Y')) }}</span>
                 <i data-lucide="chevron-down" aria-hidden="true"></i>
             </button>
             <noscript><input type="month" name="mes" value="{{ $mes }}" class="form-control"><button type="submit" class="btn btn-sm btn-outline-secondary">Aplicar</button></noscript>
@@ -142,7 +141,7 @@
                     @forelse ($movimentosVisiveis->groupBy(fn ($item) => \Illuminate\Support\Carbon::parse($item->data_movimento)->toDateString()) as $dia => $movimentosDoDia)
                         @php $dataGrupo = \Illuminate\Support\Carbon::parse($dia)->locale('pt_PT'); @endphp
                         <div class="movement-day-heading d-flex justify-content-between align-items-center">
-                            <span class="fw-semibold">{{ $dataGrupo->isToday() ? 'Hoje' : $dataGrupo->translatedFormat('d F') }}</span>
+                            <span class="fw-semibold">{{ $dataGrupo->format('d') }} {{ ucfirst($dataGrupo->translatedFormat('M')) }}@if ($dataGrupo->isToday()) · Hoje @elseif ($dataGrupo->isYesterday()) · Ontem @endif</span>
                             <span class="small text-secondary">{{ $dataGrupo->translatedFormat('l') }}</span>
                         </div>
                         @foreach ($movimentosDoDia as $movimento)
@@ -481,7 +480,7 @@
 .movements-page .movements-period-summary-values { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.45rem; }
 .movements-page .movements-period-metric { display:grid; gap:.2rem; min-width:0; }
 .movements-page .movements-period-metric > span { color:var(--bs-secondary-color); font-size:.75rem; }
-.movements-page .movements-period-metric > strong { overflow-wrap:anywhere; font-size:1rem; font-variant-numeric:tabular-nums; letter-spacing:-.025em; }
+.movements-page .movements-period-metric > strong { display:block; max-width:100%; white-space:nowrap; overflow-wrap:normal; font-size:clamp(.56rem, 2.8vw, 1rem); font-variant-numeric:tabular-nums; letter-spacing:-.045em; line-height:1.2; }
 .movements-page .movements-period-result > strong { color:var(--bs-success-text-emphasis); }
 .movements-page .movements-page-header { margin-bottom:1rem; }
 .movements-page .movements-period-picker { gap:.25rem; }
@@ -528,8 +527,13 @@
     .movements-page .movements-period-summary { padding:.65rem .55rem; margin-bottom:.7rem; }
     .movements-page .movements-period-summary-values { gap:.25rem; }
     .movements-page .movements-period-metric > span { font-size:.68rem; }
-    .movements-page .movements-period-metric > strong { font-size:clamp(.72rem,3.2vw,.88rem); letter-spacing:-.035em; }
-    .movements-page .movements-page-header { align-items:center; margin-bottom:.85rem; }
+    .movements-page .movements-period-metric > strong { font-size:clamp(.56rem,2.8vw,.88rem); letter-spacing:-.045em; }
+    .movements-page .movements-page-header { align-items:center; gap:.5rem; margin-bottom:.85rem; }
+    .movements-page .movements-page-header > div:first-child { min-width:0; }
+    .movements-page .movements-page-header h1 { white-space:nowrap; }
+    .movements-page .movements-page-header > div:last-child { flex:0 0 auto; }
+    .movements-page .movements-month-selector { display:flex; justify-content:flex-end; min-width:0; }
+    .movements-page .home-month-trigger { max-width:100%; padding:.4rem .55rem; font-size:.78rem; white-space:nowrap; }
     .movements-page .movements-page-header h1 { font-size:1.35rem; }
     .movements-page .movements-page-header > div:first-child .small { font-size:.78rem; }
     .movements-page .movements-period-picker .form-control { width:7.7rem; font-size:.72rem; }
@@ -592,6 +596,30 @@ window.meuBolsoDashboard = {
 @if ($errors->any())
 <script>document.addEventListener('DOMContentLoaded', () => bootstrap.Modal.getOrCreateInstance(document.getElementById('movementEntryModal')).show());</script>
 @endif
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const values = document.querySelectorAll('.movements-period-metric > strong');
+    const fitValues = () => values.forEach(value => {
+        const metric = value.parentElement;
+        if (!metric) return;
+        let size = 16;
+        value.style.fontSize = size + 'px';
+        const available = metric.clientWidth;
+        while (value.scrollWidth > available && size > 9) {
+            size -= 0.5;
+            value.style.fontSize = size + 'px';
+        }
+    });
+    fitValues();
+    if ('ResizeObserver' in window) {
+        const observer = new ResizeObserver(fitValues);
+        values.forEach(value => observer.observe(value.parentElement));
+    } else {
+        window.addEventListener('resize', fitValues);
+    }
+});
+</script>
 <script src="{{ asset('js/dashboard.js') }}?v={{ filemtime(public_path('js/dashboard.js')) }}" defer></script>
 <script src="{{ asset('js/dashboard-home.js') }}?v={{ filemtime(public_path('js/dashboard-home.js')) }}" defer></script>
 @endpush
