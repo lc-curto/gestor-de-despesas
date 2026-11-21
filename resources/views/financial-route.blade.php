@@ -445,11 +445,73 @@
    deleteButton.textContent=item.recurrence_id?'Eliminar ocorrência':'Eliminar';
    detailModal.show();
  }
+ const editElement=document.getElementById('movementEditModal');
+ if(editElement&&editElement.parentElement!==document.body)document.body.appendChild(editElement);
+ const editModal=bootstrap.Modal.getOrCreateInstance(editElement);
+ const editForm=document.getElementById('movementEditForm');
+ let editingRouteMovement=null;
+
+ function openRouteMovementEdit(item){
+   if(!item||!canEditMovement(item)||!editForm)return;
+   editingRouteMovement=item;
+   const isExpense=item.type==='expense';
+   document.getElementById('movementEditTitle').textContent=isExpense?'Editar despesa':'Editar receita';
+   document.getElementById('movementEditDescription').value=item.description||'';
+   document.getElementById('movementEditAmount').value=String(item.amount??'').replace('.',',');
+   document.getElementById('movementEditDate').value=item.date||'';
+   document.getElementById('movementEditNotes').value=item.notes||'';
+   document.getElementById('movementEditExpenseBehavior').value=item.expense_behavior||'variable';
+   const category=document.getElementById('movementEditCategory');
+   const sourceCategory=document.getElementById('routeCategory');
+   category.replaceChildren(new Option('Seleciona uma categoria',''));
+   [...sourceCategory.options].filter(option=>option.value&&option.dataset.type===(isExpense?'despesa':'receita'))
+     .forEach(option=>category.add(new Option(option.textContent,option.value)));
+   category.value=item.category_id||'';
+   document.getElementById('movementEditError').classList.add('d-none');
+   document.getElementById('movementEditError').textContent='';
+ }
+
  document.getElementById('routeMovementDetailsEdit').addEventListener('click',()=>{
    if(!activeMovement||!canEditMovement(activeMovement))return;
+   const item=activeMovement;
+   openRouteMovementEdit(item);
    returnToRouteDetails=true;routeDetailsNext='edit';
-   openForm(activeMovement.date,activeMovement,false);
-   hideModalThen(detailElement,detailModal,()=>movementModal.show());
+   hideModalThen(detailElement,detailModal,()=>editModal.show());
+ });
+
+ editForm?.addEventListener('submit',async event=>{
+   event.preventDefault();
+   if(!editingRouteMovement||editForm.dataset.submitting==='1'||!editForm.reportValidity())return;
+   const error=document.getElementById('movementEditError');
+   const submit=document.getElementById('movementEditSubmit');
+   const amountText=String(document.getElementById('movementEditAmount').value||'').trim().replace(/[\\u00a0\\s]/g,'');
+   let amount='';
+   try{
+     if(!/^\\d+(?:,\\d{1,2}|\\.\\d{1,2})?$/.test(amountText)&&!/^\\d{1,3}(?:\\.\\d{3})+,\\d{1,2}$/.test(amountText))throw new Error('Usa o formato 90,50 ou 1.000,00.');
+     if(amountText.includes(',')){const parts=amountText.split(',');amount=parts[0].replace(/\\./g,'')+'.'+parts[1].padEnd(2,'0');}
+     else if(amountText.includes('.')){const parts=amountText.split('.');amount=parts[0]+'.'+parts[1].padEnd(2,'0');}
+     else amount=amountText+'.00';
+     if(!(Number(amount)>0))throw new Error('O valor deve ser maior que zero.');
+   }catch(validationError){error.textContent=validationError.message;error.classList.remove('d-none');return}
+   editForm.dataset.submitting='1';submit.disabled=true;submit.textContent='A guardar…';error.classList.add('d-none');
+   const isExpense=editingRouteMovement.type==='expense';
+   const payload={
+     description:document.getElementById('movementEditDescription').value.trim(),
+     notes:document.getElementById('movementEditNotes').value.trim()||null,
+     amount,
+     movement_date:document.getElementById('movementEditDate').value,
+     category_id:document.getElementById('movementEditCategory').value||null,
+     ...(isExpense?{expense_behavior:document.getElementById('movementEditExpenseBehavior').value}:{})
+   };
+   try{
+     const response=await fetch(urls.update+'/'+encodeURIComponent(editingRouteMovement.id),{
+       method:'PUT',headers:{'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':csrf},body:JSON.stringify(payload)
+     });
+     const result=await response.json().catch(()=>({}));
+     if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível atualizar o movimento.');
+     returnToRouteDetails=false;routeDetailsNext='';editingRouteMovement=null;editModal.hide();window.location.reload();
+   }catch(saveError){error.textContent=saveError.message||'Não foi possível atualizar o movimento.';error.classList.remove('d-none')}
+   finally{editForm.dataset.submitting='0';submit.disabled=false;submit.textContent='Guardar alterações'}
  });
  document.getElementById('routeMovementDetailsDelete').addEventListener('click',()=>{
    const item=activeMovement;const recurring=!!item.recurrence_id;
@@ -462,6 +524,7 @@
  });
  detailElement.addEventListener('hidden.bs.modal',()=>{if(!returnToRouteDetails)return;if(routeDetailsNext==='delete')confirmModal.show()});
  movementElement.addEventListener('hidden.bs.modal',()=>{if(returnToRouteDetails){returnToRouteDetails=false;routeDetailsNext='';detailModal.show()}});
+ editElement.addEventListener('hidden.bs.modal',()=>{if(!returnToRouteDetails||routeDetailsNext!=='edit')return;returnToRouteDetails=false;routeDetailsNext='';editingRouteMovement=null;detailModal.show()});
  confirmElement.addEventListener('hidden.bs.modal',()=>{if(returnToRouteDetails){returnToRouteDetails=false;routeDetailsNext='';detailModal.show()}});
  document.getElementById('routeConfirmAction').addEventListener('click',async()=>{try{if(confirmCallback){returnToRouteDetails=false;routeDetailsNext='';await confirmCallback()}}catch(e){returnToRouteDetails=true;routeDetailsNext='delete';document.getElementById('routeConfirmText').textContent=e.message;document.getElementById('routeConfirmHint').hidden=true} });
  form.querySelectorAll('[name="route_type"]').forEach(radio=>radio.addEventListener('change',()=>{const type=radio.value==='income'?'receita':'despesa';form.querySelectorAll('#routeCategory option[data-type]').forEach(option=>{option.hidden=option.dataset.type!==type});if(document.getElementById('routeCategory').selectedOptions[0]?.hidden)document.getElementById('routeCategory').value=''}));
