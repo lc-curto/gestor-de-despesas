@@ -22,7 +22,7 @@
 (() => {
     const form = document.getElementById('dashboardMovementForm');
     const list = document.getElementById('expensesList');
-    if (!form || !list) return;
+    if (!list) return;
 
     const cfg = window.meuBolsoDashboard || {};
     const expenseButton = document.getElementById('expenseTypeButton');
@@ -721,6 +721,9 @@
 
     function setMovementType(type) {
         movementType = type;
+        // A página Movimentos reutiliza as ações da lista, mas não inclui o formulário de criação do Dashboard.
+        // Nesse contexto, não inicializamos os controlos exclusivos de criação/edição rápida.
+        if (!form) return;
         const income = type === 'receita';
         const isEditing = editing;
 
@@ -1700,7 +1703,7 @@
         }
         resetEditor(true);
     });
-    form.querySelectorAll('[name="paid_now"]').forEach((input) => input.addEventListener('change', refreshPaymentFields));
+    form?.querySelectorAll('[name="paid_now"]').forEach((input) => input.addEventListener('change', refreshPaymentFields));
     account?.addEventListener('change', refreshPaymentFields);
     ['dashboardDueDateEnabled', 'dashboardRecurrenceEnabled', 'dashboardInstallmentsEnabled'].forEach((id) => {
         document.getElementById(id)?.addEventListener('change', refreshPaymentFields);
@@ -1709,7 +1712,7 @@
         document.getElementById(id)?.addEventListener('input', refreshPaymentFields);
         document.getElementById(id)?.addEventListener('change', refreshPaymentFields);
     });
-    form.addEventListener('submit', submitMovement);
+    form?.addEventListener('submit', submitMovement);
     editForm?.addEventListener('submit', submitEditMovement);
     settleForm?.addEventListener('submit', submitSettleMovement);
     document.getElementById('settleMovementAmount')?.addEventListener('input', (event) => event.target.setCustomValidity(''));
