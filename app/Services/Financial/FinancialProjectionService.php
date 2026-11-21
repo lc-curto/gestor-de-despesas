@@ -65,9 +65,7 @@ class FinancialProjectionService
             ->where('is_historical', false)
             ->whereIn('type', ['expense', 'income'])
             ->where('movement_date', '<', $rangeStart->toDateString())
-            ->with(['settlements' => fn ($query) => $query
-                ->where('status', 'settled')
-                ->getQuery()])
+            ->with(['settlements' => fn ($query) => $query->where('status', 'settled')])
             ->get();
 
         foreach ($priorPartiallySettled as $original) {
@@ -95,9 +93,11 @@ class FinancialProjectionService
             ->where('due_date', '<', $rangeStart->toDateString())
             ->whereHas('divida', fn ($query) => $query
                 ->whereNull('archived_at')
-                ->whereNotIn('status', ['cancelled', 'paid'])
-                ->whereNotIn('payment_method', ['credit', 'card']))
-            ->get();
+                ->whereNotIn('status', ['cancelled', 'paid']))
+            ->get()
+            ->filter(fn ($installment) => $installment->divida
+                && ! in_array($installment->divida->payment_method, ['credit', 'card'], true))
+            ->values();
 
         foreach ($priorInstallments as $installment) {
             $remaining = round((float) $installment->amount - (float) $installment->paid_amount, 2);
