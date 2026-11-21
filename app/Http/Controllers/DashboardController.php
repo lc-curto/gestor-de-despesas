@@ -193,6 +193,8 @@ class DashboardController extends Controller
                 'recurrence_frequency' => $item->recurrence_frequency,
                 'recurrence_interval' => $item->recurrence_interval,
                 'recurrence_ends_at' => $item->recurrence_ends_at,
+                'installment_id' => $item->installment_id ?? null,
+                'debt_id' => $item->debt_id ?? null,
             ];
         })->values();
 

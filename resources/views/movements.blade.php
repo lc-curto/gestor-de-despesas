@@ -3,16 +3,14 @@
 @section('title', 'Movimentos')
 
 @section('content')
+<div class="app-content movements-page">
 @php
     $simbolos = ['EUR' => '€', 'USD' => '$', 'GBP' => '£', 'BRL' => 'R$'];
 @endphp
 
-<header class="dashboard-intro movements-intro">
-    <div class="dashboard-intro-copy">
-        <h1 class="h2 fw-bold">Movimentos</h1>
-        
-    </div>
-</header>
+<x-financial.page-header title="Movimentos">
+    <x-slot:subtitle>Consulta e acompanha as tuas receitas e despesas.</x-slot:subtitle>
+</x-financial.page-header>
 
 <div id="movementSaveFeedback" class="alert d-none" role="status" aria-live="polite">
     <span id="movementSaveFeedbackMessage"></span>
@@ -34,14 +32,6 @@
             <span>Resultado</span>
             <strong id="balanceAmount">{{ number_format($totalReceitas - $totalDespesas, 2, ',', '.') }} {{ $moeda }}</strong>
         </div>
-    </div>
-</section>
-
-<section class="dashboard-entry-bar movements-entry-bar" aria-label="Novo movimento">
-    <span class="movements-entry-label">Adicionar</span>
-    <div class="btn-group" role="group" aria-label="Tipo de registo">
-        <button type="button" class="btn btn-outline-danger btn-sm" id="quickExpenseButton"><i data-lucide="arrow-down-right" aria-hidden="true"></i> Despesa</button>
-        <button type="button" class="btn btn-outline-success btn-sm" id="quickIncomeButton"><i data-lucide="arrow-up-right" aria-hidden="true"></i> Receita</button>
     </div>
 </section>
 
@@ -124,90 +114,103 @@
                         ? $totalDespesasFiltradas
                         : ($filtroTipo === 'receita' ? $totalReceitasFiltradas : $totalMovimentos);
                 @endphp
-                <div id="expensesList" class="expense-list history-list px-3 px-sm-4" aria-live="polite">
-                    @forelse ($movimentosVisiveis as $movimento)
-                        @php
-                            $isExpense = $movimento->tipo === 'despesa';
-                            $dataMovimento = \Illuminate\Support\Carbon::parse($movimento->data_movimento);
-                            $categoriaLabel = $categorias[$movimento->category] ?? $movimento->category;
-                        @endphp
-                        <article class="expense-item d-flex flex-column align-items-stretch gap-1 py-3 border-bottom"
-                            data-movement-id="{{ $movimento->id }}" data-movement-type="{{ $movimento->tipo }}"
-                            data-edit-url="{{ route($isExpense ? 'despesas.update' : 'receitas.update', $movimento->id) }}"
-                            data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}"
-                            data-amount="{{ $movimento->amount }}" data-remaining-amount="{{ $movimento->remaining_amount ?? $movimento->amount }}" data-currency="{{ $movimento->currency }}"
-                            data-category-id="{{ $movimento->category }}" data-account-id="{{ $movimento->account_id }}"
-                            data-movement-status="{{ $movimento->movement_status }}" data-is-settlement-event="{{ (bool) ($movimento->is_settlement_event ?? false) ? 1 : 0 }}" data-expense-behavior="{{ $movimento->expense_behavior ?? 'variable' }}" data-recurrence-id="{{ $movimento->recurrence_id }}" data-recurrence-frequency="{{ $movimento->recurrence_frequency }}" data-financial-movement-id="{{ $movimento->financial_movement_id }}">
-                            <div class="d-flex justify-content-between align-items-center gap-3 w-100">
-                            <div class="d-flex align-items-center gap-3 min-w-0">
-                                <div class="expense-icon flex-shrink-0" style="--category-color: {{ $movimento->category_color ?? '#635BFF' }}" aria-hidden="true">
-                                    <i data-lucide="{{ $movimento->category_icon ?? 'tag' }}"></i>
-                                </div>
-                                <div class="min-w-0">
-                                    <h3 class="h6 fw-semibold mb-1 text-break">{{ $movimento->description }}</h3>
-                                    @if (in_array($movimento->movement_status, ['partial', 'partially_settled'], true))
-                                        @php
-                                            $valorPendente = max(0, (float) ($movimento->remaining_amount ?? $movimento->amount));
-                                            $valorPago = max(0, (float) $movimento->amount - $valorPendente);
-                                            $percentagemPaga = (float) $movimento->amount > 0
-                                                ? min(100, max(0, ($valorPago / (float) $movimento->amount) * 100))
-                                                : 0;
-                                        @endphp
-                                        <div class="small text-secondary d-flex flex-wrap justify-content-between gap-2">
-                                            <span class="text-success">Pago: {{ number_format($valorPago, 2, ',', '.') }} {{ $moeda }}</span>
-                                            <span>Pendente: {{ number_format($valorPendente, 2, ',', '.') }} {{ $moeda }}</span>
+                <div id="expensesList" class="expense-list history-list movements-history-list px-3 px-sm-4" aria-live="polite">
+                    @forelse ($movimentosVisiveis->groupBy(fn ($item) => \Illuminate\Support\Carbon::parse($item->data_movimento)->toDateString()) as $dia => $movimentosDoDia)
+                        @php $dataGrupo = \Illuminate\Support\Carbon::parse($dia)->locale('pt_PT'); @endphp
+                        <div class="movement-day-heading d-flex justify-content-between align-items-center">
+                            <span class="fw-semibold">{{ $dataGrupo->isToday() ? 'Hoje' : $dataGrupo->translatedFormat('d F') }}</span>
+                            <span class="small text-secondary">{{ $dataGrupo->translatedFormat('l') }}</span>
+                        </div>
+                        @foreach ($movimentosDoDia as $movimento)
+                            @php
+                                $isExpense = $movimento->tipo === 'despesa';
+                                $dataMovimento = \Illuminate\Support\Carbon::parse($movimento->data_movimento);
+                                $categoriaLabel = $categorias[$movimento->category] ?? $movimento->category;
+                                $estado = $movimento->movement_status;
+                                $valorTotal = (float) $movimento->amount;
+                                $valorPendente = max(0, (float) ($movimento->remaining_amount ?? $movimento->amount));
+                                $valorPago = max(0, $valorTotal - $valorPendente);
+                                $parcial = in_array($estado, ['partial', 'partially_settled'], true);
+                                $percentagemPaga = $valorTotal > 0 ? min(100, max(0, ($valorPago / $valorTotal) * 100)) : 0;
+                                $emAtraso = $isExpense && $movimento->due_date && $estado !== 'settled'
+                                    && \Illuminate\Support\Carbon::parse($movimento->due_date)->startOfDay()->lt(now()->startOfDay());
+                                $estadoLabel = $emAtraso ? 'Em atraso' : match ($estado) {
+                                    'settled' => $isExpense ? 'Pago' : 'Recebido',
+                                    'partial', 'partially_settled' => $isExpense ? 'Parcial' : 'Recebido parcial',
+                                    'pending' => $isExpense ? 'Pendente' : 'Por receber',
+                                    default => null,
+                                };
+                                $estadoClasse = $emAtraso ? 'is-overdue' : match ($estado) {
+                                    'settled' => 'is-paid',
+                                    'partial', 'partially_settled' => 'is-partial',
+                                    'pending' => 'is-pending',
+                                    default => '',
+                                };
+                                $frequencias = ['weekly' => 'Semanal', 'monthly' => 'Mensal', 'yearly' => 'Anual'];
+                                $frequenciasPlural = ['weekly' => 'semanas', 'monthly' => 'meses', 'yearly' => 'anos'];
+                            @endphp
+                            <article class="expense-item movement-entry py-3 border-bottom"
+                                data-movement-id="{{ $movimento->id }}" data-movement-type="{{ $movimento->tipo }}"
+                                data-edit-url="{{ route($isExpense ? 'despesas.update' : 'receitas.update', $movimento->id) }}"
+                                data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}"
+                                data-amount="{{ $movimento->amount }}" data-remaining-amount="{{ $movimento->remaining_amount ?? $movimento->amount }}" data-currency="{{ $movimento->currency }}"
+                                data-category-id="{{ $movimento->category }}" data-account-id="{{ $movimento->account_id }}"
+                                data-movement-status="{{ $estado }}" data-is-settlement-event="{{ (bool) ($movimento->is_settlement_event ?? false) ? 1 : 0 }}"
+                                data-expense-behavior="{{ $movimento->expense_behavior ?? 'variable' }}" data-recurrence-id="{{ $movimento->recurrence_id }}"
+                                data-recurrence-frequency="{{ $movimento->recurrence_frequency }}" data-financial-movement-id="{{ $movimento->financial_movement_id }}"
+                                data-installment-id="{{ $movimento->installment_id ?? '' }}" data-due-date="{{ $movimento->due_date ?? '' }}">
+                                <div class="movement-entry-main">
+                                    <div class="expense-icon flex-shrink-0 {{ $isExpense ? '' : 'income-icon' }}" style="--category-color: {{ $movimento->category_color ?? '#635BFF' }}" aria-hidden="true">
+                                        <i data-lucide="{{ $movimento->category_icon ?? 'tag' }}"></i>
+                                    </div>
+                                    <div class="movement-entry-copy">
+                                        <h3 class="movement-entry-title">{{ $movimento->description }}</h3>
+                                        <p class="movement-entry-meta">{{ $categoriaLabel }} · {{ $dataMovimento->format('d/m/Y') }}</p>
+                                        @if ($parcial)
+                                            <div class="movement-settlement-summary">
+                                                <span>{{ $isExpense ? 'Pago' : 'Recebido' }}: {{ number_format($valorPago, 2, ',', '.') }} {{ $movimento->currency }}</span>
+                                                <span>{{ $isExpense ? 'Pendente' : 'Por receber' }}: {{ number_format($valorPendente, 2, ',', '.') }} {{ $movimento->currency }}</span>
+                                            </div>
+                                            <div class="movement-progress" style="height: 3px" role="progressbar" aria-label="Percentagem do movimento paga" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ (int) round($percentagemPaga) }}">
+                                                <span style="width: {{ $percentagemPaga }}%"></span>
+                                            </div>
+                                        @endif
+                                        <div class="movement-entry-tags">
+                                            @if ($estadoLabel)
+                                                <span class="movement-status-badge {{ $estadoClasse }}">{{ $estadoLabel }}</span>
+                                            @endif
+                                            @if ($movimento->recurrence_id)
+                                                <span class="movement-meta-tag"><i data-lucide="repeat" aria-hidden="true"></i>{{ ($movimento->recurrence_interval ?? 1) > 1 ? 'A cada ' . $movimento->recurrence_interval . ' ' . ($frequenciasPlural[$movimento->recurrence_frequency] ?? 'períodos') : ($frequencias[$movimento->recurrence_frequency] ?? 'Recorrente') }}</span>
+                                            @endif
+                                            @if ($movimento->installment_id ?? false)
+                                                <span class="movement-meta-tag"><i data-lucide="layers" aria-hidden="true"></i>Prestação</span>
+                                            @endif
                                         </div>
-                                    @endif
-                                    <p class="small text-secondary mb-0">{{ $categoriaLabel }} · {{ $dataMovimento->format('d/m/Y') }}</p>
-                                    <div class="small d-flex flex-wrap align-items-center gap-2 mt-1">
-                                        @if ($movimento->movement_status === 'settled')
-                                            <span class="text-success">Pago</span>
-                                        @elseif (in_array($movimento->movement_status, ['partial', 'partially_settled'], true))
-                                            <span class="text-info-emphasis">Parcial</span>
-                                        @elseif ($movimento->movement_status === 'pending')
-                                            <span class="text-secondary">Pendente</span>
-                                        @endif
-                                        @if ($movimento->recurrence_id)
-                                            <span class="text-body-tertiary d-inline-flex align-items-center gap-1"><i data-lucide="repeat" aria-hidden="true"></i> Recorrente</span>
-                                        @endif
                                     </div>
                                 </div>
-                            </div>
-                            <div class="expense-actions d-flex align-items-center justify-content-end gap-2">
-                                <strong class="{{ $isExpense ? 'text-danger' : 'text-success' }} text-nowrap movement-value"
-                                    data-value="{{ $movimento->amount }}" data-currency="{{ $movimento->currency }}">{{ $isExpense ? '−' : '+' }}{{ number_format((float) $movimento->amount, 2, ',', '.') }}</strong>
-                                <div class="btn-group btn-group-sm" role="group" aria-label="Ações de {{ $movimento->description }}">
-                                    <button type="button" class="btn btn-outline-secondary edit-movement" data-acao="editar" aria-label="Editar {{ $movimento->description }}" title="Editar"><i data-lucide="pencil" aria-hidden="true"></i></button>
-                                    @if ($movimento->movement_status === 'pending' && $movimento->financial_movement_id)
-                                        <button type="button" class="btn btn-outline-success" data-movement-action="settle" title="Efetivar" aria-label="Efetivar {{ $movimento->description }}"><i data-lucide="check-circle" aria-hidden="true"></i></button>
-                                    @endif
-                                    <button type="button" class="btn btn-outline-danger" data-movement-action="delete" aria-label="Excluir {{ $movimento->description }}" title="Excluir"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                                <div class="movement-entry-trailing expense-actions">
+                                    <strong class="movement-entry-amount {{ $isExpense ? 'is-expense' : 'is-income' }}">{{ $isExpense ? '−' : '+' }}{{ number_format($valorTotal, 2, ',', '.') }} {{ $movimento->currency }}</strong>
+                                    <button type="button" class="movement-details-trigger" data-movement-action="details" aria-label="Detalhes de {{ $movimento->description }}" title="Detalhes">
+                                        <i data-lucide="more-horizontal" aria-hidden="true"></i>
+                                    </button>
                                 </div>
-                            </div>
-                            </div>
-                            @if (in_array($movimento->movement_status, ['partial', 'partially_settled'], true))
-                                <div class="w-100 rounded-pill mt-1" role="progressbar" aria-label="Percentagem do movimento paga"
-                                    aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ (int) round($percentagemPaga) }}"
-                                    style="height: 4px; background: var(--bs-tertiary-bg); overflow: hidden;">
-                                    <div class="rounded-pill h-100" style="width: {{ $percentagemPaga }}%; background: var(--bs-success-border-subtle, #86b99a);"></div>
-                                </div>
-                            @endif
-                        </article>
+                            </article>
+                        @endforeach
                     @empty
-                        <div class="empty-state text-center py-4">
-                            <div class="empty-icon mb-3" aria-hidden="true">◎</div>
+                        <div class="empty-state text-center py-5">
+                            <i data-lucide="receipt-text" class="mb-3 text-secondary" aria-hidden="true"></i>
                             @if ($totalVisivel > 0)
                                 <h3 class="h6">Mais movimentos por carregar</h3>
-                                <p class="small text-secondary mb-0">Sem movimentos nesta página.</p>
+                                <p class="small text-secondary mb-0">Não existem movimentos nesta página.</p>
                             @else
                                 <h3 class="h6">Ainda não existem movimentos</h3>
-                                
+                                <p class="small text-secondary mb-0">Os teus lançamentos aparecerão aqui.</p>
                             @endif
                         </div>
                     @endforelse
                     @if ($movimentosVisiveis->count() < $totalVisivel)
                         <div class="d-flex justify-content-center py-3">
-                            <button type="button" id="loadMoreMovements" class="btn btn-outline-primary btn-sm px-4">Mais</button>
+                            <button type="button" id="loadMoreMovements" class="btn btn-outline-secondary btn-sm px-4">Carregar mais</button>
                         </div>
                     @endif
                 </div>
@@ -371,6 +374,7 @@
 </div>
 
 
+</div>
 @endsection
 
 @push('styles')
@@ -441,6 +445,75 @@
 .movement-date-category{display:grid;grid-template-columns:1fr}
 .movement-date-category>[class*="col-"]{width:100%}
 .movement-status-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+@endpush
+
+
+@push('styles')
+<style>
+.movements-page { min-width: 0; }
+.movements-page .movements-period-summary { display:grid; gap:.85rem; margin:0 0 1.35rem; padding:1rem 1.1rem; border:1px solid var(--bs-border-color); border-radius:1rem; background:var(--bs-body-bg); }
+.movements-page .movements-period-summary-heading { color:var(--bs-secondary-color); font-size:.72rem; font-weight:700; letter-spacing:.045em; text-transform:uppercase; }
+.movements-page .movements-period-summary-values { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.8rem; }
+.movements-page .movements-period-metric { display:grid; gap:.25rem; min-width:0; }
+.movements-page .movements-period-metric > span { color:var(--bs-secondary-color); font-size:.75rem; }
+.movements-page .movements-period-metric > strong { overflow-wrap:anywhere; font-size:clamp(.88rem,2vw,1.12rem); font-variant-numeric:tabular-nums; letter-spacing:-.025em; }
+.movements-page .movements-period-result > strong { color:var(--bs-success-text-emphasis); }
+.movements-page .history-card { overflow:hidden; border:1px solid var(--bs-border-color); background:var(--bs-body-bg); }
+.movements-page .history-card-body { min-width:0; }
+.movements-page .dashboard-period-controls { gap:.35rem; }
+.movements-page .dashboard-period-controls .form-control { width:auto; min-width:8.5rem; }
+.movements-page .movements-search-row { display:flex; align-items:center; gap:.6rem; }
+.movements-page .movements-search-row .input-group { min-width:0; }
+.movements-page .movements-search-row .input-group-text,.movements-page .movements-search-row .form-control,.movements-page .movements-filter-trigger { min-height:42px; }
+.movements-page .movements-filter-trigger { display:inline-flex; width:42px; flex:0 0 42px; align-items:center; justify-content:center; padding:.5rem; }
+.movements-page .movements-type-filters { margin:0; }
+.movements-page .movements-type-filters .btn { min-height:36px; padding:.4rem .85rem; border-radius:999px; font-size:.82rem; font-weight:600; }
+.movements-page .movement-day-heading { padding:1rem 0 .35rem; color:var(--bs-body-color); font-size:.78rem; text-transform:capitalize; }
+.movements-page .movement-entry { display:flex; align-items:center; justify-content:space-between; gap:1rem; min-width:0; }
+.movements-page .movement-entry-main { display:flex; flex:1 1 auto; align-items:center; gap:.8rem; min-width:0; }
+.movements-page .movement-entry-copy { flex:1 1 auto; min-width:0; }
+.movements-page .movement-entry-title { margin:0 0 .18rem; font-size:.9rem; font-weight:650; line-height:1.3; overflow-wrap:anywhere; }
+.movements-page .movement-entry-meta { margin:0; color:var(--bs-secondary-color); font-size:.75rem; line-height:1.4; }
+.movements-page .movement-entry-trailing { display:flex; flex:0 0 auto; align-items:center; justify-content:flex-end; gap:.35rem; }
+.movements-page .movement-entry-amount { font-size:.86rem; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.movements-page .movement-entry-amount.is-expense { color:var(--bs-danger-text-emphasis); }
+.movements-page .movement-entry-amount.is-income { color:var(--bs-success-text-emphasis); }
+.movements-page .movement-details-trigger { display:inline-flex; width:32px; height:32px; flex:0 0 32px; align-items:center; justify-content:center; padding:0; border:0; border-radius:.6rem; background:transparent; color:var(--bs-secondary-color); }
+.movements-page .movement-details-trigger:hover { background:var(--bs-tertiary-bg); color:var(--bs-body-color); }
+.movements-page .movement-entry-tags { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem .55rem; margin-top:.42rem; }
+.movements-page .movement-status-badge { display:inline-flex; align-items:center; min-height:21px; padding:.16rem .52rem; border-radius:999px; font-size:.68rem; font-weight:650; line-height:1.2; white-space:nowrap; }
+.movements-page .movement-status-badge.is-paid { background:var(--bs-success-bg-subtle); color:var(--bs-success-text-emphasis); }
+.movements-page .movement-status-badge.is-partial { background:var(--bs-warning-bg-subtle); color:var(--bs-warning-text-emphasis); }
+.movements-page .movement-status-badge.is-pending { background:var(--bs-tertiary-bg); color:var(--bs-secondary-color); }
+.movements-page .movement-status-badge.is-overdue { background:var(--bs-danger-bg-subtle); color:var(--bs-danger-text-emphasis); }
+.movements-page .movement-meta-tag { display:inline-flex; align-items:center; gap:.25rem; color:var(--bs-secondary-color); font-size:.69rem; }
+.movements-page .movement-meta-tag svg { width:.82rem; height:.82rem; }
+.movements-page .movement-settlement-summary { display:flex; flex-wrap:wrap; justify-content:space-between; gap:.15rem .75rem; margin-top:.48rem; color:var(--bs-secondary-color); font-size:.72rem; font-variant-numeric:tabular-nums; }
+.movements-page .movement-settlement-summary span:first-child { color:var(--bs-success-text-emphasis); }
+.movements-page .movement-progress { height:3px; margin-top:.35rem; overflow:hidden; border-radius:999px; background:var(--bs-tertiary-bg); }
+.movements-page .movement-progress > span { display:block; height:100%; border-radius:inherit; background:var(--bs-warning); }
+.movements-page .expense-icon { width:2.5rem; height:2.5rem; }
+.movements-page .empty-state svg { width:2rem; height:2rem; }
+@media (max-width:575.98px) {
+    .movements-page .movements-period-summary { padding:.85rem; gap:.7rem; }
+    .movements-page .movements-period-summary-values { gap:.4rem; }
+    .movements-page .movements-period-metric > span { font-size:.68rem; }
+    .movements-page .movements-period-metric > strong { font-size:clamp(.68rem,3.05vw,.84rem); letter-spacing:-.035em; }
+    .movements-page .movement-entry { gap:.35rem; }
+    .movements-page .movement-entry-main { gap:.6rem; }
+    .movements-page .movement-entry-trailing { flex-direction:column; align-items:flex-end; gap:.1rem; }
+    .movements-page .movement-entry-amount { font-size:.78rem; }
+    .movements-page .movement-details-trigger { width:28px; height:26px; }
+    .movements-page .movement-entry-title { font-size:.84rem; }
+    .movements-page .movement-entry-meta { font-size:.7rem; }
+    .movements-page .movement-settlement-summary { font-size:.68rem; }
+}
+@media (max-width:360px) {
+    .movements-page .movement-entry-main { gap:.45rem; }
+    .movements-page .expense-icon { width:2.15rem; height:2.15rem; }
+    .movements-page .movement-entry-amount { font-size:.72rem; }
 }
 </style>
 @endpush
