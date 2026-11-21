@@ -86,7 +86,7 @@ class FinancialArchivedCommitmentsTest extends TestCase
         $this->get(route('financial.commitments.page', ['status' => 'archived']))
             ->assertOk()
             ->assertSee('Compra QA arquivada')
-            ->assertSee('Arquivados (1)');
+            ->assertSeeInOrder(['Arquivadas', '(1)']);
 
         $this->get(route('financial.commitments.page', ['status' => 'all']))
             ->assertOk()
@@ -109,7 +109,7 @@ class FinancialArchivedCommitmentsTest extends TestCase
             ->assertOk()
             ->assertSee('Compra QA arquivada')
             ->assertSee('Cancelado')
-            ->assertSee('Arquivados (1)');
+            ->assertSeeInOrder(['Arquivadas', '(1)']);
     }
 
     public function test_archived_commitment_can_be_restored_without_changing_installments_or_payments(): void
@@ -150,7 +150,7 @@ class FinancialArchivedCommitmentsTest extends TestCase
         $this->get(route('financial.commitments.page', ['status' => 'archived']))
             ->assertOk()
             ->assertSee('Compra QA arquivada')
-            ->assertSee('Arquivados (1)');
+            ->assertSeeInOrder(['Arquivadas', '(1)']);
 
         $this->postJson(route('financial.commitments.restore', $debt->id))
             ->assertOk()
