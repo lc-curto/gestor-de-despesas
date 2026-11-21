@@ -63,6 +63,7 @@
                                     return [
                                         'id' => $item->id, 'financial_movement_id' => $item->id, 'type' => $item->type, 'status' => $item->status,
                                         'invoice_id' => $item->invoice_id, 'installment_id' => $item->installment_id, 'debt_id' => $item->debt_id,
+                                        'settles_movement_id' => $item->settles_movement_id, 'is_settlement_parent' => (bool) $item->is_settlement_parent,
                                         'description' => $item->description, 'amount' => (float) $item->amount,
                                         'projection_delta' => $delta, 'date' => $item->movement_date->toDateString(),
                                         'expense_behavior' => $item->expense_behavior,
@@ -322,6 +323,8 @@
  const canEditMovement=item=>window.meuBolsoMovementEditRules?.canEdit({
    type:item?.type,status:item?.status,financialMovementId:item?.financial_movement_id??item?.id,
    invoiceId:item?.invoice_id,installmentId:item?.installment_id,debtId:item?.debt_id,
+   isSettlementEvent:Boolean(item?.settles_movement_id || item?.is_settlement_parent),
+   settlesMovementId:item?.settles_movement_id,isSettlementParent:item?.is_settlement_parent,
    isInvoicePayment:item?.type==='transfer'
  })===true;
  const dayData=date=>{const el=document.getElementById('route-day-'+date);return el?JSON.parse(el.textContent):null};
@@ -415,7 +418,13 @@
    document.getElementById('routeMovementDetailsNotes').textContent=item.notes||'—';
    document.getElementById('routeDetailError').textContent='';
    document.getElementById('routeMovementDetailsEdit').disabled=!canEditMovement(item);
-   document.getElementById('routeEditHelp').textContent=item.type==='adjustment'?'Ajustes não editáveis. Elimina o movimento.':item.type==='transfer'?'Transferências não editáveis. Elimina e recria.':item.status==='settled'?'Movimento liquidado. Edição bloqueada.':!canEditMovement(item)?'Previsão gerada automaticamente. Gere em Faturas.':'';
+   document.getElementById('routeEditHelp').textContent=item.type==='adjustment'
+     ?'Ajustes não editáveis. Elimina o movimento.'
+     :item.type==='transfer'
+       ?'Transferências não editáveis. Elimina e recria.'
+       :!canEditMovement(item)
+         ?(item.invoice_id?'Movimento associado a fatura. Gere em Cartões.':item.installment_id||item.debt_id?'Movimento associado a parcelamento. Gere em Parcelamentos.':item.status==='settled'?'Este movimento não admite edição direta.':'Previsão gerada automaticamente. Gere em Faturas.')
+         :'';
    const deleteButton=document.getElementById('routeMovementDetailsDelete');
    deleteButton.textContent=item.recurrence_id?'Eliminar ocorrência':'Eliminar';
    detailModal.show();

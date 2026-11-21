@@ -647,41 +647,9 @@ class FinancialCoreController extends Controller
             'expense_behavior' => ['sometimes', Rule::in(['fixed', 'variable'])],
         ]);
         $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
-        if ($movement->type === 'transfer' && $movement->invoice_id) {
-            return response()->json(['data' => $service->updateInvoicePayment($request->user(), $movement, $data)]);
-        }
-        if (in_array($movement->type, ['transfer', 'adjustment'], true) && $movement->status === 'settled') {
-            return response()->json(['data' => $service->updateOperationalMovement($request->user(), $movement, $data)]);
-        }
-        if ($movement->is_settlement_parent) {
-            return response()->json(['data' => $service->updateSettlementParent($request->user(), $movement, $data, (bool) $movement->recurrence_id)]);
-        }
-        $updated = DB::transaction(function () use ($request, $service, $movement, $data) {
-            $updated = $service->updatePending($request->user(), $movement, $data);
-            if ($updated->recurrence_id && $updated->legacy_type && $updated->legacy_id) {
-                $table = $updated->legacy_type === 'despesa' ? 'despesas' : ($updated->legacy_type === 'receita' ? 'receitas' : null);
-                if ($table) {
-                    $dateColumn = $updated->legacy_type === 'despesa' ? 'expense_date' : 'income_date';
-                    $slug = $updated->category_id
-                        ? DB::table('categorias')->where('user_id', $request->user()->id)->where('id', $updated->category_id)->value('slug')
-                        : null;
-                    $allowed = $updated->type === 'expense'
-                        ? ['casa', 'alimentacao', 'transportes', 'saude', 'lazer', 'compras', 'educacao', 'outros']
-                        : ['salario', 'vendas', 'trabalho_extra', 'investimentos', 'reembolsos', 'outros'];
-                    DB::table($table)->where('user_id', $request->user()->id)->where('id', $updated->legacy_id)->update([
-                        'description' => $updated->description,
-                        'amount' => $updated->amount,
-                        'currency' => $request->user()->currency,
-                        'category_id' => $updated->category_id,
-                        'category' => in_array($slug, $allowed, true) ? $slug : 'outros',
-                        $dateColumn => $updated->movement_date->toDateString(),
-                    ]);
-                }
-            }
 
-            return $updated;
-        });
-
-        return response()->json(['data' => $updated]);
+        return response()->json([
+            'data' => $service->updateMovement($request->user(), $movement, $data),
+        ]);
     }
 }

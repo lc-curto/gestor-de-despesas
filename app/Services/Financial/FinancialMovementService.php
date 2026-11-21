@@ -851,6 +851,154 @@ class FinancialMovementService
         });
     }
 
+    /** Encaminha cada edição para a regra financeira correspondente à natureza do movimento. */
+    public function updateMovement(User $user, Movimento $movement, array $data): Movimento
+    {
+        $snapshot = $user->movimentos()->whereKey($movement->id)->firstOrFail();
+
+        if ($snapshot->type === 'transfer' && $snapshot->invoice_id) {
+            return $this->updateInvoicePayment($user, $snapshot, $data);
+        }
+        if (in_array($snapshot->type, ['transfer', 'adjustment'], true) && $snapshot->status === 'settled') {
+            return $this->updateOperationalMovement($user, $snapshot, $data);
+        }
+        if ($snapshot->settles_movement_id) {
+            return $this->updateSettlementEvent($user, $snapshot, $data);
+        }
+        if ($snapshot->is_settlement_parent) {
+            return $this->updateSettlementParent($user, $snapshot, $data, (bool) $snapshot->recurrence_id);
+        }
+        if ($snapshot->status === 'pending') {
+            $updated = $this->updatePending($user, $snapshot, $data);
+            if ($updated->recurrence_id && $updated->legacy_type && $updated->legacy_id) {
+                $this->syncLegacyRecordFromMovement($user, $updated);
+            }
+
+            return $updated;
+        }
+        if ($snapshot->status === 'settled' && in_array($snapshot->type, ['income', 'expense'], true)
+            && ! $snapshot->invoice_id && ! $snapshot->debt_id && ! $snapshot->installment_id) {
+            return $this->updateSettledMovement($user, $snapshot, $data);
+        }
+
+        throw ValidationException::withMessages([
+            'movement' => 'Este movimento deve ser editado na sua área de origem ou não admite edição direta.',
+        ]);
+    }
+
+    /** Corrige um evento liquidado mantendo-o ligado à obrigação e reconciliando o saldo. */
+    public function updateSettlementEvent(User $user, Movimento $movement, array $data): Movimento
+    {
+        return DB::transaction(function () use ($user, $movement, $data): Movimento {
+            $snapshot = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->firstOrFail();
+            if (! $snapshot->settles_movement_id || $snapshot->status !== 'settled'
+                || $snapshot->reversal_of_id || ! in_array($snapshot->type, ['income', 'expense'], true)
+                || $snapshot->invoice_id || $snapshot->debt_id || $snapshot->installment_id) {
+                throw ValidationException::withMessages(['movement' => 'Este evento deve ser corrigido na sua área de origem.']);
+            }
+
+            $parent = Movimento::query()->where('user_id', $user->id)->whereKey($snapshot->settles_movement_id)
+                ->lockForUpdate()->first();
+            if (! $parent || ! $parent->is_settlement_parent || $parent->invoice_id || $parent->debt_id
+                || $parent->installment_id || $parent->type !== $snapshot->type || $parent->status === 'pending') {
+                throw ValidationException::withMessages(['movement' => 'A obrigação associada já não permite editar este evento diretamente.']);
+            }
+
+            $locked = Movimento::query()->where('user_id', $user->id)->whereKey($snapshot->id)->lockForUpdate()->firstOrFail();
+            if (Movimento::query()->where('user_id', $user->id)->where('reversal_of_id', $locked->id)->exists()) {
+                throw ValidationException::withMessages(['movement' => 'Este evento já tem uma correção associada e não pode ser alterado novamente.']);
+            }
+
+            $oldCents = $this->balances->toCents((string) $locked->amount);
+            $newCents = array_key_exists('amount', $data) ? $this->balances->toCents((string) $data['amount']) : $oldCents;
+            $paidWithoutEvent = $this->netSettledCents($user, $parent) - $oldCents;
+            $capacity = $this->balances->toCents((string) $parent->amount) - $paidWithoutEvent;
+            if ($newCents <= 0 || $newCents > $capacity) {
+                throw ValidationException::withMessages(['amount' => 'O valor excede o montante ainda disponível na obrigação, considerando as restantes liquidações.']);
+            }
+
+            if ($locked->type === 'expense' && ! $locked->is_historical && $locked->source_account_id) {
+                $account = $this->account($user, $locked->source_account_id);
+                if (! $account->allow_negative_balance && in_array($account->type, ['bank', 'cash'], true)) {
+                    $available = $this->balances->toCents($this->balances->balance($account)) + $oldCents;
+                    if ($newCents > $available) {
+                        throw ValidationException::withMessages(['amount' => 'Saldo insuficiente após a correção. Faltam '.number_format(($newCents - $available) / 100, 2, ',', '.').' '.$account->currency.'.']);
+                    }
+                }
+            }
+
+            $before = $locked->getAttributes();
+            $changes = [
+                'description' => $data['description'] ?? $locked->description,
+                'notes' => $data['notes'] ?? $locked->notes,
+                'amount' => number_format($newCents / 100, 2, '.', ''),
+                'movement_date' => $data['movement_date'] ?? $locked->movement_date->toDateString(),
+                'category_id' => array_key_exists('category_id', $data) ? $data['category_id'] : $locked->category_id,
+            ];
+            if ($locked->type === 'expense' && isset($data['expense_behavior'])) {
+                $changes['expense_behavior'] = $data['expense_behavior'];
+            }
+            $locked->update($changes);
+            $this->audit($user, $locked, 'settlement_event_updated', $before, $locked->getAttributes(),
+                'Evento de liquidação corrigido; limite da obrigação e saldo da conta reconciliados.');
+            if ($locked->legacy_type && $locked->legacy_id) {
+                $this->syncLegacyRecordFromMovement($user, $locked);
+            }
+            $this->refreshSettlementParentAfterDeletion($user, $parent->id);
+            if ($parent->legacy_type && $parent->legacy_id) {
+                $this->syncLegacyRecordFromMovement($user, $parent->refresh());
+            }
+
+            return $locked->refresh();
+        });
+    }
+
+    /** Corrige um movimento liquidado importado e mantém o registo legado sincronizado. */
+    public function updateSettledMovement(User $user, Movimento $movement, array $data): Movimento
+    {
+        return DB::transaction(function () use ($user, $movement, $data): Movimento {
+            $locked = Movimento::query()->where('user_id', $user->id)->whereKey($movement->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== 'settled' || ! in_array($locked->type, ['income', 'expense'], true)
+                || $locked->settles_movement_id || $locked->is_settlement_parent
+                || $locked->invoice_id || $locked->debt_id || $locked->installment_id) {
+                throw ValidationException::withMessages(['movement' => 'Este movimento não admite edição direta.']);
+            }
+
+            $oldCents = $this->balances->toCents((string) $locked->amount);
+            $newCents = array_key_exists('amount', $data) ? $this->balances->toCents((string) $data['amount']) : $oldCents;
+            if ($newCents <= 0) {
+                throw ValidationException::withMessages(['amount' => 'O valor deve ser superior a zero.']);
+            }
+
+            if ($locked->type === 'expense' && ! $locked->is_historical && $locked->source_account_id) {
+                $account = $this->account($user, $locked->source_account_id);
+                if (! $account->allow_negative_balance && in_array($account->type, ['bank', 'cash'], true)) {
+                    $available = $this->balances->toCents($this->balances->balance($account)) + $oldCents;
+                    if ($newCents > $available) {
+                        throw ValidationException::withMessages(['amount' => 'Saldo insuficiente após a correção. Faltam '.number_format(($newCents - $available) / 100, 2, ',', '.').' '.$account->currency.'.']);
+                    }
+                }
+            }
+
+            $before = $locked->getAttributes();
+            $locked->update([
+                'description' => $data['description'] ?? $locked->description,
+                'notes' => $data['notes'] ?? $locked->notes,
+                'amount' => number_format($newCents / 100, 2, '.', ''),
+                'movement_date' => $data['movement_date'] ?? $locked->movement_date->toDateString(),
+                'category_id' => array_key_exists('category_id', $data) ? $data['category_id'] : $locked->category_id,
+                'expense_behavior' => $locked->type === 'expense' ? ($data['expense_behavior'] ?? $locked->expense_behavior) : 'variable',
+            ]);
+            $this->audit($user, $locked, 'settled_legacy_movement_updated', $before, $locked->getAttributes(),
+                'Movimento liquidado corrigido e registo legado sincronizado.');
+            if ($locked->legacy_type && $locked->legacy_id) {
+                $this->syncLegacyRecordFromMovement($user, $locked);
+            }
+
+            return $locked->refresh();
+        });
+    }
+
     public function updatePending(User $user, Movimento $movement, array $data): Movimento
     {
         return DB::transaction(function () use ($user, $movement, $data) {

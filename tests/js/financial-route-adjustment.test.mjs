@@ -25,6 +25,7 @@ const items = [
     { ...base, id: 'partial-loan', type: 'expense', status: 'partial', description: 'Empréstimo', amount: 120, projection_delta: -80, expense_behavior: 'fixed', account_id: 'bank', account_name: 'Conta principal', paid_amount: 40, remaining_amount: 80, is_partial_summary: true },
     { ...base, id: 'variable', type: 'expense', status: 'pending', description: 'Variável', amount: 6.3, projection_delta: -6.3, account_id: 'cash', account_name: 'Carteira' },
     { ...base, id: 'income-settled', type: 'income', description: 'Entrada liquidada', amount: 3, projection_delta: 3, account_id: 'bank', account_name: 'Conta principal' },
+    { ...base, id: 'settlement-income', type: 'income', description: 'Liquidação Freelance', amount: 100, projection_delta: 100, account_id: 'bank', account_name: 'Conta principal', is_settlement_parent: true },
     { ...base, id: 'invoice-example', type: 'expense', status: 'pending', description: 'Fatura prevista', amount: 4, projection_delta: -4, expense_behavior: 'fixed', account_id: null, account_name: 'Sem conta associada' },
 ];
 
@@ -110,7 +111,7 @@ test('ajustes apresentam tipo, sinal, conta e detalhes corretos e não entram no
         assert.equal((h.modals.get('movementEditModal')?.shown || 0), 0, 'até um clique sintético não abre edição genérica');
     }
 
-    for (const [filter, expected] of [['income', ['Entrada', 'Entrada liquidada']], ['fixed', ['Fixo', 'Empréstimo', 'Fatura prevista']], ['variable', ['Variável']]]) {
+    for (const [filter, expected] of [['income', ['Entrada', 'Entrada liquidada', 'Liquidação Freelance']], ['fixed', ['Fixo', 'Empréstimo', 'Fatura prevista']], ['variable', ['Variável']]]) {
         h.window.document.querySelector(`[data-day-filter="${filter}"]`).click();
         assert.deepEqual(h.rows().map(row => row.querySelector('span strong').textContent), expected);
     }
@@ -202,11 +203,17 @@ test('edição suportada mantém o tipo e o comportamento da receita ou despesa 
     }
 });
 
-test('edição de liquidado ou previsão virtual é bloqueada e exclusão preserva mensagens de erro', async () => {
+test('movimento liquidado com obrigação reconciliável permite edição e liquidado sem origem continua bloqueado', async () => {
     const h = setup();
+    h.openItem('Liquidação Freelance');
+    assert.equal(h.el('routeMovementDetailsEdit').disabled, false);
+    assert.equal(h.el('routeEditHelp').textContent, '');
+    h.el('routeMovementDetailsEdit').click();
+    assert.equal(h.modals.get('movementEditModal').shown, 1);
+    assert.equal(h.el('movementEditDescription').value, 'Liquidação Freelance');
     h.openItem('Entrada liquidada');
     assert.equal(h.el('routeMovementDetailsEdit').disabled, true);
-    assert.match(h.el('routeEditHelp').textContent, /liquidado/);
+    assert.match(h.el('routeEditHelp').textContent, /não admite edição direta/);
     h.openItem('Fatura prevista');
     assert.equal(h.el('routeMovementDetailsEdit').disabled, true);
     assert.match(h.el('routeEditHelp').textContent, /automaticamente/);
