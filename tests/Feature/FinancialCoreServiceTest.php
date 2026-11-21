@@ -705,6 +705,52 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame(0, $user->movimentos()->whereNotNull('reversal_of_id')->count());
     }
 
+    public function test_reversing_partial_settlement_compensates_every_recorded_payment_without_manual_amount(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->account($user, 'Conta principal', '100.00');
+        $service = app(FinancialMovementService::class);
+        $original = $service->createPending($user, [
+            'type' => 'expense',
+            'description' => 'Seguro',
+            'amount' => '60.00',
+            'movement_date' => '2026-11-30',
+        ]);
+
+        $service->settle($user, $original, [
+            'source_account_id' => $account->id,
+            'amount' => '20.00',
+            'movement_date' => '2026-11-18',
+        ]);
+        $service->settle($user, $original, [
+            'source_account_id' => $account->id,
+            'amount' => '15.00',
+            'movement_date' => '2026-11-19',
+        ]);
+
+        $this->assertSame('partial', $original->fresh()->status);
+        $this->assertSame('65.00', app(AccountBalanceService::class)->balance($account));
+
+        $reversed = $service->reverseSettlement($user, $original->fresh());
+
+        $this->assertSame('pending', $reversed->status);
+        $this->assertFalse((bool) $reversed->is_settlement_parent);
+        $this->assertSame('100.00', app(AccountBalanceService::class)->balance($account));
+        $this->assertSame(2, $user->movimentos()->where('settles_movement_id', $original->id)->whereNotNull('reversal_of_id')->count());
+        $this->assertSame(
+            ['15.00', '20.00'],
+            $user->movimentos()->where('settles_movement_id', $original->id)
+                ->whereNotNull('reversal_of_id')->orderBy('amount')->pluck('amount')->all()
+        );
+
+        try {
+            $service->reverseSettlement($user, $original->fresh());
+            $this->fail('Uma obrigação já revertida não pode ser revertida novamente.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('movement', $exception->errors());
+        }
+    }
+
     public function test_financial_projection_counts_effective_payment_and_only_remaining_obligation(): void
     {
         $user = User::factory()->create();
