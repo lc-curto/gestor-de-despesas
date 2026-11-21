@@ -169,9 +169,9 @@
                                         @if ($parcial)
                                             <div class="movement-settlement-summary">
                                                 <span>{{ $isExpense ? 'Pago' : 'Recebido' }}: {{ number_format($valorPago, 2, ',', '.') }} {{ $movimento->currency }}</span>
-                                                <span>{{ $isExpense ? 'Em falta' : 'Por receber' }}: {{ number_format($valorPendente, 2, ',', '.') }} {{ $movimento->currency }}</span>
+                                                <span>{{ $isExpense ? 'Pendente' : 'Por receber' }}: {{ number_format($valorPendente, 2, ',', '.') }} {{ $movimento->currency }}</span>
                                             </div>
-                                            <div class="movement-progress" role="progressbar" aria-label="Percentagem do movimento paga" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ (int) round($percentagemPaga) }}">
+                                            <div class="movement-progress" style="height: 3px" role="progressbar" aria-label="Percentagem do movimento paga" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ (int) round($percentagemPaga) }}">
                                                 <span style="width: {{ $percentagemPaga }}%"></span>
                                             </div>
                                         @endif
@@ -492,7 +492,7 @@
 .movements-page .movement-meta-tag svg { width:.82rem; height:.82rem; }
 .movements-page .movement-settlement-summary { display:flex; flex-wrap:wrap; justify-content:space-between; gap:.15rem .75rem; margin-top:.48rem; color:var(--bs-secondary-color); font-size:.72rem; font-variant-numeric:tabular-nums; }
 .movements-page .movement-settlement-summary span:first-child { color:var(--bs-success-text-emphasis); }
-.movements-page .movement-progress { height:5px; margin-top:.35rem; overflow:hidden; border-radius:999px; background:var(--bs-tertiary-bg); }
+.movements-page .movement-progress { height:3px; margin-top:.35rem; overflow:hidden; border-radius:999px; background:var(--bs-tertiary-bg); }
 .movements-page .movement-progress > span { display:block; height:100%; border-radius:inherit; background:var(--bs-warning); }
 .movements-page .expense-icon { width:2.5rem; height:2.5rem; }
 .movements-page .empty-state svg { width:2rem; height:2rem; }
