@@ -519,22 +519,22 @@ class FinancialMovementService
                 ->firstOrFail();
 
             if (! in_array($locked->type, ['expense', 'income'], true)
-                || $locked->status !== 'settled'
+                || ! in_array($locked->status, ['partial', 'settled'], true)
                 || $locked->invoice_id
                 || $locked->debt_id
                 || $locked->installment_id
                 || $locked->settles_movement_id
                 || $locked->reversal_of_id) {
                 throw ValidationException::withMessages([
-                    'movement' => 'Só é possível reverter a liquidação integral de uma despesa ou receita simples.',
+                    'movement' => 'Só é possível reverter pagamentos registados em despesas ou receitas simples.',
                 ]);
             }
 
             if ($locked->is_settlement_parent) {
                 $totalCents = $this->balances->toCents((string) $locked->amount);
-                if ($this->netSettledCents($user, $locked) !== $totalCents) {
+                if ($this->netSettledCents($user, $locked) <= 0) {
                     throw ValidationException::withMessages([
-                        'movement' => 'A liquidação não está integralmente concluída ou já possui uma reversão.',
+                        'movement' => 'Não existem pagamentos ativos para reverter nesta obrigação.',
                     ]);
                 }
 
