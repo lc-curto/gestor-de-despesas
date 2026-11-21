@@ -239,7 +239,7 @@ test('a Rota Financeira fecha o modal do dia antes de abrir os detalhes', () => 
 
 test('Rota Financeira usa a mesma regra de elegibilidade e bloqueia movimentos com origem associada', () => {
     const h = setup();
-    const base = { id: 'real-1', type: 'expense', status: 'pending', description: 'Com origem', amount: 8, projection_delta: -8, account_id: 'bank', account_name: 'Conta principal' };
+    const base = { id: 'real-1', type: 'expense', status: 'pending', description: 'Com origem', amount: 8, projection_delta: -8, date: '2026-12-05', category: 'Sem categoria', category_id: null, account_id: 'bank', account_name: 'Conta principal' };
     for (const item of [
         { ...base, invoice_id: 'invoice-1' },
         { ...base, installment_id: 'installment-1', debt_id: 'debt-1' },
