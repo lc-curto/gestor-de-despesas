@@ -31,6 +31,10 @@ class FinancialProjectionService
 
         $openingBalance = (float) $cashAccounts->sum('opening_balance');
 
+        // A referência para classificar prestações vencidas não pode avançar
+        // para além da data atual quando se consulta um mês futuro.
+        $overdueCutoff = $rangeStart->copy()->min(now())->toDateString();
+
         // O saldo de abertura precisa refletir a mesma projeção que foi aplicada
         // nos meses anteriores. Incluir apenas movimentos liquidados fazia o
         // saldo regressar ao saldo inicial das contas ao navegar entre meses,
@@ -40,11 +44,17 @@ class FinancialProjectionService
             ->whereIn('status', ['pending', 'partial', 'settled'])
             ->where('is_historical', false)
             ->where('is_settlement_parent', false)
-            // Prestações vencidas ficam na secção "Vencidas" e não reduzem
-            // novamente o saldo de abertura do período consultado.
+            // Só retira do saldo de abertura prestações cujo vencimento
+            // já ocorreu até à data de referência e que aparecem em "Vencidas".
+            // A data do movimento pode ser diferente da data real de vencimento.
             ->whereNot(fn ($query) => $query
                 ->where('status', 'pending')
-                ->whereNotNull('installment_id'))
+                ->whereNotNull('installment_id')
+                ->whereExists(fn ($installment) => $installment
+                    ->selectRaw('1')
+                    ->from('parcelas_divida')
+                    ->whereColumn('parcelas_divida.id', 'movimentos.installment_id')
+                    ->where('parcelas_divida.due_date', '<', $overdueCutoff)))
             ->where('movement_date', '<', $rangeStart->toDateString())
             ->where(function ($query) {
                 $query->whereNull('debt_id')
@@ -252,7 +262,7 @@ class FinancialProjectionService
         $overdueInstallments = $user->parcelasDivida()
             ->with('divida')
             ->whereIn('status', ['pending', 'partial'])
-            ->where('due_date', '<', $rangeStart->toDateString())
+            ->where('due_date', '<', $overdueCutoff)
             ->whereHas('divida', fn ($query) => $query
                 ->whereNull('archived_at')
                 ->whereNotIn('status', ['cancelled', 'paid'])
