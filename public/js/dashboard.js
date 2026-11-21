@@ -1269,7 +1269,11 @@
         const row = actionMovement;
 
         if (action === 'edit') {
-            hideModalThen(movementDetailsModalElement, movementDetailsModal, () => startEdit(row));
+            hideModalThen(movementDetailsModalElement, movementDetailsModal, () => {
+                startEdit(row);
+                // Ao cancelar, regressa aos detalhes do movimento que originou a edição.
+                if (editingMovement === row) returnToDetailsAfterCancel = true;
+            });
             return;
         }
 
