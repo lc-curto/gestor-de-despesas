@@ -188,7 +188,11 @@ test('edição suportada mantém o tipo e o comportamento da receita ou despesa 
         assert.equal(payload.description, description);
         assert.equal(payload.amount, description === 'Entrada' ? '30.10' : '12.40');
         assert.equal(payload.movement_date, '2026-12-05');
-        assert.equal(payload.expense_behavior, behavior);
+        if (type === 'expense') {
+            assert.equal(payload.expense_behavior, behavior);
+        } else {
+            assert.equal('expense_behavior' in payload, false, 'o comportamento fixo/variável só se aplica a despesas');
+        }
         assert.equal('source_account_id' in payload, false, 'a conta mantém-se inalterada');
         assert.equal('destination_account_id' in payload, false, 'a conta mantém-se inalterada');
         assert.match(h.el('movementEditError').textContent, /Operação não permitida/);
