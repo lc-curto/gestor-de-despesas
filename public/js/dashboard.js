@@ -901,8 +901,20 @@
     const editForm = document.getElementById('movementEditForm');
     let editingMovement = null;
 
+    function canEditMovementRow(row) {
+        return window.meuBolsoMovementEditRules?.canEdit({
+            type: row.dataset.movementType,
+            status: row.dataset.movementStatus,
+            financialMovementId: row.dataset.financialMovementId,
+            invoiceId: row.dataset.invoiceId,
+            installmentId: row.dataset.installmentId,
+            debtId: row.dataset.debtId,
+            isInvoicePayment: row.dataset.isInvoicePayment === '1'
+        }) === true;
+    }
+
     function startEdit(row) {
-        if (row.dataset.movementStatus !== 'pending' || !row.dataset.financialMovementId || !editModalElement || !editForm) return;
+        if (!canEditMovementRow(row) || !editModalElement || !editForm) return;
         returnToDetailsAfterCancel = false;
         if (editModalElement.parentElement !== document.body) document.body.appendChild(editModalElement);
         editingMovement = row;
@@ -1237,7 +1249,7 @@
             settleIcon.classList.toggle('text-success', !isSettled);
             settleIcon.classList.toggle('text-warning', isSettled);
         }
-        editAction.hidden = hasOrigin || isInvoicePayment || status !== 'pending' || !row.dataset.financialMovementId;
+        editAction.hidden = hasOrigin || isInvoicePayment || !canEditMovementRow(row);
         deleteAction.hidden = hasOrigin || isInvoicePayment;
         if (actionsWrap) actionsWrap.hidden = hasOrigin || isInvoicePayment;
         if (originWrap) originWrap.hidden = !hasOrigin;
@@ -1275,20 +1287,23 @@
     // Bootstrap ignora hide() enquanto o modal ainda está em transição de abertura.
     // Espera por shown.bs.modal nesse caso; só depois regista hidden e inicia o fecho.
     function hideModalThen(element, instance, callback) {
+        const transition = window.meuBolsoMovementEditRules?.hideThen;
+        if (transition) {
+            transition(element, instance, callback);
+            return;
+        }
         if (!element || !instance) return;
-        const hideWhenReady = () => {
-            element.addEventListener('hidden.bs.modal', callback, { once: true });
-            instance.hide();
-        };
         if (instance._isTransitioning) {
-            element.addEventListener('shown.bs.modal', hideWhenReady, { once: true });
+            const eventName = element.classList.contains('show') ? 'shown.bs.modal' : 'hidden.bs.modal';
+            element.addEventListener(eventName, () => hideModalThen(element, instance, callback), { once: true });
             return;
         }
-        if (element.classList.contains('show')) {
-            hideWhenReady();
+        if (!element.classList.contains('show')) {
+            callback();
             return;
         }
-        callback();
+        element.addEventListener('hidden.bs.modal', callback, { once: true });
+        instance.hide();
     }
 
     function runMovementDetailsAction(action) {

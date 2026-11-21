@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 
 const script = readFileSync(new URL('../../public/js/dashboard.js', import.meta.url), 'utf8');
+const editRules = readFileSync(new URL('../../resources/views/partials/movement-edit-modal.blade.php', import.meta.url), 'utf8')
+    .match(/<script>([\s\S]*?)<\/script>/)?.[1];
 const markup = `<!doctype html><meta name="csrf-token" content="test-token">
 <div id="movementSaveFeedback" class="d-none"><span id="movementSaveFeedbackMessage"></span><a id="movementSaveFeedbackLink" class="d-none" href="/compromissos">Ver parcelamentos</a></div>
 <div id="movementEntryModal"><form id="dashboardMovementForm" action="/despesas">
@@ -103,6 +105,7 @@ function setup(fetch, initialMovements = [], options = {}) {
         return instances.get(element);
     } } };
     window.HTMLElement.prototype.scrollIntoView = () => {};
+    window.eval(editRules);
     window.eval(script);
     const element = (id) => window.document.getElementById(id);
     const form = element('dashboardMovementForm');
@@ -428,7 +431,9 @@ test('edição aguarda o fim da abertura do modal de detalhes antes de o fechar'
 
 test('Rota Financeira aguarda a transição Bootstrap antes de trocar para o modal de edição', () => {
     const route = readFileSync(new URL('../../resources/views/financial-route.blade.php', import.meta.url), 'utf8');
-    assert.match(route, /if\s*\(instance\._isTransitioning\)\s*\{\s*element\.addEventListener\('shown\.bs\.modal',hideWhenReady/);
+    const sharedModal = readFileSync(new URL('../../resources/views/partials/movement-edit-modal.blade.php', import.meta.url), 'utf8');
+    assert.match(route, /meuBolsoMovementEditRules\?\.hideThen/);
+    assert.match(sharedModal, /const transitionEvent = element\.classList\.contains\('show'\) \? 'shown\.bs\.modal' : 'hidden\.bs\.modal'/);
     assert.match(route, /hideModalThen\(detailElement,detailModal,\(\)=>editModal\.show\(\)\)/);
     assert.match(route, /editElement\.addEventListener\('hidden\.bs\.modal'/);
     assert.match(route, /routeDetailsNext==='delete'\)confirmModal\.show\(\)/);
@@ -611,5 +616,38 @@ test('ações de Movimentos inicializam sem o formulário de criação do Dashbo
     const editor = ui.window.bootstrap.Modal.getOrCreateInstance(ui.element('movementEditModal'));
     assert.equal(editor.open, true);
     assert.equal(ui.element('movementEditDescription').value, 'Despesa de teste');
+    ui.dom.window.close();
+});
+
+test('a regra comum permite apenas movimentos pendentes reais sem origem em fatura ou prestação', () => {
+    const dom = new JSDOM('<!doctype html>', { runScripts: 'outside-only' });
+    dom.window.eval(editRules);
+    const canEdit = dom.window.meuBolsoMovementEditRules.canEdit;
+    const base = { type: 'despesa', status: 'pending', financialMovementId: '123' };
+    assert.equal(canEdit(base), true);
+    assert.equal(canEdit({ ...base, status: 'settled' }), false);
+    assert.equal(canEdit({ ...base, financialMovementId: '' }), false);
+    assert.equal(canEdit({ ...base, invoiceId: 'invoice-1' }), false);
+    assert.equal(canEdit({ ...base, installmentId: 'installment-1', debtId: 'debt-1' }), false);
+    assert.equal(canEdit({ ...base, financialMovementId: 'debt-1' }), false);
+    dom.window.close();
+});
+
+test('edição também aguarda hidden quando o modal de detalhes já está em transição de fecho', () => {
+    const ui = setup(async () => jsonResponse(200, { data: [] }), [existingMovement]);
+    ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
+    const detailsElement = ui.element('movementDetailsModal');
+    const details = ui.window.bootstrap.Modal.getOrCreateInstance(detailsElement);
+    const editor = ui.window.bootstrap.Modal.getOrCreateInstance(ui.element('movementEditModal'));
+
+    details._isTransitioning = true;
+    detailsElement.classList.remove('show');
+    ui.element('movementDetailsEdit').click();
+    assert.equal(editor.open, false);
+
+    details._isTransitioning = false;
+    detailsElement.dispatchEvent(new ui.window.Event('hidden.bs.modal'));
+    assert.equal(editor.open, true);
+    assert.equal(ui.element('movementEditAmount').value, '90,50');
     ui.dom.window.close();
 });

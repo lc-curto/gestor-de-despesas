@@ -61,7 +61,8 @@
                                     $accountId = $delta < 0 ? $item->source_account_id : $item->destination_account_id;
 
                                     return [
-                                        'id' => $item->id, 'type' => $item->type, 'status' => $item->status,
+                                        'id' => $item->id, 'financial_movement_id' => $item->id, 'type' => $item->type, 'status' => $item->status,
+                                        'invoice_id' => $item->invoice_id, 'installment_id' => $item->installment_id, 'debt_id' => $item->debt_id,
                                         'description' => $item->description, 'amount' => (float) $item->amount,
                                         'projection_delta' => $delta, 'date' => $item->movement_date->toDateString(),
                                         'expense_behavior' => $item->expense_behavior,
@@ -318,7 +319,11 @@
  const dateLabel=value=>new Intl.DateTimeFormat('pt-PT',{day:'2-digit',month:'long',year:'numeric'}).format(new Date(value+'T12:00:00'));
  const movementKind=item=>item.type==='adjustment'?'Ajuste de saldo':item.type==='transfer'?'Transferência':item.type==='income'?'Entrada':item.expense_behavior==='fixed'?'Gasto fixo':'Variável';
  const signedAmount=item=>['adjustment','transfer'].includes(item.type)?(item.projection_delta>0?'+':item.projection_delta<0?'−':'')+fmt(Math.abs(item.projection_delta)):(item.type==='income'?'+':'−')+fmt(item.amount);
- const canEditMovement=item=>['income','expense'].includes(item.type)&&item.status==='pending'&&!/^(debt|invoice)-/.test(String(item.id));
+ const canEditMovement=item=>window.meuBolsoMovementEditRules?.canEdit({
+   type:item?.type,status:item?.status,financialMovementId:item?.financial_movement_id??item?.id,
+   invoiceId:item?.invoice_id,installmentId:item?.installment_id,debtId:item?.debt_id,
+   isInvoicePayment:item?.type==='transfer'
+ })===true;
  const dayData=date=>{const el=document.getElementById('route-day-'+date);return el?JSON.parse(el.textContent):null};
  const overdueItems=JSON.parse(document.getElementById('route-overdue-data')?.textContent||'[]');
  const setPeriod=()=>{const url=new URL(window.location.href);url.searchParams.set('mes',month);url.searchParams.set('modo',mode);window.location.href=url.toString()};
@@ -333,11 +338,17 @@
  // Bootstrap ignora hide() enquanto o modal ainda está a abrir.
  // Aguarda shown.bs.modal antes de fechar e só abre o próximo após hidden.bs.modal.
  function hideModalThen(element,instance,callback){
+   const transition=window.meuBolsoMovementEditRules?.hideThen;
+   if(transition){transition(element,instance,callback);return}
    if(!element||!instance)return;
-   const hideWhenReady=()=>{element.addEventListener('hidden.bs.modal',callback,{once:true});instance.hide()};
-   if(instance._isTransitioning){element.addEventListener('shown.bs.modal',hideWhenReady,{once:true});return}
-   if(element.classList.contains('show')){hideWhenReady();return}
-   callback();
+   if(instance._isTransitioning){
+     const eventName=element.classList.contains('show')?'shown.bs.modal':'hidden.bs.modal';
+     element.addEventListener(eventName,()=>hideModalThen(element,instance,callback),{once:true});
+     return;
+   }
+   if(!element.classList.contains('show')){callback();return}
+   element.addEventListener('hidden.bs.modal',callback,{once:true});
+   instance.hide();
  }
  function renderOverdueItems(){
    const section=document.getElementById('routeOverdueSection');

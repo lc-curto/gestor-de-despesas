@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 
 const blade = readFileSync(new URL('../../resources/views/financial-route.blade.php', import.meta.url), 'utf8');
+const editRules = readFileSync(new URL('../../resources/views/partials/movement-edit-modal.blade.php', import.meta.url), 'utf8')
+    .match(/<script>([\s\S]*?)<\/script>/)?.[1];
 const script = blade.match(/@push\('scripts'\)\s*<script>([\s\S]*?)<\/script>/)?.[1]
     .replace('{{ $mode }}', '1')
     .replace('{{ Illuminate\\Support\\Js::from($month) }}', '"2026-12"');
@@ -65,6 +67,7 @@ function setup(response = { ok: false, json: async () => ({ message: 'Operação
     } } };
     const requests = [];
     window.fetch = async (url, options) => { requests.push({ url, ...options }); return response; };
+    window.eval(editRules);
     window.eval(script);
     const el = id => window.document.getElementById(id);
     const openDay = (filter = 'income') => window.document.querySelector(`[data-date="2026-12-05"][data-filter="${filter}"]`).click();
@@ -232,4 +235,40 @@ test('a Rota Financeira fecha o modal do dia antes de abrir os detalhes', () => 
     assert.equal(details.shown, 1);
     assert.equal(h.el('routeDayModal').classList.contains('show'), false);
     assert.equal(h.el('routeMovementDetailModal').classList.contains('show'), true);
+});
+
+test('Rota Financeira usa a regra partilhada e transmite os metadados de origem', () => {
+    const h = setup();
+    const canEdit = h.window.meuBolsoMovementEditRules.canEdit;
+    const valid = { type: 'expense', status: 'pending', financialMovementId: 'real-1' };
+    assert.equal(canEdit({ ...valid, invoiceId: 'invoice-1' }), false);
+    assert.equal(canEdit({ ...valid, installmentId: 'installment-1', debtId: 'debt-1' }), false);
+    assert.equal(canEdit(valid), true);
+    assert.match(blade, /invoiceId:item\?\.invoice_id/);
+    assert.match(blade, /installmentId:item\?\.installment_id,debtId:item\?\.debt_id/);
+
+    const movement = { ...base, id: 'real-2', type: 'expense', status: 'pending', description: 'Editável', amount: 8, projection_delta: -8, account_id: 'bank', account_name: 'Conta principal' };
+    h.window.document.getElementById('route-day-2026-12-05').textContent = JSON.stringify({ items: [movement], balance: 1, status: 'comfortable' });
+    h.openItem('Editável');
+    assert.equal(h.el('routeMovementDetailsEdit').disabled, false);
+    h.window.close();
+});
+
+test('Rota Financeira aguarda hidden quando os detalhes já estão em transição de fecho', () => {
+    const h = setup();
+    h.openItem('Entrada');
+    const detailsElement = h.el('routeMovementDetailModal');
+    const details = h.modals.get('routeMovementDetailModal');
+    const editor = h.modals.get('movementEditModal');
+
+    details._isTransitioning = true;
+    detailsElement.classList.remove('show');
+    h.el('routeMovementDetailsEdit').click();
+    assert.equal(editor.shown, 0);
+
+    details._isTransitioning = false;
+    detailsElement.dispatchEvent(new h.window.Event('hidden.bs.modal'));
+    assert.equal(editor.shown, 1);
+    assert.equal(h.el('movementEditDescription').value, 'Entrada');
+    h.window.close();
 });

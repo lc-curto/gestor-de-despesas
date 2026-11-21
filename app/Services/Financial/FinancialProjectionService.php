@@ -106,7 +106,7 @@ class FinancialProjectionService
             ->where('movement_date', '>=', $rangeStart->toDateString())
             ->where('movement_date', '<', $rangeEndExclusive)
             ->orderBy('movement_date')
-            ->get(['id', 'type', 'status', 'description', 'notes', 'amount', 'movement_date', 'expense_behavior', 'category_id', 'source_account_id', 'destination_account_id', 'recurrence_id', 'adjustment_direction', 'settles_movement_id']);
+            ->get(['id', 'type', 'status', 'description', 'notes', 'amount', 'movement_date', 'expense_behavior', 'category_id', 'source_account_id', 'destination_account_id', 'recurrence_id', 'debt_id', 'installment_id', 'invoice_id', 'adjustment_direction', 'settles_movement_id']);
 
         $items = $items->map(function (Movimento $movement) use ($accountTypes): Movimento {
             $movement->setAttribute('projection_delta', $this->cashDelta($movement, $accountTypes));

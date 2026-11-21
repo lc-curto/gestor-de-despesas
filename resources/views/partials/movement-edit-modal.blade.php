@@ -42,3 +42,43 @@
         </div>
     </div>
 </div>
+<script>
+    // Regra única de elegibilidade para o modal partilhado de edição.
+    window.meuBolsoMovementEditRules = window.meuBolsoMovementEditRules || {};
+    window.meuBolsoMovementEditRules.canEdit = function (movement) {
+        if (!movement || !['income', 'expense', 'receita', 'despesa'].includes(movement.type)) return false;
+        if (movement.status !== 'pending' || !movement.financialMovementId) return false;
+        if (movement.invoiceId || movement.isInvoicePayment) return false;
+        if (movement.installmentId && movement.debtId) return false;
+        return !/^(debt|invoice|overdue-debt|overdue-invoice|settlement)-/.test(String(movement.financialMovementId));
+    };
+
+    // Encadeia modais sem depender de um único estado de transição do Bootstrap.
+    // Se o modal estiver a abrir, espera por shown; se já estiver a fechar, espera por hidden.
+    window.meuBolsoMovementEditRules.hideThen = function (element, instance, callback) {
+        if (!element || !instance || typeof callback !== 'function') return;
+        let completed = false;
+        const finish = () => {
+            if (completed) return;
+            completed = true;
+            callback();
+        };
+        const hideWhenReady = () => {
+            if (instance._isTransitioning) {
+                const transitionEvent = element.classList.contains('show') ? 'shown.bs.modal' : 'hidden.bs.modal';
+                element.addEventListener(transitionEvent, () => {
+                    if (element.classList.contains('show')) hideWhenReady();
+                    else finish();
+                }, { once: true });
+                return;
+            }
+            if (!element.classList.contains('show')) {
+                finish();
+                return;
+            }
+            element.addEventListener('hidden.bs.modal', finish, { once: true });
+            instance.hide();
+        };
+        hideWhenReady();
+    };
+</script>
