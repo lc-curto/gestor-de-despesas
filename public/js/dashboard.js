@@ -533,11 +533,12 @@
             const paidLabel = document.createElement('span');
             paidLabel.textContent = (isExpense ? 'Pago: ' : 'Recebido: ') + formatCurrency(paidAmount, item.currency || cfg.currency || 'EUR');
             const pendingLabel = document.createElement('span');
-            pendingLabel.textContent = (isExpense ? 'Em falta: ' : 'Por receber: ') + formatCurrency(remainingAmount, item.currency || cfg.currency || 'EUR');
+            pendingLabel.textContent = (isExpense ? 'Pendente: ' : 'Por receber: ') + formatCurrency(remainingAmount, item.currency || cfg.currency || 'EUR');
             settlementSummary.append(paidLabel, pendingLabel);
 
             const progress = document.createElement('div');
             progress.className = 'movement-progress';
+            progress.style.height = '3px';
             progress.setAttribute('role', 'progressbar');
             progress.setAttribute('aria-label', 'Percentagem do movimento paga');
             progress.setAttribute('aria-valuemin', '0');
@@ -594,7 +595,7 @@
         info.append(icon, details);
 
         const trailing = document.createElement('div');
-        trailing.className = 'movement-entry-trailing';
+        trailing.className = 'movement-entry-trailing expense-actions';
         const value = document.createElement('strong');
         value.className = 'movement-entry-amount ' + (isExpense ? 'is-expense' : 'is-income');
         value.dataset.value = item.amount;
