@@ -1253,7 +1253,7 @@
             settleIcon.classList.toggle('text-warning', isSettled);
         }
         editAction.hidden = hasOrigin || isInvoicePayment || !canEditMovementRow(row);
-        deleteAction.hidden = hasOrigin || isInvoicePayment;
+        deleteAction.hidden = hasOrigin || isInvoicePayment || status !== 'pending';
         if (actionsWrap) actionsWrap.hidden = hasOrigin || isInvoicePayment;
         if (originWrap) originWrap.hidden = !hasOrigin;
 
