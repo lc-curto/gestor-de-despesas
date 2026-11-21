@@ -1138,7 +1138,9 @@
         const isInstallment = Boolean(row.dataset.installmentId && row.dataset.debtId);
 
         titleEl.textContent = row.dataset.description || 'Movimento';
-        typeEl.textContent = isExpense ? 'Despesa' : 'Receita';
+        typeEl.textContent = isInvoicePayment
+            ? 'Liquidação de fatura'
+            : (isInvoiceMovement ? 'Compra no cartão de crédito' : (isInstallment ? 'Prestação de compra parcelada' : (isExpense ? 'Despesa' : 'Receita')));
         statusEl.textContent = isInvoiceMovement && !isInvoicePayment
             ? 'Na fatura'
             : (({ settled: 'Pago', partial: 'Parcial', partially_settled: 'Parcial', pending: 'Pendente' })[status] || 'Registado');
@@ -1150,7 +1152,9 @@
         pendingEl.textContent = formatCurrency(remaining, currency);
         categoryEl.textContent = row.querySelector('.expense-item__category')?.textContent || row.querySelector('.expense-item p')?.textContent?.split(' · ')[0] || '—';
         dateEl.textContent = formatMovementDate(row.dataset.date);
-        kindEl.textContent = row.dataset.expenseBehavior === 'fixed' ? 'Despesa fixa' : (isExpense ? 'Despesa variável' : 'Receita');
+        kindEl.textContent = isInvoicePayment
+            ? 'Liquidação de fatura'
+            : (isInvoiceMovement ? 'Compra no cartão' : (isInstallment ? 'Prestação parcelada' : (row.dataset.expenseBehavior === 'fixed' ? 'Despesa fixa' : (isExpense ? 'Despesa variável' : 'Receita'))));
 
         const percentage = total > 0 ? Math.min(100, Math.max(0, paid / total * 100)) : 0;
         progress.style.width = percentage + '%';
@@ -1178,7 +1182,7 @@
             originName.textContent = 'Fatura de ' + reference;
             const dueDate = row.dataset.invoiceDueDate ? 'Vencimento ' + formatMovementDate(row.dataset.invoiceDueDate) : '';
             const cardName = row.dataset.invoiceCardName || 'Cartão de crédito';
-            const invoiceState = ({ open: 'Fatura aberta', closed: 'Fatura fechada', carried: 'Saldo transportado' })[row.dataset.invoiceStatus] || '';
+            const invoiceState = ({ open: 'Ciclo aberto', closed: 'Ciclo fechado', carried: 'Saldo transportado' })[row.dataset.invoiceStatus] || '';
             originMeta.textContent = [cardName, invoiceState, dueDate].filter(Boolean).join(' · ');
             originLink.href = row.dataset.invoiceUrl || '#';
             originLink.textContent = 'Consultar fatura';
