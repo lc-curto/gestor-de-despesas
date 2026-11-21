@@ -856,11 +856,25 @@ class FinancialMovementService
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            // Pagamentos de fatura têm fluxo próprio na página de Contas.
+            if ($snapshot->type === 'transfer' && $snapshot->invoice_id) {
+                return $this->updateInvoicePayment($user, $snapshot, $data);
+            }
+
+            if ($snapshot->debt_id || $snapshot->installment_id) {
+                throw ValidationException::withMessages([
+                    'movement' => 'Movimentos associados a Parcelamentos devem ser geridos na área de Parcelamentos.',
+                ]);
+            }
+
+            if ($snapshot->invoice_id) {
+                throw ValidationException::withMessages([
+                    'movement' => 'Movimentos associados a faturas devem ser geridos na área de Cartões.',
+                ]);
+            }
+
             if ($snapshot->status !== 'pending'
                 || ! in_array($snapshot->type, ['income', 'expense'], true)
-                || $snapshot->invoice_id
-                || $snapshot->debt_id
-                || $snapshot->installment_id
                 || $snapshot->settles_movement_id
                 || $snapshot->is_settlement_parent) {
                 throw ValidationException::withMessages([
