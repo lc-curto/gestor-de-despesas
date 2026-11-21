@@ -410,13 +410,14 @@ class DashboardController extends Controller
             ->join('users as credit_users', 'credit_users.id', '=', 'invoice_credits.user_id')
             ->leftJoin('faturas as credit_invoices', 'credit_invoices.id', '=', 'invoice_credits.invoice_id')
             ->leftJoin('contas_financeiras as credit_cards', 'credit_cards.id', '=', 'credit_invoices.account_id')
+            ->leftJoin('movimentos as credited_purchase', 'credited_purchase.id', '=', 'invoice_credits.invoice_credit_for_movement_id')
             ->where('invoice_credits.user_id', $userId)
             ->where('invoice_credits.type', 'adjustment')
             ->where('invoice_credits.invoice_charge_type', 'credit')
             ->where('invoice_credits.status', 'settled')
             ->whereBetween('invoice_credits.movement_date', [$inicio->toDateString(), $fim->toDateString()])
             ->selectRaw("invoice_credits.id, invoice_credits.id AS financial_movement_id, 0 AS is_invoice_payment, 0 AS is_settlement_event, 'despesa' AS tipo, invoice_credits.description, invoice_credits.amount, invoice_credits.amount AS remaining_amount,
-                credit_users.currency, NULL AS category, 'Crédito de compra' AS category_label, 'undo-2' AS category_icon, '#16a34a' AS category_color,
+                credit_users.currency, credited_purchase.category_id AS category, 'Crédito de compra' AS category_label, 'undo-2' AS category_icon, '#16a34a' AS category_color,
                 invoice_credits.movement_date AS data_movimento, invoice_credits.destination_account_id AS account_id, invoice_credits.status AS movement_status,
                 0 AS requires_account_assignment, 0 AS is_historical, 'variable' AS expense_behavior, NULL AS due_date, NULL AS recurrence_id,
                 NULL AS recurrence_frequency, NULL AS recurrence_interval, NULL AS recurrence_ends_at, NULL AS debt_id, NULL AS installment_id,
