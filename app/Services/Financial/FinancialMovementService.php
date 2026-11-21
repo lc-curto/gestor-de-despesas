@@ -852,38 +852,39 @@ class FinancialMovementService
     }
 
     /** Encaminha cada edição para a regra financeira correspondente à natureza do movimento. */
+    /**
+     * Edição direta apenas para compromissos pendentes.
+     * Movimentos efetivados são imutáveis: correções financeiras devem usar
+     * as operações explícitas de reversão/liquidação.
+     */
     public function updateMovement(User $user, Movimento $movement, array $data): Movimento
     {
-        $snapshot = $user->movimentos()->whereKey($movement->id)->firstOrFail();
+        return DB::transaction(function () use ($user, $movement, $data): Movimento {
+            $snapshot = Movimento::query()
+                ->where('user_id', $user->id)
+                ->whereKey($movement->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        if ($snapshot->type === 'transfer' && $snapshot->invoice_id) {
-            return $this->updateInvoicePayment($user, $snapshot, $data);
-        }
-        if (in_array($snapshot->type, ['transfer', 'adjustment'], true) && $snapshot->status === 'settled') {
-            return $this->updateOperationalMovement($user, $snapshot, $data);
-        }
-        if ($snapshot->settles_movement_id) {
-            return $this->updateSettlementEvent($user, $snapshot, $data);
-        }
-        if ($snapshot->is_settlement_parent) {
-            return $this->updateSettlementParent($user, $snapshot, $data, (bool) $snapshot->recurrence_id);
-        }
-        if ($snapshot->status === 'pending') {
+            if ($snapshot->status !== 'pending'
+                || ! in_array($snapshot->type, ['income', 'expense'], true)
+                || $snapshot->invoice_id
+                || $snapshot->debt_id
+                || $snapshot->installment_id
+                || $snapshot->settles_movement_id
+                || $snapshot->is_settlement_parent) {
+                throw ValidationException::withMessages([
+                    'movement' => 'Só movimentos pendentes elegíveis podem ser editados. Para corrigir uma liquidação, utiliza a ação de reversão.',
+                ]);
+            }
+
             $updated = $this->updatePending($user, $snapshot, $data);
             if ($updated->recurrence_id && $updated->legacy_type && $updated->legacy_id) {
                 $this->syncLegacyRecordFromMovement($user, $updated);
             }
 
-            return $updated;
-        }
-        if ($snapshot->status === 'settled' && in_array($snapshot->type, ['income', 'expense'], true)
-            && ! $snapshot->invoice_id && ! $snapshot->debt_id && ! $snapshot->installment_id) {
-            return $this->updateSettledMovement($user, $snapshot, $data);
-        }
-
-        throw ValidationException::withMessages([
-            'movement' => 'Este movimento deve ser editado na sua área de origem ou não admite edição direta.',
-        ]);
+            return $updated->refresh();
+        });
     }
 
     /** Corrige um evento liquidado mantendo-o ligado à obrigação e reconciliando o saldo. */
