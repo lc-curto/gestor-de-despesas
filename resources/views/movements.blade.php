@@ -342,6 +342,7 @@
                         <a id="movementDetailsOriginLink" class="btn btn-outline-secondary btn-sm w-100 mt-3" href="#">Consultar registo</a>
                     </div>
                 </section>
+                <div id="movementDetailsError" class="alert alert-danger d-none mt-3" role="alert"></div>
                 <div id="movementDetailsActions">
                 <hr>
                 <h3 class="small fw-semibold mb-3">Ações</h3>
