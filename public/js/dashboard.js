@@ -531,9 +531,9 @@
             const settlementSummary = document.createElement('div');
             settlementSummary.className = 'movement-settlement-summary';
             const paidLabel = document.createElement('span');
-            paidLabel.textContent = 'Pago: ' + formatCurrency(paidAmount, item.currency || cfg.currency || 'EUR');
+            paidLabel.textContent = (isExpense ? 'Pago: ' : 'Recebido: ') + formatCurrency(paidAmount, item.currency || cfg.currency || 'EUR');
             const pendingLabel = document.createElement('span');
-            pendingLabel.textContent = 'Em falta: ' + formatCurrency(remainingAmount, item.currency || cfg.currency || 'EUR');
+            pendingLabel.textContent = (isExpense ? 'Em falta: ' : 'Por receber: ') + formatCurrency(remainingAmount, item.currency || cfg.currency || 'EUR');
             settlementSummary.append(paidLabel, pendingLabel);
 
             const progress = document.createElement('div');
@@ -578,7 +578,9 @@
             const recurrence = document.createElement('span');
             recurrence.className = 'movement-meta-tag';
             const frequencies = { weekly: 'Semanal', monthly: 'Mensal', yearly: 'Anual' };
-            recurrence.innerHTML = '<i data-lucide="repeat" aria-hidden="true"></i><span>' + (frequencies[item.recurrence_frequency] || 'Recorrente') + '</span>';
+            const frequencyLabel = frequencies[item.recurrence_frequency] || 'Recorrente';
+            const interval = Number(item.recurrence_interval) || 1;
+            recurrence.innerHTML = '<i data-lucide="repeat" aria-hidden="true"></i><span>' + (interval > 1 ? 'A cada ' + interval + ' ' + frequencyLabel.toLocaleLowerCase('pt-PT') : frequencyLabel) + '</span>';
             tags.append(recurrence);
         }
         if (item.installment_id) {
