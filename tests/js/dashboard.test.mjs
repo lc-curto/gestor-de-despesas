@@ -35,7 +35,7 @@ const markup = `<!doctype html><meta name="csrf-token" content="test-token">
  <div id="movementDetailsProgressWrap"><div id="movementDetailsProgress"></div></div><span id="movementDetailsProgressLabel"></span>
  <div id="movementDetailsPaidLine"></div><div id="movementDetailsPendingLine"></div><div id="movementDetailsPaymentHeading" hidden></div>
  <span id="movementDetailsCategory"></span><span id="movementDetailsDate"></span><span id="movementDetailsKind"></span>
- <button id="movementDetailsSettle"></button><button id="movementDetailsEdit"></button><button id="movementDetailsDelete"></button>
+ <button id="movementDetailsSettle"><i data-lucide="check-circle"></i><span>Pagar</span><i data-lucide="chevron-right"></i></button><button id="movementDetailsEdit"></button><button id="movementDetailsDelete"></button>
 </div>
 <div id="movementEditModal"><form id="movementEditForm">
  <h2 id="movementEditTitle"></h2><div id="movementEditError" class="d-none"></div>
@@ -342,6 +342,26 @@ test('as opções de recorrência respeitam hidden mesmo com display grid do Boo
     assert.match(blade, /id="deleteRecurringOptions"[^>]*hidden/);
 });
 
+test('a mesma ação mostra Pagar em pendentes e Reverter em movimentos liquidados', () => {
+    const pendingUi = setup(async () => jsonResponse(200, { data: [] }), [existingMovement]);
+    pendingUi.element('expensesList').querySelector('[data-movement-action="details"]').click();
+    const pendingAction = pendingUi.element('movementDetailsSettle');
+    assert.equal(pendingAction.hidden, false);
+    assert.equal(pendingAction.querySelector('span').textContent, 'Pagar');
+    pendingUi.dom.window.close();
+
+    const settledUi = setup(async () => jsonResponse(200, { data: [] }), [{
+        ...existingMovement,
+        movement_status: 'settled',
+        remaining_amount: '0.00',
+    }]);
+    settledUi.element('expensesList').querySelector('[data-movement-action="details"]').click();
+    const settledAction = settledUi.element('movementDetailsSettle');
+    assert.equal(settledAction.hidden, false);
+    assert.equal(settledAction.querySelector('span').textContent, 'Reverter');
+    settledUi.dom.window.close();
+});
+
 test('despesa simples mostra confirmação única, sem opções de recorrência', () => {
     const ui = setup(async () => jsonResponse(200, { data: [] }), [existingMovement]);
     ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
@@ -365,6 +385,7 @@ test('edição usa o modal próprio e envia o valor com vírgula em decimal can�
     }, [existingMovement]);
     ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
     ui.element('movementDetailsEdit').click();
+    assert.equal(ui.window.bootstrap.Modal.getOrCreateInstance(ui.element('movementEditModal')).open, true);
     assert.equal(ui.element('movementEditAmount').value, '90,50');
     ui.element('movementEditAmount').value = '90,50';
     ui.element('movementEditForm').dispatchEvent(new ui.window.Event('submit', { bubbles: true, cancelable: true }));
