@@ -35,6 +35,50 @@ class CardMovementDisplayRegressionTest extends TestCase
         );
     }
 
+    public function test_income_settlement_event_is_not_listed_as_a_second_movement(): void
+    {
+        $user = User::factory()->create(['currency' => 'EUR']);
+        $accounts = app(FinancialAccountService::class);
+        $bank = $accounts->create($user, [
+            'name' => 'Banco', 'type' => 'bank', 'opening_balance' => '1000.00',
+            'opening_balance_date' => '2026-11-01',
+        ]);
+        $category = $user->categorias()->where('slug', 'salario')->firstOrFail();
+        $this->actingAs($user);
+
+        $movements = app(FinancialMovementService::class);
+        $income = $movements->createPending($user, [
+            'type' => 'income',
+            'description' => 'Freelance',
+            'amount' => '100.00',
+            'movement_date' => '2026-11-21',
+            'destination_account_id' => $bank->id,
+            'category_id' => $category->id,
+        ]);
+        $income->update(['is_settlement_parent' => true, 'status' => 'settled', 'settled_at' => now()]);
+
+        $settlement = $movements->create($user, [
+            'type' => 'income',
+            'description' => 'Liquidação: Freelance',
+            'amount' => '100.00',
+            'movement_date' => '2026-11-21',
+            'destination_account_id' => $bank->id,
+            'category_id' => $category->id,
+            'settles_movement_id' => $income->id,
+        ]);
+
+        $response = $this->getJson(route('dashboard.movimentos.data', ['mes' => '2026-11']));
+        $response->assertOk()->assertJsonCount(1, 'data')
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.id', $income->id)
+            ->assertJsonPath('data.0.description', 'Freelance')
+            ->assertJsonMissing(['description' => 'Liquidação: Freelance']);
+
+        $page = $this->get(route('dashboard.movimentos', ['mes' => '2026-11']));
+        $page->assertOk()->assertSee('Freelance')->assertDontSee('Liquidação: Freelance');
+        $this->assertDatabaseHas('movimentos', ['id' => $settlement->id, 'settles_movement_id' => $income->id]);
+    }
+
     public function test_card_purchases_and_invoice_payments_are_visible_in_movements_without_double_counting(): void
     {
         $user = User::factory()->create(['currency' => 'EUR']);
