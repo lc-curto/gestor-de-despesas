@@ -506,8 +506,8 @@ class FinancialMovementService
     }
 
     /**
-     * Reverte a liquidação integral de uma obrigação simples sem apagar os eventos originais.
-     * Cada evento é compensado por um movimento inverso ligado ao evento e à obrigação.
+     * Reverte todos os pagamentos ativos de uma obrigação simples sem apagar os eventos originais.
+     * Cada pagamento é compensado pelo seu valor integral, sem permitir reversões parciais.
      */
     public function reverseSettlement(User $user, Movimento $movement): Movimento
     {
@@ -531,7 +531,6 @@ class FinancialMovementService
             }
 
             if ($locked->is_settlement_parent) {
-                $totalCents = $this->balances->toCents((string) $locked->amount);
                 if ($this->netSettledCents($user, $locked) <= 0) {
                     throw ValidationException::withMessages([
                         'movement' => 'Não existem pagamentos ativos para reverter nesta obrigação.',
