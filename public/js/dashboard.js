@@ -462,8 +462,7 @@
     function renderItem(item) {
         const isExpense = item.tipo === 'despesa';
         const movementDate = item.data_movimento || item.expense_date || item.income_date;
-        // O Laravel pode devolver uma data ISO completa; o input date precisa apenas de YYYY-MM-DD.
-        const dateMatch = String(movementDate || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+        const dateMatch = String(movementDate || '').match(/^(\\d{4})-(\\d{2})-(\\d{2})/);
         let normalizedDate = '';
         let displayDate = 'Data não disponível';
 
@@ -472,19 +471,14 @@
             const month = Number(dateMatch[2]);
             const day = Number(dateMatch[3]);
             const calendarDate = new Date(year, month - 1, day);
-
-            if (
-                calendarDate.getFullYear() === year &&
-                calendarDate.getMonth() === month - 1 &&
-                calendarDate.getDate() === day
-            ) {
+            if (calendarDate.getFullYear() === year && calendarDate.getMonth() === month - 1 && calendarDate.getDate() === day) {
                 normalizedDate = dateMatch[1] + '-' + dateMatch[2] + '-' + dateMatch[3];
                 displayDate = new Intl.DateTimeFormat('pt-PT').format(calendarDate);
             }
         }
 
         const article = document.createElement('article');
-        article.className = 'expense-item d-flex justify-content-between align-items-center gap-3 py-3 border-bottom';
+        article.className = 'expense-item movement-entry py-3 border-bottom';
         article.tabIndex = 0;
         article.setAttribute('role', 'group');
         article.setAttribute('aria-label', 'Abrir detalhes de ' + item.description);
@@ -508,9 +502,11 @@
         article.dataset.recurrenceFrequency = item.recurrence_frequency || '';
         article.dataset.recurrenceInterval = item.recurrence_interval || '';
         article.dataset.recurrenceEndsAt = item.recurrence_ends_at || '';
+        article.dataset.installmentId = item.installment_id || '';
+        article.dataset.debtId = item.debt_id || '';
 
         const info = document.createElement('div');
-        info.className = 'd-flex align-items-center gap-3 min-w-0';
+        info.className = 'movement-entry-main';
         const icon = document.createElement('div');
         icon.className = isExpense ? 'expense-icon flex-shrink-0' : 'expense-icon income-icon flex-shrink-0';
         icon.setAttribute('aria-hidden', 'true');
@@ -518,103 +514,99 @@
         icon.innerHTML = '<i data-lucide="' + (item.category_icon || 'tag') + '"></i>';
 
         const details = document.createElement('div');
-        details.className = 'min-w-0';
+        details.className = 'movement-entry-copy';
         const name = document.createElement('h3');
-        name.className = 'h6 fw-semibold mb-1 text-break';
+        name.className = 'movement-entry-title';
         name.textContent = item.description;
         const metadata = document.createElement('p');
-        metadata.className = 'small text-secondary mb-0';
+        metadata.className = 'movement-entry-meta';
         metadata.textContent = categoryName(item) + ' · ' + displayDate;
         details.append(name, metadata);
-        const originalAmount = Number(item.amount);
-        const remainingAmount = Number(item.remaining_amount ?? item.amount);
+
+        const originalAmount = Math.max(0, Number(item.amount) || 0);
+        const remainingAmount = Math.max(0, Number(item.remaining_amount ?? item.amount) || 0);
         const paidAmount = Math.max(0, originalAmount - remainingAmount);
-        if ((item.movement_status === 'partial' || item.movement_status === 'partially_settled') && paidAmount > 0) {
+        const isPartial = ['partial', 'partially_settled'].includes(item.movement_status);
+        if (isPartial) {
             const settlementSummary = document.createElement('div');
-            settlementSummary.className = 'small text-body-secondary d-flex justify-content-between gap-2 mb-0';
+            settlementSummary.className = 'movement-settlement-summary';
             const paidLabel = document.createElement('span');
             paidLabel.textContent = 'Pago: ' + formatCurrency(paidAmount, item.currency || cfg.currency || 'EUR');
             const pendingLabel = document.createElement('span');
-            pendingLabel.textContent = 'Pendente: ' + formatCurrency(remainingAmount, item.currency || cfg.currency || 'EUR');
+            pendingLabel.textContent = 'Em falta: ' + formatCurrency(remainingAmount, item.currency || cfg.currency || 'EUR');
             settlementSummary.append(paidLabel, pendingLabel);
 
             const progress = document.createElement('div');
-            progress.className = 'settlement-progress-track rounded-pill mt-1';
+            progress.className = 'movement-progress';
             progress.setAttribute('role', 'progressbar');
             progress.setAttribute('aria-label', 'Percentagem do movimento paga');
             progress.setAttribute('aria-valuemin', '0');
             progress.setAttribute('aria-valuemax', '100');
-            const paidPercentage = originalAmount > 0
-                ? Math.min(100, Math.max(0, (paidAmount / originalAmount) * 100))
-                : 0;
+            const paidPercentage = originalAmount > 0 ? Math.min(100, Math.max(0, paidAmount / originalAmount * 100)) : 0;
             progress.setAttribute('aria-valuenow', String(Math.round(paidPercentage)));
-            progress.style.height = '3px';
-            progress.style.backgroundColor = 'var(--bs-secondary-bg)';
-            progress.style.overflow = 'hidden';
-
-            const progressFill = document.createElement('div');
-            progressFill.className = 'settlement-progress-fill rounded-pill h-100';
-            progressFill.style.width = paidPercentage + '%';
-            progressFill.style.backgroundColor = 'var(--bs-success-border-subtle, #86b99a)';
-            progress.append(progressFill);
+            const fill = document.createElement('span');
+            fill.style.width = paidPercentage + '%';
+            progress.append(fill);
             details.append(settlementSummary, progress);
         }
-        if (isExpense && item.due_date) {
-            const due = String(item.due_date).slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
-            if (due) {
-                const dueDate = new Date(Number(due[1]), Number(due[2]) - 1, Number(due[3]));
-                const dueLine = document.createElement('p');
-                dueLine.className = 'small text-body-tertiary mb-0';
-                const dueLabel = new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: 'short' }).format(dueDate);
-                const today = new Date(); today.setHours(0, 0, 0, 0);
-                dueDate.setHours(0, 0, 0, 0);
-                const daysLate = Math.floor((today - dueDate) / 86400000);
-                dueLine.textContent = daysLate > 0 && item.movement_status !== 'settled' ? 'Vencido há ' + daysLate + (daysLate === 1 ? ' dia' : ' dias') : 'Vence em ' + dueLabel;
-                details.append(dueLine);
-            }
+
+        const tags = document.createElement('div');
+        tags.className = 'movement-entry-tags';
+        const dueDateMatch = String(item.due_date || '').slice(0, 10).match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+        let isOverdue = false;
+        if (isExpense && dueDateMatch && item.movement_status !== 'settled') {
+            const dueDate = new Date(Number(dueDateMatch[1]), Number(dueDateMatch[2]) - 1, Number(dueDateMatch[3]));
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            dueDate.setHours(0, 0, 0, 0);
+            isOverdue = dueDate < today;
         }
-        const statusLine = document.createElement('div');
-        statusLine.className = 'small text-secondary d-flex flex-wrap align-items-center gap-2 mt-1';
         const statusLabels = {
-            settled: { text: 'Pago', className: 'text-success' },
-            partial: { text: 'Parcial', className: 'text-info-emphasis' },
-            partially_settled: { text: 'Parcial', className: 'text-info-emphasis' },
-            pending: { text: 'Pendente', className: 'text-secondary' }
+            settled: { text: isExpense ? 'Pago' : 'Recebido', className: 'is-paid' },
+            partial: { text: isExpense ? 'Parcial' : 'Recebido parcial', className: 'is-partial' },
+            partially_settled: { text: isExpense ? 'Parcial' : 'Recebido parcial', className: 'is-partial' },
+            pending: { text: isExpense ? 'Pendente' : 'Por receber', className: 'is-pending' }
         };
-        const status = statusLabels[item.movement_status] || null;
+        const status = isOverdue ? { text: 'Em atraso', className: 'is-overdue' } : statusLabels[item.movement_status];
         if (status) {
-            const statusText = document.createElement('span');
-            statusText.className = status.className;
-            statusText.textContent = status.text;
-            statusLine.append(statusText);
+            const badge = document.createElement('span');
+            badge.className = 'movement-status-badge ' + status.className;
+            badge.textContent = status.text;
+            tags.append(badge);
         }
         if (item.recurrence_id) {
             const recurrence = document.createElement('span');
-            recurrence.className = 'text-body-tertiary d-inline-flex align-items-center gap-1';
-            recurrence.innerHTML = '<i data-lucide="repeat" aria-hidden="true"></i><span>Recorrente</span>';
-            statusLine.append(recurrence);
+            recurrence.className = 'movement-meta-tag';
+            const frequencies = { weekly: 'Semanal', monthly: 'Mensal', yearly: 'Anual' };
+            recurrence.innerHTML = '<i data-lucide="repeat" aria-hidden="true"></i><span>' + (frequencies[item.recurrence_frequency] || 'Recorrente') + '</span>';
+            tags.append(recurrence);
         }
-        if (statusLine.childElementCount) details.append(statusLine);
+        if (item.installment_id) {
+            const installment = document.createElement('span');
+            installment.className = 'movement-meta-tag';
+            installment.innerHTML = '<i data-lucide="layers" aria-hidden="true"></i><span>Prestação</span>';
+            tags.append(installment);
+        }
+        if (tags.childElementCount) details.append(tags);
         info.append(icon, details);
 
-        const actions = document.createElement('div');
-        actions.className = 'expense-actions d-flex align-items-center justify-content-end gap-2';
+        const trailing = document.createElement('div');
+        trailing.className = 'movement-entry-trailing';
         const value = document.createElement('strong');
-        value.className = (isExpense ? 'text-danger' : 'text-success') + ' text-nowrap movement-value';
+        value.className = 'movement-entry-amount ' + (isExpense ? 'is-expense' : 'is-income');
         value.dataset.value = item.amount;
         value.dataset.currency = item.currency || cfg.currency || 'EUR';
-        value.textContent = (isExpense ? '−' : '+') + formatCurrency(item.amount, item.currency);
+        value.textContent = (isExpense ? '−' : '+') + formatCurrency(originalAmount, item.currency || cfg.currency || 'EUR');
 
-        actions.append(value);
         const detailsButton = document.createElement('button');
         detailsButton.type = 'button';
-        detailsButton.className = 'btn btn-link btn-sm text-body-secondary p-1 movement-details-trigger';
+        detailsButton.className = 'movement-details-trigger';
         detailsButton.dataset.movementAction = 'details';
         detailsButton.setAttribute('aria-label', 'Detalhes de ' + item.description);
         detailsButton.setAttribute('title', 'Detalhes');
-        detailsButton.innerHTML = '<i data-lucide="more-vertical" aria-hidden="true"></i>';
-        actions.append(detailsButton);
-        article.append(info, actions);
+        detailsButton.innerHTML = '<i data-lucide="more-horizontal" aria-hidden="true"></i>';
+        trailing.append(value, detailsButton);
+        article.append(info, trailing);
         return article;
     }
 
