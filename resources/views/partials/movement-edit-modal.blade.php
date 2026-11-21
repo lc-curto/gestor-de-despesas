@@ -53,7 +53,7 @@
         if (movement.status === 'pending') return true;
         const isSettlementRecord = Boolean(movement.isSettlementEvent || movement.settlesMovementId || movement.isSettlementParent);
         const hasLegacyRecord = Boolean(movement.legacyType && movement.legacyId);
-        return movement.status === 'settled' && (isSettlementRecord || hasLegacyRecord);
+        return ['partial', 'settled'].includes(movement.status) && (isSettlementRecord || hasLegacyRecord);
     };
 
     // Encadeia modais sem depender de um único estado de transição do Bootstrap.
