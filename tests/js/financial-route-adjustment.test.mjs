@@ -34,7 +34,7 @@ function setup(response = { ok: false, json: async () => ({ message: 'Operação
       </section>
       <script type="application/json" id="route-day-2026-12-05">${JSON.stringify({ items, balance: 174.65, status: 'comfortable' })}</script>
       <div id="routeDayModal"></div><div id="routeMovementDetailModal"></div><div id="routeConfirmModal"></div>
-      <div id="movementEditModal"><form id="movementEditForm">
+      <div id="movementEditModal"><form id="movementEditForm"><h2 id="movementEditTitle"></h2>
         <input id="movementEditDescription"><input id="movementEditAmount"><input id="movementEditDate">
         <select id="movementEditCategory"><option value="">Seleciona</option></select>
         <textarea id="movementEditNotes"></textarea><input id="movementEditExpenseBehavior">
