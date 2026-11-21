@@ -386,7 +386,7 @@
        progress.setAttribute('aria-valuenow',String(Math.round(percent)));fill.style.width=percent+'%';progress.append(fill);
        row.append(content,amount);b.append(row,payment,progress);
      }else{b.append(left,amount);}
-     b.addEventListener('click',()=>{dayModal.hide();openMovementDetail(item)});list.append(b);
+     b.addEventListener('click',()=>hideModalThen(document.getElementById('routeDayModal'),dayModal,()=>openMovementDetail(item)));list.append(b);
    });
  }
  document.querySelectorAll('[data-day-filter]').forEach(b=>b.addEventListener('click',()=>{activeFilter=b.dataset.dayFilter;document.querySelectorAll('[data-day-filter]').forEach(x=>x.classList.toggle('active',x===b));renderDayItems(dayData(activeDate))}));

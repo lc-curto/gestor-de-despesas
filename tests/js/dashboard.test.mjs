@@ -64,8 +64,11 @@ function jsonResponse(status, body) {
     return { ok: status >= 200 && status < 300, status, json: async () => body };
 }
 
-function setup(fetch, initialMovements = []) {
-    const dom = new JSDOM(markup, { url: 'https://example.test/dashboard/movimentos', runScripts: 'outside-only' });
+function setup(fetch, initialMovements = [], options = {}) {
+    const pageMarkup = options.withoutForm
+        ? markup.replace(/<div id="movementEntryModal"><form id="dashboardMovementForm"[\s\S]*?<\/form><\/div>/, '')
+        : markup;
+    const dom = new JSDOM(pageMarkup, { url: 'https://example.test/dashboard/movimentos', runScripts: 'outside-only' });
     const { window } = dom;
     window.matchMedia = () => ({ matches: false });
     window.fetch = fetch;
@@ -103,19 +106,21 @@ function setup(fetch, initialMovements = []) {
     window.eval(script);
     const element = (id) => window.document.getElementById(id);
     const form = element('dashboardMovementForm');
-    const modal = window.bootstrap.Modal.getOrCreateInstance(element('movementEntryModal'));
-    modal.show();
-    element('movementDescription').value = 'QA PósDeploy Parcelamento 3x 20261117';
-    element('movementAmount').value = '90';
-    element('movementDate').value = '2026-11-17';
-    element('movementCategory').value = 'casa-id';
-    element('dashboardInstallmentsEnabled').checked = true;
-    element('dashboardDueDateEnabled').checked = true;
-    element('dashboardDueDateInput').value = '2026-12-17';
-    element('dashboardInstallments').value = '3';
-    element('dashboardInstallmentsEnabled').dispatchEvent(new window.Event('change'));
-    element('dashboardDueDateEnabled').dispatchEvent(new window.Event('change'));
-    const submit = () => form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+    const modal = element('movementEntryModal') ? window.bootstrap.Modal.getOrCreateInstance(element('movementEntryModal')) : null;
+    if (form) {
+        modal.show();
+        element('movementDescription').value = 'QA PósDeploy Parcelamento 3x 20261117';
+        element('movementAmount').value = '90';
+        element('movementDate').value = '2026-11-17';
+        element('movementCategory').value = 'casa-id';
+        element('dashboardInstallmentsEnabled').checked = true;
+        element('dashboardDueDateEnabled').checked = true;
+        element('dashboardDueDateInput').value = '2026-12-17';
+        element('dashboardInstallments').value = '3';
+        element('dashboardInstallmentsEnabled').dispatchEvent(new window.Event('change'));
+        element('dashboardDueDateEnabled').dispatchEvent(new window.Event('change'));
+    }
+    const submit = () => form?.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
     return { dom, window, element, form, modal, submit };
 }
 
@@ -592,5 +597,19 @@ test('cancelar edição regressa ao modal de detalhes do movimento', () => {
     assert.equal(editor.open, false);
     assert.equal(details.open, true);
     assert.equal(ui.element('movementDetailsName').textContent, 'Despesa de teste');
+    ui.dom.window.close();
+});
+
+test('ações de Movimentos inicializam sem o formulário de criação do Dashboard', () => {
+    const ui = setup(async () => jsonResponse(200, { data: [] }), [existingMovement], { withoutForm: true });
+    const row = ui.element('expensesList').querySelector('[data-movement-id]');
+    assert.ok(row);
+    row.querySelector('[data-movement-action="details"]').click();
+    const details = ui.window.bootstrap.Modal.getOrCreateInstance(ui.element('movementDetailsModal'));
+    assert.equal(details.open, true);
+    ui.element('movementDetailsEdit').click();
+    const editor = ui.window.bootstrap.Modal.getOrCreateInstance(ui.element('movementEditModal'));
+    assert.equal(editor.open, true);
+    assert.equal(ui.element('movementEditDescription').value, 'Despesa de teste');
     ui.dom.window.close();
 });
