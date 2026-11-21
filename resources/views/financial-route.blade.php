@@ -458,7 +458,7 @@
    confirmCallback=async()=>{const endpoint=urls.remove+'/'+item.id;const response=await fetch(endpoint,{method:'DELETE',headers:{'Accept':'application/json','X-CSRF-TOKEN':csrf}});const json=await response.json();if(!response.ok)throw new Error(json.message||'Não foi possível concluir a operação.');window.location.reload()};
    returnToRouteDetails=true;routeDetailsNext='delete';detailModal.hide();
  });
- detailElement.addEventListener('hidden.bs.modal',()=>{if(!returnToRouteDetails)return;if(routeDetailsNext==='delete')confirmModal.show();else if(routeDetailsNext==='edit')movementModal.show()});
+ detailElement.addEventListener('hidden.bs.modal',()=>{if(!returnToRouteDetails)return;if(routeDetailsNext==='delete')confirmModal.show()});
  movementElement.addEventListener('hidden.bs.modal',()=>{if(returnToRouteDetails){returnToRouteDetails=false;routeDetailsNext='';detailModal.show()}});
  confirmElement.addEventListener('hidden.bs.modal',()=>{if(returnToRouteDetails){returnToRouteDetails=false;routeDetailsNext='';detailModal.show()}});
  document.getElementById('routeConfirmAction').addEventListener('click',async()=>{try{if(confirmCallback){returnToRouteDetails=false;routeDetailsNext='';await confirmCallback()}}catch(e){returnToRouteDetails=true;routeDetailsNext='delete';document.getElementById('routeConfirmText').textContent=e.message;document.getElementById('routeConfirmHint').hidden=true} });
