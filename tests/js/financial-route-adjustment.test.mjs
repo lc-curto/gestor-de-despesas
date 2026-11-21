@@ -173,8 +173,7 @@ test('edição suportada mantém o tipo e o comportamento da receita ou despesa 
         assert.equal(h.el('routeMovementDetailsEdit').disabled, false);
         assert.equal(h.el('routeEditHelp').textContent, '');
         h.el('routeMovementDetailsEdit').click();
-        assert.equal(h.modals.get('movementEditModal').shown, 1);
-        assert.equal((h.modals.get('movementEditModal')?.shown || 0), 0, 'a edição não reutiliza o modal de criação');
+        assert.equal(h.modals.get('movementEditModal').shown, 1, 'a edição abre o modal partilhado');
         assert.equal(h.el('movementEditDescription').value, description);
         assert.equal(h.el('movementEditAmount').value, description === 'Entrada' ? '30,1' : '12,4');
         assert.equal(h.el('movementEditDate').value, '2026-12-05');
