@@ -941,6 +941,9 @@ class FinancialMovementService
             $locked->update($changes);
             $this->audit($user, $locked, 'settlement_event_updated', $before, $locked->getAttributes(),
                 'Evento de liquidação corrigido; limite da obrigação e saldo da conta reconciliados.');
+            if ($locked->legacy_type && $locked->legacy_id) {
+                $this->syncLegacyRecordFromMovement($user, $locked);
+            }
             $this->refreshSettlementParentAfterDeletion($user, $parent->id);
             if ($parent->legacy_type && $parent->legacy_id) {
                 $this->syncLegacyRecordFromMovement($user, $parent->refresh());
