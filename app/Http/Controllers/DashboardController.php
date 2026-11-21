@@ -429,7 +429,8 @@ class DashboardController extends Controller
                         AND invoice_credits.type = 'adjustment'
                         AND invoice_credits.invoice_charge_type = 'credit'
                         AND invoice_credits.status = 'settled'
-                        AND invoice_credits.movement_date BETWEEN '{$inicio->toDateString()}' AND '{$fim->toDateString()}'
+                        AND YEAR(invoice_credits.movement_date) = YEAR(canonical_movements.movement_date)
+                        AND MONTH(invoice_credits.movement_date) = MONTH(canonical_movements.movement_date)
                 ), 0) ELSE canonical_movements.amount END AS amount,
                 CASE WHEN canonical_movements.is_settlement_parent = 1 THEN CASE WHEN (canonical_movements.amount - COALESCE((
                     SELECT SUM(CASE WHEN settlement_events.reversal_of_id IS NULL THEN settlement_events.amount ELSE -settlement_events.amount END)
