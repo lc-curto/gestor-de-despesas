@@ -237,19 +237,19 @@ test('a Rota Financeira fecha o modal do dia antes de abrir os detalhes', () => 
     assert.equal(h.el('routeMovementDetailModal').classList.contains('show'), true);
 });
 
-test('Rota Financeira usa a mesma regra de elegibilidade e bloqueia movimentos com origem associada', () => {
+test('Rota Financeira usa a regra partilhada e transmite os metadados de origem', () => {
     const h = setup();
-    const base = { id: 'real-1', type: 'expense', status: 'pending', description: 'Com origem', amount: 8, projection_delta: -8, date: '2026-12-05', category: 'Sem categoria', category_id: null, account_id: 'bank', account_name: 'Conta principal' };
-    for (const item of [
-        { ...base, invoice_id: 'invoice-1' },
-        { ...base, installment_id: 'installment-1', debt_id: 'debt-1' },
-    ]) {
-        h.window.document.getElementById('route-day-2026-12-05').textContent = JSON.stringify({ items: [item], balance: 1, status: 'comfortable' });
-        h.openItem('Com origem');
-        assert.equal(h.el('routeMovementDetailsEdit').disabled, true);
-    }
-    h.window.document.getElementById('route-day-2026-12-05').textContent = JSON.stringify({ items: [{ ...base, id: 'real-2' }], balance: 1, status: 'comfortable' });
-    h.openItem('Com origem');
+    const canEdit = h.window.meuBolsoMovementEditRules.canEdit;
+    const valid = { type: 'expense', status: 'pending', financialMovementId: 'real-1' };
+    assert.equal(canEdit({ ...valid, invoiceId: 'invoice-1' }), false);
+    assert.equal(canEdit({ ...valid, installmentId: 'installment-1', debtId: 'debt-1' }), false);
+    assert.equal(canEdit(valid), true);
+    assert.match(blade, /invoiceId:item\?\.invoice_id/);
+    assert.match(blade, /installmentId:item\?\.installment_id,debtId:item\?\.debt_id/);
+
+    const movement = { ...base, id: 'real-2', type: 'expense', status: 'pending', description: 'Editável', amount: 8, projection_delta: -8, account_id: 'bank', account_name: 'Conta principal' };
+    h.window.document.getElementById('route-day-2026-12-05').textContent = JSON.stringify({ items: [movement], balance: 1, status: 'comfortable' });
+    h.openItem('Editável');
     assert.equal(h.el('routeMovementDetailsEdit').disabled, false);
     h.window.close();
 });
