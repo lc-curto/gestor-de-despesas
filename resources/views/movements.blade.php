@@ -454,11 +454,11 @@
 .movements-page .movements-period-metric > span { color:var(--bs-secondary-color); font-size:.75rem; }
 .movements-page .movements-period-metric > strong { overflow-wrap:anywhere; font-size:1rem; font-variant-numeric:tabular-nums; letter-spacing:-.025em; }
 .movements-page .movements-period-result > strong { color:var(--bs-success-text-emphasis); }
-.movements-page .movements-page-header { margin-bottom:1rem!important; }
+.movements-page .movements-page-header { margin-bottom:1rem; }
 .movements-page .movements-period-picker { gap:.25rem; }
 .movements-page .movements-period-picker .form-control { width:9.2rem; min-width:0; padding:.375rem .45rem; font-size:.8rem; }
 .movements-page .movements-period-picker .btn { width:32px; height:34px; padding:.35rem; display:inline-flex; align-items:center; justify-content:center; }
-.movements-page .history-card { box-shadow:none!important; }
+.movements-page .history-card { box-shadow:none; }
 .movements-page .history-card { overflow:hidden; border:1px solid var(--bs-border-color); background:var(--bs-body-bg); }
 .movements-page .history-card-body { min-width:0; }
 .movements-page .dashboard-period-controls { gap:.35rem; }
@@ -500,7 +500,7 @@
     .movements-page .movements-period-summary-values { gap:.25rem; }
     .movements-page .movements-period-metric > span { font-size:.68rem; }
     .movements-page .movements-period-metric > strong { font-size:clamp(.72rem,3.2vw,.88rem); letter-spacing:-.035em; }
-    .movements-page .movements-page-header { align-items:center!important; margin-bottom:.85rem!important; }
+    .movements-page .movements-page-header { align-items:center; margin-bottom:.85rem; }
     .movements-page .movements-page-header h1 { font-size:1.35rem; }
     .movements-page .movements-page-header > div:first-child .small { font-size:.78rem; }
     .movements-page .movements-period-picker .form-control { width:7.7rem; font-size:.72rem; }
