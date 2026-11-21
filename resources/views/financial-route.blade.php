@@ -338,11 +338,17 @@
  // Bootstrap ignora hide() enquanto o modal ainda está a abrir.
  // Aguarda shown.bs.modal antes de fechar e só abre o próximo após hidden.bs.modal.
  function hideModalThen(element,instance,callback){
+   const transition=window.meuBolsoMovementEditRules?.hideThen;
+   if(transition){transition(element,instance,callback);return}
    if(!element||!instance)return;
-   const hideWhenReady=()=>{element.addEventListener('hidden.bs.modal',callback,{once:true});instance.hide()};
-   if(instance._isTransitioning){element.addEventListener('shown.bs.modal',hideWhenReady,{once:true});return}
-   if(element.classList.contains('show')){hideWhenReady();return}
-   callback();
+   if(instance._isTransitioning){
+     const eventName=element.classList.contains('show')?'shown.bs.modal':'hidden.bs.modal';
+     element.addEventListener(eventName,()=>hideModalThen(element,instance,callback),{once:true});
+     return;
+   }
+   if(!element.classList.contains('show')){callback();return}
+   element.addEventListener('hidden.bs.modal',callback,{once:true});
+   instance.hide();
  }
  function renderOverdueItems(){
    const section=document.getElementById('routeOverdueSection');
