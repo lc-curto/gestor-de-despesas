@@ -873,6 +873,10 @@
     }
 
     const editModalElement = document.getElementById('movementEditModal');
+    // Mantém o modal fora de contentores que possam criar stacking context.
+    if (editModalElement && editModalElement.parentElement !== document.body) {
+        document.body.appendChild(editModalElement);
+    }
     const editModal = editModalElement ? bootstrap.Modal.getOrCreateInstance(editModalElement) : null;
     const editForm = document.getElementById('movementEditForm');
     let editingMovement = null;
