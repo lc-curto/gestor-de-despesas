@@ -44,9 +44,16 @@ function setup(response = { ok: false, json: async () => ({ message: 'Operação
         <select id="routeAccount" name="account_id"><option value=""></option><option value="bank">Conta principal</option><option value="cash">Carteira</option></select>
         <textarea id="routeNotes" name="notes"></textarea><div id="routeFormError"></div>
       </form>
-      <div id="routeMovementDetailTitle"></div><div id="routeMovementKind"></div><div id="routeMovementAmount"></div>
-      <div id="routeMovementCategory"></div><div id="routeMovementAccount"></div><div id="routeMovementDate"></div><div id="routeMovementDescription"></div><div id="routeMovementNotes"></div>
-      <div id="routeDetailError" role="alert"></div><p id="routeEditHelp" role="status"></p><button id="routeEditMovement"></button><button id="routeDeleteMovement"></button>
+      <div id="routeMovementDetailTitle"></div>
+      <div id="routeMovementDetailsContent">
+        <div id="routeMovementDetailsName"></div><div id="routeMovementDetailsCategory"></div>
+        <div id="routeMovementDetailsAmount"></div><div id="routeMovementDetailsDate"></div>
+        <div id="routeMovementDetailsKind"></div>
+        <div id="routeMovementDetailsRelatedRow" hidden><span id="routeMovementDetailsRelated"></span></div>
+        <div id="routeMovementDetailsDescription"></div><div id="routeMovementDetailsNotes"></div>
+        <button id="routeMovementDetailsEdit"></button><button id="routeMovementDetailsDelete"></button>
+      </div>
+      <div id="routeDetailError" role="alert"></div><p id="routeEditHelp" role="status"></p>
       <div id="routeConfirmTitle"></div><div id="routeConfirmText"></div><small id="routeConfirmHint">Esta ação não pode ser desfeita.</small><button id="routeConfirmAction"></button>`;
     const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'https://example.test/rota-financeira' });
     const { window } = dom;
@@ -88,15 +95,15 @@ test('ajustes apresentam tipo, sinal, conta e detalhes corretos e não entram no
         ['Diminuição', '−7,25 €', 'Carteira', '—'],
     ]) {
         h.openItem(description);
-        assert.equal(h.el('routeMovementKind').textContent, 'Ajuste de saldo');
-        assert.equal(h.el('routeMovementAmount').textContent, amount);
-        assert.equal(h.el('routeMovementAccount').textContent, account);
-        assert.equal(h.el('routeMovementDescription').textContent, description);
-        assert.equal(h.el('routeMovementNotes').textContent, notes);
-        assert.equal(h.el('routeDeleteMovement').textContent, 'Eliminar');
-        assert.equal(h.el('routeEditMovement').disabled, true);
+        assert.equal(h.el('routeMovementDetailsKind').textContent, 'Ajuste de saldo');
+        assert.equal(h.el('routeMovementDetailsAmount').textContent, amount);
+        assert.equal(h.el('routeMovementDetailsRelated').textContent, account);
+        assert.equal(h.el('routeMovementDetailsDescription').textContent, description);
+        assert.equal(h.el('routeMovementDetailsNotes').textContent, notes);
+        assert.equal(h.el('routeMovementDetailsDelete').textContent, 'Eliminar');
+        assert.equal(h.el('routeMovementDetailsEdit').disabled, true);
         assert.match(h.el('routeEditHelp').textContent, /elimina o movimento/i);
-        h.el('routeEditMovement').dispatchEvent(new h.window.MouseEvent('click', { bubbles: true }));
+        h.el('routeMovementDetailsEdit').dispatchEvent(new h.window.MouseEvent('click', { bubbles: true }));
         assert.equal(h.modals.get('routeMovementModal').shown, 0, 'até um clique sintético não abre edição genérica');
     }
 
@@ -145,12 +152,12 @@ test('transferências são identificadas pelo delta e também não abrem ediçã
         const row = h.openItem(description);
         assert.equal(row.querySelector('small').textContent, 'Transferência · Sem categoria');
         assert.equal(row.lastElementChild.textContent, amount);
-        assert.equal(h.el('routeMovementKind').textContent, 'Transferência');
-        assert.equal(h.el('routeMovementAmount').textContent, amount);
-        assert.equal(h.el('routeMovementAccount').textContent, account);
-        assert.equal(h.el('routeEditMovement').disabled, true);
+        assert.equal(h.el('routeMovementDetailsKind').textContent, 'Transferência');
+        assert.equal(h.el('routeMovementDetailsAmount').textContent, amount);
+        assert.equal(h.el('routeMovementDetailsRelated').textContent, account);
+        assert.equal(h.el('routeMovementDetailsEdit').disabled, true);
         assert.match(h.el('routeEditHelp').textContent, /transferências/i);
-        h.el('routeEditMovement').dispatchEvent(new h.window.MouseEvent('click', { bubbles: true }));
+        h.el('routeMovementDetailsEdit').dispatchEvent(new h.window.MouseEvent('click', { bubbles: true }));
         assert.equal(h.modals.get('routeMovementModal').shown, 0);
     }
 });
@@ -160,10 +167,10 @@ test('edição suportada mantém o tipo e o comportamento da receita ou despesa 
         const h = setup();
         const row = h.openItem(description);
         assert.equal(row.lastElementChild.textContent, description === 'Entrada' ? '+30,10 €' : '−12,40 €');
-        assert.equal(h.el('routeMovementAmount').textContent, description === 'Entrada' ? '30,10 €' : '12,40 €');
-        assert.equal(h.el('routeEditMovement').disabled, false);
+        assert.equal(h.el('routeMovementDetailsAmount').textContent, description === 'Entrada' ? '30,10 €' : '12,40 €');
+        assert.equal(h.el('routeMovementDetailsEdit').disabled, false);
         assert.equal(h.el('routeEditHelp').textContent, '');
-        h.el('routeEditMovement').click();
+        h.el('routeMovementDetailsEdit').click();
         assert.equal(h.modals.get('routeMovementModal').shown, 1);
         assert.equal(h.el('routeAccount').value, 'bank');
         assert.equal(h.el('routeAccount').disabled, true);
@@ -184,13 +191,13 @@ test('edição suportada mantém o tipo e o comportamento da receita ou despesa 
 test('edição de liquidado ou previsão virtual é bloqueada e exclusão preserva mensagens de erro', async () => {
     const h = setup();
     h.openItem('Entrada liquidada');
-    assert.equal(h.el('routeEditMovement').disabled, true);
+    assert.equal(h.el('routeMovementDetailsEdit').disabled, true);
     assert.match(h.el('routeEditHelp').textContent, /liquidado/);
     h.openItem('Fatura prevista');
-    assert.equal(h.el('routeEditMovement').disabled, true);
+    assert.equal(h.el('routeMovementDetailsEdit').disabled, true);
     assert.match(h.el('routeEditHelp').textContent, /automaticamente/);
     h.openItem('Diminuição');
-    h.el('routeDeleteMovement').click();
+    h.el('routeMovementDetailsDelete').click();
     assert.equal(h.el('routeConfirmTitle').textContent, 'Eliminar movimento?');
     assert.equal(h.el('routeConfirmText').textContent, 'Este movimento será eliminado e os saldos das suas contas serão atualizados.');
     assert.equal(h.el('routeConfirmHint').textContent, 'Esta ação não pode ser desfeita.');
