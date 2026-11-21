@@ -30,26 +30,20 @@ function setup(response = { ok: false, json: async () => ({ message: 'Operação
     const html = `<!doctype html><meta name="csrf-token" content="token">
       <section id="financialRoute" data-store-url="/store" data-update-url="/movements" data-delete-url="/movements" data-reverse-url="/movements" data-currency="EUR" data-today="2026-12-05">
         <button id="routePrevious"></button><button id="routeNext"></button><button id="routeToday"></button><strong id="routePeriodLabel"></strong>
-        <button id="routeNewMovement"></button><button data-route-mode="1"></button><button data-date="2026-12-05" data-filter="income"></button><button data-date="2026-12-05" data-filter="fixed"></button><button data-date="2026-12-05" data-filter="variable"></button><button data-date="2026-12-05" data-filter="balance"></button>
+        <button data-route-mode="1"></button><button data-date="2026-12-05" data-filter="income"></button><button data-date="2026-12-05" data-filter="fixed"></button><button data-date="2026-12-05" data-filter="variable"></button><button data-date="2026-12-05" data-filter="balance"></button>
       </section>
       <script type="application/json" id="route-day-2026-12-05">${JSON.stringify({ items, balance: 174.65, status: 'comfortable' })}</script>
-      <div id="routeDayModal"></div><div id="routeMovementModal"></div><div id="routeMovementDetailModal"></div><div id="routeConfirmModal"></div>
+      <div id="routeDayModal"></div><div id="routeMovementDetailModal"></div><div id="routeConfirmModal"></div>
       <div id="movementEditModal"><form id="movementEditForm">
         <input id="movementEditDescription"><input id="movementEditAmount"><input id="movementEditDate">
         <select id="movementEditCategory"><option value="">Seleciona</option></select>
         <textarea id="movementEditNotes"></textarea><input id="movementEditExpenseBehavior">
         <div id="movementEditError" class="d-none"></div><button id="movementEditSubmit" type="submit">Guardar alterações</button>
       </form></div>
-      <div id="routeDayTitle"></div><div id="routeDayBalance"><span class="route-day-balance__label"></span><strong id="routeDayBalanceValue"></strong></div><section id="routeOverdueSection" hidden><span id="routeOverdueCount"></span><div id="routeOverdueMovements"></div></section><div id="routeDayMovements"></div><button id="routeAddFromDay"></button>
+      <div id="routeDayTitle"></div><div id="routeDayBalance"><span class="route-day-balance__label"></span><strong id="routeDayBalanceValue"></strong></div><section id="routeOverdueSection" hidden><span id="routeOverdueCount"></span><div id="routeOverdueMovements"></div></section><div id="routeDayMovements"></div>
       <script type="application/json" id="route-overdue-data">[]</script>
       <button data-day-filter="all"></button><button data-day-filter="income"></button><button data-day-filter="fixed"></button><button data-day-filter="variable"></button>
-      <div id="routeMovementTitle"></div><form id="routeMovementForm">
-        <input type="radio" name="route_type" value="income"><input type="radio" name="route_type" value="fixed"><input type="radio" name="route_type" value="variable" checked>
-        <input id="routeDate" name="movement_date"><input id="routeDescription" name="description"><input id="routeAmount" name="amount">
-        <select id="routeCategory" name="category_id"><option value="">Sem categoria</option><option value="income-category" data-type="receita">Receita</option><option value="expense-category" data-type="despesa">Despesa</option></select>
-        <select id="routeAccount" name="account_id"><option value=""></option><option value="bank">Conta principal</option><option value="cash">Carteira</option></select>
-        <textarea id="routeNotes" name="notes"></textarea><div id="routeFormError"></div>
-      </form>
+      <select id="routeCategory" class="d-none"><option value="">Sem categoria</option><option value="income-category" data-type="receita">Receita</option><option value="expense-category" data-type="despesa">Despesa</option></select>
       <div id="routeMovementDetailTitle"></div>
       <div id="routeMovementDetailsContent">
         <div id="routeMovementDetailsName"></div><div id="routeMovementDetailsCategory"></div>
@@ -141,17 +135,19 @@ test('abrir qualquer coluna da Rota Financeira repõe sempre o filtro Todos', ()
     }
 });
 
-test('modal inicia em Todos, remove botão Fechar e usa Adicionar em largura total', () => {
+test('Rota Financeira não apresenta criação de movimentos e mantém o Novo global do bottom bar', () => {
     const h = setup();
     h.openDay();
-    assert.equal(h.window.document.querySelector('[data-day-filter="all"]').classList.contains('active'), true);
+    assert.equal(h.el('routeAddFromDay'), null);
+    assert.equal(h.el('routeMovementModal'), null);
     const blade = readFileSync(new URL('../../resources/views/financial-route.blade.php', import.meta.url), 'utf8');
-    assert.match(blade, /class="btn btn-primary w-100" id="routeAddFromDay"/);
-    assert.match(blade, />Adicionar<\/button>/);
-    const dayModal = blade.split('<div class="modal fade" id="routeDayModal"')[1].split('<div class="modal fade" id="routeMovementModal"')[0];
-    assert.doesNotMatch(dayModal, /data-bs-dismiss="modal">Fechar<\/button>/);
+    assert.doesNotMatch(blade, /routeAddFromDay|routeMovementModal|routeMovementForm/);
+    const layout = readFileSync(new URL('../../resources/views/layouts/app.blade.php', import.meta.url), 'utf8');
+    assert.match(layout, /class="mobile-bottom-link mobile-bottom-new"/);
+    assert.match(layout, /data-bs-target="#mobileNewMenu"/);
+    assert.match(layout, /data-dashboard-new-movement="despesa"/);
+    assert.match(layout, /data-dashboard-new-movement="receita"/);
 });
-
 test('transferências são identificadas pelo delta e também não abrem edição genérica', () => {
     const h = setup();
     for (const [description, amount, account] of [['Transferência saída', '−10,00 €', 'Conta principal'], ['Transferência entrada', '+10,00 €', 'Carteira']]) {
