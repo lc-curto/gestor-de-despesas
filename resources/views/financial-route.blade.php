@@ -135,9 +135,7 @@
 </x-modal>
 
 <x-modal id="routeMovementDetailModal" aria-labelledby="routeMovementDetailTitle" :scrollable="true">
-    <x-modal-header title="Detalhes do movimento" title-id="routeMovementDetailTitle">
-        <p class="small text-secondary mb-1" id="routeMovementDetailsKind"></p>
-    </x-modal-header>
+    <x-modal-header title="Detalhes do movimento" title-id="routeMovementDetailTitle" />
     <x-modal-body>
         <x-financial.movement-details-panel prefix="routeMovement" related-label="Conta" destructive-label="Eliminar" :show-description="true" :show-notes="true" />
         <div class="small text-danger mt-3" id="routeDetailError" role="alert"></div>
