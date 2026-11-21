@@ -12,7 +12,6 @@
 @endphp
 
 <section class="financial-route-page" id="financialRoute"
-    data-store-url="{{ route('financial.movements.store') }}"
     data-update-url="{{ url('/api/financial/movements') }}"
     data-delete-url="{{ url('/api/financial/movements') }}"
     data-currency="{{ $currency }}"
@@ -106,33 +105,17 @@
             <div id="routeOverdueMovements" class="route-overdue-list"></div>
         </section>
         <div id="routeDayMovements" class="route-movement-list"></div></div>
-        <div class="modal-footer"><button type="button" class="btn btn-primary w-100" id="routeAddFromDay">Adicionar</button></div>
+        
     </div></div>
 </div>
     <script type="application/json" id="route-overdue-data">{!! json_encode($overdueItems, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) !!}</script>
 
-<x-modal id="routeMovementModal" aria-labelledby="routeMovementTitle" :scrollable="true">
-    <form id="routeMovementForm">
-        <x-modal-header title="Novo movimento" title-id="routeMovementTitle" />
-        <x-modal-body>
-                <div class="mb-3"><label class="form-label">Tipo de movimento</label><div class="route-type-options">
-                    <label><input type="radio" name="route_type" value="income"><span>Entrada</span></label>
-                    <label><input type="radio" name="route_type" value="fixed"><span>Gasto fixo</span></label>
-                    <label><input type="radio" name="route_type" value="variable" checked><span>Variável</span></label>
-                </div></div>
-                <div class="mb-3"><label for="routeDescription" class="form-label">Descrição</label><input id="routeDescription" name="description" class="form-control" maxlength="255" placeholder="Ex.: Supermercado" required></div>
-                <div class="row g-3"><div class="col-6"><label for="routeAmount" class="form-label">Valor ({{ $symbol }})</label><input id="routeAmount" name="amount" type="text" inputmode="decimal" min="0.01" data-money="positive" class="form-control" placeholder="0,00" required></div><div class="col-6"><label for="routeDate" class="form-label">Data</label><input id="routeDate" name="movement_date" type="date" class="form-control" required></div>
-                    <div class="col-12"><label for="routeCategory" class="form-label">Categoria</label><select id="routeCategory" name="category_id" class="form-select"><option value="">Selecionar categoria</option>@foreach($categories as $category)<option value="{{ $category->id }}" data-type="{{ $category->type }}">{{ $category->name }}</option>@endforeach</select></div>
-                    <div class="col-12"><label for="routeAccount" class="form-label">Conta</label><select id="routeAccount" name="account_id" class="form-select" required><option value="">Selecionar conta</option>@foreach($accounts as $account)<option value="{{ $account->id }}" data-type="{{ $account->type }}">{{ $account->name }}</option>@endforeach</select></div>
-                    <div class="col-12"><label for="routeNotes" class="form-label">Observação (opcional)</label><textarea id="routeNotes" name="notes" class="form-control" rows="2" placeholder="Adicionar observação..."></textarea></div>
-                </div><div class="small text-danger mt-3" id="routeFormError" role="alert"></div>
-        </x-modal-body>
-        <x-modal-footer>
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" class="btn btn-primary">Guardar</button>
-        </x-modal-footer>
-    </form>
-</x-modal>
+<select id="routeCategory" class="d-none" aria-hidden="true" tabindex="-1">
+    <option value="">Selecionar categoria</option>
+    @foreach($categories as $category)<option value="{{ $category->id }}" data-type="{{ $category->type }}">{{ $category->name }}</option>@endforeach
+</select>
+
+
 
 @include('partials.movement-edit-modal')
 
@@ -326,12 +309,11 @@
  const root=document.getElementById('financialRoute'); if(!root)return;
  const csrf=document.querySelector('meta[name="csrf-token"]')?.content||'';
  const currency=root.dataset.currency||'EUR';
- const urls={store:root.dataset.storeUrl,update:root.dataset.updateUrl,remove:root.dataset.deleteUrl};
+ const urls={update:root.dataset.updateUrl,remove:root.dataset.deleteUrl};
  const modal=id=>bootstrap.Modal.getOrCreateInstance(document.getElementById(id));
- const dayModal=modal('routeDayModal'), movementModal=modal('routeMovementModal'), detailModal=modal('routeMovementDetailModal'), confirmModal=modal('routeConfirmModal');
- const detailElement=document.getElementById('routeMovementDetailModal'), movementElement=document.getElementById('routeMovementModal'), confirmElement=document.getElementById('routeConfirmModal');
- let activeDate=root.dataset.today, activeFilter='all', activeMovement=null, editId=null, confirmCallback=null, returnToRouteDetails=false, routeDetailsNext='', mode={{ $mode }}, month={{ Illuminate\Support\Js::from($month) }};
- const form=document.getElementById('routeMovementForm');
+ const dayModal=modal('routeDayModal'), detailModal=modal('routeMovementDetailModal'), confirmModal=modal('routeConfirmModal');
+ const detailElement=document.getElementById('routeMovementDetailModal'), confirmElement=document.getElementById('routeConfirmModal');
+ let activeDate=root.dataset.today, activeFilter='all', activeMovement=null, confirmCallback=null, returnToRouteDetails=false, routeDetailsNext='', mode={{ $mode }}, month={{ Illuminate\Support\Js::from($month) }};
  const fmt=value=>new Intl.NumberFormat('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2}).format(value)+' '+({EUR:'€',USD:'$',GBP:'£',BRL:'R$'}[currency]||currency);
  const dateLabel=value=>new Intl.DateTimeFormat('pt-PT',{day:'2-digit',month:'long',year:'numeric'}).format(new Date(value+'T12:00:00'));
  const movementKind=item=>item.type==='adjustment'?'Ajuste de saldo':item.type==='transfer'?'Transferência':item.type==='income'?'Entrada':item.expense_behavior==='fixed'?'Gasto fixo':'Variável';
@@ -348,7 +330,6 @@
  document.querySelectorAll('[data-route-mode]').forEach(b=>b.addEventListener('click',()=>{mode=Number(b.dataset.routeMode);setPeriod()}));
  if(window.matchMedia('(max-width: 767.98px)').matches){const [year,monthNumber]=month.split('-').map(Number);document.getElementById('routePeriodLabel').textContent=new Intl.DateTimeFormat('pt-PT',{month:'long',year:'numeric'}).format(new Date(year,monthNumber-1,1));}
  if(window.location.hash==='#route-today'){requestAnimationFrame(()=>document.querySelector('[data-date="'+root.dataset.today+'"]')?.scrollIntoView({behavior:'smooth',block:'center'}));window.history.replaceState(null,'',window.location.pathname+window.location.search);}
- document.getElementById('routeAddFromDay').addEventListener('click',()=>{dayModal.hide();openForm(activeDate)});
  // Bootstrap ignora hide() enquanto o modal ainda está a abrir.
  // Aguarda shown.bs.modal antes de fechar e só abre o próximo após hidden.bs.modal.
  function hideModalThen(element,instance,callback){
@@ -357,23 +338,6 @@
    if(instance._isTransitioning){element.addEventListener('shown.bs.modal',hideWhenReady,{once:true});return}
    if(element.classList.contains('show')){hideWhenReady();return}
    callback();
- }
- function openForm(date=activeDate,movement=null,show=true){
-   if(movement&&!canEditMovement(movement))return;
-   editId=movement?.id||null;form.reset();document.getElementById('routeMovementTitle').textContent=editId?'Editar movimento':'Novo movimento';
-   document.getElementById('routeDate').value=movement?.date||date;document.getElementById('routeDescription').value=movement?.description||'';
-   document.getElementById('routeAmount').value=movement?.amount||'';
-   document.getElementById('routeCategory').value=movement?.category_id||'';
-   document.getElementById('routeNotes').value=movement?.notes||'';
-   document.getElementById('routeAccount').value=movement?.account_id||'';
-   document.getElementById('routeAccount').disabled=!!movement;
-   document.getElementById('routeAccount').setAttribute('aria-label',movement?'Conta associada; não alterável nesta edição':'Conta');
-   const type=movement?.type==='income'?'income':(movement?.expense_behavior==='fixed'?'fixed':'variable');
-   form.querySelectorAll('#routeCategory option[data-type]').forEach(option=>{option.hidden=option.dataset.type!==(type==='income'?'receita':'despesa')&&option.value!==''});
-   form.querySelector('[name="route_type"][value="'+type+'"]').checked=true;
-   form.querySelectorAll('[name="route_type"]').forEach(radio=>radio.disabled=!!movement);
-   document.getElementById('routeFormError').textContent='';
-   if(show)movementModal.show();
  }
  function renderOverdueItems(){
    const section=document.getElementById('routeOverdueSection');
@@ -523,27 +487,10 @@
    returnToRouteDetails=true;routeDetailsNext='delete';detailModal.hide();
  });
  detailElement.addEventListener('hidden.bs.modal',()=>{if(!returnToRouteDetails)return;if(routeDetailsNext==='delete')confirmModal.show()});
- movementElement.addEventListener('hidden.bs.modal',()=>{if(returnToRouteDetails){returnToRouteDetails=false;routeDetailsNext='';detailModal.show()}});
  editElement.addEventListener('hidden.bs.modal',()=>{if(!returnToRouteDetails||routeDetailsNext!=='edit')return;returnToRouteDetails=false;routeDetailsNext='';editingRouteMovement=null;detailModal.show()});
  confirmElement.addEventListener('hidden.bs.modal',()=>{if(returnToRouteDetails){returnToRouteDetails=false;routeDetailsNext='';detailModal.show()}});
  document.getElementById('routeConfirmAction').addEventListener('click',async()=>{try{if(confirmCallback){returnToRouteDetails=false;routeDetailsNext='';await confirmCallback()}}catch(e){returnToRouteDetails=true;routeDetailsNext='delete';document.getElementById('routeConfirmText').textContent=e.message;document.getElementById('routeConfirmHint').hidden=true} });
- form.querySelectorAll('[name="route_type"]').forEach(radio=>radio.addEventListener('change',()=>{const type=radio.value==='income'?'receita':'despesa';form.querySelectorAll('#routeCategory option[data-type]').forEach(option=>{option.hidden=option.dataset.type!==type});if(document.getElementById('routeCategory').selectedOptions[0]?.hidden)document.getElementById('routeCategory').value=''}));
-   form.addEventListener('submit',async e=>{
-   e.preventDefault();const data=new FormData(form);const selected=form.querySelector('[name="route_type"]:checked')?.value||data.get('route_type');
-   const amountText=String(data.get('amount')||'').trim().replace(/[\u00a0\s]/g,'');let amount='';
-   try {
-     if (!/^\d+(?:,\d{1,2}|\.\d{1,2})?$/.test(amountText) && !/^\d{1,3}(?:\.\d{3})+,\d{1,2}$/.test(amountText)) throw new Error('Usa o formato 90,50 ou 1.000,00.');
-     if (amountText.includes(',')){const parts=amountText.split(',');amount=parts[0].replace(/\./g,'')+'.'+parts[1].padEnd(2,'0');} else if(amountText.includes('.')){const parts=amountText.split('.');amount=parts[0]+'.'+parts[1].padEnd(2,'0');} else amount=amountText+'.00';
-     if (!(Number(amount)>0)) throw new Error('O valor deve ser maior que zero.');
-   } catch(error){document.getElementById('routeFormError').textContent=error.message;return}
-   const type=selected==='income'?'income':'expense';const behavior=selected==='fixed'?'fixed':'variable';
-   const account=document.getElementById('routeAccount').value;
-   const payload={type,expense_behavior:behavior,description:data.get('description'),amount,movement_date:data.get('movement_date'),category_id:data.get('category_id')||null,notes:data.get('notes')||null};
-   if(type==='expense')payload.source_account_id=account;else payload.destination_account_id=account;
-   const url=editId?urls.update+'/'+editId:urls.store;const response=await fetch(url,{method:editId?'PUT':'POST',headers:{'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':csrf},body:JSON.stringify(payload)});
-   const json=await response.json();if(!response.ok){document.getElementById('routeFormError').textContent=Object.values(json.errors||{request:[json.message||'Não foi possível guardar.']}).flat().join(' ');return}
-   window.location.reload();
- });
+
 })();
 </script>
 @endpush
