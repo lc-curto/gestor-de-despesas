@@ -188,7 +188,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="movement-entry-trailing">
+                                <div class="movement-entry-trailing expense-actions">
                                     <strong class="movement-entry-amount {{ $isExpense ? 'is-expense' : 'is-income' }}">{{ $isExpense ? '−' : '+' }}{{ number_format($valorTotal, 2, ',', '.') }} {{ $movimento->currency }}</strong>
                                     <button type="button" class="movement-details-trigger" data-movement-action="details" aria-label="Detalhes de {{ $movimento->description }}" title="Detalhes">
                                         <i data-lucide="more-horizontal" aria-hidden="true"></i>
