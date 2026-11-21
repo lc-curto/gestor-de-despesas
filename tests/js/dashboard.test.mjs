@@ -626,6 +626,8 @@ test('a regra comum permite apenas movimentos pendentes reais sem origem em fatu
     const base = { type: 'despesa', status: 'pending', financialMovementId: '123' };
     assert.equal(canEdit(base), true);
     assert.equal(canEdit({ ...base, status: 'settled' }), false);
+    assert.equal(canEdit({ ...base, status: 'settled', isSettlementEvent: true }), true);
+    assert.equal(canEdit({ ...base, status: 'settled', isSettlementParent: true }), true);
     assert.equal(canEdit({ ...base, financialMovementId: '' }), false);
     assert.equal(canEdit({ ...base, invoiceId: 'invoice-1' }), false);
     assert.equal(canEdit({ ...base, installmentId: 'installment-1', debtId: 'debt-1' }), false);
