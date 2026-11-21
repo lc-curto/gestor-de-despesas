@@ -111,7 +111,7 @@ test('ajustes apresentam tipo, sinal, conta e detalhes corretos e não entram no
         assert.equal((h.modals.get('movementEditModal')?.shown || 0), 0, 'até um clique sintético não abre edição genérica');
     }
 
-    for (const [filter, expected] of [['income', ['Entrada', 'Entrada liquidada']], ['fixed', ['Fixo', 'Empréstimo', 'Fatura prevista']], ['variable', ['Variável']]]) {
+    for (const [filter, expected] of [['income', ['Entrada', 'Entrada liquidada', 'Liquidação Freelance']], ['fixed', ['Fixo', 'Empréstimo', 'Fatura prevista']], ['variable', ['Variável']]]) {
         h.window.document.querySelector(`[data-day-filter="${filter}"]`).click();
         assert.deepEqual(h.rows().map(row => row.querySelector('span strong').textContent), expected);
     }
