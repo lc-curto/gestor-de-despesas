@@ -1247,7 +1247,10 @@
         // A edição só começa depois de o modal de detalhes terminar de fechar.
         // Isso evita a disputa entre duas instâncias Bootstrap e os respetivos backdrops.
         if (action === 'edit') {
-            const openEditor = () => window.requestAnimationFrame(() => startEdit(row));
+            const openEditor = () => {
+                if (typeof window.requestAnimationFrame === 'function') window.requestAnimationFrame(() => startEdit(row));
+                else startEdit(row);
+            };
             if (movementDetailsModalElement?.classList.contains('show')) {
                 movementDetailsModalElement.addEventListener('hidden.bs.modal', openEditor, { once: true });
                 movementDetailsModal?.hide();
