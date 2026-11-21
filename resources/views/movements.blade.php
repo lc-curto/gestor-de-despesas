@@ -593,4 +593,5 @@ window.meuBolsoDashboard = {
 <script>document.addEventListener('DOMContentLoaded', () => bootstrap.Modal.getOrCreateInstance(document.getElementById('movementEntryModal')).show());</script>
 @endif
 <script src="{{ asset('js/dashboard.js') }}?v={{ filemtime(public_path('js/dashboard.js')) }}" defer></script>
+<script src="{{ asset('js/dashboard-home.js') }}?v={{ filemtime(public_path('js/dashboard-home.js')) }}" defer></script>
 @endpush
