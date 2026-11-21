@@ -35,7 +35,7 @@ const markup = `<!doctype html><meta name="csrf-token" content="test-token">
  <div id="movementDetailsProgressWrap"><div id="movementDetailsProgress"></div></div><span id="movementDetailsProgressLabel"></span>
  <div id="movementDetailsPaidLine"></div><div id="movementDetailsPendingLine"></div><div id="movementDetailsPaymentHeading" hidden></div>
  <span id="movementDetailsCategory"></span><span id="movementDetailsDate"></span><span id="movementDetailsKind"></span>
- <button id="movementDetailsSettle"></button><button id="movementDetailsEdit"></button><button id="movementDetailsDelete"></button>
+ <button id="movementDetailsSettle"><i data-lucide="check-circle"></i><span>Pagar</span><i data-lucide="chevron-right"></i></button><button id="movementDetailsEdit"></button><button id="movementDetailsDelete"></button>
 </div>
 <div id="movementEditModal"><form id="movementEditForm">
  <h2 id="movementEditTitle"></h2><div id="movementEditError" class="d-none"></div>
