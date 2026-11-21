@@ -5,7 +5,7 @@ import { JSDOM } from 'jsdom';
 
 const script = readFileSync(new URL('../../public/js/dashboard.js', import.meta.url), 'utf8');
 const editRules = readFileSync(new URL('../../resources/views/partials/movement-edit-modal.blade.php', import.meta.url), 'utf8')
-    .match(/<script>([\\s\\S]*?)<\\/script>/)?.[1];
+    .match(/<script>([\s\S]*?)<\/script>/)?.[1];
 const markup = `<!doctype html><meta name="csrf-token" content="test-token">
 <div id="movementSaveFeedback" class="d-none"><span id="movementSaveFeedbackMessage"></span><a id="movementSaveFeedbackLink" class="d-none" href="/compromissos">Ver parcelamentos</a></div>
 <div id="movementEntryModal"><form id="dashboardMovementForm" action="/despesas">
