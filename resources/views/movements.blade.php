@@ -98,7 +98,7 @@
                         </div>
                         <div class="col-6">
                             <label for="movementEditCategory" class="form-label fw-semibold">Categoria</label>
-                            <select id="movementEditCategory" class="form-select" required>
+                            <select id="movementEditCategory" class="form-select">
                                 <option value="">Seleciona uma categoria</option>
                             </select>
                         </div>
