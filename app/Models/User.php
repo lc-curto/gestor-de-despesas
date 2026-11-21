@@ -108,7 +108,7 @@ class User extends Authenticatable
 
             foreach ($defaults as $type => $items) {
                 foreach ($items as [$name, $slug, $icon, $color]) {
-                    $user->categorias()->create(compact('name', 'slug', 'icon', 'color', 'type') + ['is_active' => true]);
+                    $user->categorias()->create(compact('name', 'slug', 'icon', 'color', 'type') + ['is_active' => true, 'is_system' => true, 'show_in_management' => true]);
                 }
             }
         });

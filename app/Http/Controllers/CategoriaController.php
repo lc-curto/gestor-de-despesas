@@ -12,6 +12,7 @@ class CategoriaController extends Controller
     public function index(Request $request)
     {
         $categorias = $request->user()->categorias()
+            ->where('show_in_management', true)
             ->withCount(['despesas', 'receitas'])
             ->orderBy('type')->orderBy('name')->get();
 
@@ -26,6 +27,8 @@ class CategoriaController extends Controller
     {
         $data = $this->validated($request);
         $data['user_id'] = $request->user()->id;
+        $data['is_system'] = false;
+        $data['show_in_management'] = true;
         $data['slug'] = $this->uniqueSlug($request->user()->id, $data['type'], $data['name']);
 
         $request->user()->categorias()->create($data);
@@ -36,6 +39,7 @@ class CategoriaController extends Controller
     public function update(Request $request, string $id)
     {
         $categoria = $request->user()->categorias()->findOrFail($id);
+        abort_if($categoria->is_system, 403);
         $data = $this->validated($request, $categoria);
         $movementCount = $categoria->type === 'despesa'
             ? $categoria->despesas()->count()
@@ -56,6 +60,7 @@ class CategoriaController extends Controller
     public function toggle(Request $request, string $id)
     {
         $categoria = $request->user()->categorias()->findOrFail($id);
+        abort_if($categoria->is_system, 403);
         $categoria->update(['is_active' => ! $categoria->is_active]);
 
         return redirect()->route('categorias.index')->with('success', $categoria->is_active
