@@ -1245,7 +1245,7 @@
             !(['pending', 'partial', 'partially_settled', 'settled'].includes(status) && Boolean(row.dataset.financialMovementId));
         const settleLabel = settleAction.querySelector('span');
         const settleIcon = settleAction.querySelector('[data-lucide]');
-        const isSettled = status === 'settled';
+        const isSettled = ['partial', 'partially_settled', 'settled'].includes(status);
         if (settleLabel) settleLabel.textContent = isSettled ? 'Reverter' : (isExpense ? 'Pagar' : 'Receber');
         if (settleIcon) {
             settleIcon.setAttribute('data-lucide', isSettled ? 'undo-2' : 'check-circle');
@@ -1340,7 +1340,7 @@
 
     function openSettleOrReverse(row) {
         actionMovement = row;
-        if (row.dataset.movementStatus === 'settled') {
+        if (['partial', 'partially_settled', 'settled'].includes(row.dataset.movementStatus)) {
             reverseMovementSettlement(row);
             return;
         }
