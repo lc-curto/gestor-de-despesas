@@ -462,7 +462,7 @@
     function renderItem(item) {
         const isExpense = item.tipo === 'despesa';
         const movementDate = item.data_movimento || item.expense_date || item.income_date;
-        const dateMatch = String(movementDate || '').match(/^(\\d{4})-(\\d{2})-(\\d{2})/);
+        const dateMatch = String(movementDate || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
         let normalizedDate = '';
         let displayDate = 'Data não disponível';
 
@@ -552,7 +552,7 @@
 
         const tags = document.createElement('div');
         tags.className = 'movement-entry-tags';
-        const dueDateMatch = String(item.due_date || '').slice(0, 10).match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+        const dueDateMatch = String(item.due_date || '').slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
         let isOverdue = false;
         if (isExpense && dueDateMatch && item.movement_status !== 'settled') {
             const dueDate = new Date(Number(dueDateMatch[1]), Number(dueDateMatch[2]) - 1, Number(dueDateMatch[3]));
