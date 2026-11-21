@@ -96,7 +96,8 @@ class FinancialCommitmentsPageController extends Controller
             'next_installment' => $nextInstallment,
         ];
 
-        $status = $request->query('status', 'active');
+        $focusCommitmentId = $request->query('compromisso');
+        $status = $focusCommitmentId ? 'all' : $request->query('status', 'active');
         if (! in_array($status, ['active', 'completed', 'archived', 'all'], true)) {
             $status = 'active';
         }
@@ -108,6 +109,7 @@ class FinancialCommitmentsPageController extends Controller
         }
 
         $query = $eligibleDebts()
+            ->when($focusCommitmentId, fn ($builder) => $builder->whereKey($focusCommitmentId))
             ->when($status === 'active' || $status === 'completed', fn ($builder) => $builder->whereNull('archived_at')->whereNull('deleted_at')->where('status', '!=', 'cancelled'))
             ->when($status === 'archived', fn ($builder) => $builder->where(fn ($archived) => $archived->whereNotNull('archived_at')->orWhereNotNull('deleted_at')->orWhere('status', 'cancelled')))
             ->withCount(['parcelas as paid_installments_count' => fn ($parts) => $parts->where('status', 'paid')])
@@ -166,7 +168,8 @@ class FinancialCommitmentsPageController extends Controller
             'summary',
             'status',
             'search',
-            'perPage'
+            'perPage',
+            'focusCommitmentId'
         ));
     }
 }

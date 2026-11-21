@@ -44,6 +44,13 @@ A página **Movimentos** é o histórico financeiro unificado. Os KPIs mantêm a
 
 Transferências entre contas próprias e liquidações de faturas não entram em Receita, Despesa ou Resultado.
 
+## Navegação a partir de Movimentos
+
+- O modal de uma compra associada a cartão não disponibiliza ações operacionais; apresenta os dados e um acesso direto à fatura correspondente.
+- O modal de uma prestação não disponibiliza ações operacionais; apresenta a prestação e um acesso direto ao parcelamento de origem.
+- Pagamentos de fatura também encaminham para a respetiva fatura.
+- A página Movimentos mantém a função de histórico e consulta; edição, pagamento, renegociação, cancelamento e eliminação são feitos no módulo de origem.
+
 ## Separação entre módulos
 
 - **Movimentos:** apresenta compras no cartão, prestações, receitas, despesas, transferências e liquidações.

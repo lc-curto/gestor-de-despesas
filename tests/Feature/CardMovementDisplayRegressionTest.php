@@ -145,6 +145,8 @@ class CardMovementDisplayRegressionTest extends TestCase
 
         $page = $this->get(route('dashboard.movimentos', ['mes' => '2026-11', 'limit' => 10]));
         $page->assertOk()->assertSee('Compra canónica no cartão')->assertSee('Compra legada no cartão')
+            ->assertSee(route('financial.invoices.show', $invoiceId), false)
+            ->assertSee('data-invoice-id="'.$invoiceId.'"', false)
             ->assertSee('Pagamento da fatura Visa')->assertSee('Despesa legada de banco')
             ->assertSee('Despesa canónica de banco')->assertSee('Receita de banco')
             ->assertSee('data-total="137"', false)->assertSee('data-total="200"', false);
