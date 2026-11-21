@@ -67,7 +67,8 @@ function setup(response = { ok: false, json: async () => ({ message: 'Operação
     } } };
     const requests = [];
     window.fetch = async (url, options) => { requests.push({ url, ...options }); return response; };
-    window.eval(editRules);\n    window.eval(script);
+    window.eval(editRules);
+    window.eval(script);
     const el = id => window.document.getElementById(id);
     const openDay = (filter = 'income') => window.document.querySelector(`[data-date="2026-12-05"][data-filter="${filter}"]`).click();
     const rows = () => [...el('routeDayMovements').querySelectorAll('.route-movement-item')];
