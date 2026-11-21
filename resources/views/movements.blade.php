@@ -11,16 +11,45 @@
 <x-financial.page-header title="Movimentos" class="movements-page-header">
     <x-slot:subtitle>Visão geral financeira</x-slot:subtitle>
     <x-slot:actions>
-        <form method="GET" action="{{ route('dashboard.movimentos') }}" id="periodForm" class="period-controls dashboard-period-controls movements-period-picker">
-            <button type="button" class="btn btn-sm btn-outline-secondary" id="periodPrevious" aria-label="Mês anterior"><i data-lucide="chevron-left"></i></button>
-            <label for="periodMonth" class="visually-hidden">Selecionar mês</label>
-            <input type="month" id="periodMonth" name="mes" class="form-control" value="{{ $mes }}">
+        <form id="dashboardMonthForm" class="home-month-selector movements-month-selector" method="GET" action="{{ route('dashboard.movimentos') }}">
+            <span class="small text-secondary">Mês de referência:</span>
+            <input type="hidden" id="dashboardMonth" name="mes" value="{{ $mes }}">
+            <input type="hidden" id="periodMonth" value="{{ $mes }}">
             <input type="hidden" name="tipo" value="{{ $filtroTipo }}">
             <input type="hidden" name="categoria" value="{{ $filtroCategoria }}">
-            <button type="button" class="btn btn-sm btn-outline-secondary" id="periodNext" aria-label="Mês seguinte"><i data-lucide="chevron-right"></i></button>
+            <button type="button" class="home-month-trigger" id="openDashboardMonthPicker"
+                data-bs-toggle="modal" data-bs-target="#dashboardMonthPicker"
+                aria-haspopup="dialog" aria-controls="dashboardMonthPicker">
+                <span id="dashboardMonthLabel">{{ ucfirst(\Illuminate\Support\Carbon::createFromFormat('Y-m', $mes)->locale('pt_PT')->translatedFormat('F Y')) }}</span>
+                <i data-lucide="chevron-down" aria-hidden="true"></i>
+            </button>
+            <noscript><input type="month" name="mes" value="{{ $mes }}" class="form-control"><button type="submit" class="btn btn-sm btn-outline-secondary">Aplicar</button></noscript>
         </form>
     </x-slot:actions>
 </x-financial.page-header>
+
+<div class="modal fade" id="dashboardMonthPicker" tabindex="-1" aria-labelledby="dashboardMonthPickerTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm dashboard-month-dialog">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pb-2">
+                <h2 class="modal-title h5 fw-bold" id="dashboardMonthPickerTitle">Escolher mês</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body pt-1">
+                <div class="dashboard-month-year d-flex align-items-center justify-content-between mb-3">
+                    <button type="button" class="btn btn-sm btn-light" id="dashboardMonthPreviousYear" aria-label="Ano anterior"><i data-lucide="chevron-left"></i></button>
+                    <strong id="dashboardMonthYear" aria-live="polite"></strong>
+                    <button type="button" class="btn btn-sm btn-light" id="dashboardMonthNextYear" aria-label="Ano seguinte"><i data-lucide="chevron-right"></i></button>
+                </div>
+                <div class="dashboard-month-grid" id="dashboardMonthGrid" aria-label="Meses do ano"></div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary flex-fill" id="applyDashboardMonth">Aplicar</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div id="movementSaveFeedback" class="alert d-none" role="status" aria-live="polite">
     <span id="movementSaveFeedbackMessage"></span>
