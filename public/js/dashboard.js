@@ -575,7 +575,16 @@
             partially_settled: { text: isExpense ? 'Parcial' : 'Recebido parcial', className: 'is-partial' },
             pending: { text: isExpense ? 'Pendente' : 'Por receber', className: 'is-pending' }
         };
-        const status = isOverdue ? { text: 'Em atraso', className: 'is-overdue' } : statusLabels[item.movement_status];
+        // Créditos/devoluções e encargos de fatura já são identificados pela sua natureza.
+        // Mostrar também "Pago" não acrescenta informação à listagem.
+        const invoiceAdjustmentLabel = [item.category_label, item.description].filter(Boolean).join(' ');
+        const isSelfExplanatoryInvoiceAdjustment = Boolean(item.invoice_id)
+            && /cr[eé]dito|devolu[cç][aã]o|juros|encargos?/i.test(invoiceAdjustmentLabel);
+        const status = isOverdue
+            ? { text: 'Em atraso', className: 'is-overdue' }
+            : (item.movement_status === 'settled' && isSelfExplanatoryInvoiceAdjustment
+                ? null
+                : statusLabels[item.movement_status]);
         if (status) {
             const badge = document.createElement('span');
             badge.className = 'movement-status-badge ' + status.className;

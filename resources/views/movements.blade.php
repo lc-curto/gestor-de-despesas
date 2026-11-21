@@ -199,8 +199,10 @@
                                 $percentagemPaga = $valorTotal > 0 ? min(100, max(0, ($valorPago / $valorTotal) * 100)) : 0;
                                 $emAtraso = $isExpense && $movimento->due_date && $estado !== 'settled'
                                     && \Illuminate\Support\Carbon::parse($movimento->due_date)->startOfDay()->lt(now()->startOfDay());
+                                $ajusteFaturaAutoexplicativo = !empty($movimento->invoice_id)
+                                    && preg_match('/cr[eé]dito|devolu[cç][aã]o|juros|encargos?/iu', ($movimento->category_label ?? '') . ' ' . ($movimento->description ?? ''));
                                 $estadoLabel = $emAtraso ? 'Em atraso' : match ($estado) {
-                                    'settled' => $isExpense ? 'Pago' : 'Recebido',
+                                    'settled' => $ajusteFaturaAutoexplicativo ? null : ($isExpense ? 'Pago' : 'Recebido'),
                                     'partial', 'partially_settled' => $isExpense ? 'Parcial' : 'Recebido parcial',
                                     'pending' => $isExpense ? 'Pendente' : 'Por receber',
                                     default => null,
