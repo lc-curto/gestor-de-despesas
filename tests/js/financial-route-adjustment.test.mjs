@@ -253,3 +253,22 @@ test('Rota Financeira usa a mesma regra de elegibilidade e bloqueia movimentos c
     assert.equal(h.el('routeMovementDetailsEdit').disabled, false);
     h.window.close();
 });
+
+test('Rota Financeira aguarda hidden quando os detalhes já estão em transição de fecho', () => {
+    const h = setup();
+    h.openItem('Entrada');
+    const detailsElement = h.el('routeMovementDetailModal');
+    const details = h.modals.get('routeMovementDetailModal');
+    const editor = h.modals.get('movementEditModal');
+
+    details._isTransitioning = true;
+    detailsElement.classList.remove('show');
+    h.el('routeMovementDetailsEdit').click();
+    assert.equal(editor.shown, undefined);
+
+    details._isTransitioning = false;
+    detailsElement.dispatchEvent(new h.window.Event('hidden.bs.modal'));
+    assert.equal(editor.shown, 1);
+    assert.equal(h.el('movementEditDescription').value, 'Entrada');
+    h.window.close();
+});
