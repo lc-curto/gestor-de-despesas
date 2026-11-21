@@ -196,6 +196,11 @@ class DashboardController extends Controller
                 'recurrence_ends_at' => $item->recurrence_ends_at,
                 'installment_id' => $item->installment_id ?? null,
                 'debt_id' => $item->debt_id ?? null,
+                'invoice_id' => $item->invoice_id ?? null,
+                'invoice_reference_month' => $item->invoice_reference_month ?? null,
+                'invoice_due_date' => $item->invoice_due_date ?? null,
+                'invoice_status' => $item->invoice_status ?? null,
+                'invoice_card_name' => $item->invoice_card_name ?? null,
             ];
         })->values();
 
