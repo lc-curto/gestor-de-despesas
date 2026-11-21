@@ -284,5 +284,5 @@ test('Rota Financeira disponibiliza reversão para obrigações liquidadas eleg�
     const h = setup();
     h.openItem('Liquidação Freelance');
     assert.equal(h.el('routeMovementDetailsReverse').hidden, false);
-    h.dom?.window?.close?.();
+    h.window.close();
 });
