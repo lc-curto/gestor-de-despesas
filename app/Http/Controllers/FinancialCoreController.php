@@ -544,6 +544,16 @@ class FinancialCoreController extends Controller
         });
     }
 
+    public function reverseMovementSettlement(Request $request, string $id, FinancialMovementService $service): JsonResponse
+    {
+        $movement = $request->user()->movimentos()->whereKey($id)->firstOrFail();
+
+        return response()->json([
+            'data' => $service->reverseSettlement($request->user(), $movement),
+            'message' => 'Liquidação revertida. O movimento voltou ao estado pendente.',
+        ]);
+    }
+
     public function confirmMovement(Request $request, string $id, FinancialMovementService $service): JsonResponse
     {
         $data = $request->validate([
