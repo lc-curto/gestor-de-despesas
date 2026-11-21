@@ -531,7 +531,7 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('100.00', app(AccountBalanceService::class)->balance($account));
     }
 
-    public function test_settled_movement_without_legacy_link_can_be_edited_and_reconciles_balance(): void
+    public function test_settled_movement_without_obligation_parent_cannot_be_edited_or_reversed(): void
     {
         $user = User::factory()->create();
         $account = $this->account($user, 'Conta API');
@@ -542,16 +542,19 @@ class FinancialCoreServiceTest extends TestCase
 
         $this->actingAs($user)->putJson('/api/financial/movements/'.$movement->id, [
             'amount' => '99.00', 'description' => 'Compra alterada',
-        ])->assertOk();
+        ])->assertUnprocessable();
+
+        try {
+            app(FinancialMovementService::class)->reverseSettlement($user, $movement->fresh());
+            $this->fail('Um movimento liquidado sem obrigação original não pode ser revertido como liquidação.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('movement', $exception->errors());
+        }
 
         $this->assertDatabaseHas('movimentos', [
-            'id' => $movement->id, 'status' => 'settled', 'description' => 'Compra alterada', 'amount' => '99.00',
+            'id' => $movement->id, 'status' => 'settled', 'description' => 'Compra confirmada', 'amount' => '12.50',
         ]);
-        $this->assertDatabaseHas('historico_movimentos', [
-            'movement_id' => $movement->id,
-            'action' => 'settled_legacy_movement_updated',
-        ]);
-        $this->assertSame('1.00', app(AccountBalanceService::class)->balance($account->fresh()));
+        $this->assertSame('87.50', app(AccountBalanceService::class)->balance($account->fresh()));
     }
 
     public function test_authenticated_api_can_create_account_and_record_a_settled_expense(): void
