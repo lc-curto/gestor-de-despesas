@@ -40,11 +40,13 @@ class FinancialProjectionService
             ->whereIn('status', ['pending', 'partial', 'settled'])
             ->where('is_historical', false)
             ->where('is_settlement_parent', false)
-            // Prestações vencidas ficam na secção "Vencidas" e não reduzem
-            // novamente o saldo de abertura do período consultado.
+            // Mantém no saldo de abertura as prestações projetadas no mês
+            // imediatamente anterior. Só exclui pendências mais antigas,
+            // já vencidas antes desse mês e apresentadas em "Vencidas".
             ->whereNot(fn ($query) => $query
                 ->where('status', 'pending')
-                ->whereNotNull('installment_id'))
+                ->whereNotNull('installment_id')
+                ->where('movement_date', '<', $rangeStart->copy()->subMonthNoOverflow()->startOfMonth()->toDateString()))
             ->where('movement_date', '<', $rangeStart->toDateString())
             ->where(function ($query) {
                 $query->whereNull('debt_id')
