@@ -184,6 +184,7 @@
                                 data-amount="{{ $movimento->amount }}" data-remaining-amount="{{ $movimento->remaining_amount ?? $movimento->amount }}" data-currency="{{ $movimento->currency }}"
                                 data-category-id="{{ $movimento->category }}" data-account-id="{{ $movimento->account_id }}"
                                 data-movement-status="{{ $estado }}" data-is-settlement-event="{{ (bool) ($movimento->is_settlement_event ?? false) ? 1 : 0 }}"
+                                data-settles-movement-id="{{ $movimento->settles_movement_id ?? '' }}" data-is-settlement-parent="{{ (bool) ($movimento->is_settlement_parent ?? false) ? 1 : 0 }}"
                                 data-expense-behavior="{{ $movimento->expense_behavior ?? 'variable' }}" data-recurrence-id="{{ $movimento->recurrence_id }}"
                                 data-recurrence-frequency="{{ $movimento->recurrence_frequency }}" data-financial-movement-id="{{ $movimento->financial_movement_id }}"
                                 data-installment-id="{{ $movimento->installment_id ?? '' }}" data-due-date="{{ $movimento->due_date ?? '' }}"
