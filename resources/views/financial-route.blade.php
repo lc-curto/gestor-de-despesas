@@ -420,7 +420,7 @@
    document.getElementById('routeDetailError').textContent='';
    document.getElementById('routeMovementDetailsEdit').hidden=!canEditMovement(item);
    const reverseButton=document.getElementById('routeMovementDetailsReverse');
-   reverseButton.hidden=!(['income','expense'].includes(item.type)&&['partial','partially_settled','settled'].includes(item.status)&&!item.invoice_id&&!item.installment_id&&!item.debt_id&&!item.settles_movement_id);
+   reverseButton.hidden=!(item.is_settlement_parent&&['income','expense'].includes(item.type)&&['partial','partially_settled','settled'].includes(item.status)&&!item.invoice_id&&!item.installment_id&&!item.debt_id&&!item.settles_movement_id);
    document.getElementById('routeEditHelp').textContent=item.type==='adjustment'
      ?'Ajustes não editáveis. Elimina o movimento.'
      :item.type==='transfer'
