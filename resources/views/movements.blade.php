@@ -8,8 +8,18 @@
     $simbolos = ['EUR' => '€', 'USD' => '$', 'GBP' => '£', 'BRL' => 'R$'];
 @endphp
 
-<x-financial.page-header title="Movimentos">
-    <x-slot:subtitle>Consulta e acompanha as tuas receitas e despesas.</x-slot:subtitle>
+<x-financial.page-header title="Movimentos" class="movements-page-header">
+    <x-slot:subtitle>Visão geral financeira</x-slot:subtitle>
+    <x-slot:actions>
+        <form method="GET" action="{{ route('dashboard.movimentos') }}" id="periodForm" class="period-controls dashboard-period-controls movements-period-picker">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="periodPrevious" aria-label="Mês anterior"><i data-lucide="chevron-left"></i></button>
+            <label for="periodMonth" class="visually-hidden">Selecionar mês</label>
+            <input type="month" id="periodMonth" name="mes" class="form-control" value="{{ $mes }}">
+            <input type="hidden" name="tipo" value="{{ $filtroTipo }}">
+            <input type="hidden" name="categoria" value="{{ $filtroCategoria }}">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="periodNext" aria-label="Mês seguinte"><i data-lucide="chevron-right"></i></button>
+        </form>
+    </x-slot:actions>
 </x-financial.page-header>
 
 <div id="movementSaveFeedback" class="alert d-none" role="status" aria-live="polite">
@@ -18,7 +28,6 @@
 </div>
 
 <section class="movements-period-summary" aria-label="Resumo financeiro do período">
-    <div class="movements-period-summary-heading" id="movementsSummaryPeriod">Resumo de {{ \Illuminate\Support\Carbon::createFromFormat('Y-m', $mes)->locale('pt_PT')->translatedFormat('F Y') }}</div>
     <div class="movements-period-summary-values">
         <div class="movements-period-metric">
             <span>Receitas</span>
@@ -40,20 +49,6 @@
     <div class="col-12">
         <article class="card border-0 shadow-sm rounded-4 history-card">
             <div class="card-body p-0 history-card-body">
-                <div class="p-3 p-sm-4 pb-3">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-                        <h2 class="h5 fw-bold mb-0">Histórico de movimentos</h2>
-                        <form method="GET" action="{{ route('dashboard.movimentos') }}" id="periodForm" class="period-controls dashboard-period-controls">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" id="periodPrevious" aria-label="Mês anterior"><i data-lucide="chevron-left"></i></button>
-                            <label for="periodMonth" class="visually-hidden">Selecionar mês</label>
-                            <input type="month" id="periodMonth" name="mes" class="form-control" value="{{ $mes }}">
-                            <input type="hidden" name="tipo" value="{{ $filtroTipo }}">
-                            <input type="hidden" name="categoria" value="{{ $filtroCategoria }}">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" id="periodNext" aria-label="Mês seguinte"><i data-lucide="chevron-right"></i></button>
-                        </form>
-                    </div>
-                </div>
-
                 <div class="px-3 px-sm-4 pb-3">
                     <label class="visually-hidden" for="movementSearch">Pesquisar movimentos</label>
                     <div class="movements-search-row">
@@ -453,13 +448,17 @@
 @push('styles')
 <style>
 .movements-page { min-width: 0; }
-.movements-page .movements-period-summary { display:grid; gap:.85rem; margin:0 0 1.35rem; padding:1rem 1.1rem; border:1px solid var(--bs-border-color); border-radius:1rem; background:var(--bs-body-bg); }
-.movements-page .movements-period-summary-heading { color:var(--bs-secondary-color); font-size:.72rem; font-weight:700; letter-spacing:.045em; text-transform:uppercase; }
-.movements-page .movements-period-summary-values { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.8rem; }
-.movements-page .movements-period-metric { display:grid; gap:.25rem; min-width:0; }
+.movements-page .movements-period-summary { display:grid; gap:0; margin:0 0 .85rem; padding:.7rem; border:1px solid var(--bs-border-color); border-radius:.85rem; background:var(--bs-body-bg); }
+.movements-page .movements-period-summary-values { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.45rem; }
+.movements-page .movements-period-metric { display:grid; gap:.2rem; min-width:0; }
 .movements-page .movements-period-metric > span { color:var(--bs-secondary-color); font-size:.75rem; }
-.movements-page .movements-period-metric > strong { overflow-wrap:anywhere; font-size:clamp(.88rem,2vw,1.12rem); font-variant-numeric:tabular-nums; letter-spacing:-.025em; }
+.movements-page .movements-period-metric > strong { overflow-wrap:anywhere; font-size:1rem; font-variant-numeric:tabular-nums; letter-spacing:-.025em; }
 .movements-page .movements-period-result > strong { color:var(--bs-success-text-emphasis); }
+.movements-page .movements-page-header { margin-bottom:1rem!important; }
+.movements-page .movements-period-picker { gap:.25rem; }
+.movements-page .movements-period-picker .form-control { width:9.2rem; min-width:0; padding:.375rem .45rem; font-size:.8rem; }
+.movements-page .movements-period-picker .btn { width:32px; height:34px; padding:.35rem; display:inline-flex; align-items:center; justify-content:center; }
+.movements-page .history-card { box-shadow:none!important; }
 .movements-page .history-card { overflow:hidden; border:1px solid var(--bs-border-color); background:var(--bs-body-bg); }
 .movements-page .history-card-body { min-width:0; }
 .movements-page .dashboard-period-controls { gap:.35rem; }
@@ -497,10 +496,21 @@
 .movements-page .expense-icon { width:2.5rem; height:2.5rem; }
 .movements-page .empty-state svg { width:2rem; height:2rem; }
 @media (max-width:575.98px) {
-    .movements-page .movements-period-summary { padding:.85rem; gap:.7rem; }
-    .movements-page .movements-period-summary-values { gap:.4rem; }
+    .movements-page .movements-period-summary { padding:.65rem .55rem; margin-bottom:.7rem; }
+    .movements-page .movements-period-summary-values { gap:.25rem; }
     .movements-page .movements-period-metric > span { font-size:.68rem; }
-    .movements-page .movements-period-metric > strong { font-size:clamp(.68rem,3.05vw,.84rem); letter-spacing:-.035em; }
+    .movements-page .movements-period-metric > strong { font-size:clamp(.72rem,3.2vw,.88rem); letter-spacing:-.035em; }
+    .movements-page .movements-page-header { align-items:center!important; margin-bottom:.85rem!important; }
+    .movements-page .movements-page-header h1 { font-size:1.35rem; }
+    .movements-page .movements-page-header > div:first-child .small { font-size:.78rem; }
+    .movements-page .movements-period-picker .form-control { width:7.7rem; font-size:.72rem; }
+    .movements-page .movements-period-picker .btn { width:27px; height:32px; }
+    .movements-page .history-card { border-radius:.85rem!important; }
+    .movements-page .history-card .movements-search-row { gap:.5rem; }
+    .movements-page .history-card .movements-search-row .input-group-text,
+    .movements-page .history-card .movements-search-row .form-control,
+    .movements-page .history-card .movements-filter-trigger { min-height:38px; }
+    .movements-page .history-card .movements-type-filters .btn { min-height:32px; padding:.3rem .75rem; }
     .movements-page .movement-entry { gap:.35rem; }
     .movements-page .movement-entry-main { gap:.6rem; }
     .movements-page .movement-entry-trailing { flex-direction:column; align-items:flex-end; gap:.1rem; }
