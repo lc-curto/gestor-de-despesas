@@ -47,10 +47,13 @@
     window.meuBolsoMovementEditRules = window.meuBolsoMovementEditRules || {};
     window.meuBolsoMovementEditRules.canEdit = function (movement) {
         if (!movement || !['income', 'expense', 'receita', 'despesa'].includes(movement.type)) return false;
-        if (movement.status !== 'pending' || !movement.financialMovementId) return false;
         if (movement.invoiceId || movement.isInvoicePayment) return false;
-        if (movement.installmentId && movement.debtId) return false;
-        return !/^(debt|invoice|overdue-debt|overdue-invoice|settlement)-/.test(String(movement.financialMovementId));
+        if (movement.installmentId || movement.debtId) return false;
+        if (/^(debt|invoice|overdue-debt|overdue-invoice)-/.test(String(movement.financialMovementId))) return false;
+        if (movement.status === 'pending') return true;
+        const isSettlementRecord = Boolean(movement.isSettlementEvent || movement.settlesMovementId || movement.isSettlementParent);
+        const hasLegacyRecord = Boolean(movement.legacyType && movement.legacyId);
+        return movement.status === 'settled' && (isSettlementRecord || hasLegacyRecord);
     };
 
     // Encadeia modais sem depender de um único estado de transição do Bootstrap.
