@@ -73,46 +73,7 @@
 </section>
 
 @include('partials.movement-editor-modal')
-<div class="modal fade" id="movementEditModal" tabindex="-1" aria-labelledby="movementEditTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered movement-entry-dialog">
-        <div class="modal-content border-0 shadow rounded-4">
-            <form id="movementEditForm">
-                <div class="modal-header border-0 pb-0">
-                    <h2 class="modal-title h5 fw-bold" id="movementEditTitle">Editar movimento</h2>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                </div>
-                <div class="modal-body">
-                    <div id="movementEditError" class="alert alert-danger d-none" role="alert"></div>
-                    <div class="mb-3">
-                        <label for="movementEditDescription" class="form-label fw-semibold">Descrição</label>
-                        <input id="movementEditDescription" type="text" class="form-control" maxlength="255" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="movementEditAmount" class="form-label fw-semibold">Valor</label>
-                        <input id="movementEditAmount" type="text" inputmode="decimal" class="form-control" required>
-                    </div>
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <label for="movementEditDate" class="form-label fw-semibold">Data</label>
-                            <input id="movementEditDate" type="date" class="form-control" required>
-                        </div>
-                        <div class="col-6">
-                            <label for="movementEditCategory" class="form-label fw-semibold">Categoria</label>
-                            <select id="movementEditCategory" class="form-select">
-                                <option value="">Seleciona uma categoria</option>
-                            </select>
-                        </div>
-                    </div>
-                    <input type="hidden" id="movementEditExpenseBehavior" value="variable">
-                </div>
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary flex-fill" id="movementEditSubmit">Guardar alterações</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+@include('partials.movement-edit-modal')
 
 
 <section class="row g-3 g-xl-4 align-items-start" aria-label="Movimentos">
@@ -219,7 +180,7 @@
                             <article class="expense-item movement-entry py-3 border-bottom"
                                 data-movement-id="{{ $movimento->id }}" data-movement-type="{{ $movimento->tipo }}"
                                 data-edit-url="{{ route($isExpense ? 'despesas.update' : 'receitas.update', $movimento->id) }}"
-                                data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}"
+                                data-date="{{ $dataMovimento->format('Y-m-d') }}" data-description="{{ $movimento->description }}" data-notes="{{ $movimento->notes ?? '' }}"
                                 data-amount="{{ $movimento->amount }}" data-remaining-amount="{{ $movimento->remaining_amount ?? $movimento->amount }}" data-currency="{{ $movimento->currency }}"
                                 data-category-id="{{ $movimento->category }}" data-account-id="{{ $movimento->account_id }}"
                                 data-movement-status="{{ $estado }}" data-is-settlement-event="{{ (bool) ($movimento->is_settlement_event ?? false) ? 1 : 0 }}"

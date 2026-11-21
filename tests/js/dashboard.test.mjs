@@ -41,7 +41,7 @@ const markup = `<!doctype html><meta name="csrf-token" content="test-token">
  <h2 id="movementEditTitle"></h2><div id="movementEditError" class="d-none"></div>
  <input id="movementEditDescription" required><input id="movementEditAmount" required>
  <input id="movementEditDate" required><select id="movementEditCategory"><option value="">Seleciona</option></select>
- <input id="movementEditExpenseBehavior"><button id="movementEditSubmit" type="submit">Guardar alterações</button>
+ <textarea id="movementEditNotes"></textarea><input id="movementEditExpenseBehavior"><button id="movementEditSubmit" type="submit">Guardar alterações</button>
 </form></div>
 <div id="settleMovementModal"><form id="settleMovementForm">
  <h2 id="settleMovementTitle"></h2><span id="settleMovementDescription"></span><div id="settleMovementError" class="d-none" tabindex="-1"></div>
@@ -424,8 +424,8 @@ test('edição aguarda o fim da abertura do modal de detalhes antes de o fechar'
 test('Rota Financeira aguarda a transição Bootstrap antes de trocar para o modal de edição', () => {
     const route = readFileSync(new URL('../../resources/views/financial-route.blade.php', import.meta.url), 'utf8');
     assert.match(route, /if\s*\(instance\._isTransitioning\)\s*\{\s*element\.addEventListener\('shown\.bs\.modal',hideWhenReady/);
-    assert.match(route, /hideModalThen\(detailElement,detailModal,\(\)=>movementModal\.show\(\)\)/);
-    assert.match(route, /movementElement\.addEventListener\('hidden\.bs\.modal'/);
+    assert.match(route, /hideModalThen\(detailElement,detailModal,\(\)=>editModal\.show\(\)\)/);
+    assert.match(route, /editElement\.addEventListener\('hidden\.bs\.modal'/);
     assert.match(route, /routeDetailsNext==='delete'\)confirmModal\.show\(\)/);
     assert.doesNotMatch(route, /routeDetailsNext==='edit'\)movementModal\.show\(\)/);
 });
@@ -585,9 +585,10 @@ test('cancelar edição regressa ao modal de detalhes do movimento', () => {
     ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
     const details = ui.window.bootstrap.Modal.getOrCreateInstance(ui.element('movementDetailsModal'));
     ui.element('movementDetailsEdit').click();
-    const editor = ui.window.bootstrap.Modal.getOrCreateInstance(ui.element('movementEntryModal'));
+    const editorElement = ui.element('movementEditModal');
+    const editor = ui.window.bootstrap.Modal.getOrCreateInstance(editorElement);
     assert.equal(editor.open, true);
-    ui.element('cancelMovementEdit').click();
+    editor.hide();
     assert.equal(editor.open, false);
     assert.equal(details.open, true);
     assert.equal(ui.element('movementDetailsName').textContent, 'Despesa de teste');
