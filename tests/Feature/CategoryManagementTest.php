@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Models\Categoria;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -10,7 +11,7 @@ class CategoryManagementTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function createCustomExpenseCategory(User $user): \\App\\Models\\Categoria
+    private function createCustomExpenseCategory(User $user): Categoria
     {
         return $user->categorias()->create([
             'name' => 'Categoria personalizada',
