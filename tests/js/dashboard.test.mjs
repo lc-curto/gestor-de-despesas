@@ -426,6 +426,8 @@ test('Rota Financeira aguarda a transição Bootstrap antes de trocar para o mod
     assert.match(route, /if\s*\(instance\._isTransitioning\)\s*\{\s*element\.addEventListener\('shown\.bs\.modal',hideWhenReady/);
     assert.match(route, /hideModalThen\(detailElement,detailModal,\(\)=>movementModal\.show\(\)\)/);
     assert.match(route, /movementElement\.addEventListener\('hidden\.bs\.modal'/);
+    assert.match(route, /routeDetailsNext==='delete'\)confirmModal\.show\(\)/);
+    assert.doesNotMatch(route, /routeDetailsNext==='edit'\)movementModal\.show\(\)/);
 });
 
 test('liquidação normaliza vírgula e rejeita valores ambíguos antes do pedido', async () => {
