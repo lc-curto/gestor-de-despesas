@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 
 const blade = readFileSync(new URL('../../resources/views/financial-route.blade.php', import.meta.url), 'utf8');
+const editRules = readFileSync(new URL('../../resources/views/partials/movement-edit-modal.blade.php', import.meta.url), 'utf8')
+    .match(/<script>([\\s\\S]*?)<\\/script>/)?.[1];
 const script = blade.match(/@push\('scripts'\)\s*<script>([\s\S]*?)<\/script>/)?.[1]
     .replace('{{ $mode }}', '1')
     .replace('{{ Illuminate\\Support\\Js::from($month) }}', '"2026-12"');
@@ -65,7 +67,7 @@ function setup(response = { ok: false, json: async () => ({ message: 'Operação
     } } };
     const requests = [];
     window.fetch = async (url, options) => { requests.push({ url, ...options }); return response; };
-    window.eval(script);
+    window.eval(editRules);\n    window.eval(script);
     const el = id => window.document.getElementById(id);
     const openDay = (filter = 'income') => window.document.querySelector(`[data-date="2026-12-05"][data-filter="${filter}"]`).click();
     const rows = () => [...el('routeDayMovements').querySelectorAll('.route-movement-item')];
@@ -232,4 +234,21 @@ test('a Rota Financeira fecha o modal do dia antes de abrir os detalhes', () => 
     assert.equal(details.shown, 1);
     assert.equal(h.el('routeDayModal').classList.contains('show'), false);
     assert.equal(h.el('routeMovementDetailModal').classList.contains('show'), true);
+});
+
+test('Rota Financeira usa a mesma regra de elegibilidade e bloqueia movimentos com origem associada', () => {
+    const h = setup();
+    const base = { id: 'real-1', type: 'expense', status: 'pending', description: 'Com origem', amount: 8, projection_delta: -8, account_id: 'bank', account_name: 'Conta principal' };
+    for (const item of [
+        { ...base, invoice_id: 'invoice-1' },
+        { ...base, installment_id: 'installment-1', debt_id: 'debt-1' },
+    ]) {
+        h.window.document.getElementById('route-day-2026-12-05').textContent = JSON.stringify({ items: [item], balance: 1, status: 'comfortable' });
+        h.openItem('Com origem');
+        assert.equal(h.el('routeMovementDetailsEdit').disabled, true);
+    }
+    h.window.document.getElementById('route-day-2026-12-05').textContent = JSON.stringify({ items: [{ ...base, id: 'real-2' }], balance: 1, status: 'comfortable' });
+    h.openItem('Com origem');
+    assert.equal(h.el('routeMovementDetailsEdit').disabled, false);
+    h.window.close();
 });
