@@ -365,6 +365,7 @@ test('edição usa o modal próprio e envia o valor com vírgula em decimal can�
     }, [existingMovement]);
     ui.element('expensesList').querySelector('[data-movement-action="details"]').click();
     ui.element('movementDetailsEdit').click();
+    assert.equal(ui.window.bootstrap.Modal.getOrCreateInstance(ui.element('movementEditModal')).open, true);
     assert.equal(ui.element('movementEditAmount').value, '90,50');
     ui.element('movementEditAmount').value = '90,50';
     ui.element('movementEditForm').dispatchEvent(new ui.window.Event('submit', { bubbles: true, cancelable: true }));
