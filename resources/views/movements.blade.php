@@ -230,7 +230,7 @@
                                 data-invoice-id="{{ $movimento->invoice_id ?? '' }}" data-invoice-reference-month="{{ $movimento->invoice_reference_month ?? '' }}"
                                 data-invoice-due-date="{{ $movimento->invoice_due_date ?? '' }}" data-invoice-status="{{ $movimento->invoice_status ?? '' }}"
                                 data-invoice-card-name="{{ $movimento->invoice_card_name ?? '' }}"
-                                data-is-invoice-payment="{{ (bool) ($movimento->is_invoice_payment ?? false) ? 1 : 0 }}"
+                                data-is-invoice-payment="{{ (bool) ($movimento->is_invoice_payment ?? false) ? 1 : 0 }}" data-is-invoice-credit="{{ ($movimento->category_label ?? '') === 'Crédito de compra' ? 1 : 0 }}"
                                 data-invoice-url="{{ !empty($movimento->invoice_id) ? route('financial.invoices.show', $movimento->invoice_id) : '' }}"
                                 data-commitment-url="{{ !empty($movimento->debt_id) && !empty($movimento->installment_id) ? route('financial.commitments.page', ['compromisso' => $movimento->debt_id]) : '' }}">
                                 <div class="movement-entry-main">
@@ -263,7 +263,7 @@
                                     </div>
                                 </div>
                                 <div class="movement-entry-trailing expense-actions">
-                                    <strong class="movement-entry-amount {{ $isExpense ? 'is-expense' : 'is-income' }}">{{ $isExpense ? '−' : '+' }}{{ number_format($valorTotal, 2, ',', '.') }} {{ $movimento->currency }}</strong>
+                                    <strong class="movement-entry-amount {{ ($movimento->category_label ?? '') === 'Crédito de compra' || !$isExpense ? 'is-income' : 'is-expense' }}">{{ ($movimento->category_label ?? '') === 'Crédito de compra' || !$isExpense ? '+' : '−' }}{{ number_format($valorTotal, 2, ',', '.') }} {{ $movimento->currency }}</strong>
                                     <button type="button" class="movement-details-trigger" data-movement-action="details" aria-label="Detalhes de {{ $movimento->description }}" title="Detalhes">
                                         <i data-lucide="more-horizontal" aria-hidden="true"></i>
                                     </button>
