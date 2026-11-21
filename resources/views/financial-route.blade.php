@@ -424,6 +424,7 @@
    document.getElementById('routeMovementDetailsAmount').textContent=['adjustment','transfer'].includes(item.type)?signedAmount(item):fmt(item.amount);
    document.getElementById('routeMovementDetailsCategory').textContent=item.category;
    document.getElementById('routeMovementDetailsRelated').textContent=item.account_name;
+   document.getElementById('routeMovementDetailsRelatedRow').hidden=false;
    document.getElementById('routeMovementDetailsDate').textContent=dateLabel(item.date);
    document.getElementById('routeMovementDetailsDescription').textContent=item.description;
    document.getElementById('routeMovementDetailsNotes').textContent=item.notes||'—';
