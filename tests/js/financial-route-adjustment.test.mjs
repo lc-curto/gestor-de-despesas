@@ -106,7 +106,7 @@ test('ajustes apresentam tipo, sinal, conta e detalhes corretos e não entram no
         assert.equal(h.el('routeMovementDetailsNotes').textContent, notes);
         assert.equal(h.el('routeMovementDetailsDelete').textContent, 'Eliminar');
         assert.equal(h.el('routeMovementDetailsEdit').hidden, true);
-        assert.match(h.el('routeEditHelp').textContent, /elimina o movimento/i);
+        assert.match(h.el('routeEditHelp').textContent, /ajustes não editáveis/i);
         h.el('routeMovementDetailsEdit').dispatchEvent(new h.window.MouseEvent('click', { bubbles: true }));
         assert.equal((h.modals.get('movementEditModal')?.shown || 0), 0, 'até um clique sintético não abre edição genérica');
     }
