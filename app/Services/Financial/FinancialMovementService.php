@@ -882,12 +882,7 @@ class FinancialMovementService
                 ]);
             }
 
-            $updated = $this->updatePending($user, $snapshot, $data);
-            if ($updated->recurrence_id && $updated->legacy_type && $updated->legacy_id) {
-                $this->syncLegacyRecordFromMovement($user, $updated);
-            }
-
-            return $updated->refresh();
+            return $this->updatePending($user, $snapshot, $data)->refresh();
         });
     }
 
@@ -1017,6 +1012,12 @@ class FinancialMovementService
             $locked->fill(array_intersect_key($data, array_flip($allowed)));
             $locked->save();
             $this->audit($user, $locked, 'updated', $before, $locked->getAttributes());
+
+            // O registo legado é a origem de leitura de algumas áreas do sistema.
+            // Mantém-no sincronizado em qualquer edição, não apenas em recorrências.
+            if ($locked->legacy_type && $locked->legacy_id) {
+                $this->syncLegacyRecordFromMovement($user, $locked);
+            }
 
             return $locked->refresh();
         });

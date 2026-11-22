@@ -42,8 +42,12 @@ class FinancialRouteController extends Controller
                 $key = $cursor->toDateString();
                 $items = $movements->filter(fn ($movement) => $movement->movement_date->toDateString() === $key);
                 $displayItems = $displayMovements->filter(fn ($movement) => $movement->movement_date->toDateString() === $key);
-                $cashIncome = $items->where('type', 'income')->sum('amount');
-                $cashExpenses = $items->where('type', 'expense');
+                // Os eventos de reversão corrigem o saldo de caixa, mas não são
+                // nova receita/despesa económica. O cash_delta continua a usar
+                // todos os eventos, incluindo as reversões.
+                $indicatorItems = $items->reject(fn ($item) => ! empty($item->reversal_of_id));
+                $cashIncome = $indicatorItems->where('type', 'income')->sum('amount');
+                $cashExpenses = $indicatorItems->where('type', 'expense');
                 $days[$monthKey][$key] = [
                     'income' => (float) $cashIncome,
                     'variable' => (float) $cashExpenses->where('expense_behavior', 'variable')->sum('amount'),
