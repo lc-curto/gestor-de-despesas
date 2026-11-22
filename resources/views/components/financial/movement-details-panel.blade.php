@@ -43,6 +43,11 @@
         <hr>
         <h3 class="small fw-semibold mb-3">Ações</h3>
         <div class="list-group list-group-flush border rounded-3 overflow-hidden">
+            <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3 text-warning" id="{{ $prefix }}DetailsReverse" hidden>
+                <i data-lucide="undo-2" aria-hidden="true"></i>
+                <span>Reverter liquidação</span>
+                <i data-lucide="chevron-right" class="ms-auto text-secondary" aria-hidden="true"></i>
+            </button>
             <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3" id="{{ $prefix }}DetailsEdit">
                 <i data-lucide="pencil" aria-hidden="true"></i>
                 <span>Editar</span>

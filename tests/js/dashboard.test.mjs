@@ -365,6 +365,17 @@ test('a mesma ação mostra Pagar em pendentes e Reverter em movimentos liquidad
     assert.equal(pendingAction.querySelector('span').textContent, 'Pagar');
     pendingUi.dom.window.close();
 
+    const partialUi = setup(async () => jsonResponse(200, { data: [] }), [{
+        ...existingMovement,
+        movement_status: 'partial',
+        remaining_amount: '50.00',
+    }]);
+    partialUi.element('expensesList').querySelector('[data-movement-action="details"]').click();
+    const partialAction = partialUi.element('movementDetailsSettle');
+    assert.equal(partialAction.hidden, false);
+    assert.equal(partialAction.querySelector('span').textContent, 'Reverter');
+    partialUi.dom.window.close();
+
     const settledUi = setup(async () => jsonResponse(200, { data: [] }), [{
         ...existingMovement,
         movement_status: 'settled',
@@ -571,7 +582,7 @@ test('modal de detalhes apresenta totais pagos e pendentes e mantém as ações 
     assert.equal(ui.element('movementDetailsPending').textContent, '80,00 €');
     assert.equal(ui.element('movementDetailsSettle').hidden, false);
     assert.equal(ui.element('movementDetailsEdit').hidden, true);
-    assert.equal(ui.element('movementDetailsDelete').hidden, false);
+    assert.equal(ui.element('movementDetailsDelete').hidden, true, 'movimentos parciais não podem ser eliminados diretamente');
     ui.dom.window.close();
 });
 
@@ -626,9 +637,9 @@ test('a regra comum permite apenas movimentos pendentes reais sem origem em fatu
     const base = { type: 'despesa', status: 'pending', financialMovementId: '123' };
     assert.equal(canEdit(base), true);
     assert.equal(canEdit({ ...base, status: 'settled' }), false);
-    assert.equal(canEdit({ ...base, status: 'settled', isSettlementEvent: true }), true);
-    assert.equal(canEdit({ ...base, status: 'partial', isSettlementEvent: true }), true);
-    assert.equal(canEdit({ ...base, status: 'settled', isSettlementParent: true }), true);
+    assert.equal(canEdit({ ...base, status: 'settled', isSettlementEvent: true }), false);
+    assert.equal(canEdit({ ...base, status: 'partial', isSettlementEvent: true }), false);
+    assert.equal(canEdit({ ...base, status: 'settled', isSettlementParent: true }), false);
     assert.equal(canEdit({ ...base, financialMovementId: '' }), false);
     assert.equal(canEdit({ ...base, invoiceId: 'invoice-1' }), false);
     assert.equal(canEdit({ ...base, installmentId: 'installment-1', debtId: 'debt-1' }), false);

@@ -54,7 +54,7 @@ function setup(response = { ok: false, json: async () => ({ message: 'Operação
         <div id="routeMovementDetailsKind"></div>
         <div id="routeMovementDetailsRelatedRow" hidden><span id="routeMovementDetailsRelated"></span></div>
         <div id="routeMovementDetailsDescription"></div><div id="routeMovementDetailsNotes"></div>
-        <button id="routeMovementDetailsEdit"></button><button id="routeMovementDetailsDelete"></button>
+        <button id="routeMovementDetailsEdit"></button><button id="routeMovementDetailsReverse" hidden></button><button id="routeMovementDetailsDelete"></button>
       </div>
       <div id="routeDetailError" role="alert"></div><p id="routeEditHelp" role="status"></p>
       <div id="routeConfirmTitle"></div><div id="routeConfirmText"></div><small id="routeConfirmHint">Esta ação não pode ser desfeita.</small><button id="routeConfirmAction"></button>`;
@@ -105,8 +105,8 @@ test('ajustes apresentam tipo, sinal, conta e detalhes corretos e não entram no
         assert.equal(h.el('routeMovementDetailsDescription').textContent, description);
         assert.equal(h.el('routeMovementDetailsNotes').textContent, notes);
         assert.equal(h.el('routeMovementDetailsDelete').textContent, 'Eliminar');
-        assert.equal(h.el('routeMovementDetailsEdit').disabled, true);
-        assert.match(h.el('routeEditHelp').textContent, /elimina o movimento/i);
+        assert.equal(h.el('routeMovementDetailsEdit').hidden, true);
+        assert.match(h.el('routeEditHelp').textContent, /ajustes não editáveis/i);
         h.el('routeMovementDetailsEdit').dispatchEvent(new h.window.MouseEvent('click', { bubbles: true }));
         assert.equal((h.modals.get('movementEditModal')?.shown || 0), 0, 'até um clique sintético não abre edição genérica');
     }
@@ -161,7 +161,7 @@ test('transferências são identificadas pelo delta e também não abrem ediçã
         assert.equal(h.el('routeMovementDetailsKind').textContent, 'Transferência');
         assert.equal(h.el('routeMovementDetailsAmount').textContent, amount);
         assert.equal(h.el('routeMovementDetailsRelated').textContent, account);
-        assert.equal(h.el('routeMovementDetailsEdit').disabled, true);
+        assert.equal(h.el('routeMovementDetailsEdit').hidden, true);
         assert.match(h.el('routeEditHelp').textContent, /transferências/i);
         h.el('routeMovementDetailsEdit').dispatchEvent(new h.window.MouseEvent('click', { bubbles: true }));
         assert.equal((h.modals.get('movementEditModal')?.shown || 0), 0);
@@ -203,34 +203,26 @@ test('edição suportada mantém o tipo e o comportamento da receita ou despesa 
     }
 });
 
-test('movimento liquidado com obrigação reconciliável permite edição e liquidado sem origem continua bloqueado', async () => {
+test('movimentos liquidados não permitem edição e apenas obrigações com pagamentos elegíveis permitem reversão', () => {
     const h = setup();
     h.openItem('Liquidação Freelance');
-    assert.equal(h.el('routeMovementDetailsEdit').disabled, false);
-    assert.equal(h.el('routeEditHelp').textContent, '');
-    h.el('routeMovementDetailsEdit').click();
-    assert.equal(h.modals.get('movementEditModal').shown, 1);
-    assert.equal(h.el('movementEditDescription').value, 'Liquidação Freelance');
-    h.openItem('Entrada liquidada');
-    assert.equal(h.el('routeMovementDetailsEdit').disabled, true);
+    assert.equal(h.el('routeMovementDetailsEdit').hidden, true);
     assert.match(h.el('routeEditHelp').textContent, /não admite edição direta/);
-    h.openItem('Fatura prevista');
-    assert.equal(h.el('routeMovementDetailsEdit').disabled, true);
-    assert.match(h.el('routeEditHelp').textContent, /automaticamente/);
-    h.openItem('Diminuição');
-    h.el('routeMovementDetailsDelete').click();
-    assert.equal(h.el('routeConfirmTitle').textContent, 'Eliminar movimento?');
-    assert.equal(h.el('routeConfirmText').textContent, 'Este movimento será eliminado e os saldos das suas contas serão atualizados.');
-    assert.equal(h.el('routeConfirmHint').textContent, 'Esta ação não pode ser desfeita.');
-    assert.equal(h.el('routeConfirmAction').textContent, 'Eliminar');
-    h.el('routeConfirmAction').click();
-    await flush();
-    assert.equal(h.requests[0].url, '/movements/minus');
-    assert.equal(h.requests[0].method, 'DELETE');
-    assert.equal(h.el('routeConfirmText').textContent, 'Operação não permitida');
-    assert.equal(h.el('routeConfirmHint').hidden, true);
-});
+    assert.equal(h.el('routeMovementDetailsReverse').hidden, false, 'obrigação com pagamentos pode ser revertida');
+    assert.equal(h.el('routeMovementDetailsDelete').hidden, true);
 
+    h.openItem('Entrada liquidada');
+    assert.equal(h.el('routeMovementDetailsEdit').hidden, true);
+    assert.match(h.el('routeEditHelp').textContent, /não admite edição direta/);
+    assert.equal(h.el('routeMovementDetailsReverse').hidden, true, 'liquidação sem obrigação original não expõe reversão');
+    assert.equal(h.el('routeMovementDetailsDelete').hidden, true);
+
+    h.openItem('Fatura prevista');
+    assert.equal(h.el('routeMovementDetailsEdit').hidden, true);
+    assert.match(h.el('routeEditHelp').textContent, /automaticamente/);
+    assert.equal(h.el('routeMovementDetailsReverse').hidden, true);
+    assert.equal(h.el('routeMovementDetailsDelete').hidden, false);
+});
 test('a Rota Financeira fecha o modal do dia antes de abrir os detalhes', () => {
     const h = setup();
     h.openDay();
@@ -277,5 +269,12 @@ test('Rota Financeira aguarda hidden quando os detalhes já estão em transiçã
     detailsElement.dispatchEvent(new h.window.Event('hidden.bs.modal'));
     assert.equal(editor.shown, 1);
     assert.equal(h.el('movementEditDescription').value, 'Entrada');
+    h.window.close();
+});
+
+test('Rota Financeira disponibiliza reversão para obrigações liquidadas elegíveis', () => {
+    const h = setup();
+    h.openItem('Liquidação Freelance');
+    assert.equal(h.el('routeMovementDetailsReverse').hidden, false);
     h.window.close();
 });

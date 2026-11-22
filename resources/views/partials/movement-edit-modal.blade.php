@@ -51,10 +51,9 @@
         if (movement.invoiceId || movement.isInvoicePayment) return false;
         if (movement.installmentId || movement.debtId) return false;
         if (/^(debt|invoice|overdue-debt|overdue-invoice)-/.test(String(movement.financialMovementId))) return false;
-        if (movement.status === 'pending') return true;
-        const isSettlementRecord = Boolean(movement.isSettlementEvent || movement.settlesMovementId || movement.isSettlementParent);
-        const hasLegacyRecord = Boolean(movement.legacyType && movement.legacyId);
-        return ['partial', 'settled'].includes(movement.status) && (isSettlementRecord || hasLegacyRecord);
+        // Só compromissos ainda não liquidados podem ser editados.
+        // Pagamentos/recebimentos efetivos são imutáveis e só podem ser revertidos.
+        return movement.status === 'pending';
     };
 
     // Encadeia modais sem depender de um único estado de transição do Bootstrap.

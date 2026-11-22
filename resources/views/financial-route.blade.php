@@ -14,6 +14,7 @@
 <section class="financial-route-page" id="financialRoute"
     data-update-url="{{ url('/api/financial/movements') }}"
     data-delete-url="{{ url('/api/financial/movements') }}"
+    data-reverse-url="{{ url('/api/financial/movements') }}"
     data-currency="{{ $currency }}"
     data-today="{{ $today }}">
     <header class="financial-route-header">
@@ -311,7 +312,7 @@
  const root=document.getElementById('financialRoute'); if(!root)return;
  const csrf=document.querySelector('meta[name="csrf-token"]')?.content||'';
  const currency=root.dataset.currency||'EUR';
- const urls={update:root.dataset.updateUrl,remove:root.dataset.deleteUrl};
+ const urls={update:root.dataset.updateUrl,remove:root.dataset.deleteUrl,reverse:root.dataset.reverseUrl};
  const modal=id=>bootstrap.Modal.getOrCreateInstance(document.getElementById(id));
  const dayModal=modal('routeDayModal'), detailModal=modal('routeMovementDetailModal'), confirmModal=modal('routeConfirmModal');
  const detailElement=document.getElementById('routeMovementDetailModal'), confirmElement=document.getElementById('routeConfirmModal');
@@ -417,16 +418,19 @@
    document.getElementById('routeMovementDetailsDescription').textContent=item.description;
    document.getElementById('routeMovementDetailsNotes').textContent=item.notes||'—';
    document.getElementById('routeDetailError').textContent='';
-   document.getElementById('routeMovementDetailsEdit').disabled=!canEditMovement(item);
+   document.getElementById('routeMovementDetailsEdit').hidden=!canEditMovement(item);
+   const reverseButton=document.getElementById('routeMovementDetailsReverse');
+   reverseButton.hidden=!(item.is_settlement_parent&&['income','expense'].includes(item.type)&&['partial','partially_settled','settled'].includes(item.status)&&!item.invoice_id&&!item.installment_id&&!item.debt_id&&!item.settles_movement_id);
    document.getElementById('routeEditHelp').textContent=item.type==='adjustment'
-     ?'Ajustes não editáveis. Elimina o movimento.'
+     ?'Ajustes não editáveis.'
      :item.type==='transfer'
-       ?'Transferências não editáveis. Elimina e recria.'
+       ?'Transferências não editáveis.'
        :!canEditMovement(item)
          ?(item.invoice_id?'Movimento associado a fatura. Gere em Cartões.':item.installment_id||item.debt_id?'Movimento associado a parcelamento. Gere em Parcelamentos.':item.status==='settled'?'Este movimento não admite edição direta.':'Previsão gerada automaticamente. Gere em Faturas.')
          :'';
    const deleteButton=document.getElementById('routeMovementDetailsDelete');
    deleteButton.textContent=item.recurrence_id?'Eliminar ocorrência':'Eliminar';
+   deleteButton.hidden=item.status!=='pending';
    detailModal.show();
  }
  const editElement=document.getElementById('movementEditModal');
@@ -496,6 +500,18 @@
      returnToRouteDetails=false;routeDetailsNext='';editingRouteMovement=null;editModal.hide();window.location.reload();
    }catch(saveError){error.textContent=saveError.message||'Não foi possível atualizar o movimento.';error.classList.remove('d-none')}
    finally{editForm.dataset.submitting='0';submit.disabled=false;submit.textContent='Guardar alterações'}
+ });
+
+ document.getElementById('routeMovementDetailsReverse').addEventListener('click',async()=>{
+   const item=activeMovement;
+   if(!item||!confirm('Reverter todos os pagamentos registados deste movimento? Cada pagamento será revertido pelo valor original.'))return;
+   const button=document.getElementById('routeMovementDetailsReverse');button.disabled=true;
+   try{
+     const response=await fetch(urls.reverse+'/'+encodeURIComponent(item.id)+'/reverse-settlement',{method:'PUT',headers:{'Accept':'application/json','X-CSRF-TOKEN':csrf}});
+     const result=await response.json().catch(()=>({}));
+     if(!response.ok)throw new Error(Object.values(result.errors||{}).flat().join(' ')||result.message||'Não foi possível reverter os pagamentos.');
+     window.location.reload();
+   }catch(error){document.getElementById('routeDetailError').textContent=error.message;button.disabled=false;}
  });
  document.getElementById('routeMovementDetailsDelete').addEventListener('click',()=>{
    const item=activeMovement;const recurring=!!item.recurrence_id;

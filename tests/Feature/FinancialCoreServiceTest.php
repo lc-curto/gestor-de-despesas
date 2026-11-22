@@ -531,7 +531,7 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('100.00', app(AccountBalanceService::class)->balance($account));
     }
 
-    public function test_settled_movement_without_legacy_link_can_be_edited_and_reconciles_balance(): void
+    public function test_settled_movement_without_obligation_parent_cannot_be_edited_or_reversed(): void
     {
         $user = User::factory()->create();
         $account = $this->account($user, 'Conta API');
@@ -542,16 +542,19 @@ class FinancialCoreServiceTest extends TestCase
 
         $this->actingAs($user)->putJson('/api/financial/movements/'.$movement->id, [
             'amount' => '99.00', 'description' => 'Compra alterada',
-        ])->assertOk();
+        ])->assertUnprocessable();
+
+        try {
+            app(FinancialMovementService::class)->reverseSettlement($user, $movement->fresh());
+            $this->fail('Um movimento liquidado sem obrigação original não pode ser revertido como liquidação.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('movement', $exception->errors());
+        }
 
         $this->assertDatabaseHas('movimentos', [
-            'id' => $movement->id, 'status' => 'settled', 'description' => 'Compra alterada', 'amount' => '99.00',
+            'id' => $movement->id, 'status' => 'settled', 'description' => 'Compra confirmada', 'amount' => '12.50',
         ]);
-        $this->assertDatabaseHas('historico_movimentos', [
-            'movement_id' => $movement->id,
-            'action' => 'settled_legacy_movement_updated',
-        ]);
-        $this->assertSame('1.00', app(AccountBalanceService::class)->balance($account->fresh()));
+        $this->assertSame('87.50', app(AccountBalanceService::class)->balance($account->fresh()));
     }
 
     public function test_authenticated_api_can_create_account_and_record_a_settled_expense(): void
@@ -703,6 +706,52 @@ class FinancialCoreServiceTest extends TestCase
         $this->assertSame('100.00', app(AccountBalanceService::class)->balance($account));
         $this->assertDatabaseHas('movimentos', ['id' => $event->id, 'status' => 'void']);
         $this->assertSame(0, $user->movimentos()->whereNotNull('reversal_of_id')->count());
+    }
+
+    public function test_reversing_partial_settlement_compensates_every_recorded_payment_without_manual_amount(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->account($user, 'Conta principal', '100.00');
+        $service = app(FinancialMovementService::class);
+        $original = $service->createPending($user, [
+            'type' => 'expense',
+            'description' => 'Seguro',
+            'amount' => '60.00',
+            'movement_date' => '2026-11-30',
+        ]);
+
+        $service->settle($user, $original, [
+            'source_account_id' => $account->id,
+            'amount' => '20.00',
+            'movement_date' => '2026-11-18',
+        ]);
+        $service->settle($user, $original, [
+            'source_account_id' => $account->id,
+            'amount' => '15.00',
+            'movement_date' => '2026-11-19',
+        ]);
+
+        $this->assertSame('partial', $original->fresh()->status);
+        $this->assertSame('65.00', app(AccountBalanceService::class)->balance($account));
+
+        $reversed = $service->reverseSettlement($user, $original->fresh());
+
+        $this->assertSame('pending', $reversed->status);
+        $this->assertFalse((bool) $reversed->is_settlement_parent);
+        $this->assertSame('100.00', app(AccountBalanceService::class)->balance($account));
+        $this->assertSame(2, $user->movimentos()->where('settles_movement_id', $original->id)->whereNotNull('reversal_of_id')->count());
+        $this->assertSame(
+            ['15.00', '20.00'],
+            $user->movimentos()->where('settles_movement_id', $original->id)
+                ->whereNotNull('reversal_of_id')->orderBy('amount')->pluck('amount')->all()
+        );
+
+        try {
+            $service->reverseSettlement($user, $original->fresh());
+            $this->fail('Uma obrigação já revertida não pode ser revertida novamente.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('movement', $exception->errors());
+        }
     }
 
     public function test_financial_projection_counts_effective_payment_and_only_remaining_obligation(): void
