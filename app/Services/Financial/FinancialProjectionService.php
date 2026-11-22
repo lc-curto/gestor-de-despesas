@@ -124,6 +124,20 @@ class FinancialProjectionService
             return $movement;
         })->filter(fn (Movimento $movement) => (float) $movement->projection_delta !== 0.0)->values();
 
+        // Um evento de liquidação que já foi revertido não representa uma
+        // receita/despesa económica ativa, embora ambos os eventos continuem
+        // a ser preservados no histórico e no cálculo do caixa.
+        $reversedSettlementIds = $user->movimentos()
+            ->whereNotNull('reversal_of_id')
+            ->pluck('reversal_of_id')
+            ->map(fn ($id) => (string) $id)
+            ->all();
+
+        $items->each(fn (Movimento $movement) => $movement->setAttribute(
+            'has_reversal',
+            in_array((string) $movement->id, $reversedSettlementIds, true)
+        ));
+
         // Uma obrigação parcialmente liquidada projeta apenas o saldo não pago.
         $partiallySettled = $user->movimentos()
             ->with('categoria:id,name')
