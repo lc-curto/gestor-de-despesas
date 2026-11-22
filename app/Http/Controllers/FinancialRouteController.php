@@ -45,7 +45,7 @@ class FinancialRouteController extends Controller
                 // Os eventos de reversão corrigem o saldo de caixa, mas não são
                 // nova receita/despesa económica. O cash_delta continua a usar
                 // todos os eventos, incluindo as reversões.
-                $indicatorItems = $items->reject(fn ($item) => ! empty($item->reversal_of_id));
+                $indicatorItems = $items->reject(fn ($item) => ! empty($item->reversal_of_id) || ! empty($item->has_reversal));
                 $cashIncome = $indicatorItems->where('type', 'income')->sum('amount');
                 $cashExpenses = $indicatorItems->where('type', 'expense');
                 $days[$monthKey][$key] = [

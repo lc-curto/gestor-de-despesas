@@ -1102,7 +1102,9 @@ class FinancialMovementService
                 $locked->getAttributes(),
                 'Termos do movimento original ajustados sem alterar o histórico de liquidações.'
             );
-            if ($locked->recurrence_id && $locked->legacy_type && $locked->legacy_id) {
+            // O valor canónico e o registo legado têm de permanecer alinhados
+            // independentemente de a obrigação pertencer a uma recorrência.
+            if ($locked->legacy_type && $locked->legacy_id) {
                 $this->syncLegacyRecordFromMovement($user, $locked);
             }
 
